@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -75,10 +82,10 @@ $(function() {
 
 <p>This is the complete list of members for <a class="el" href="classBSpline0.html">BSpline0</a>, including all inherited members.</p>
 <table class="directory">
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>BSpline0</b>(int nsplines, double tstart, double tstop, bool enforceZeroBoundary) (defined in <a class="el" href="classBSpline0.html">BSpline0</a>)</td><td class="entry"><a class="el" href="classBSpline0.html">BSpline0</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classBSpline0.html#ad9c5beda8ff3735e215bd5c1061e1303">BSpline0</a>(int nsplines, double tstart, double tstop, bool enforceZeroBoundary)</td><td class="entry"><a class="el" href="classBSpline0.html">BSpline0</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classBSpline0.html#a86de3718cec83e570037a309e55fb36a">computeVariation</a>(std::vector&lt; double &gt; &amp;params, int carrierfreqID)</td><td class="entry"><a class="el" href="classBSpline0.html">BSpline0</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classBSpline0.html#a548a6d275d3d12ddb00a6b9a111aff0c">computeVariation_diff</a>(double *grad, std::vector&lt; double &gt; &amp;params, double var_bar, int carrierfreqID)</td><td class="entry"><a class="el" href="classBSpline0.html">BSpline0</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>ControlBasis</b>() (defined in <a class="el" href="classControlBasis.html">ControlBasis</a>)</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classControlBasis.html#a716baae5e56466c8edba3f646c900efd">ControlBasis</a>()</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classControlBasis.html#a3942889265eab2353dcef37c63ce856b">ControlBasis</a>(int nparams_, double tstart, double tstop, bool enforceZeroBoundary)</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classControlBasis.html#aa47f10d7033e83b174a97d6cc7e91d89">controltype</a></td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classBSpline0.html#a6daba2ef8670bd474b77861a60d7aacd">derivative</a>(const double t, const std::vector&lt; double &gt; &amp;coeff, double *coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id)</td><td class="entry"><a class="el" href="classBSpline0.html">BSpline0</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
@@ -99,8 +106,8 @@ $(function() {
   <tr class="odd"><td class="entry"><a class="el" href="classControlBasis.html#a1f1820a85ad416f02245084619ffb720">tstart</a></td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classControlBasis.html#af89673125f7918b75b723b7589e4b19f">tstop</a></td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classBSpline0.html#affcfc8e417eae6ee5c66b90a060a92c5">width</a></td><td class="entry"><a class="el" href="classBSpline0.html">BSpline0</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>~BSpline0</b>() (defined in <a class="el" href="classBSpline0.html">BSpline0</a>)</td><td class="entry"><a class="el" href="classBSpline0.html">BSpline0</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>~ControlBasis</b>() (defined in <a class="el" href="classControlBasis.html">ControlBasis</a>)</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classBSpline0.html#aa6484b888ecc658a7f4c986314b7ed00">~BSpline0</a>()</td><td class="entry"><a class="el" href="classBSpline0.html">BSpline0</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classControlBasis.html#a81b0caa30a036c04c4a1d9875255dc0e">~ControlBasis</a>()</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
 </table></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

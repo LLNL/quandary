@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -84,9 +91,13 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a20b2af8dd0995af98e423e3d414c5534" id="r_a20b2af8dd0995af98e423e3d414c5534"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPythonInterface.html#a20b2af8dd0995af98e423e3d414c5534">PythonInterface</a> (std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_)</td></tr>
+<tr class="memitem:a706e9ce494ea37bd460e28697fbfabd3" id="r_a706e9ce494ea37bd460e28697fbfabd3"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPythonInterface.html#a706e9ce494ea37bd460e28697fbfabd3">PythonInterface</a> ()</td></tr>
+<tr class="separator:a706e9ce494ea37bd460e28697fbfabd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a20b2af8dd0995af98e423e3d414c5534" id="r_a20b2af8dd0995af98e423e3d414c5534"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPythonInterface.html#a20b2af8dd0995af98e423e3d414c5534">PythonInterface</a> (std::string hamiltonian_file_, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype_, int dim_rho_, bool quietmode_)</td></tr>
 <tr class="memdesc:a20b2af8dd0995af98e423e3d414c5534"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with Hamiltonian file specification.  <br /></td></tr>
 <tr class="separator:a20b2af8dd0995af98e423e3d414c5534"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae1920da66822cf34e2e0ccec3cfa3fbe" id="r_ae1920da66822cf34e2e0ccec3cfa3fbe"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPythonInterface.html#ae1920da66822cf34e2e0ccec3cfa3fbe">~PythonInterface</a> ()</td></tr>
+<tr class="separator:ae1920da66822cf34e2e0ccec3cfa3fbe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7b106c6430e2ed6d452d5978e630b41e" id="r_a7b106c6430e2ed6d452d5978e630b41e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPythonInterface.html#a7b106c6430e2ed6d452d5978e630b41e">receiveHsys</a> (Mat &amp;Bd)</td></tr>
 <tr class="memdesc:a7b106c6430e2ed6d452d5978e630b41e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reads the constant system Hamiltonian from file.  <br /></td></tr>
 <tr class="separator:a7b106c6430e2ed6d452d5978e630b41e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -96,33 +107,45 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
-<tr class="memitem:a817dd5d5b49da45aa8466b5d979422ab" id="r_a817dd5d5b49da45aa8466b5d979422ab"><td class="memItemLeft" align="right" valign="top"><a id="a817dd5d5b49da45aa8466b5d979422ab" name="a817dd5d5b49da45aa8466b5d979422ab"></a>
-LindbladType&#160;</td><td class="memItemRight" valign="bottom"><b>lindbladtype</b></td></tr>
-<tr class="memdesc:a817dd5d5b49da45aa8466b5d979422ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of solver (Lindblad vs Schroedinger) <br /></td></tr>
+<tr class="memitem:a817dd5d5b49da45aa8466b5d979422ab" id="r_a817dd5d5b49da45aa8466b5d979422ab"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPythonInterface.html#a817dd5d5b49da45aa8466b5d979422ab">lindbladtype</a></td></tr>
+<tr class="memdesc:a817dd5d5b49da45aa8466b5d979422ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of solver (Lindblad vs Schroedinger)  <br /></td></tr>
 <tr class="separator:a817dd5d5b49da45aa8466b5d979422ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2c7fb676b9118f301675783dbbbc5706" id="r_a2c7fb676b9118f301675783dbbbc5706"><td class="memItemLeft" align="right" valign="top"><a id="a2c7fb676b9118f301675783dbbbc5706" name="a2c7fb676b9118f301675783dbbbc5706"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>dim_rho</b></td></tr>
-<tr class="memdesc:a2c7fb676b9118f301675783dbbbc5706"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of the Hilbert space (N) <br /></td></tr>
+<tr class="memitem:a2c7fb676b9118f301675783dbbbc5706" id="r_a2c7fb676b9118f301675783dbbbc5706"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPythonInterface.html#a2c7fb676b9118f301675783dbbbc5706">dim_rho</a></td></tr>
+<tr class="memdesc:a2c7fb676b9118f301675783dbbbc5706"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of the Hilbert space (N)  <br /></td></tr>
 <tr class="separator:a2c7fb676b9118f301675783dbbbc5706"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab42d086233d4e0433b8a10788207baa8" id="r_ab42d086233d4e0433b8a10788207baa8"><td class="memItemLeft" align="right" valign="top"><a id="ab42d086233d4e0433b8a10788207baa8" name="ab42d086233d4e0433b8a10788207baa8"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>hamiltonian_file</b></td></tr>
-<tr class="memdesc:ab42d086233d4e0433b8a10788207baa8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filename for Hamiltonian data ('none' if not used) <br /></td></tr>
+<tr class="memitem:ab42d086233d4e0433b8a10788207baa8" id="r_ab42d086233d4e0433b8a10788207baa8"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPythonInterface.html#ab42d086233d4e0433b8a10788207baa8">hamiltonian_file</a></td></tr>
+<tr class="memdesc:ab42d086233d4e0433b8a10788207baa8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filename for Hamiltonian data ('none' if not used)  <br /></td></tr>
 <tr class="separator:ab42d086233d4e0433b8a10788207baa8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aacfaa0465422aae809c1a2c9ecb1dede" id="r_aacfaa0465422aae809c1a2c9ecb1dede"><td class="memItemLeft" align="right" valign="top"><a id="aacfaa0465422aae809c1a2c9ecb1dede" name="aacfaa0465422aae809c1a2c9ecb1dede"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>mpirank_world</b></td></tr>
-<tr class="memdesc:aacfaa0465422aae809c1a2c9ecb1dede"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of global MPI communicator. <br /></td></tr>
+<tr class="memitem:aacfaa0465422aae809c1a2c9ecb1dede" id="r_aacfaa0465422aae809c1a2c9ecb1dede"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPythonInterface.html#aacfaa0465422aae809c1a2c9ecb1dede">mpirank_world</a></td></tr>
+<tr class="memdesc:aacfaa0465422aae809c1a2c9ecb1dede"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of global MPI communicator.  <br /></td></tr>
 <tr class="separator:aacfaa0465422aae809c1a2c9ecb1dede"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a65d59a8141db076a3f98e8a4748512ca" id="r_a65d59a8141db076a3f98e8a4748512ca"><td class="memItemLeft" align="right" valign="top"><a id="a65d59a8141db076a3f98e8a4748512ca" name="a65d59a8141db076a3f98e8a4748512ca"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></tr>
-<tr class="memdesc:a65d59a8141db076a3f98e8a4748512ca"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag for quiet mode operation. <br /></td></tr>
+<tr class="memitem:a65d59a8141db076a3f98e8a4748512ca" id="r_a65d59a8141db076a3f98e8a4748512ca"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPythonInterface.html#a65d59a8141db076a3f98e8a4748512ca">quietmode</a></td></tr>
+<tr class="memdesc:a65d59a8141db076a3f98e8a4748512ca"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag for quiet mode operation.  <br /></td></tr>
 <tr class="separator:a65d59a8141db076a3f98e8a4748512ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Interface for receiving Hamiltonian data from Python. </p>
 <p>This class provides functionality to read system and control Hamiltonians from files generated by Python scripts. It supports both Lindblad and Schroedinger solvers and handles matrix data communication between Python and the C++ Quandary core. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a706e9ce494ea37bd460e28697fbfabd3" name="a706e9ce494ea37bd460e28697fbfabd3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a706e9ce494ea37bd460e28697fbfabd3">&#9670;&#160;</a></span>PythonInterface() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">PythonInterface::PythonInterface </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a20b2af8dd0995af98e423e3d414c5534" name="a20b2af8dd0995af98e423e3d414c5534"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a20b2af8dd0995af98e423e3d414c5534">&#9670;&#160;</a></span>PythonInterface()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a20b2af8dd0995af98e423e3d414c5534">&#9670;&#160;</a></span>PythonInterface() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -136,7 +159,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></t
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">LindbladType&#160;</td>
+          <td class="paramtype"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a>&#160;</td>
           <td class="paramname"><em>lindbladtype_</em>, </td>
         </tr>
         <tr>
@@ -169,6 +192,23 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></t
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="ae1920da66822cf34e2e0ccec3cfa3fbe" name="ae1920da66822cf34e2e0ccec3cfa3fbe"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae1920da66822cf34e2e0ccec3cfa3fbe">&#9670;&#160;</a></span>~PythonInterface()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">PythonInterface::~PythonInterface </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -245,9 +285,130 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></t
 
 </div>
 </div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="a2c7fb676b9118f301675783dbbbc5706" name="a2c7fb676b9118f301675783dbbbc5706"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2c7fb676b9118f301675783dbbbc5706">&#9670;&#160;</a></span>dim_rho</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int PythonInterface::dim_rho</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Dimension of the Hilbert space (N) </p>
+
+</div>
+</div>
+<a id="ab42d086233d4e0433b8a10788207baa8" name="ab42d086233d4e0433b8a10788207baa8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab42d086233d4e0433b8a10788207baa8">&#9670;&#160;</a></span>hamiltonian_file</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string PythonInterface::hamiltonian_file</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Filename for Hamiltonian data ('none' if not used) </p>
+
+</div>
+</div>
+<a id="a817dd5d5b49da45aa8466b5d979422ab" name="a817dd5d5b49da45aa8466b5d979422ab"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a817dd5d5b49da45aa8466b5d979422ab">&#9670;&#160;</a></span>lindbladtype</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> PythonInterface::lindbladtype</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Type of solver (Lindblad vs Schroedinger) </p>
+
+</div>
+</div>
+<a id="aacfaa0465422aae809c1a2c9ecb1dede" name="aacfaa0465422aae809c1a2c9ecb1dede"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aacfaa0465422aae809c1a2c9ecb1dede">&#9670;&#160;</a></span>mpirank_world</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int PythonInterface::mpirank_world</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Rank of global MPI communicator. </p>
+
+</div>
+</div>
+<a id="a65d59a8141db076a3f98e8a4748512ca" name="a65d59a8141db076a3f98e8a4748512ca"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a65d59a8141db076a3f98e8a4748512ca">&#9670;&#160;</a></span>quietmode</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PythonInterface::quietmode</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag for quiet mode operation. </p>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>/home/runner/work/quandary/quandary/include/<a class="el" href="pythoninterface_8hpp_source.html">pythoninterface.hpp</a></li>
-<li>/home/runner/work/quandary/quandary/src/<b>pythoninterface.cpp</b></li>
+<li>/home/runner/work/quandary/quandary/src/<a class="el" href="pythoninterface_8cpp.html">pythoninterface.cpp</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

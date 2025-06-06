@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -76,6 +83,8 @@ $(function() {
   <div class="headertitle"><div class="title">TransferFunction Class Reference<span class="mlabels"><span class="mlabel">abstract</span></span></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p><code>#include &lt;<a class="el" href="controlbasis_8hpp_source.html">controlbasis.hpp</a>&gt;</code></p>
 <div class="dynheader">
 Inheritance diagram for TransferFunction:</div>
 <div class="dyncontent">
@@ -95,9 +104,13 @@ Inheritance diagram for TransferFunction:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a7abbdb817ceb4422d5474ac799571361" id="r_a7abbdb817ceb4422d5474ac799571361"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferFunction.html#a7abbdb817ceb4422d5474ac799571361">TransferFunction</a> (std::vector&lt; double &gt; onofftimes)</td></tr>
+<tr class="memitem:ad795956a382e996bd71502fa82628270" id="r_ad795956a382e996bd71502fa82628270"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferFunction.html#ad795956a382e996bd71502fa82628270">TransferFunction</a> ()</td></tr>
+<tr class="separator:ad795956a382e996bd71502fa82628270"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7abbdb817ceb4422d5474ac799571361" id="r_a7abbdb817ceb4422d5474ac799571361"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferFunction.html#a7abbdb817ceb4422d5474ac799571361">TransferFunction</a> (std::vector&lt; double &gt; <a class="el" href="classTransferFunction.html#ad16b61403cb60c4bcba8ab9e9a98b9f0">onofftimes</a>)</td></tr>
 <tr class="memdesc:a7abbdb817ceb4422d5474ac799571361"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with active intervals.  <br /></td></tr>
 <tr class="separator:a7abbdb817ceb4422d5474ac799571361"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aba60b46f243b3b0c8e9ccdeb391cba27" id="r_aba60b46f243b3b0c8e9ccdeb391cba27"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferFunction.html#aba60b46f243b3b0c8e9ccdeb391cba27">~TransferFunction</a> ()</td></tr>
+<tr class="separator:aba60b46f243b3b0c8e9ccdeb391cba27"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad583c18893522327dcfd2b8e5d4b62a0" id="r_ad583c18893522327dcfd2b8e5d4b62a0"><td class="memItemLeft" align="right" valign="top">virtual double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferFunction.html#ad583c18893522327dcfd2b8e5d4b62a0">eval</a> (double p, double time)=0</td></tr>
 <tr class="memdesc:ad583c18893522327dcfd2b8e5d4b62a0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the transfer function at a given time.  <br /></td></tr>
 <tr class="separator:ad583c18893522327dcfd2b8e5d4b62a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -113,13 +126,29 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
-<tr class="memitem:ad16b61403cb60c4bcba8ab9e9a98b9f0" id="r_ad16b61403cb60c4bcba8ab9e9a98b9f0"><td class="memItemLeft" align="right" valign="top"><a id="ad16b61403cb60c4bcba8ab9e9a98b9f0" name="ad16b61403cb60c4bcba8ab9e9a98b9f0"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onofftimes</b></td></tr>
+<tr class="memitem:ad16b61403cb60c4bcba8ab9e9a98b9f0" id="r_ad16b61403cb60c4bcba8ab9e9a98b9f0"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferFunction.html#ad16b61403cb60c4bcba8ab9e9a98b9f0">onofftimes</a></td></tr>
 <tr class="separator:ad16b61403cb60c4bcba8ab9e9a98b9f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="ad795956a382e996bd71502fa82628270" name="ad795956a382e996bd71502fa82628270"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad795956a382e996bd71502fa82628270">&#9670;&#160;</a></span>TransferFunction() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">TransferFunction::TransferFunction </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a7abbdb817ceb4422d5474ac799571361" name="a7abbdb817ceb4422d5474ac799571361"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7abbdb817ceb4422d5474ac799571361">&#9670;&#160;</a></span>TransferFunction()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a7abbdb817ceb4422d5474ac799571361">&#9670;&#160;</a></span>TransferFunction() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -141,6 +170,31 @@ std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="aba60b46f243b3b0c8e9ccdeb391cba27" name="aba60b46f243b3b0c8e9ccdeb391cba27"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aba60b46f243b3b0c8e9ccdeb391cba27">&#9670;&#160;</a></span>~TransferFunction()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">TransferFunction::~TransferFunction </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -307,9 +361,32 @@ std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><
 
 </div>
 </div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="ad16b61403cb60c4bcba8ab9e9a98b9f0" name="ad16b61403cb60c4bcba8ab9e9a98b9f0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad16b61403cb60c4bcba8ab9e9a98b9f0">&#9670;&#160;</a></span>onofftimes</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;double&gt; TransferFunction::onofftimes</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>/home/runner/work/quandary/quandary/include/<a class="el" href="controlbasis_8hpp_source.html">controlbasis.hpp</a></li>
-<li>/home/runner/work/quandary/quandary/src/<b>controlbasis.cpp</b></li>
+<li>/home/runner/work/quandary/quandary/src/<a class="el" href="controlbasis_8cpp.html">controlbasis.cpp</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

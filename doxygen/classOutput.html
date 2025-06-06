@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -84,9 +91,13 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a428c663520336477a12f1a33504eb067" id="r_a428c663520336477a12f1a33504eb067"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a428c663520336477a12f1a33504eb067">Output</a> ()</td></tr>
+<tr class="separator:a428c663520336477a12f1a33504eb067"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac3c902543a002d8062ff510d06b9580e" id="r_ac3c902543a002d8062ff510d06b9580e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#ac3c902543a002d8062ff510d06b9580e">Output</a> (<a class="el" href="classMapParam.html">MapParam</a> &amp;config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false)</td></tr>
 <tr class="memdesc:ac3c902543a002d8062ff510d06b9580e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with configuration and MPI setup.  <br /></td></tr>
 <tr class="separator:ac3c902543a002d8062ff510d06b9580e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a61d0840daf98bea49e4dc471f235eeab" id="r_a61d0840daf98bea49e4dc471f235eeab"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a61d0840daf98bea49e4dc471f235eeab">~Output</a> ()</td></tr>
+<tr class="separator:a61d0840daf98bea49e4dc471f235eeab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae1a97757ebb839dd3bb0e2dc33159bf" id="r_aae1a97757ebb839dd3bb0e2dc33159bf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#aae1a97757ebb839dd3bb0e2dc33159bf">writeOptimFile</a> (int optim_iter, double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul, double penalty, double penalty_dpdm, double penalty_energy, double penalty_variation)</td></tr>
 <tr class="memdesc:aae1a97757ebb839dd3bb0e2dc33159bf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes optimization progress to history file.  <br /></td></tr>
 <tr class="separator:aae1a97757ebb839dd3bb0e2dc33159bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -108,21 +119,36 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:aa35bfecd4c9d48d2a36d7de958e9bcc9" id="r_aa35bfecd4c9d48d2a36d7de958e9bcc9"><td class="memItemLeft" align="right" valign="top"><a id="aa35bfecd4c9d48d2a36d7de958e9bcc9" name="aa35bfecd4c9d48d2a36d7de958e9bcc9"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>datadir</b></td></tr>
-<tr class="memdesc:aa35bfecd4c9d48d2a36d7de958e9bcc9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Directory path for output data files. <br /></td></tr>
+<tr class="memitem:aa35bfecd4c9d48d2a36d7de958e9bcc9" id="r_aa35bfecd4c9d48d2a36d7de958e9bcc9"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#aa35bfecd4c9d48d2a36d7de958e9bcc9">datadir</a></td></tr>
+<tr class="memdesc:aa35bfecd4c9d48d2a36d7de958e9bcc9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Directory path for output data files.  <br /></td></tr>
 <tr class="separator:aa35bfecd4c9d48d2a36d7de958e9bcc9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4700eb37d9698537e4be0ac6aacd4083" id="r_a4700eb37d9698537e4be0ac6aacd4083"><td class="memItemLeft" align="right" valign="top"><a id="a4700eb37d9698537e4be0ac6aacd4083" name="a4700eb37d9698537e4be0ac6aacd4083"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>optim_monitor_freq</b></td></tr>
-<tr class="memdesc:a4700eb37d9698537e4be0ac6aacd4083"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write output files every N optimization iterations. <br /></td></tr>
+<tr class="memitem:a4700eb37d9698537e4be0ac6aacd4083" id="r_a4700eb37d9698537e4be0ac6aacd4083"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a4700eb37d9698537e4be0ac6aacd4083">optim_monitor_freq</a></td></tr>
+<tr class="memdesc:a4700eb37d9698537e4be0ac6aacd4083"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write output files every N optimization iterations.  <br /></td></tr>
 <tr class="separator:a4700eb37d9698537e4be0ac6aacd4083"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> management for quantum control simulations and optimization. </p>
 <p>This class handles all file I/O operations for Quandary, including optimization progress logging, control pulse output, state evolution data, and population dynamics. It manages MPI-aware output to avoid duplicate writes in parallel runs. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a428c663520336477a12f1a33504eb067" name="a428c663520336477a12f1a33504eb067"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a428c663520336477a12f1a33504eb067">&#9670;&#160;</a></span>Output() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Output::Output </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="ac3c902543a002d8062ff510d06b9580e" name="ac3c902543a002d8062ff510d06b9580e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac3c902543a002d8062ff510d06b9580e">&#9670;&#160;</a></span>Output()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ac3c902543a002d8062ff510d06b9580e">&#9670;&#160;</a></span>Output() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -176,6 +202,23 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>optim_monitor_freq</b>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="a61d0840daf98bea49e4dc471f235eeab" name="a61d0840daf98bea49e4dc471f235eeab"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a61d0840daf98bea49e4dc471f235eeab">&#9670;&#160;</a></span>~Output()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Output::~Output </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -469,9 +512,42 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>optim_monitor_freq</b>
 
 </div>
 </div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="aa35bfecd4c9d48d2a36d7de958e9bcc9" name="aa35bfecd4c9d48d2a36d7de958e9bcc9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa35bfecd4c9d48d2a36d7de958e9bcc9">&#9670;&#160;</a></span>datadir</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string Output::datadir</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Directory path for output data files. </p>
+
+</div>
+</div>
+<a id="a4700eb37d9698537e4be0ac6aacd4083" name="a4700eb37d9698537e4be0ac6aacd4083"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4700eb37d9698537e4be0ac6aacd4083">&#9670;&#160;</a></span>optim_monitor_freq</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Output::optim_monitor_freq</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Write output files every N optimization iterations. </p>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>/home/runner/work/quandary/quandary/include/<a class="el" href="output_8hpp_source.html">output.hpp</a></li>
-<li>/home/runner/work/quandary/quandary/src/<b>output.cpp</b></li>
+<li>/home/runner/work/quandary/quandary/src/<a class="el" href="output_8cpp.html">output.cpp</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

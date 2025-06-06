@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -83,13 +90,17 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:ad4e0df2f3df0dfdf8ef8ecbfd299ca5a" id="r_ad4e0df2f3df0dfdf8ef8ecbfd299ca5a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#ad4e0df2f3df0dfdf8ef8ecbfd299ca5a">OptimTarget</a> ()</td></tr>
+<tr class="separator:ad4e0df2f3df0dfdf8ef8ecbfd299ca5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab5e3b5e675129ac53213cdb474374515" id="r_ab5e3b5e675129ac53213cdb474374515"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#ab5e3b5e675129ac53213cdb474374515">OptimTarget</a> (std::vector&lt; std::string &gt; target_str, std::string objective_str, std::vector&lt; std::string &gt; initcond_str, <a class="el" href="classMasterEq.html">MasterEq</a> *mastereq, double total_time, std::vector&lt; double &gt; read_gate_rot, Vec rho_t0, bool quietmode_)</td></tr>
 <tr class="memdesc:ab5e3b5e675129ac53213cdb474374515"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with full target specification.  <br /></td></tr>
 <tr class="separator:ab5e3b5e675129ac53213cdb474374515"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4fc47d3feac302dfdb6bfb64fa56de68" id="r_a4fc47d3feac302dfdb6bfb64fa56de68"><td class="memItemLeft" align="right" valign="top">TargetType&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a4fc47d3feac302dfdb6bfb64fa56de68">getTargetType</a> ()</td></tr>
+<tr class="memitem:acabdfafb394a6fba453729cad1d04435" id="r_acabdfafb394a6fba453729cad1d04435"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#acabdfafb394a6fba453729cad1d04435">~OptimTarget</a> ()</td></tr>
+<tr class="separator:acabdfafb394a6fba453729cad1d04435"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4fc47d3feac302dfdb6bfb64fa56de68" id="r_a4fc47d3feac302dfdb6bfb64fa56de68"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a0d59972970c855496cb4c877501e668f">TargetType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a4fc47d3feac302dfdb6bfb64fa56de68">getTargetType</a> ()</td></tr>
 <tr class="memdesc:a4fc47d3feac302dfdb6bfb64fa56de68"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the target type.  <br /></td></tr>
 <tr class="separator:a4fc47d3feac302dfdb6bfb64fa56de68"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1d6b9676ed98de1f16bd0f3abdb46c3d" id="r_a1d6b9676ed98de1f16bd0f3abdb46c3d"><td class="memItemLeft" align="right" valign="top">ObjectiveType&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a1d6b9676ed98de1f16bd0f3abdb46c3d">getObjectiveType</a> ()</td></tr>
+<tr class="memitem:a1d6b9676ed98de1f16bd0f3abdb46c3d" id="r_a1d6b9676ed98de1f16bd0f3abdb46c3d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a45660f9909187129a953fa05e664576e">ObjectiveType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a1d6b9676ed98de1f16bd0f3abdb46c3d">getObjectiveType</a> ()</td></tr>
 <tr class="memdesc:a1d6b9676ed98de1f16bd0f3abdb46c3d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the objective function type.  <br /></td></tr>
 <tr class="separator:a1d6b9676ed98de1f16bd0f3abdb46c3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa9ed01e33f5bcdfb677ea1aec4329f2a" id="r_aa9ed01e33f5bcdfb677ea1aec4329f2a"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#aa9ed01e33f5bcdfb677ea1aec4329f2a">prepareInitialState</a> (const int iinit, const int ninit, std::vector&lt; int &gt; nlevels, std::vector&lt; int &gt; nessential, Vec rho0)</td></tr>
@@ -127,8 +138,25 @@ Public Member Functions</h2></td></tr>
 <div class="textblock"><p>Optimization target specification and evaluation for quantum control. </p>
 <p>This class manages the target specification for quantum optimal control problems, including gate optimization and pure state preparation. It handles target state preparation, objective function evaluation, and gradient computation. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="ad4e0df2f3df0dfdf8ef8ecbfd299ca5a" name="ad4e0df2f3df0dfdf8ef8ecbfd299ca5a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad4e0df2f3df0dfdf8ef8ecbfd299ca5a">&#9670;&#160;</a></span>OptimTarget() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">OptimTarget::OptimTarget </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="ab5e3b5e675129ac53213cdb474374515" name="ab5e3b5e675129ac53213cdb474374515"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab5e3b5e675129ac53213cdb474374515">&#9670;&#160;</a></span>OptimTarget()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ab5e3b5e675129ac53213cdb474374515">&#9670;&#160;</a></span>OptimTarget() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -203,6 +231,23 @@ Public Member Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="acabdfafb394a6fba453729cad1d04435" name="acabdfafb394a6fba453729cad1d04435"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acabdfafb394a6fba453729cad1d04435">&#9670;&#160;</a></span>~OptimTarget()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">OptimTarget::~OptimTarget </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -475,7 +520,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">ObjectiveType OptimTarget::getObjectiveType </td>
+          <td class="memname"><a class="el" href="defs_8hpp.html#a45660f9909187129a953fa05e664576e">ObjectiveType</a> OptimTarget::getObjectiveType </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -503,7 +548,7 @@ Public Member Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">TargetType OptimTarget::getTargetType </td>
+          <td class="memname"><a class="el" href="defs_8hpp.html#a0d59972970c855496cb4c877501e668f">TargetType</a> OptimTarget::getTargetType </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -719,7 +764,7 @@ Public Member Functions</h2></td></tr>
 </div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>/home/runner/work/quandary/quandary/include/<a class="el" href="optimtarget_8hpp_source.html">optimtarget.hpp</a></li>
-<li>/home/runner/work/quandary/quandary/src/<b>optimtarget.cpp</b></li>
+<li>/home/runner/work/quandary/quandary/src/<a class="el" href="optimtarget_8cpp.html">optimtarget.cpp</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

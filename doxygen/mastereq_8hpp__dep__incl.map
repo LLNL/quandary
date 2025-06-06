@@ -1,0 +1,29 @@
+<map id="/home/runner/work/quandary/quandary/include/mastereq.hpp" name="/home/runner/work/quandary/quandary/include/mastereq.hpp">
+<area shape="rect" id="Node000001" title=" " alt="" coords="483,5,715,45"/>
+<area shape="rect" id="Node000002" href="$optimtarget_8hpp.html" title=" " alt="" coords="107,93,353,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="506,51,311,96,310,91,504,46"/>
+<area shape="rect" id="Node000004" href="$main_8cpp.html" title=" " alt="" coords="469,357,679,397"/>
+<area shape="poly" id="edge15_Node000001_Node000004" title=" " alt="" coords="684,47,758,75,794,93,826,113,852,137,868,163,872,192,862,223,843,249,820,273,767,312,709,340,654,360,652,355,707,335,764,307,816,269,839,246,857,220,867,191,863,165,848,140,823,118,791,98,756,80,682,52"/>
+<area shape="rect" id="Node000006" href="$timestepper_8hpp.html" title=" " alt="" coords="314,181,562,221"/>
+<area shape="poly" id="edge14_Node000001_Node000006" title=" " alt="" coords="539,54,509,72,483,95,468,116,457,139,444,182,439,180,452,137,463,113,479,92,506,68,536,49"/>
+<area shape="rect" id="Node000009" href="$output_8hpp.html" title=" " alt="" coords="493,93,705,133"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="602,59,602,93,597,93,597,59"/>
+<area shape="rect" id="Node000011" href="$mastereq_8cpp.html" title=" " alt="" coords="922,93,1133,133"/>
+<area shape="poly" id="edge16_Node000001_Node000011" title=" " alt="" coords="707,45,934,91,933,96,706,51"/>
+<area shape="rect" id="Node000003" href="$optimproblem_8hpp.html" title=" " alt="" coords="5,269,268,309"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="115,141,85,159,62,183,57,194,56,205,66,227,85,249,108,267,105,271,81,253,61,230,51,206,51,193,57,180,82,154,112,136"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="289,136,393,179,391,184,287,141"/>
+<area shape="rect" id="Node000008" href="$optimtarget_8cpp.html" title=" " alt="" coords="71,181,290,221"/>
+<area shape="poly" id="edge9_Node000002_Node000008" title=" " alt="" coords="215,147,194,182,189,180,210,144"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="247,309,479,355,478,360,246,315"/>
+<area shape="rect" id="Node000005" href="$optimproblem_8cpp.html" title=" " alt="" coords="20,357,253,397"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="139,323,139,357,134,357,134,323"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="359,228,203,272,202,267,358,223"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="481,227,504,246,525,268,553,314,571,356,566,358,549,316,521,271,501,250,478,231"/>
+<area shape="rect" id="Node000007" href="$timestepper_8cpp.html" title=" " alt="" coords="293,269,511,309"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="427,235,412,270,408,268,422,233"/>
+<area shape="poly" id="edge12_Node000009_Node000004" title=" " alt="" coords="599,147,578,357,573,357,594,147"/>
+<area shape="poly" id="edge11_Node000009_Node000006" title=" " alt="" coords="553,142,475,184,472,179,551,137"/>
+<area shape="rect" id="Node000010" href="$output_8cpp.html" title=" " alt="" coords="637,181,847,221"/>
+<area shape="poly" id="edge13_Node000009_Node000010" title=" " alt="" coords="644,138,712,179,709,184,641,143"/>
+</map>

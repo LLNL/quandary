@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -112,9 +119,13 @@ Inheritance diagram for Gate:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:adf66e54c2271a8c93f53fd76f1364b47" id="r_adf66e54c2271a8c93f53fd76f1364b47"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#adf66e54c2271a8c93f53fd76f1364b47">Gate</a> (std::vector&lt; int &gt; nlevels_, std::vector&lt; int &gt; nessential_, double time_, std::vector&lt; double &gt; <a class="el" href="classGate.html#a3e01ad590ce8ffa37e497f46b5152010">gate_rot_freq</a>, LindbladType lindbladtype_, bool <a class="el" href="classGate.html#a00a2add81f121424e235213af74166e2">quietmode</a>=false)</td></tr>
+<tr class="memitem:a4fc24ecebc0ca8252bf7ab96a705e58a" id="r_a4fc24ecebc0ca8252bf7ab96a705e58a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a4fc24ecebc0ca8252bf7ab96a705e58a">Gate</a> ()</td></tr>
+<tr class="separator:a4fc24ecebc0ca8252bf7ab96a705e58a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adf66e54c2271a8c93f53fd76f1364b47" id="r_adf66e54c2271a8c93f53fd76f1364b47"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#adf66e54c2271a8c93f53fd76f1364b47">Gate</a> (std::vector&lt; int &gt; nlevels_, std::vector&lt; int &gt; nessential_, double time_, std::vector&lt; double &gt; <a class="el" href="classGate.html#a3e01ad590ce8ffa37e497f46b5152010">gate_rot_freq</a>, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype_, bool <a class="el" href="classGate.html#a00a2add81f121424e235213af74166e2">quietmode</a>=false)</td></tr>
 <tr class="memdesc:adf66e54c2271a8c93f53fd76f1364b47"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for quantum gate with specified parameters.  <br /></td></tr>
 <tr class="separator:adf66e54c2271a8c93f53fd76f1364b47"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa04556acb1cdc5715e38ced8f28c6b27" id="r_aa04556acb1cdc5715e38ced8f28c6b27"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#aa04556acb1cdc5715e38ced8f28c6b27">~Gate</a> ()</td></tr>
+<tr class="separator:aa04556acb1cdc5715e38ced8f28c6b27"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acc6f80b5380abba99a73ec14eb3e03fd" id="r_acc6f80b5380abba99a73ec14eb3e03fd"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#acc6f80b5380abba99a73ec14eb3e03fd">getDimRho</a> ()</td></tr>
 <tr class="memdesc:acc6f80b5380abba99a73ec14eb3e03fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the dimension of the density matrix.  <br /></td></tr>
 <tr class="separator:acc6f80b5380abba99a73ec14eb3e03fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -127,67 +138,70 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
-<tr class="memitem:a59327fe9a53f4aa6fff8317305b88f97" id="r_a59327fe9a53f4aa6fff8317305b88f97"><td class="memItemLeft" align="right" valign="top"><a id="a59327fe9a53f4aa6fff8317305b88f97" name="a59327fe9a53f4aa6fff8317305b88f97"></a>
-Mat&#160;</td><td class="memItemRight" valign="bottom"><b>V_re</b></td></tr>
+<tr class="memitem:a59327fe9a53f4aa6fff8317305b88f97" id="r_a59327fe9a53f4aa6fff8317305b88f97"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a59327fe9a53f4aa6fff8317305b88f97">V_re</a></td></tr>
 <tr class="separator:a59327fe9a53f4aa6fff8317305b88f97"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a975206acbbef7b29e706cbcd38050b6e" id="r_a975206acbbef7b29e706cbcd38050b6e"><td class="memItemLeft" align="right" valign="top"><a id="a975206acbbef7b29e706cbcd38050b6e" name="a975206acbbef7b29e706cbcd38050b6e"></a>
-Mat&#160;</td><td class="memItemRight" valign="bottom"><b>V_im</b></td></tr>
-<tr class="memdesc:a975206acbbef7b29e706cbcd38050b6e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Input: Real and imaginary parts of V_target, non-vectorized, essential levels only. <br /></td></tr>
+<tr class="memitem:a975206acbbef7b29e706cbcd38050b6e" id="r_a975206acbbef7b29e706cbcd38050b6e"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a975206acbbef7b29e706cbcd38050b6e">V_im</a></td></tr>
+<tr class="memdesc:a975206acbbef7b29e706cbcd38050b6e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Input: Real and imaginary parts of V_target, non-vectorized, essential levels only.  <br /></td></tr>
 <tr class="separator:a975206acbbef7b29e706cbcd38050b6e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab131fde8d498cd7fd405690913f9a3d5" id="r_ab131fde8d498cd7fd405690913f9a3d5"><td class="memItemLeft" align="right" valign="top"><a id="ab131fde8d498cd7fd405690913f9a3d5" name="ab131fde8d498cd7fd405690913f9a3d5"></a>
-Vec&#160;</td><td class="memItemRight" valign="bottom"><b>rotA</b></td></tr>
+<tr class="memitem:ab131fde8d498cd7fd405690913f9a3d5" id="r_ab131fde8d498cd7fd405690913f9a3d5"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#ab131fde8d498cd7fd405690913f9a3d5">rotA</a></td></tr>
 <tr class="separator:ab131fde8d498cd7fd405690913f9a3d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a70d61c7ab3e509518a6c6d43a09d2690" id="r_a70d61c7ab3e509518a6c6d43a09d2690"><td class="memItemLeft" align="right" valign="top"><a id="a70d61c7ab3e509518a6c6d43a09d2690" name="a70d61c7ab3e509518a6c6d43a09d2690"></a>
-Vec&#160;</td><td class="memItemRight" valign="bottom"><b>rotB</b></td></tr>
-<tr class="memdesc:a70d61c7ab3e509518a6c6d43a09d2690"><td class="mdescLeft">&#160;</td><td class="mdescRight">Input: Diagonal elements of real and imaginary rotational matrices. <br /></td></tr>
+<tr class="memitem:a70d61c7ab3e509518a6c6d43a09d2690" id="r_a70d61c7ab3e509518a6c6d43a09d2690"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a70d61c7ab3e509518a6c6d43a09d2690">rotB</a></td></tr>
+<tr class="memdesc:a70d61c7ab3e509518a6c6d43a09d2690"><td class="mdescLeft">&#160;</td><td class="mdescRight">Input: Diagonal elements of real and imaginary rotational matrices.  <br /></td></tr>
 <tr class="separator:a70d61c7ab3e509518a6c6d43a09d2690"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a79d4b22e99a52bf855b173fa08fcd54f" id="r_a79d4b22e99a52bf855b173fa08fcd54f"><td class="memItemLeft" align="right" valign="top"><a id="a79d4b22e99a52bf855b173fa08fcd54f" name="a79d4b22e99a52bf855b173fa08fcd54f"></a>
-std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>nessential</b></td></tr>
-<tr class="memdesc:a79d4b22e99a52bf855b173fa08fcd54f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of essential levels per oscillator. <br /></td></tr>
+<tr class="memitem:a79d4b22e99a52bf855b173fa08fcd54f" id="r_a79d4b22e99a52bf855b173fa08fcd54f"><td class="memItemLeft" align="right" valign="top">std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a79d4b22e99a52bf855b173fa08fcd54f">nessential</a></td></tr>
+<tr class="memdesc:a79d4b22e99a52bf855b173fa08fcd54f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of essential levels per oscillator.  <br /></td></tr>
 <tr class="separator:a79d4b22e99a52bf855b173fa08fcd54f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9640ecf75904027255053123f97ff129" id="r_a9640ecf75904027255053123f97ff129"><td class="memItemLeft" align="right" valign="top"><a id="a9640ecf75904027255053123f97ff129" name="a9640ecf75904027255053123f97ff129"></a>
-std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>nlevels</b></td></tr>
-<tr class="memdesc:a9640ecf75904027255053123f97ff129"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total number of levels per oscillator. <br /></td></tr>
+<tr class="memitem:a9640ecf75904027255053123f97ff129" id="r_a9640ecf75904027255053123f97ff129"><td class="memItemLeft" align="right" valign="top">std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a9640ecf75904027255053123f97ff129">nlevels</a></td></tr>
+<tr class="memdesc:a9640ecf75904027255053123f97ff129"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total number of levels per oscillator.  <br /></td></tr>
 <tr class="separator:a9640ecf75904027255053123f97ff129"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abf4d2508bd3cabdef86f7cb40ff45331" id="r_abf4d2508bd3cabdef86f7cb40ff45331"><td class="memItemLeft" align="right" valign="top"><a id="abf4d2508bd3cabdef86f7cb40ff45331" name="abf4d2508bd3cabdef86f7cb40ff45331"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>mpirank_petsc</b></td></tr>
-<tr class="memdesc:abf4d2508bd3cabdef86f7cb40ff45331"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank in PETSc communicator. <br /></td></tr>
+<tr class="memitem:abf4d2508bd3cabdef86f7cb40ff45331" id="r_abf4d2508bd3cabdef86f7cb40ff45331"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#abf4d2508bd3cabdef86f7cb40ff45331">mpirank_petsc</a></td></tr>
+<tr class="memdesc:abf4d2508bd3cabdef86f7cb40ff45331"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank in PETSc communicator.  <br /></td></tr>
 <tr class="separator:abf4d2508bd3cabdef86f7cb40ff45331"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac437b20392283b55ee8edeeef4305b22" id="r_ac437b20392283b55ee8edeeef4305b22"><td class="memItemLeft" align="right" valign="top"><a id="ac437b20392283b55ee8edeeef4305b22" name="ac437b20392283b55ee8edeeef4305b22"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>mpirank_world</b></td></tr>
-<tr class="memdesc:ac437b20392283b55ee8edeeef4305b22"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank in world communicator. <br /></td></tr>
+<tr class="memitem:ac437b20392283b55ee8edeeef4305b22" id="r_ac437b20392283b55ee8edeeef4305b22"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#ac437b20392283b55ee8edeeef4305b22">mpirank_world</a></td></tr>
+<tr class="memdesc:ac437b20392283b55ee8edeeef4305b22"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank in world communicator.  <br /></td></tr>
 <tr class="separator:ac437b20392283b55ee8edeeef4305b22"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a00a2add81f121424e235213af74166e2" id="r_a00a2add81f121424e235213af74166e2"><td class="memItemLeft" align="right" valign="top"><a id="a00a2add81f121424e235213af74166e2" name="a00a2add81f121424e235213af74166e2"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></tr>
-<tr class="memdesc:a00a2add81f121424e235213af74166e2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to suppress output messages. <br /></td></tr>
+<tr class="memitem:a00a2add81f121424e235213af74166e2" id="r_a00a2add81f121424e235213af74166e2"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a00a2add81f121424e235213af74166e2">quietmode</a></td></tr>
+<tr class="memdesc:a00a2add81f121424e235213af74166e2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to suppress output messages.  <br /></td></tr>
 <tr class="separator:a00a2add81f121424e235213af74166e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8747f92bcd4a97768cf841d5c39c330a" id="r_a8747f92bcd4a97768cf841d5c39c330a"><td class="memItemLeft" align="right" valign="top"><a id="a8747f92bcd4a97768cf841d5c39c330a" name="a8747f92bcd4a97768cf841d5c39c330a"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>dim_ess</b></td></tr>
-<tr class="memdesc:a8747f92bcd4a97768cf841d5c39c330a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of target gate matrix (non-vectorized), essential levels only. <br /></td></tr>
+<tr class="memitem:a8747f92bcd4a97768cf841d5c39c330a" id="r_a8747f92bcd4a97768cf841d5c39c330a"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a8747f92bcd4a97768cf841d5c39c330a">dim_ess</a></td></tr>
+<tr class="memdesc:a8747f92bcd4a97768cf841d5c39c330a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of target gate matrix (non-vectorized), essential levels only.  <br /></td></tr>
 <tr class="separator:a8747f92bcd4a97768cf841d5c39c330a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad4b34a3d3057a63f211c7d5c3fa396e8" id="r_ad4b34a3d3057a63f211c7d5c3fa396e8"><td class="memItemLeft" align="right" valign="top"><a id="ad4b34a3d3057a63f211c7d5c3fa396e8" name="ad4b34a3d3057a63f211c7d5c3fa396e8"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>dim_rho</b></td></tr>
-<tr class="memdesc:ad4b34a3d3057a63f211c7d5c3fa396e8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of system matrix rho (non-vectorized), all levels, N. <br /></td></tr>
+<tr class="memitem:ad4b34a3d3057a63f211c7d5c3fa396e8" id="r_ad4b34a3d3057a63f211c7d5c3fa396e8"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#ad4b34a3d3057a63f211c7d5c3fa396e8">dim_rho</a></td></tr>
+<tr class="memdesc:ad4b34a3d3057a63f211c7d5c3fa396e8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of system matrix rho (non-vectorized), all levels, N.  <br /></td></tr>
 <tr class="separator:ad4b34a3d3057a63f211c7d5c3fa396e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a31f6fbb897a03d6cfec880b5b045085f" id="r_a31f6fbb897a03d6cfec880b5b045085f"><td class="memItemLeft" align="right" valign="top"><a id="a31f6fbb897a03d6cfec880b5b045085f" name="a31f6fbb897a03d6cfec880b5b045085f"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>final_time</b></td></tr>
-<tr class="memdesc:a31f6fbb897a03d6cfec880b5b045085f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Final time T. Time of gate rotation. <br /></td></tr>
+<tr class="memitem:a31f6fbb897a03d6cfec880b5b045085f" id="r_a31f6fbb897a03d6cfec880b5b045085f"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a31f6fbb897a03d6cfec880b5b045085f">final_time</a></td></tr>
+<tr class="memdesc:a31f6fbb897a03d6cfec880b5b045085f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Final time T. Time of gate rotation.  <br /></td></tr>
 <tr class="separator:a31f6fbb897a03d6cfec880b5b045085f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3e01ad590ce8ffa37e497f46b5152010" id="r_a3e01ad590ce8ffa37e497f46b5152010"><td class="memItemLeft" align="right" valign="top"><a id="a3e01ad590ce8ffa37e497f46b5152010" name="a3e01ad590ce8ffa37e497f46b5152010"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>gate_rot_freq</b></td></tr>
-<tr class="memdesc:a3e01ad590ce8ffa37e497f46b5152010"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequencies of gate rotation (rad/time). Often same as rotational frequencies. <br /></td></tr>
+<tr class="memitem:a3e01ad590ce8ffa37e497f46b5152010" id="r_a3e01ad590ce8ffa37e497f46b5152010"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a3e01ad590ce8ffa37e497f46b5152010">gate_rot_freq</a></td></tr>
+<tr class="memdesc:a3e01ad590ce8ffa37e497f46b5152010"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequencies of gate rotation (rad/time). Often same as rotational frequencies.  <br /></td></tr>
 <tr class="separator:a3e01ad590ce8ffa37e497f46b5152010"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a10d2277f4b3d8a32c442dde26dffd5c6" id="r_a10d2277f4b3d8a32c442dde26dffd5c6"><td class="memItemLeft" align="right" valign="top"><a id="a10d2277f4b3d8a32c442dde26dffd5c6" name="a10d2277f4b3d8a32c442dde26dffd5c6"></a>
-LindbladType&#160;</td><td class="memItemRight" valign="bottom"><b>lindbladtype</b></td></tr>
-<tr class="memdesc:a10d2277f4b3d8a32c442dde26dffd5c6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of Lindblad operators for open system dynamics. <br /></td></tr>
+<tr class="memitem:a10d2277f4b3d8a32c442dde26dffd5c6" id="r_a10d2277f4b3d8a32c442dde26dffd5c6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a10d2277f4b3d8a32c442dde26dffd5c6">lindbladtype</a></td></tr>
+<tr class="memdesc:a10d2277f4b3d8a32c442dde26dffd5c6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of Lindblad operators for open system dynamics.  <br /></td></tr>
 <tr class="separator:a10d2277f4b3d8a32c442dde26dffd5c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Base class for quantum gate operations. </p>
-<p>The <a class="el" href="classGate.html" title="Base class for quantum gate operations.">Gate</a> class provides the fundamental interface for quantum gate operations in quantum optimal control. It handles the transformation V \rho V^\dagger where V is the unitary gate matrix and \rho is the quantum state density matrix. </p>
+<p>The <a class="el" href="classGate.html" title="Base class for quantum gate operations.">Gate</a> class provides the fundamental interface for quantum gate operations in quantum optimal control. It handles the transformation \(V \rho V^\dagger\) where \(V\) is the unitary gate matrix and \(\rho\) is the quantum state density matrix. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a4fc24ecebc0ca8252bf7ab96a705e58a" name="a4fc24ecebc0ca8252bf7ab96a705e58a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4fc24ecebc0ca8252bf7ab96a705e58a">&#9670;&#160;</a></span>Gate() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Gate::Gate </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="adf66e54c2271a8c93f53fd76f1364b47" name="adf66e54c2271a8c93f53fd76f1364b47"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adf66e54c2271a8c93f53fd76f1364b47">&#9670;&#160;</a></span>Gate()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#adf66e54c2271a8c93f53fd76f1364b47">&#9670;&#160;</a></span>Gate() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -219,7 +233,7 @@ LindbladType&#160;</td><td class="memItemRight" valign="bottom"><b>lindbladtype<
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">LindbladType&#160;</td>
+          <td class="paramtype"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a>&#160;</td>
           <td class="paramname"><em>lindbladtype_</em>, </td>
         </tr>
         <tr>
@@ -251,6 +265,31 @@ LindbladType&#160;</td><td class="memItemRight" valign="bottom"><b>lindbladtype<
 
 </div>
 </div>
+<a id="aa04556acb1cdc5715e38ced8f28c6b27" name="aa04556acb1cdc5715e38ced8f28c6b27"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa04556acb1cdc5715e38ced8f28c6b27">&#9670;&#160;</a></span>~Gate()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Gate::~Gate </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <h2 class="groupheader">Member Function Documentation</h2>
 <a id="a77f7425734396a0248b3d8fedaecedd8" name="a77f7425734396a0248b3d8fedaecedd8"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a77f7425734396a0248b3d8fedaecedd8">&#9670;&#160;</a></span>applyGate()</h2>
@@ -279,7 +318,7 @@ LindbladType&#160;</td><td class="memItemRight" valign="bottom"><b>lindbladtype<
 </div><div class="memdoc">
 
 <p>Applies the gate transformation to a quantum state. </p>
-<p>Computes VrhoV = V \rho V^\dagger where V is the gate matrix and \rho is the input state. The output vector VrhoV must be pre-allocated.</p>
+<p>Computes \(V\rho V^\dagger\) where \(V\) is the gate matrix and \(\rho\) is the input state. The output vector VrhoV must be pre-allocated.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">state</td><td>Input quantum state vector. </td></tr>
@@ -306,7 +345,7 @@ LindbladType&#160;</td><td class="memItemRight" valign="bottom"><b>lindbladtype<
 </div><div class="memdoc">
 
 <p>Assembles the vectorized gate matrices. </p>
-<p>Computes VxV_re = Re(\bar V \kron V) and VxV_im = Im(\bar V \kron V) where V is the gate matrix and \bar V is its complex conjugate. </p>
+<p>Computes VxV_re = \(\text{Re}(\bar{V} \otimes V)\) and VxV_im = \(\text{Im}(\bar{V} \otimes V)\) where V is the gate matrix and \bar V is its complex conjugate. </p>
 
 </div>
 </div>
@@ -338,9 +377,342 @@ LindbladType&#160;</td><td class="memItemRight" valign="bottom"><b>lindbladtype<
 
 </div>
 </div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="a8747f92bcd4a97768cf841d5c39c330a" name="a8747f92bcd4a97768cf841d5c39c330a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8747f92bcd4a97768cf841d5c39c330a">&#9670;&#160;</a></span>dim_ess</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Gate::dim_ess</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Dimension of target gate matrix (non-vectorized), essential levels only. </p>
+
+</div>
+</div>
+<a id="ad4b34a3d3057a63f211c7d5c3fa396e8" name="ad4b34a3d3057a63f211c7d5c3fa396e8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad4b34a3d3057a63f211c7d5c3fa396e8">&#9670;&#160;</a></span>dim_rho</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Gate::dim_rho</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Dimension of system matrix rho (non-vectorized), all levels, N. </p>
+
+</div>
+</div>
+<a id="a31f6fbb897a03d6cfec880b5b045085f" name="a31f6fbb897a03d6cfec880b5b045085f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a31f6fbb897a03d6cfec880b5b045085f">&#9670;&#160;</a></span>final_time</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Gate::final_time</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Final time T. Time of gate rotation. </p>
+
+</div>
+</div>
+<a id="a3e01ad590ce8ffa37e497f46b5152010" name="a3e01ad590ce8ffa37e497f46b5152010"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3e01ad590ce8ffa37e497f46b5152010">&#9670;&#160;</a></span>gate_rot_freq</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;double&gt; Gate::gate_rot_freq</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Frequencies of gate rotation (rad/time). Often same as rotational frequencies. </p>
+
+</div>
+</div>
+<a id="a10d2277f4b3d8a32c442dde26dffd5c6" name="a10d2277f4b3d8a32c442dde26dffd5c6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a10d2277f4b3d8a32c442dde26dffd5c6">&#9670;&#160;</a></span>lindbladtype</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> Gate::lindbladtype</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Type of Lindblad operators for open system dynamics. </p>
+
+</div>
+</div>
+<a id="abf4d2508bd3cabdef86f7cb40ff45331" name="abf4d2508bd3cabdef86f7cb40ff45331"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abf4d2508bd3cabdef86f7cb40ff45331">&#9670;&#160;</a></span>mpirank_petsc</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Gate::mpirank_petsc</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>MPI rank in PETSc communicator. </p>
+
+</div>
+</div>
+<a id="ac437b20392283b55ee8edeeef4305b22" name="ac437b20392283b55ee8edeeef4305b22"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac437b20392283b55ee8edeeef4305b22">&#9670;&#160;</a></span>mpirank_world</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Gate::mpirank_world</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>MPI rank in world communicator. </p>
+
+</div>
+</div>
+<a id="a79d4b22e99a52bf855b173fa08fcd54f" name="a79d4b22e99a52bf855b173fa08fcd54f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a79d4b22e99a52bf855b173fa08fcd54f">&#9670;&#160;</a></span>nessential</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;int&gt; Gate::nessential</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Number of essential levels per oscillator. </p>
+
+</div>
+</div>
+<a id="a9640ecf75904027255053123f97ff129" name="a9640ecf75904027255053123f97ff129"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9640ecf75904027255053123f97ff129">&#9670;&#160;</a></span>nlevels</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;int&gt; Gate::nlevels</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Total number of levels per oscillator. </p>
+
+</div>
+</div>
+<a id="a00a2add81f121424e235213af74166e2" name="a00a2add81f121424e235213af74166e2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a00a2add81f121424e235213af74166e2">&#9670;&#160;</a></span>quietmode</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Gate::quietmode</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag to suppress output messages. </p>
+
+</div>
+</div>
+<a id="ab131fde8d498cd7fd405690913f9a3d5" name="ab131fde8d498cd7fd405690913f9a3d5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab131fde8d498cd7fd405690913f9a3d5">&#9670;&#160;</a></span>rotA</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec Gate::rotA</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a70d61c7ab3e509518a6c6d43a09d2690" name="a70d61c7ab3e509518a6c6d43a09d2690"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a70d61c7ab3e509518a6c6d43a09d2690">&#9670;&#160;</a></span>rotB</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec Gate::rotB</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Input: Diagonal elements of real and imaginary rotational matrices. </p>
+
+</div>
+</div>
+<a id="a975206acbbef7b29e706cbcd38050b6e" name="a975206acbbef7b29e706cbcd38050b6e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a975206acbbef7b29e706cbcd38050b6e">&#9670;&#160;</a></span>V_im</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Mat Gate::V_im</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Input: Real and imaginary parts of V_target, non-vectorized, essential levels only. </p>
+
+</div>
+</div>
+<a id="a59327fe9a53f4aa6fff8317305b88f97" name="a59327fe9a53f4aa6fff8317305b88f97"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a59327fe9a53f4aa6fff8317305b88f97">&#9670;&#160;</a></span>V_re</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Mat Gate::V_re</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>/home/runner/work/quandary/quandary/include/<a class="el" href="gate_8hpp_source.html">gate.hpp</a></li>
-<li>/home/runner/work/quandary/quandary/src/<b>gate.cpp</b></li>
+<li>/home/runner/work/quandary/quandary/src/<a class="el" href="gate_8cpp.html">gate.cpp</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

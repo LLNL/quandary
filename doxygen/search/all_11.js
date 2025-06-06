@@ -1,22 +1,13 @@
 var searchData=
 [
-  ['scaling_0',['scaling',['../classBSpline2ndAmplitude.html#a69194b3b1c11bc768877708f72fd2d6e',1,'BSpline2ndAmplitude']]],
-  ['selfkerr_1',['selfkerr',['../classOscillator.html#a513b9eaa57c7351982ad1acfa81d374c',1,'Oscillator']]],
-  ['setcontrolamplitudes_2',['setControlAmplitudes',['../classMasterEq.html#af747a9c4013860f785cd80fe52e7f457',1,'MasterEq']]],
-  ['setparams_3',['setParams',['../classOscillator.html#ac9de47930cb8adf8c34280ec9720ee8c',1,'Oscillator']]],
-  ['setskip_4',['setSkip',['../classControlBasis.html#ab1b24c656aec7d1eef58f173620d0135',1,'ControlBasis']]],
-  ['settransferonofftimes_5',['setTransferOnOffTimes',['../classMasterEq.html#ac8307cc795eb6e82eb3a3e8c71385d7e',1,'MasterEq']]],
-  ['sinetransferfunction_6',['sinetransferfunction',['../classSineTransferFunction.html',1,'SineTransferFunction'],['../classSineTransferFunction.html#af00ef5a3c88dabae99bfc7924fb13d24',1,'SineTransferFunction::SineTransferFunction(double amp, double freq)'],['../classSineTransferFunction.html#a2ca8f74c1cd18b1f41aa964ff33ced99',1,'SineTransferFunction::SineTransferFunction(double amp, double freq, std::vector&lt; double &gt; onofftimes)']]],
-  ['skip_7',['skip',['../classControlBasis.html#a9c5c1e7f7c06a9ad55dd550e8886ca4c',1,'ControlBasis']]],
-  ['solve_8',['solve',['../classOptimProblem.html#af8a76f97039d415b79a7bf9fd525c78a',1,'OptimProblem']]],
-  ['solveadjointode_9',['solveAdjointODE',['../classTimeStepper.html#aab958d4087d5b20f0f6f6695560d05c4',1,'TimeStepper']]],
-  ['solveode_10',['solveODE',['../classTimeStepper.html#ae2be974cc2dd652299ba12a36ffece58',1,'TimeStepper']]],
-  ['step_11',['step',['../classStep.html',1,'Step'],['../classStep.html#a57602386460f018e9c712880556b1c15',1,'Step::Step(double step_amp1_, double step_amp2_, double t0, double t1, double tramp, bool enforceZeroBoundary)']]],
-  ['step_5famp1_12',['step_amp1',['../classStep.html#aaf0c93358e9cbbef4df4801424497325',1,'Step']]],
-  ['step_5famp2_13',['step_amp2',['../classStep.html#a2a1d1c8c6ea5cfdcf06494864a445da2',1,'Step']]],
-  ['store_5fstates_14',['store_states',['../classTimeStepper.html#aead1a9a5a59b8d541e95c7b66cb51bd9',1,'TimeStepper']]],
-  ['storefwd_15',['storeFWD',['../classTimeStepper.html#ae82adcec57a6945822726d1643f44102',1,'TimeStepper']]],
-  ['storeonofftimes_16',['storeOnOffTimes',['../classTransferFunction.html#ad9c4e0e4c6abe25b894c11aa99f03918',1,'TransferFunction']]],
-  ['swap_17',['SWAP',['../classSWAP.html',1,'']]],
-  ['swap_5f0q_18',['SWAP_0Q',['../classSWAP__0Q.html',1,'']]]
+  ['read_5fvector_0',['read_vector',['../util_8cpp.html#afcffc7f23e5d34c4a4b267eb5105c417',1,'read_vector(const char *filename, double *var, int dim, bool quietmode, int skiplines, const std::string testheader):&#160;util.cpp'],['../util_8hpp.html#ab3ac00c89b66ff90bcfb542e20df3dd0',1,'read_vector(const char *filename, double *var, int dim, bool quietmode=false, int skiplines=0, const std::string testheader=&quot;&quot;):&#160;util.cpp']]],
+  ['readfile_1',['ReadFile',['../classMapParam.html#aea852dc966ce49faad4c06e94fedf20f',1,'MapParam']]],
+  ['receivehc_2',['receiveHc',['../classPythonInterface.html#ae4e912ff11761dedbe38c5fa40a1d449',1,'PythonInterface']]],
+  ['receivehsys_3',['receiveHsys',['../classPythonInterface.html#a7b106c6430e2ed6d452d5978e630b41e',1,'PythonInterface']]],
+  ['redgrad_4',['redgrad',['../classTimeStepper.html#a117e801337dbe849388f274d4dec83d0',1,'TimeStepper']]],
+  ['rhs_5',['RHS',['../classMasterEq.html#ab200ca6b9a16be33b8ee7313c41f20d2',1,'MasterEq']]],
+  ['rhsctx_6',['RHSctx',['../classMasterEq.html#a6a3bb1ab8dd49c64f51c90dd5b080f62',1,'MasterEq']]],
+  ['rota_7',['rotA',['../classGate.html#ab131fde8d498cd7fd405690913f9a3d5',1,'Gate']]],
+  ['rotb_8',['rotB',['../classGate.html#a70d61c7ab3e509518a6c6d43a09d2690',1,'Gate']]],
+  ['runtype_9',['RunType',['../defs_8hpp.html#a192d9029b78da393fe9a628ccbd7fab4',1,'defs.hpp']]]
 ];

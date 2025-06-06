@@ -1,13 +1,8 @@
 var searchData=
 [
-  ['setcontrolamplitudes_0',['setControlAmplitudes',['../classMasterEq.html#af747a9c4013860f785cd80fe52e7f457',1,'MasterEq']]],
-  ['setparams_1',['setParams',['../classOscillator.html#ac9de47930cb8adf8c34280ec9720ee8c',1,'Oscillator']]],
-  ['setskip_2',['setSkip',['../classControlBasis.html#ab1b24c656aec7d1eef58f173620d0135',1,'ControlBasis']]],
-  ['settransferonofftimes_3',['setTransferOnOffTimes',['../classMasterEq.html#ac8307cc795eb6e82eb3a3e8c71385d7e',1,'MasterEq']]],
-  ['sinetransferfunction_4',['sinetransferfunction',['../classSineTransferFunction.html#af00ef5a3c88dabae99bfc7924fb13d24',1,'SineTransferFunction::SineTransferFunction(double amp, double freq)'],['../classSineTransferFunction.html#a2ca8f74c1cd18b1f41aa964ff33ced99',1,'SineTransferFunction::SineTransferFunction(double amp, double freq, std::vector&lt; double &gt; onofftimes)']]],
-  ['solve_5',['solve',['../classOptimProblem.html#af8a76f97039d415b79a7bf9fd525c78a',1,'OptimProblem']]],
-  ['solveadjointode_6',['solveAdjointODE',['../classTimeStepper.html#aab958d4087d5b20f0f6f6695560d05c4',1,'TimeStepper']]],
-  ['solveode_7',['solveODE',['../classTimeStepper.html#ae2be974cc2dd652299ba12a36ffece58',1,'TimeStepper']]],
-  ['step_8',['Step',['../classStep.html#a57602386460f018e9c712880556b1c15',1,'Step']]],
-  ['storeonofftimes_9',['storeOnOffTimes',['../classTransferFunction.html#ad9c4e0e4c6abe25b894c11aa99f03918',1,'TransferFunction']]]
+  ['opendatafiles_0',['openDataFiles',['../classOutput.html#a53ad70a63b5be91061dd26cd7aabed81',1,'Output']]],
+  ['optimproblem_1',['OptimProblem',['../classOptimProblem.html#ae58ed36a5876353a619849533eaec461',1,'OptimProblem']]],
+  ['optimtarget_2',['optimtarget',['../classOptimTarget.html#ad4e0df2f3df0dfdf8ef8ecbfd299ca5a',1,'OptimTarget::OptimTarget()'],['../classOptimTarget.html#ab5e3b5e675129ac53213cdb474374515',1,'OptimTarget::OptimTarget(std::vector&lt; std::string &gt; target_str, std::string objective_str, std::vector&lt; std::string &gt; initcond_str, MasterEq *mastereq, double total_time, std::vector&lt; double &gt; read_gate_rot, Vec rho_t0, bool quietmode_)']]],
+  ['oscillator_3',['oscillator',['../classOscillator.html#a99fd3a4a9ef26a4f8025ac7a519d900b',1,'Oscillator::Oscillator()'],['../classOscillator.html#a68c27e0f6878aabfd7a8828459bf5314',1,'Oscillator::Oscillator(MapParam config, size_t id, std::vector&lt; int &gt; nlevels_all_, std::vector&lt; std::string &gt; &amp;controlsegments, std::vector&lt; std::string &gt; &amp;controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector&lt; double &gt; carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine)']]],
+  ['output_4',['output',['../classOutput.html#a428c663520336477a12f1a33504eb067',1,'Output::Output()'],['../classOutput.html#ac3c902543a002d8062ff510d06b9580e',1,'Output::Output(MapParam &amp;config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false)']]]
 ];

@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -77,7 +84,7 @@ $(function() {
 <table class="directory">
   <tr class="even"><td class="entry"><a class="el" href="classControlBasis.html#a64a982ce0148a1dec17f17d4c5d4933b">computeVariation</a>(std::vector&lt; double &gt; &amp;, int)</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">virtual</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classControlBasis.html#a3ec29a7da110bbb3c31beb454d765ed6">computeVariation_diff</a>(double *, std::vector&lt; double &gt; &amp;, double, int)</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">virtual</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>ControlBasis</b>() (defined in <a class="el" href="classControlBasis.html">ControlBasis</a>)</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classControlBasis.html#a716baae5e56466c8edba3f646c900efd">ControlBasis</a>()</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classControlBasis.html#a3942889265eab2353dcef37c63ce856b">ControlBasis</a>(int nparams_, double tstart, double tstop, bool enforceZeroBoundary)</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classControlBasis.html#aa47f10d7033e83b174a97d6cc7e91d89">controltype</a></td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classControlBasis.html#a1b50dc6c86c6c3d3061954491da05cea">derivative</a>(const double t, const std::vector&lt; double &gt; &amp;coeff, double *coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id)=0</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">pure virtual</span></td></tr>
@@ -95,7 +102,7 @@ $(function() {
   <tr class="odd"><td class="entry"><a class="el" href="classControlBasis.html#a9c5c1e7f7c06a9ad55dd550e8886ca4c">skip</a></td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classControlBasis.html#a1f1820a85ad416f02245084619ffb720">tstart</a></td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classControlBasis.html#af89673125f7918b75b723b7589e4b19f">tstop</a></td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>~ControlBasis</b>() (defined in <a class="el" href="classControlBasis.html">ControlBasis</a>)</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classControlBasis.html#a81b0caa30a036c04c4a1d9875255dc0e">~ControlBasis</a>()</td><td class="entry"><a class="el" href="classControlBasis.html">ControlBasis</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
 </table></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

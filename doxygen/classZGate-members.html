@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -80,7 +87,7 @@ $(function() {
   <tr class="even"><td class="entry"><a class="el" href="classGate.html#a8747f92bcd4a97768cf841d5c39c330a">dim_ess</a></td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classGate.html#ad4b34a3d3057a63f211c7d5c3fa396e8">dim_rho</a></td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classGate.html#a31f6fbb897a03d6cfec880b5b045085f">final_time</a></td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>Gate</b>() (defined in <a class="el" href="classGate.html">Gate</a>)</td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classGate.html#a4fc24ecebc0ca8252bf7ab96a705e58a">Gate</a>()</td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classGate.html#adf66e54c2271a8c93f53fd76f1364b47">Gate</a>(std::vector&lt; int &gt; nlevels_, std::vector&lt; int &gt; nessential_, double time_, std::vector&lt; double &gt; gate_rot_freq, LindbladType lindbladtype_, bool quietmode=false)</td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classGate.html#a3e01ad590ce8ffa37e497f46b5152010">gate_rot_freq</a></td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classGate.html#acc6f80b5380abba99a73ec14eb3e03fd">getDimRho</a>()</td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
@@ -90,13 +97,13 @@ $(function() {
   <tr class="even"><td class="entry"><a class="el" href="classGate.html#a79d4b22e99a52bf855b173fa08fcd54f">nessential</a></td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classGate.html#a9640ecf75904027255053123f97ff129">nlevels</a></td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classGate.html#a00a2add81f121424e235213af74166e2">quietmode</a></td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>rotA</b> (defined in <a class="el" href="classGate.html">Gate</a>)</td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classGate.html#ab131fde8d498cd7fd405690913f9a3d5">rotA</a></td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classGate.html#a70d61c7ab3e509518a6c6d43a09d2690">rotB</a></td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classGate.html#a975206acbbef7b29e706cbcd38050b6e">V_im</a></td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>V_re</b> (defined in <a class="el" href="classGate.html">Gate</a>)</td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>ZGate</b>(std::vector&lt; int &gt; nlevels_, std::vector&lt; int &gt; nessential_, double time, std::vector&lt; double &gt; rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false) (defined in <a class="el" href="classZGate.html">ZGate</a>)</td><td class="entry"><a class="el" href="classZGate.html">ZGate</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>~Gate</b>() (defined in <a class="el" href="classGate.html">Gate</a>)</td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>~ZGate</b>() (defined in <a class="el" href="classZGate.html">ZGate</a>)</td><td class="entry"><a class="el" href="classZGate.html">ZGate</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classGate.html#a59327fe9a53f4aa6fff8317305b88f97">V_re</a></td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classZGate.html#a37832357e83f61e62634af39f7d49f06">ZGate</a>(std::vector&lt; int &gt; nlevels_, std::vector&lt; int &gt; nessential_, double time, std::vector&lt; double &gt; rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false)</td><td class="entry"><a class="el" href="classZGate.html">ZGate</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classGate.html#aa04556acb1cdc5715e38ced8f28c6b27">~Gate</a>()</td><td class="entry"><a class="el" href="classGate.html">Gate</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classZGate.html#a7e80bdc22cbf45bf857558cc4b6a56d4">~ZGate</a>()</td><td class="entry"><a class="el" href="classZGate.html">ZGate</a></td><td class="entry"></td></tr>
 </table></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

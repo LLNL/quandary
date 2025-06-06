@@ -1,5 +1,20 @@
 var searchData=
 [
-  ['qft_0',['QFT',['../classQFT.html',1,'']]],
-  ['quietmode_1',['quietmode',['../classGate.html#a00a2add81f121424e235213af74166e2',1,'Gate::quietmode'],['../classMasterEq.html#a3493e8372960cd42ba4ceab89fe68bb9',1,'MasterEq::quietmode'],['../classPythonInterface.html#a65d59a8141db076a3f98e8a4748512ca',1,'PythonInterface::quietmode']]]
+  ['params_0',['params',['../classOscillator.html#aa0f4328787ff7d8bdc06dac4fbd9abc9',1,'Oscillator']]],
+  ['penalty_5fdpdm_1',['penalty_dpdm',['../classTimeStepper.html#a4f04bd683057a0b0c9d7f983cd3e0ba2',1,'TimeStepper']]],
+  ['penalty_5fintegral_2',['penalty_integral',['../classTimeStepper.html#ad904f4e9a7bc465c176813b5ea597e1c',1,'TimeStepper']]],
+  ['penalty_5fparam_3',['penalty_param',['../classTimeStepper.html#adc015010aa8be6a70c99750f5834497b',1,'TimeStepper']]],
+  ['penaltydpdm_4',['penaltyDpDm',['../classTimeStepper.html#ad13591047811f9ae208ece98c17985a3',1,'TimeStepper']]],
+  ['penaltydpdm_5fdiff_5',['penaltyDpDm_diff',['../classTimeStepper.html#ac8fa2931e974b2d1fb9f53527d0eb094',1,'TimeStepper']]],
+  ['penaltyintegral_6',['penaltyIntegral',['../classTimeStepper.html#a20323563a86450e343004279995a55f4',1,'TimeStepper']]],
+  ['penaltyintegral_5fdiff_7',['penaltyIntegral_diff',['../classTimeStepper.html#ac9ae1a39f30f0041375ae4ddf25a60b1',1,'TimeStepper']]],
+  ['performance_8',['PERFORMANCE',['../defs_8hpp.html#a83753afdf4b4b0d70f2a478cfba82d35a063360736adfccfae2f1d8093c02959a',1,'defs.hpp']]],
+  ['pipulse_9',['pipulse',['../structPiPulse.html',1,'PiPulse'],['../classOscillator.html#a6a31719487217b0213f19b76d641ff3c',1,'Oscillator::pipulse']]],
+  ['population_10',['population',['../classMasterEq.html#a9308372d3f1aa99517dd313d5d2a4cd9',1,'MasterEq::population()'],['../classOscillator.html#a8b2aad8df5555fff65a458ce745f9004',1,'Oscillator::population()']]],
+  ['prepareinitialstate_11',['prepareInitialState',['../classOptimTarget.html#aa9ed01e33f5bcdfb677ea1aec4329f2a',1,'OptimTarget']]],
+  ['preparetargetstate_12',['prepareTargetState',['../classOptimTarget.html#a537386e8b5a67bb7ad33010eb915af4c',1,'OptimTarget']]],
+  ['pure_13',['pure',['../defs_8hpp.html#a83753afdf4b4b0d70f2a478cfba82d35a514def582a10531df6cb5a547dd55cf6',1,'PURE:&#160;defs.hpp'],['../defs_8hpp.html#a0d59972970c855496cb4c877501e668fa514def582a10531df6cb5a547dd55cf6',1,'PURE:&#160;defs.hpp']]],
+  ['pythoninterface_14',['pythoninterface',['../classPythonInterface.html#a706e9ce494ea37bd460e28697fbfabd3',1,'PythonInterface::PythonInterface()'],['../classPythonInterface.html#a20b2af8dd0995af98e423e3d414c5534',1,'PythonInterface::PythonInterface(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_)'],['../classPythonInterface.html',1,'PythonInterface']]],
+  ['pythoninterface_2ecpp_15',['pythoninterface.cpp',['../pythoninterface_8cpp.html',1,'']]],
+  ['pythoninterface_2ehpp_16',['pythoninterface.hpp',['../pythoninterface_8hpp.html',1,'']]]
 ];

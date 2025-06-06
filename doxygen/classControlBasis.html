@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -100,9 +107,13 @@ Inheritance diagram for ControlBasis:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a716baae5e56466c8edba3f646c900efd" id="r_a716baae5e56466c8edba3f646c900efd"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#a716baae5e56466c8edba3f646c900efd">ControlBasis</a> ()</td></tr>
+<tr class="separator:a716baae5e56466c8edba3f646c900efd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3942889265eab2353dcef37c63ce856b" id="r_a3942889265eab2353dcef37c63ce856b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#a3942889265eab2353dcef37c63ce856b">ControlBasis</a> (int nparams_, double <a class="el" href="classControlBasis.html#a1f1820a85ad416f02245084619ffb720">tstart</a>, double <a class="el" href="classControlBasis.html#af89673125f7918b75b723b7589e4b19f">tstop</a>, bool <a class="el" href="classControlBasis.html#ad88d2345b9f9df57685c12e2dbda419d">enforceZeroBoundary</a>)</td></tr>
 <tr class="memdesc:a3942889265eab2353dcef37c63ce856b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with parameters.  <br /></td></tr>
 <tr class="separator:a3942889265eab2353dcef37c63ce856b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a81b0caa30a036c04c4a1d9875255dc0e" id="r_a81b0caa30a036c04c4a1d9875255dc0e"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#a81b0caa30a036c04c4a1d9875255dc0e">~ControlBasis</a> ()</td></tr>
+<tr class="separator:a81b0caa30a036c04c4a1d9875255dc0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b33a918ba140a5e79c3ed79adba6c9b" id="r_a8b33a918ba140a5e79c3ed79adba6c9b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#a8b33a918ba140a5e79c3ed79adba6c9b">getNparams</a> ()</td></tr>
 <tr class="memdesc:a8b33a918ba140a5e79c3ed79adba6c9b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the number of parameters defining the controls.  <br /></td></tr>
 <tr class="separator:a8b33a918ba140a5e79c3ed79adba6c9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -112,7 +123,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:affe7d27d115befe42ca541e3272d929b" id="r_affe7d27d115befe42ca541e3272d929b"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#affe7d27d115befe42ca541e3272d929b">getTstop</a> ()</td></tr>
 <tr class="memdesc:affe7d27d115befe42ca541e3272d929b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the stop time of the interval.  <br /></td></tr>
 <tr class="separator:affe7d27d115befe42ca541e3272d929b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ad1ac99e9a6b4748ceaa803141745b4" id="r_a8ad1ac99e9a6b4748ceaa803141745b4"><td class="memItemLeft" align="right" valign="top">ControlType&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#a8ad1ac99e9a6b4748ceaa803141745b4">getType</a> ()</td></tr>
+<tr class="memitem:a8ad1ac99e9a6b4748ceaa803141745b4" id="r_a8ad1ac99e9a6b4748ceaa803141745b4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a8005f1f182fd0248a710ca64f72508d4">ControlType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#a8ad1ac99e9a6b4748ceaa803141745b4">getType</a> ()</td></tr>
 <tr class="memdesc:a8ad1ac99e9a6b4748ceaa803141745b4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the type of control parameterization.  <br /></td></tr>
 <tr class="separator:a8ad1ac99e9a6b4748ceaa803141745b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab1b24c656aec7d1eef58f173620d0135" id="r_ab1b24c656aec7d1eef58f173620d0135"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#ab1b24c656aec7d1eef58f173620d0135">setSkip</a> (int skip_)</td></tr>
@@ -142,37 +153,48 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
-<tr class="memitem:a93075af8399c469e87ea9b2a7afd1f8b" id="r_a93075af8399c469e87ea9b2a7afd1f8b"><td class="memItemLeft" align="right" valign="top"><a id="a93075af8399c469e87ea9b2a7afd1f8b" name="a93075af8399c469e87ea9b2a7afd1f8b"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>nparams</b></td></tr>
-<tr class="memdesc:a93075af8399c469e87ea9b2a7afd1f8b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of parameters that define the controls. <br /></td></tr>
+<tr class="memitem:a93075af8399c469e87ea9b2a7afd1f8b" id="r_a93075af8399c469e87ea9b2a7afd1f8b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#a93075af8399c469e87ea9b2a7afd1f8b">nparams</a></td></tr>
+<tr class="memdesc:a93075af8399c469e87ea9b2a7afd1f8b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of parameters that define the controls.  <br /></td></tr>
 <tr class="separator:a93075af8399c469e87ea9b2a7afd1f8b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1f1820a85ad416f02245084619ffb720" id="r_a1f1820a85ad416f02245084619ffb720"><td class="memItemLeft" align="right" valign="top"><a id="a1f1820a85ad416f02245084619ffb720" name="a1f1820a85ad416f02245084619ffb720"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>tstart</b></td></tr>
-<tr class="memdesc:a1f1820a85ad416f02245084619ffb720"><td class="mdescLeft">&#160;</td><td class="mdescRight">Start time of the interval where the control basis is applied. <br /></td></tr>
+<tr class="memitem:a1f1820a85ad416f02245084619ffb720" id="r_a1f1820a85ad416f02245084619ffb720"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#a1f1820a85ad416f02245084619ffb720">tstart</a></td></tr>
+<tr class="memdesc:a1f1820a85ad416f02245084619ffb720"><td class="mdescLeft">&#160;</td><td class="mdescRight">Start time of the interval where the control basis is applied.  <br /></td></tr>
 <tr class="separator:a1f1820a85ad416f02245084619ffb720"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af89673125f7918b75b723b7589e4b19f" id="r_af89673125f7918b75b723b7589e4b19f"><td class="memItemLeft" align="right" valign="top"><a id="af89673125f7918b75b723b7589e4b19f" name="af89673125f7918b75b723b7589e4b19f"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>tstop</b></td></tr>
-<tr class="memdesc:af89673125f7918b75b723b7589e4b19f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stop time of the interval where the control basis is applied. <br /></td></tr>
+<tr class="memitem:af89673125f7918b75b723b7589e4b19f" id="r_af89673125f7918b75b723b7589e4b19f"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#af89673125f7918b75b723b7589e4b19f">tstop</a></td></tr>
+<tr class="memdesc:af89673125f7918b75b723b7589e4b19f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stop time of the interval where the control basis is applied.  <br /></td></tr>
 <tr class="separator:af89673125f7918b75b723b7589e4b19f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9c5c1e7f7c06a9ad55dd550e8886ca4c" id="r_a9c5c1e7f7c06a9ad55dd550e8886ca4c"><td class="memItemLeft" align="right" valign="top"><a id="a9c5c1e7f7c06a9ad55dd550e8886ca4c" name="a9c5c1e7f7c06a9ad55dd550e8886ca4c"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>skip</b></td></tr>
-<tr class="memdesc:a9c5c1e7f7c06a9ad55dd550e8886ca4c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Offset to the starting location for this basis inside the global control vector. <br /></td></tr>
+<tr class="memitem:a9c5c1e7f7c06a9ad55dd550e8886ca4c" id="r_a9c5c1e7f7c06a9ad55dd550e8886ca4c"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#a9c5c1e7f7c06a9ad55dd550e8886ca4c">skip</a></td></tr>
+<tr class="memdesc:a9c5c1e7f7c06a9ad55dd550e8886ca4c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Offset to the starting location for this basis inside the global control vector.  <br /></td></tr>
 <tr class="separator:a9c5c1e7f7c06a9ad55dd550e8886ca4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa47f10d7033e83b174a97d6cc7e91d89" id="r_aa47f10d7033e83b174a97d6cc7e91d89"><td class="memItemLeft" align="right" valign="top"><a id="aa47f10d7033e83b174a97d6cc7e91d89" name="aa47f10d7033e83b174a97d6cc7e91d89"></a>
-ControlType&#160;</td><td class="memItemRight" valign="bottom"><b>controltype</b></td></tr>
-<tr class="memdesc:aa47f10d7033e83b174a97d6cc7e91d89"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of control parameterization. <br /></td></tr>
+<tr class="memitem:aa47f10d7033e83b174a97d6cc7e91d89" id="r_aa47f10d7033e83b174a97d6cc7e91d89"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a8005f1f182fd0248a710ca64f72508d4">ControlType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#aa47f10d7033e83b174a97d6cc7e91d89">controltype</a></td></tr>
+<tr class="memdesc:aa47f10d7033e83b174a97d6cc7e91d89"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of control parameterization.  <br /></td></tr>
 <tr class="separator:aa47f10d7033e83b174a97d6cc7e91d89"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad88d2345b9f9df57685c12e2dbda419d" id="r_ad88d2345b9f9df57685c12e2dbda419d"><td class="memItemLeft" align="right" valign="top"><a id="ad88d2345b9f9df57685c12e2dbda419d" name="ad88d2345b9f9df57685c12e2dbda419d"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>enforceZeroBoundary</b></td></tr>
-<tr class="memdesc:ad88d2345b9f9df57685c12e2dbda419d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to enforce zero boundary conditions for controls. <br /></td></tr>
+<tr class="memitem:ad88d2345b9f9df57685c12e2dbda419d" id="r_ad88d2345b9f9df57685c12e2dbda419d"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#ad88d2345b9f9df57685c12e2dbda419d">enforceZeroBoundary</a></td></tr>
+<tr class="memdesc:ad88d2345b9f9df57685c12e2dbda419d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to enforce zero boundary conditions for controls.  <br /></td></tr>
 <tr class="separator:ad88d2345b9f9df57685c12e2dbda419d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Abstract base class for control parameterizations. </p>
 <p>The <code><a class="el" href="classControlBasis.html" title="Abstract base class for control parameterizations.">ControlBasis</a></code> class defines the interface for various control parameterizations used in quantum optimal control. Derived classes implement specific control schemes. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a716baae5e56466c8edba3f646c900efd" name="a716baae5e56466c8edba3f646c900efd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a716baae5e56466c8edba3f646c900efd">&#9670;&#160;</a></span>ControlBasis() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">ControlBasis::ControlBasis </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a3942889265eab2353dcef37c63ce856b" name="a3942889265eab2353dcef37c63ce856b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3942889265eab2353dcef37c63ce856b">&#9670;&#160;</a></span>ControlBasis()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a3942889265eab2353dcef37c63ce856b">&#9670;&#160;</a></span>ControlBasis() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -219,6 +241,31 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>enforceZeroBoundary</
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="a81b0caa30a036c04c4a1d9875255dc0e" name="a81b0caa30a036c04c4a1d9875255dc0e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a81b0caa30a036c04c4a1d9875255dc0e">&#9670;&#160;</a></span>~ControlBasis()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">ControlBasis::~ControlBasis </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -675,7 +722,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>enforceZeroBoundary</
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">ControlType ControlBasis::getType </td>
+          <td class="memname"><a class="el" href="defs_8hpp.html#a8005f1f182fd0248a710ca64f72508d4">ControlType</a> ControlBasis::getType </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -727,9 +774,154 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>enforceZeroBoundary</
 
 </div>
 </div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="aa47f10d7033e83b174a97d6cc7e91d89" name="aa47f10d7033e83b174a97d6cc7e91d89"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa47f10d7033e83b174a97d6cc7e91d89">&#9670;&#160;</a></span>controltype</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="defs_8hpp.html#a8005f1f182fd0248a710ca64f72508d4">ControlType</a> ControlBasis::controltype</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Type of control parameterization. </p>
+
+</div>
+</div>
+<a id="ad88d2345b9f9df57685c12e2dbda419d" name="ad88d2345b9f9df57685c12e2dbda419d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad88d2345b9f9df57685c12e2dbda419d">&#9670;&#160;</a></span>enforceZeroBoundary</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool ControlBasis::enforceZeroBoundary</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag to enforce zero boundary conditions for controls. </p>
+
+</div>
+</div>
+<a id="a93075af8399c469e87ea9b2a7afd1f8b" name="a93075af8399c469e87ea9b2a7afd1f8b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a93075af8399c469e87ea9b2a7afd1f8b">&#9670;&#160;</a></span>nparams</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int ControlBasis::nparams</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Number of parameters that define the controls. </p>
+
+</div>
+</div>
+<a id="a9c5c1e7f7c06a9ad55dd550e8886ca4c" name="a9c5c1e7f7c06a9ad55dd550e8886ca4c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9c5c1e7f7c06a9ad55dd550e8886ca4c">&#9670;&#160;</a></span>skip</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int ControlBasis::skip</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Offset to the starting location for this basis inside the global control vector. </p>
+
+</div>
+</div>
+<a id="a1f1820a85ad416f02245084619ffb720" name="a1f1820a85ad416f02245084619ffb720"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1f1820a85ad416f02245084619ffb720">&#9670;&#160;</a></span>tstart</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double ControlBasis::tstart</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Start time of the interval where the control basis is applied. </p>
+
+</div>
+</div>
+<a id="af89673125f7918b75b723b7589e4b19f" name="af89673125f7918b75b723b7589e4b19f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af89673125f7918b75b723b7589e4b19f">&#9670;&#160;</a></span>tstop</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double ControlBasis::tstop</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Stop time of the interval where the control basis is applied. </p>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>/home/runner/work/quandary/quandary/include/<a class="el" href="controlbasis_8hpp_source.html">controlbasis.hpp</a></li>
-<li>/home/runner/work/quandary/quandary/src/<b>controlbasis.cpp</b></li>
+<li>/home/runner/work/quandary/quandary/src/<a class="el" href="controlbasis_8cpp.html">controlbasis.cpp</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

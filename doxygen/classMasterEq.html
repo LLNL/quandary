@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -100,12 +107,15 @@ Collaboration diagram for MasterEq:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a7feb871a226f4ca659cc0b079ed5a3ec" id="r_a7feb871a226f4ca659cc0b079ed5a3ec"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a7feb871a226f4ca659cc0b079ed5a3ec">MasterEq</a> (std::vector&lt; int &gt; <a class="el" href="classMasterEq.html#a6cadd8dbe3e40e6ea087b6926de72c1f">nlevels</a>, std::vector&lt; int &gt; <a class="el" href="classMasterEq.html#a609bd3adeeaf8f9a53e7bdc59cd25be8">nessential</a>, <a class="el" href="classOscillator.html">Oscillator</a> **oscil_vec_, const std::vector&lt; double &gt; crosskerr_, const std::vector&lt; double &gt; Jkl_, const std::vector&lt; double &gt; eta_, LindbladType lindbladtype_, bool usematfree_, std::string <a class="el" href="classMasterEq.html#a68172dcac6206bd43927af847b87b822">hamiltonian_file</a>, bool <a class="el" href="classMasterEq.html#a3493e8372960cd42ba4ceab89fe68bb9">quietmode</a>=false)</td></tr>
+<tr class="memitem:a24841be28d3b2ba8fec73988b07d16a5" id="r_a24841be28d3b2ba8fec73988b07d16a5"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a24841be28d3b2ba8fec73988b07d16a5">MasterEq</a> ()</td></tr>
+<tr class="separator:a24841be28d3b2ba8fec73988b07d16a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7feb871a226f4ca659cc0b079ed5a3ec" id="r_a7feb871a226f4ca659cc0b079ed5a3ec"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a7feb871a226f4ca659cc0b079ed5a3ec">MasterEq</a> (std::vector&lt; int &gt; <a class="el" href="classMasterEq.html#a6cadd8dbe3e40e6ea087b6926de72c1f">nlevels</a>, std::vector&lt; int &gt; <a class="el" href="classMasterEq.html#a609bd3adeeaf8f9a53e7bdc59cd25be8">nessential</a>, <a class="el" href="classOscillator.html">Oscillator</a> **oscil_vec_, const std::vector&lt; double &gt; crosskerr_, const std::vector&lt; double &gt; Jkl_, const std::vector&lt; double &gt; eta_, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype_, bool usematfree_, std::string <a class="el" href="classMasterEq.html#a68172dcac6206bd43927af847b87b822">hamiltonian_file</a>, bool <a class="el" href="classMasterEq.html#a3493e8372960cd42ba4ceab89fe68bb9">quietmode</a>=false)</td></tr>
 <tr class="memdesc:a7feb871a226f4ca659cc0b079ed5a3ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with full system specification.  <br /></td></tr>
 <tr class="separator:a7feb871a226f4ca659cc0b079ed5a3ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aad34fc836f709483b81b724d8ec9f94c" id="r_aad34fc836f709483b81b724d8ec9f94c"><td class="memItemLeft" align="right" valign="top"><a id="aad34fc836f709483b81b724d8ec9f94c" name="aad34fc836f709483b81b724d8ec9f94c"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>initSparseMatSolver</b> ()</td></tr>
-<tr class="memdesc:aad34fc836f709483b81b724d8ec9f94c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes matrices needed for the sparse matrix solver. <br /></td></tr>
+<tr class="memitem:af9b8723f0500416cd3d2fcdd14fd9483" id="r_af9b8723f0500416cd3d2fcdd14fd9483"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#af9b8723f0500416cd3d2fcdd14fd9483">~MasterEq</a> ()</td></tr>
+<tr class="separator:af9b8723f0500416cd3d2fcdd14fd9483"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aad34fc836f709483b81b724d8ec9f94c" id="r_aad34fc836f709483b81b724d8ec9f94c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#aad34fc836f709483b81b724d8ec9f94c">initSparseMatSolver</a> ()</td></tr>
+<tr class="memdesc:aad34fc836f709483b81b724d8ec9f94c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes matrices needed for the sparse matrix solver.  <br /></td></tr>
 <tr class="separator:aad34fc836f709483b81b724d8ec9f94c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac8307cc795eb6e82eb3a3e8c71385d7e" id="r_ac8307cc795eb6e82eb3a3e8c71385d7e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ac8307cc795eb6e82eb3a3e8c71385d7e">setTransferOnOffTimes</a> (std::vector&lt; double &gt; tlist)</td></tr>
 <tr class="memdesc:ac8307cc795eb6e82eb3a3e8c71385d7e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets time points that determine when transfer functions are active.  <br /></td></tr>
@@ -146,165 +156,144 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>initSparseMatSolver</
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a6cadd8dbe3e40e6ea087b6926de72c1f" id="r_a6cadd8dbe3e40e6ea087b6926de72c1f"><td class="memItemLeft" align="right" valign="top"><a id="a6cadd8dbe3e40e6ea087b6926de72c1f" name="a6cadd8dbe3e40e6ea087b6926de72c1f"></a>
-std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>nlevels</b></td></tr>
-<tr class="memdesc:a6cadd8dbe3e40e6ea087b6926de72c1f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of levels per oscillator. <br /></td></tr>
+<tr class="memitem:a6cadd8dbe3e40e6ea087b6926de72c1f" id="r_a6cadd8dbe3e40e6ea087b6926de72c1f"><td class="memItemLeft" align="right" valign="top">std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a6cadd8dbe3e40e6ea087b6926de72c1f">nlevels</a></td></tr>
+<tr class="memdesc:a6cadd8dbe3e40e6ea087b6926de72c1f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of levels per oscillator.  <br /></td></tr>
 <tr class="separator:a6cadd8dbe3e40e6ea087b6926de72c1f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a609bd3adeeaf8f9a53e7bdc59cd25be8" id="r_a609bd3adeeaf8f9a53e7bdc59cd25be8"><td class="memItemLeft" align="right" valign="top"><a id="a609bd3adeeaf8f9a53e7bdc59cd25be8" name="a609bd3adeeaf8f9a53e7bdc59cd25be8"></a>
-std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>nessential</b></td></tr>
-<tr class="memdesc:a609bd3adeeaf8f9a53e7bdc59cd25be8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of essential levels per oscillator. <br /></td></tr>
+<tr class="memitem:a609bd3adeeaf8f9a53e7bdc59cd25be8" id="r_a609bd3adeeaf8f9a53e7bdc59cd25be8"><td class="memItemLeft" align="right" valign="top">std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a609bd3adeeaf8f9a53e7bdc59cd25be8">nessential</a></td></tr>
+<tr class="memdesc:a609bd3adeeaf8f9a53e7bdc59cd25be8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of essential levels per oscillator.  <br /></td></tr>
 <tr class="separator:a609bd3adeeaf8f9a53e7bdc59cd25be8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2d735524c2b5b205adb1898606b65a19" id="r_a2d735524c2b5b205adb1898606b65a19"><td class="memItemLeft" align="right" valign="top"><a id="a2d735524c2b5b205adb1898606b65a19" name="a2d735524c2b5b205adb1898606b65a19"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>usematfree</b></td></tr>
-<tr class="memdesc:a2d735524c2b5b205adb1898606b65a19"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag for using matrix-free solver. <br /></td></tr>
+<tr class="memitem:a2d735524c2b5b205adb1898606b65a19" id="r_a2d735524c2b5b205adb1898606b65a19"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a2d735524c2b5b205adb1898606b65a19">usematfree</a></td></tr>
+<tr class="memdesc:a2d735524c2b5b205adb1898606b65a19"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag for using matrix-free solver.  <br /></td></tr>
 <tr class="separator:a2d735524c2b5b205adb1898606b65a19"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac8fd54198c43d043c544e72417e30dba" id="r_ac8fd54198c43d043c544e72417e30dba"><td class="memItemLeft" align="right" valign="top"><a id="ac8fd54198c43d043c544e72417e30dba" name="ac8fd54198c43d043c544e72417e30dba"></a>
-LindbladType&#160;</td><td class="memItemRight" valign="bottom"><b>lindbladtype</b></td></tr>
-<tr class="memdesc:ac8fd54198c43d043c544e72417e30dba"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of Lindblad operators to include (NONE means Schroedinger equation) <br /></td></tr>
+<tr class="memitem:ac8fd54198c43d043c544e72417e30dba" id="r_ac8fd54198c43d043c544e72417e30dba"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ac8fd54198c43d043c544e72417e30dba">lindbladtype</a></td></tr>
+<tr class="memdesc:ac8fd54198c43d043c544e72417e30dba"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of Lindblad operators to include (NONE means Schroedinger equation)  <br /></td></tr>
 <tr class="separator:ac8fd54198c43d043c544e72417e30dba"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a30f051e65c04523f63db05f357d2f29f" id="r_a30f051e65c04523f63db05f357d2f29f"><td class="memItemLeft" align="right" valign="top"><a id="a30f051e65c04523f63db05f357d2f29f" name="a30f051e65c04523f63db05f357d2f29f"></a>
-std::vector&lt; std::vector&lt; <a class="el" href="classTransferFunction.html">TransferFunction</a> * &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>transfer_Hc_re</b></td></tr>
-<tr class="memdesc:a30f051e65c04523f63db05f357d2f29f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real transfer functions for control terms per oscillator. <br /></td></tr>
+<tr class="memitem:a30f051e65c04523f63db05f357d2f29f" id="r_a30f051e65c04523f63db05f357d2f29f"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::vector&lt; <a class="el" href="classTransferFunction.html">TransferFunction</a> * &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a30f051e65c04523f63db05f357d2f29f">transfer_Hc_re</a></td></tr>
+<tr class="memdesc:a30f051e65c04523f63db05f357d2f29f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real transfer functions for control terms per oscillator.  <br /></td></tr>
 <tr class="separator:a30f051e65c04523f63db05f357d2f29f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae881b4c040b27af6bb119b97e8757688" id="r_ae881b4c040b27af6bb119b97e8757688"><td class="memItemLeft" align="right" valign="top"><a id="ae881b4c040b27af6bb119b97e8757688" name="ae881b4c040b27af6bb119b97e8757688"></a>
-std::vector&lt; std::vector&lt; <a class="el" href="classTransferFunction.html">TransferFunction</a> * &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>transfer_Hc_im</b></td></tr>
-<tr class="memdesc:ae881b4c040b27af6bb119b97e8757688"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary transfer functions for control terms per oscillator. <br /></td></tr>
+<tr class="memitem:ae881b4c040b27af6bb119b97e8757688" id="r_ae881b4c040b27af6bb119b97e8757688"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::vector&lt; <a class="el" href="classTransferFunction.html">TransferFunction</a> * &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ae881b4c040b27af6bb119b97e8757688">transfer_Hc_im</a></td></tr>
+<tr class="memdesc:ae881b4c040b27af6bb119b97e8757688"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary transfer functions for control terms per oscillator.  <br /></td></tr>
 <tr class="separator:ae881b4c040b27af6bb119b97e8757688"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac268a9ef050250e6b0005f61f284b274" id="r_ac268a9ef050250e6b0005f61f284b274"><td class="memItemLeft" align="right" valign="top"><a id="ac268a9ef050250e6b0005f61f284b274" name="ac268a9ef050250e6b0005f61f284b274"></a>
-std::vector&lt; <a class="el" href="classTransferFunction.html">TransferFunction</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>transfer_Hdt_re</b></td></tr>
-<tr class="memdesc:ac268a9ef050250e6b0005f61f284b274"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real transfer functions for time-varying system Hamiltonian. <br /></td></tr>
+<tr class="memitem:ac268a9ef050250e6b0005f61f284b274" id="r_ac268a9ef050250e6b0005f61f284b274"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="classTransferFunction.html">TransferFunction</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ac268a9ef050250e6b0005f61f284b274">transfer_Hdt_re</a></td></tr>
+<tr class="memdesc:ac268a9ef050250e6b0005f61f284b274"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real transfer functions for time-varying system Hamiltonian.  <br /></td></tr>
 <tr class="separator:ac268a9ef050250e6b0005f61f284b274"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad0644cc00ef5b0616947d733a59c4a01" id="r_ad0644cc00ef5b0616947d733a59c4a01"><td class="memItemLeft" align="right" valign="top"><a id="ad0644cc00ef5b0616947d733a59c4a01" name="ad0644cc00ef5b0616947d733a59c4a01"></a>
-std::vector&lt; <a class="el" href="classTransferFunction.html">TransferFunction</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>transfer_Hdt_im</b></td></tr>
-<tr class="memdesc:ad0644cc00ef5b0616947d733a59c4a01"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary transfer functions for time-varying system Hamiltonian. <br /></td></tr>
+<tr class="memitem:ad0644cc00ef5b0616947d733a59c4a01" id="r_ad0644cc00ef5b0616947d733a59c4a01"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="classTransferFunction.html">TransferFunction</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ad0644cc00ef5b0616947d733a59c4a01">transfer_Hdt_im</a></td></tr>
+<tr class="memdesc:ad0644cc00ef5b0616947d733a59c4a01"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary transfer functions for time-varying system Hamiltonian.  <br /></td></tr>
 <tr class="separator:ad0644cc00ef5b0616947d733a59c4a01"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a68172dcac6206bd43927af847b87b822" id="r_a68172dcac6206bd43927af847b87b822"><td class="memItemLeft" align="right" valign="top"><a id="a68172dcac6206bd43927af847b87b822" name="a68172dcac6206bd43927af847b87b822"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>hamiltonian_file</b></td></tr>
-<tr class="memdesc:a68172dcac6206bd43927af847b87b822"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filename for Hamiltonian data ('none' if not used) <br /></td></tr>
+<tr class="memitem:a68172dcac6206bd43927af847b87b822" id="r_a68172dcac6206bd43927af847b87b822"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a68172dcac6206bd43927af847b87b822">hamiltonian_file</a></td></tr>
+<tr class="memdesc:a68172dcac6206bd43927af847b87b822"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filename for Hamiltonian data ('none' if not used)  <br /></td></tr>
 <tr class="separator:a68172dcac6206bd43927af847b87b822"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
-<tr class="memitem:a346265de8ee28b5420cf0fe4b0c180ed" id="r_a346265de8ee28b5420cf0fe4b0c180ed"><td class="memItemLeft" align="right" valign="top"><a id="a346265de8ee28b5420cf0fe4b0c180ed" name="a346265de8ee28b5420cf0fe4b0c180ed"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>dim</b></td></tr>
-<tr class="memdesc:a346265de8ee28b5420cf0fe4b0c180ed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger. <br /></td></tr>
+<tr class="memitem:a346265de8ee28b5420cf0fe4b0c180ed" id="r_a346265de8ee28b5420cf0fe4b0c180ed"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a346265de8ee28b5420cf0fe4b0c180ed">dim</a></td></tr>
+<tr class="memdesc:a346265de8ee28b5420cf0fe4b0c180ed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger.  <br /></td></tr>
 <tr class="separator:a346265de8ee28b5420cf0fe4b0c180ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7112f8144791299af573cf9479a370c8" id="r_a7112f8144791299af573cf9479a370c8"><td class="memItemLeft" align="right" valign="top"><a id="a7112f8144791299af573cf9479a370c8" name="a7112f8144791299af573cf9479a370c8"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>dim_rho</b></td></tr>
-<tr class="memdesc:a7112f8144791299af573cf9479a370c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of Hilbert space = N. <br /></td></tr>
+<tr class="memitem:a7112f8144791299af573cf9479a370c8" id="r_a7112f8144791299af573cf9479a370c8"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a7112f8144791299af573cf9479a370c8">dim_rho</a></td></tr>
+<tr class="memdesc:a7112f8144791299af573cf9479a370c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of Hilbert space = N.  <br /></td></tr>
 <tr class="separator:a7112f8144791299af573cf9479a370c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5dfe8c17afb1a56643f98e59539949fd" id="r_a5dfe8c17afb1a56643f98e59539949fd"><td class="memItemLeft" align="right" valign="top"><a id="a5dfe8c17afb1a56643f98e59539949fd" name="a5dfe8c17afb1a56643f98e59539949fd"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>dim_ess</b></td></tr>
-<tr class="memdesc:a5dfe8c17afb1a56643f98e59539949fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of essential level system = N_e. <br /></td></tr>
+<tr class="memitem:a5dfe8c17afb1a56643f98e59539949fd" id="r_a5dfe8c17afb1a56643f98e59539949fd"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a5dfe8c17afb1a56643f98e59539949fd">dim_ess</a></td></tr>
+<tr class="memdesc:a5dfe8c17afb1a56643f98e59539949fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of essential level system = N_e.  <br /></td></tr>
 <tr class="separator:a5dfe8c17afb1a56643f98e59539949fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaafcd9e3d4a617bbb86d004b44f7ad3d" id="r_aaafcd9e3d4a617bbb86d004b44f7ad3d"><td class="memItemLeft" align="right" valign="top"><a id="aaafcd9e3d4a617bbb86d004b44f7ad3d" name="aaafcd9e3d4a617bbb86d004b44f7ad3d"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>noscillators</b></td></tr>
-<tr class="memdesc:aaafcd9e3d4a617bbb86d004b44f7ad3d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of oscillators in the system. <br /></td></tr>
+<tr class="memitem:aaafcd9e3d4a617bbb86d004b44f7ad3d" id="r_aaafcd9e3d4a617bbb86d004b44f7ad3d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#aaafcd9e3d4a617bbb86d004b44f7ad3d">noscillators</a></td></tr>
+<tr class="memdesc:aaafcd9e3d4a617bbb86d004b44f7ad3d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of oscillators in the system.  <br /></td></tr>
 <tr class="separator:aaafcd9e3d4a617bbb86d004b44f7ad3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6c35b6e30807ba37c4742a05af80f9ef" id="r_a6c35b6e30807ba37c4742a05af80f9ef"><td class="memItemLeft" align="right" valign="top"><a id="a6c35b6e30807ba37c4742a05af80f9ef" name="a6c35b6e30807ba37c4742a05af80f9ef"></a>
-<a class="el" href="classOscillator.html">Oscillator</a> **&#160;</td><td class="memItemRight" valign="bottom"><b>oscil_vec</b></td></tr>
-<tr class="memdesc:a6c35b6e30807ba37c4742a05af80f9ef"><td class="mdescLeft">&#160;</td><td class="mdescRight">Array of pointers to oscillator objects. <br /></td></tr>
+<tr class="memitem:a6c35b6e30807ba37c4742a05af80f9ef" id="r_a6c35b6e30807ba37c4742a05af80f9ef"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classOscillator.html">Oscillator</a> **&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a6c35b6e30807ba37c4742a05af80f9ef">oscil_vec</a></td></tr>
+<tr class="memdesc:a6c35b6e30807ba37c4742a05af80f9ef"><td class="mdescLeft">&#160;</td><td class="mdescRight">Array of pointers to oscillator objects.  <br /></td></tr>
 <tr class="separator:a6c35b6e30807ba37c4742a05af80f9ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab200ca6b9a16be33b8ee7313c41f20d2" id="r_ab200ca6b9a16be33b8ee7313c41f20d2"><td class="memItemLeft" align="right" valign="top"><a id="ab200ca6b9a16be33b8ee7313c41f20d2" name="ab200ca6b9a16be33b8ee7313c41f20d2"></a>
-Mat&#160;</td><td class="memItemRight" valign="bottom"><b>RHS</b></td></tr>
-<tr class="memdesc:ab200ca6b9a16be33b8ee7313c41f20d2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real-valued, vectorized system matrix (2N^2 x 2N^2) <br /></td></tr>
+<tr class="memitem:ab200ca6b9a16be33b8ee7313c41f20d2" id="r_ab200ca6b9a16be33b8ee7313c41f20d2"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ab200ca6b9a16be33b8ee7313c41f20d2">RHS</a></td></tr>
+<tr class="memdesc:ab200ca6b9a16be33b8ee7313c41f20d2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real-valued, vectorized system matrix (2N^2 x 2N^2)  <br /></td></tr>
 <tr class="separator:ab200ca6b9a16be33b8ee7313c41f20d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6a3bb1ab8dd49c64f51c90dd5b080f62" id="r_a6a3bb1ab8dd49c64f51c90dd5b080f62"><td class="memItemLeft" align="right" valign="top"><a id="a6a3bb1ab8dd49c64f51c90dd5b080f62" name="a6a3bb1ab8dd49c64f51c90dd5b080f62"></a>
-<a class="el" href="structMatShellCtx.html">MatShellCtx</a>&#160;</td><td class="memItemRight" valign="bottom"><b>RHSctx</b></td></tr>
-<tr class="memdesc:a6a3bb1ab8dd49c64f51c90dd5b080f62"><td class="mdescLeft">&#160;</td><td class="mdescRight">MatShell context containing data for RHS operations. <br /></td></tr>
+<tr class="memitem:a6a3bb1ab8dd49c64f51c90dd5b080f62" id="r_a6a3bb1ab8dd49c64f51c90dd5b080f62"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatShellCtx.html">MatShellCtx</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a6a3bb1ab8dd49c64f51c90dd5b080f62">RHSctx</a></td></tr>
+<tr class="memdesc:a6a3bb1ab8dd49c64f51c90dd5b080f62"><td class="mdescLeft">&#160;</td><td class="mdescRight">MatShell context containing data for RHS operations.  <br /></td></tr>
 <tr class="separator:a6a3bb1ab8dd49c64f51c90dd5b080f62"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa30454ed43e280918df0e2dc06954e84" id="r_aa30454ed43e280918df0e2dc06954e84"><td class="memItemLeft" align="right" valign="top"><a id="aa30454ed43e280918df0e2dc06954e84" name="aa30454ed43e280918df0e2dc06954e84"></a>
-std::vector&lt; std::vector&lt; Mat &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Ac_vec</b></td></tr>
-<tr class="memdesc:aa30454ed43e280918df0e2dc06954e84"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real parts of control matrices for each oscillator. <br /></td></tr>
+<tr class="memitem:aa30454ed43e280918df0e2dc06954e84" id="r_aa30454ed43e280918df0e2dc06954e84"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::vector&lt; Mat &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#aa30454ed43e280918df0e2dc06954e84">Ac_vec</a></td></tr>
+<tr class="memdesc:aa30454ed43e280918df0e2dc06954e84"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real parts of control matrices for each oscillator.  <br /></td></tr>
 <tr class="separator:aa30454ed43e280918df0e2dc06954e84"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afb1c97886b5a327dc888caf9ba902db8" id="r_afb1c97886b5a327dc888caf9ba902db8"><td class="memItemLeft" align="right" valign="top"><a id="afb1c97886b5a327dc888caf9ba902db8" name="afb1c97886b5a327dc888caf9ba902db8"></a>
-std::vector&lt; std::vector&lt; Mat &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Bc_vec</b></td></tr>
-<tr class="memdesc:afb1c97886b5a327dc888caf9ba902db8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary parts of control matrices for each oscillator. <br /></td></tr>
+<tr class="memitem:afb1c97886b5a327dc888caf9ba902db8" id="r_afb1c97886b5a327dc888caf9ba902db8"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::vector&lt; Mat &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#afb1c97886b5a327dc888caf9ba902db8">Bc_vec</a></td></tr>
+<tr class="memdesc:afb1c97886b5a327dc888caf9ba902db8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary parts of control matrices for each oscillator.  <br /></td></tr>
 <tr class="separator:afb1c97886b5a327dc888caf9ba902db8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7aa65ae612c591230c41eec8454936ee" id="r_a7aa65ae612c591230c41eec8454936ee"><td class="memItemLeft" align="right" valign="top"><a id="a7aa65ae612c591230c41eec8454936ee" name="a7aa65ae612c591230c41eec8454936ee"></a>
-Mat&#160;</td><td class="memItemRight" valign="bottom"><b>Ad</b></td></tr>
+<tr class="memitem:a7aa65ae612c591230c41eec8454936ee" id="r_a7aa65ae612c591230c41eec8454936ee"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a7aa65ae612c591230c41eec8454936ee">Ad</a></td></tr>
 <tr class="separator:a7aa65ae612c591230c41eec8454936ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2afd1529a3b1793aa87ad1c008ef212a" id="r_a2afd1529a3b1793aa87ad1c008ef212a"><td class="memItemLeft" align="right" valign="top"><a id="a2afd1529a3b1793aa87ad1c008ef212a" name="a2afd1529a3b1793aa87ad1c008ef212a"></a>
-Mat&#160;</td><td class="memItemRight" valign="bottom"><b>Bd</b></td></tr>
-<tr class="memdesc:a2afd1529a3b1793aa87ad1c008ef212a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real and imaginary parts of constant system matrix. <br /></td></tr>
+<tr class="memitem:a2afd1529a3b1793aa87ad1c008ef212a" id="r_a2afd1529a3b1793aa87ad1c008ef212a"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a2afd1529a3b1793aa87ad1c008ef212a">Bd</a></td></tr>
+<tr class="memdesc:a2afd1529a3b1793aa87ad1c008ef212a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real and imaginary parts of constant system matrix.  <br /></td></tr>
 <tr class="separator:a2afd1529a3b1793aa87ad1c008ef212a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab0d2504ab06b61b6bfe11f623e5a002c" id="r_ab0d2504ab06b61b6bfe11f623e5a002c"><td class="memItemLeft" align="right" valign="top"><a id="ab0d2504ab06b61b6bfe11f623e5a002c" name="ab0d2504ab06b61b6bfe11f623e5a002c"></a>
-std::vector&lt; Mat &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Ad_vec</b></td></tr>
-<tr class="memdesc:ab0d2504ab06b61b6bfe11f623e5a002c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real parts of dipole-dipole coupling matrices in drift Hamiltonian. <br /></td></tr>
+<tr class="memitem:ab0d2504ab06b61b6bfe11f623e5a002c" id="r_ab0d2504ab06b61b6bfe11f623e5a002c"><td class="memItemLeft" align="right" valign="top">std::vector&lt; Mat &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ab0d2504ab06b61b6bfe11f623e5a002c">Ad_vec</a></td></tr>
+<tr class="memdesc:ab0d2504ab06b61b6bfe11f623e5a002c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real parts of dipole-dipole coupling matrices in drift Hamiltonian.  <br /></td></tr>
 <tr class="separator:ab0d2504ab06b61b6bfe11f623e5a002c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6c486486fc1feb02cbc77bd44ca3202a" id="r_a6c486486fc1feb02cbc77bd44ca3202a"><td class="memItemLeft" align="right" valign="top"><a id="a6c486486fc1feb02cbc77bd44ca3202a" name="a6c486486fc1feb02cbc77bd44ca3202a"></a>
-std::vector&lt; Mat &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Bd_vec</b></td></tr>
-<tr class="memdesc:a6c486486fc1feb02cbc77bd44ca3202a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary parts of dipole-dipole coupling matrices in drift Hamiltonian. <br /></td></tr>
+<tr class="memitem:a6c486486fc1feb02cbc77bd44ca3202a" id="r_a6c486486fc1feb02cbc77bd44ca3202a"><td class="memItemLeft" align="right" valign="top">std::vector&lt; Mat &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a6c486486fc1feb02cbc77bd44ca3202a">Bd_vec</a></td></tr>
+<tr class="memdesc:a6c486486fc1feb02cbc77bd44ca3202a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary parts of dipole-dipole coupling matrices in drift Hamiltonian.  <br /></td></tr>
 <tr class="separator:a6c486486fc1feb02cbc77bd44ca3202a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3d861dd8d9ad6f4e9b04e0109d3ee128" id="r_a3d861dd8d9ad6f4e9b04e0109d3ee128"><td class="memItemLeft" align="right" valign="top"><a id="a3d861dd8d9ad6f4e9b04e0109d3ee128" name="a3d861dd8d9ad6f4e9b04e0109d3ee128"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>crosskerr</b></td></tr>
-<tr class="memdesc:a3d861dd8d9ad6f4e9b04e0109d3ee128"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cross-Kerr coefficients (rad/time) \xi_{kl} for ZZ-coupling a_k^\dagger a_k a_l^\dagger a_l. <br /></td></tr>
+<tr class="memitem:a3d861dd8d9ad6f4e9b04e0109d3ee128" id="r_a3d861dd8d9ad6f4e9b04e0109d3ee128"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a3d861dd8d9ad6f4e9b04e0109d3ee128">crosskerr</a></td></tr>
+<tr class="memdesc:a3d861dd8d9ad6f4e9b04e0109d3ee128"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cross-Kerr coefficients (rad/time) \(\xi_{kl}\) for ZZ-coupling \(a_k^\dagger a_k a_l^\dagger a_l\).  <br /></td></tr>
 <tr class="separator:a3d861dd8d9ad6f4e9b04e0109d3ee128"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac53a2013f8ebe3b279be5b04b2bba34e" id="r_ac53a2013f8ebe3b279be5b04b2bba34e"><td class="memItemLeft" align="right" valign="top"><a id="ac53a2013f8ebe3b279be5b04b2bba34e" name="ac53a2013f8ebe3b279be5b04b2bba34e"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Jkl</b></td></tr>
-<tr class="memdesc:ac53a2013f8ebe3b279be5b04b2bba34e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dipole-dipole coupling coefficients (rad/time), multiplies a_k^\dagger a_l + a_k a_l^\dagger. <br /></td></tr>
+<tr class="memitem:ac53a2013f8ebe3b279be5b04b2bba34e" id="r_ac53a2013f8ebe3b279be5b04b2bba34e"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ac53a2013f8ebe3b279be5b04b2bba34e">Jkl</a></td></tr>
+<tr class="memdesc:ac53a2013f8ebe3b279be5b04b2bba34e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dipole-dipole coupling coefficients (rad/time), multiplies \(a_k^\dagger a_l + a_k a_l^\dagger\).  <br /></td></tr>
 <tr class="separator:ac53a2013f8ebe3b279be5b04b2bba34e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7f69aef84b13fada56ebb31adf9fa7fd" id="r_a7f69aef84b13fada56ebb31adf9fa7fd"><td class="memItemLeft" align="right" valign="top"><a id="a7f69aef84b13fada56ebb31adf9fa7fd" name="a7f69aef84b13fada56ebb31adf9fa7fd"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>eta</b></td></tr>
-<tr class="memdesc:a7f69aef84b13fada56ebb31adf9fa7fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequency differences in rotating frame (rad/time) for dipole-dipole coupling. <br /></td></tr>
+<tr class="memitem:a7f69aef84b13fada56ebb31adf9fa7fd" id="r_a7f69aef84b13fada56ebb31adf9fa7fd"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a7f69aef84b13fada56ebb31adf9fa7fd">eta</a></td></tr>
+<tr class="memdesc:a7f69aef84b13fada56ebb31adf9fa7fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequency differences in rotating frame (rad/time) for dipole-dipole coupling.  <br /></td></tr>
 <tr class="separator:a7f69aef84b13fada56ebb31adf9fa7fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a02dd3462531616d6a2a250a088990cd2" id="r_a02dd3462531616d6a2a250a088990cd2"><td class="memItemLeft" align="right" valign="top"><a id="a02dd3462531616d6a2a250a088990cd2" name="a02dd3462531616d6a2a250a088990cd2"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>addT1</b></td></tr>
+<tr class="memitem:a02dd3462531616d6a2a250a088990cd2" id="r_a02dd3462531616d6a2a250a088990cd2"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a02dd3462531616d6a2a250a088990cd2">addT1</a></td></tr>
 <tr class="separator:a02dd3462531616d6a2a250a088990cd2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0674aab017f75be72e15d45385a1ebf8" id="r_a0674aab017f75be72e15d45385a1ebf8"><td class="memItemLeft" align="right" valign="top"><a id="a0674aab017f75be72e15d45385a1ebf8" name="a0674aab017f75be72e15d45385a1ebf8"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>addT2</b></td></tr>
-<tr class="memdesc:a0674aab017f75be72e15d45385a1ebf8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flags for including T1 decay and T2 dephasing Lindblad operators. <br /></td></tr>
+<tr class="memitem:a0674aab017f75be72e15d45385a1ebf8" id="r_a0674aab017f75be72e15d45385a1ebf8"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a0674aab017f75be72e15d45385a1ebf8">addT2</a></td></tr>
+<tr class="memdesc:a0674aab017f75be72e15d45385a1ebf8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flags for including T1 decay and T2 dephasing Lindblad operators.  <br /></td></tr>
 <tr class="separator:a0674aab017f75be72e15d45385a1ebf8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1a7dfad49bfeafe1ebbaa4a23a4eae29" id="r_a1a7dfad49bfeafe1ebbaa4a23a4eae29"><td class="memItemLeft" align="right" valign="top"><a id="a1a7dfad49bfeafe1ebbaa4a23a4eae29" name="a1a7dfad49bfeafe1ebbaa4a23a4eae29"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>mpirank_petsc</b></td></tr>
-<tr class="memdesc:a1a7dfad49bfeafe1ebbaa4a23a4eae29"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of PETSc's communicator. <br /></td></tr>
+<tr class="memitem:a1a7dfad49bfeafe1ebbaa4a23a4eae29" id="r_a1a7dfad49bfeafe1ebbaa4a23a4eae29"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a1a7dfad49bfeafe1ebbaa4a23a4eae29">mpirank_petsc</a></td></tr>
+<tr class="memdesc:a1a7dfad49bfeafe1ebbaa4a23a4eae29"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of PETSc's communicator.  <br /></td></tr>
 <tr class="separator:a1a7dfad49bfeafe1ebbaa4a23a4eae29"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac7b7aa48c2cce32d27d0055e0a8d5990" id="r_ac7b7aa48c2cce32d27d0055e0a8d5990"><td class="memItemLeft" align="right" valign="top"><a id="ac7b7aa48c2cce32d27d0055e0a8d5990" name="ac7b7aa48c2cce32d27d0055e0a8d5990"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>mpirank_world</b></td></tr>
-<tr class="memdesc:ac7b7aa48c2cce32d27d0055e0a8d5990"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of global MPI communicator. <br /></td></tr>
+<tr class="memitem:ac7b7aa48c2cce32d27d0055e0a8d5990" id="r_ac7b7aa48c2cce32d27d0055e0a8d5990"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ac7b7aa48c2cce32d27d0055e0a8d5990">mpirank_world</a></td></tr>
+<tr class="memdesc:ac7b7aa48c2cce32d27d0055e0a8d5990"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of global MPI communicator.  <br /></td></tr>
 <tr class="separator:ac7b7aa48c2cce32d27d0055e0a8d5990"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1ee5ff4c7f62f433e539c0d790ac39d6" id="r_a1ee5ff4c7f62f433e539c0d790ac39d6"><td class="memItemLeft" align="right" valign="top"><a id="a1ee5ff4c7f62f433e539c0d790ac39d6" name="a1ee5ff4c7f62f433e539c0d790ac39d6"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>nparams_max</b></td></tr>
-<tr class="memdesc:a1ee5ff4c7f62f433e539c0d790ac39d6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maximum number of design parameters per oscillator. <br /></td></tr>
+<tr class="memitem:a1ee5ff4c7f62f433e539c0d790ac39d6" id="r_a1ee5ff4c7f62f433e539c0d790ac39d6"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a1ee5ff4c7f62f433e539c0d790ac39d6">nparams_max</a></td></tr>
+<tr class="memdesc:a1ee5ff4c7f62f433e539c0d790ac39d6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maximum number of design parameters per oscillator.  <br /></td></tr>
 <tr class="separator:a1ee5ff4c7f62f433e539c0d790ac39d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a44fad9cad554191a82455cf84d1fdd1f" id="r_a44fad9cad554191a82455cf84d1fdd1f"><td class="memItemLeft" align="right" valign="top"><a id="a44fad9cad554191a82455cf84d1fdd1f" name="a44fad9cad554191a82455cf84d1fdd1f"></a>
-IS&#160;</td><td class="memItemRight" valign="bottom"><b>isu</b></td></tr>
+<tr class="memitem:a44fad9cad554191a82455cf84d1fdd1f" id="r_a44fad9cad554191a82455cf84d1fdd1f"><td class="memItemLeft" align="right" valign="top">IS&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a44fad9cad554191a82455cf84d1fdd1f">isu</a></td></tr>
 <tr class="separator:a44fad9cad554191a82455cf84d1fdd1f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a53b5dbe948eb0eb8570e4555d7ebedaa" id="r_a53b5dbe948eb0eb8570e4555d7ebedaa"><td class="memItemLeft" align="right" valign="top"><a id="a53b5dbe948eb0eb8570e4555d7ebedaa" name="a53b5dbe948eb0eb8570e4555d7ebedaa"></a>
-IS&#160;</td><td class="memItemRight" valign="bottom"><b>isv</b></td></tr>
-<tr class="memdesc:a53b5dbe948eb0eb8570e4555d7ebedaa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vector strides for accessing real and imaginary parts u=Re(x), v=Im(x) <br /></td></tr>
+<tr class="memitem:a53b5dbe948eb0eb8570e4555d7ebedaa" id="r_a53b5dbe948eb0eb8570e4555d7ebedaa"><td class="memItemLeft" align="right" valign="top">IS&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a53b5dbe948eb0eb8570e4555d7ebedaa">isv</a></td></tr>
+<tr class="memdesc:a53b5dbe948eb0eb8570e4555d7ebedaa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vector strides for accessing real and imaginary parts u=Re(x), v=Im(x)  <br /></td></tr>
 <tr class="separator:a53b5dbe948eb0eb8570e4555d7ebedaa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3117c4885b24a0d9d88fff234c5593e8" id="r_a3117c4885b24a0d9d88fff234c5593e8"><td class="memItemLeft" align="right" valign="top"><a id="a3117c4885b24a0d9d88fff234c5593e8" name="a3117c4885b24a0d9d88fff234c5593e8"></a>
-double *&#160;</td><td class="memItemRight" valign="bottom"><b>dRedp</b></td></tr>
-<tr class="memdesc:a3117c4885b24a0d9d88fff234c5593e8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Derivative of real part with respect to parameters. <br /></td></tr>
+<tr class="memitem:a3117c4885b24a0d9d88fff234c5593e8" id="r_a3117c4885b24a0d9d88fff234c5593e8"><td class="memItemLeft" align="right" valign="top">double *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a3117c4885b24a0d9d88fff234c5593e8">dRedp</a></td></tr>
+<tr class="memdesc:a3117c4885b24a0d9d88fff234c5593e8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Derivative of real part with respect to parameters.  <br /></td></tr>
 <tr class="separator:a3117c4885b24a0d9d88fff234c5593e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aafbc713ebc3d42731dc44d727db530d8" id="r_aafbc713ebc3d42731dc44d727db530d8"><td class="memItemLeft" align="right" valign="top"><a id="aafbc713ebc3d42731dc44d727db530d8" name="aafbc713ebc3d42731dc44d727db530d8"></a>
-double *&#160;</td><td class="memItemRight" valign="bottom"><b>dImdp</b></td></tr>
-<tr class="memdesc:aafbc713ebc3d42731dc44d727db530d8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Derivative of imaginary part with respect to parameters. <br /></td></tr>
+<tr class="memitem:aafbc713ebc3d42731dc44d727db530d8" id="r_aafbc713ebc3d42731dc44d727db530d8"><td class="memItemLeft" align="right" valign="top">double *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#aafbc713ebc3d42731dc44d727db530d8">dImdp</a></td></tr>
+<tr class="memdesc:aafbc713ebc3d42731dc44d727db530d8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Derivative of imaginary part with respect to parameters.  <br /></td></tr>
 <tr class="separator:aafbc713ebc3d42731dc44d727db530d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad59aa549dc17834871c3fdfe96f397e4" id="r_ad59aa549dc17834871c3fdfe96f397e4"><td class="memItemLeft" align="right" valign="top"><a id="ad59aa549dc17834871c3fdfe96f397e4" name="ad59aa549dc17834871c3fdfe96f397e4"></a>
-Vec&#160;</td><td class="memItemRight" valign="bottom"><b>aux</b></td></tr>
-<tr class="memdesc:ad59aa549dc17834871c3fdfe96f397e4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Auxiliary vector for computations. <br /></td></tr>
+<tr class="memitem:ad59aa549dc17834871c3fdfe96f397e4" id="r_ad59aa549dc17834871c3fdfe96f397e4"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ad59aa549dc17834871c3fdfe96f397e4">aux</a></td></tr>
+<tr class="memdesc:ad59aa549dc17834871c3fdfe96f397e4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Auxiliary vector for computations.  <br /></td></tr>
 <tr class="separator:ad59aa549dc17834871c3fdfe96f397e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3d518b166eba640dc61c708ba2ea9e2d" id="r_a3d518b166eba640dc61c708ba2ea9e2d"><td class="memItemLeft" align="right" valign="top"><a id="a3d518b166eba640dc61c708ba2ea9e2d" name="a3d518b166eba640dc61c708ba2ea9e2d"></a>
-PetscInt *&#160;</td><td class="memItemRight" valign="bottom"><b>cols</b></td></tr>
-<tr class="memdesc:a3d518b166eba640dc61c708ba2ea9e2d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Column indices for evaluating dRHS/dp. <br /></td></tr>
+<tr class="memitem:a3d518b166eba640dc61c708ba2ea9e2d" id="r_a3d518b166eba640dc61c708ba2ea9e2d"><td class="memItemLeft" align="right" valign="top">PetscInt *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a3d518b166eba640dc61c708ba2ea9e2d">cols</a></td></tr>
+<tr class="memdesc:a3d518b166eba640dc61c708ba2ea9e2d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Column indices for evaluating dRHS/dp.  <br /></td></tr>
 <tr class="separator:a3d518b166eba640dc61c708ba2ea9e2d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6e00f02e3b6cfab7fb90cb70de265aff" id="r_a6e00f02e3b6cfab7fb90cb70de265aff"><td class="memItemLeft" align="right" valign="top"><a id="a6e00f02e3b6cfab7fb90cb70de265aff" name="a6e00f02e3b6cfab7fb90cb70de265aff"></a>
-PetscScalar *&#160;</td><td class="memItemRight" valign="bottom"><b>vals</b></td></tr>
-<tr class="memdesc:a6e00f02e3b6cfab7fb90cb70de265aff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix values for evaluating dRHS/dp. <br /></td></tr>
+<tr class="memitem:a6e00f02e3b6cfab7fb90cb70de265aff" id="r_a6e00f02e3b6cfab7fb90cb70de265aff"><td class="memItemLeft" align="right" valign="top">PetscScalar *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a6e00f02e3b6cfab7fb90cb70de265aff">vals</a></td></tr>
+<tr class="memdesc:a6e00f02e3b6cfab7fb90cb70de265aff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix values for evaluating dRHS/dp.  <br /></td></tr>
 <tr class="separator:a6e00f02e3b6cfab7fb90cb70de265aff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3493e8372960cd42ba4ceab89fe68bb9" id="r_a3493e8372960cd42ba4ceab89fe68bb9"><td class="memItemLeft" align="right" valign="top"><a id="a3493e8372960cd42ba4ceab89fe68bb9" name="a3493e8372960cd42ba4ceab89fe68bb9"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></tr>
-<tr class="memdesc:a3493e8372960cd42ba4ceab89fe68bb9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag for quiet mode operation. <br /></td></tr>
+<tr class="memitem:a3493e8372960cd42ba4ceab89fe68bb9" id="r_a3493e8372960cd42ba4ceab89fe68bb9"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a3493e8372960cd42ba4ceab89fe68bb9">quietmode</a></td></tr>
+<tr class="memdesc:a3493e8372960cd42ba4ceab89fe68bb9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag for quiet mode operation.  <br /></td></tr>
 <tr class="separator:a3493e8372960cd42ba4ceab89fe68bb9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Implementation of the Lindblad master equation solver. </p>
 <p>This class provides functionality for solving both the Lindblad master equation for open quantum systems and the Schroedinger equation for closed systems. It supports matrix-free and sparse matrix solvers for different system sizes. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a24841be28d3b2ba8fec73988b07d16a5" name="a24841be28d3b2ba8fec73988b07d16a5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a24841be28d3b2ba8fec73988b07d16a5">&#9670;&#160;</a></span>MasterEq() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">MasterEq::MasterEq </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a7feb871a226f4ca659cc0b079ed5a3ec" name="a7feb871a226f4ca659cc0b079ed5a3ec"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7feb871a226f4ca659cc0b079ed5a3ec">&#9670;&#160;</a></span>MasterEq()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a7feb871a226f4ca659cc0b079ed5a3ec">&#9670;&#160;</a></span>MasterEq() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -348,7 +337,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></t
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">LindbladType&#160;</td>
+          <td class="paramtype"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a>&#160;</td>
           <td class="paramname"><em>lindbladtype_</em>, </td>
         </tr>
         <tr>
@@ -396,6 +385,23 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></t
 
 </div>
 </div>
+<a id="af9b8723f0500416cd3d2fcdd14fd9483" name="af9b8723f0500416cd3d2fcdd14fd9483"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af9b8723f0500416cd3d2fcdd14fd9483">&#9670;&#160;</a></span>~MasterEq()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">MasterEq::~MasterEq </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <h2 class="groupheader">Member Function Documentation</h2>
 <a id="aadb9c6cdd2162ee2df713e40a72f7d5c" name="aadb9c6cdd2162ee2df713e40a72f7d5c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aadb9c6cdd2162ee2df713e40a72f7d5c">&#9670;&#160;</a></span>assemble_RHS()</h2>
@@ -414,7 +420,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></t
 </div><div class="memdoc">
 
 <p>Assembles the vectorized Hamiltonian operator. </p>
-<p>Builds the operator M = vec(-i(H\rho - \rho H) + Lindblad terms). Must be called before applying the RHS matrix.</p>
+<p>Builds the operator \(M = \text{vec}(-i(H\rho - \rho H) + \text{Lindblad terms})\). Must be called before applying the RHS matrix.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">t</td><td>Current time </td></tr>
@@ -527,7 +533,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></t
 </div><div class="memdoc">
 
 <p>Retrieves the dimension of the vectorized system. </p>
-<dl class="section return"><dt>Returns</dt><dd>int N^2 for Lindblad solver, N for Schroedinger solver </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>int \(N^2\) for Lindblad solver, \(N\) for Schroedinger solver </dd></dl>
 
 </div>
 </div>
@@ -638,6 +644,25 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></t
 
 </div>
 </div>
+<a id="aad34fc836f709483b81b724d8ec9f94c" name="aad34fc836f709483b81b724d8ec9f94c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aad34fc836f709483b81b724d8ec9f94c">&#9670;&#160;</a></span>initSparseMatSolver()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MasterEq::initSparseMatSolver </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Initializes matrices needed for the sparse matrix solver. </p>
+
+</div>
+</div>
 <a id="a9308372d3f1aa99517dd313d5d2a4cd9" name="a9308372d3f1aa99517dd313d5d2a4cd9"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a9308372d3f1aa99517dd313d5d2a4cd9">&#9670;&#160;</a></span>population()</h2>
 
@@ -727,9 +752,844 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>quietmode</b></td></t
 
 </div>
 </div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="aa30454ed43e280918df0e2dc06954e84" name="aa30454ed43e280918df0e2dc06954e84"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa30454ed43e280918df0e2dc06954e84">&#9670;&#160;</a></span>Ac_vec</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;std::vector&lt;Mat&gt; &gt; MasterEq::Ac_vec</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Real parts of control matrices for each oscillator. </p>
+
+</div>
+</div>
+<a id="a7aa65ae612c591230c41eec8454936ee" name="a7aa65ae612c591230c41eec8454936ee"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7aa65ae612c591230c41eec8454936ee">&#9670;&#160;</a></span>Ad</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Mat MasterEq::Ad</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab0d2504ab06b61b6bfe11f623e5a002c" name="ab0d2504ab06b61b6bfe11f623e5a002c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab0d2504ab06b61b6bfe11f623e5a002c">&#9670;&#160;</a></span>Ad_vec</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;Mat&gt; MasterEq::Ad_vec</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Real parts of dipole-dipole coupling matrices in drift Hamiltonian. </p>
+
+</div>
+</div>
+<a id="a02dd3462531616d6a2a250a088990cd2" name="a02dd3462531616d6a2a250a088990cd2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a02dd3462531616d6a2a250a088990cd2">&#9670;&#160;</a></span>addT1</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool MasterEq::addT1</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0674aab017f75be72e15d45385a1ebf8" name="a0674aab017f75be72e15d45385a1ebf8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0674aab017f75be72e15d45385a1ebf8">&#9670;&#160;</a></span>addT2</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool MasterEq::addT2</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flags for including T1 decay and T2 dephasing Lindblad operators. </p>
+
+</div>
+</div>
+<a id="ad59aa549dc17834871c3fdfe96f397e4" name="ad59aa549dc17834871c3fdfe96f397e4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad59aa549dc17834871c3fdfe96f397e4">&#9670;&#160;</a></span>aux</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec MasterEq::aux</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Auxiliary vector for computations. </p>
+
+</div>
+</div>
+<a id="afb1c97886b5a327dc888caf9ba902db8" name="afb1c97886b5a327dc888caf9ba902db8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afb1c97886b5a327dc888caf9ba902db8">&#9670;&#160;</a></span>Bc_vec</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;std::vector&lt;Mat&gt; &gt; MasterEq::Bc_vec</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Imaginary parts of control matrices for each oscillator. </p>
+
+</div>
+</div>
+<a id="a2afd1529a3b1793aa87ad1c008ef212a" name="a2afd1529a3b1793aa87ad1c008ef212a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2afd1529a3b1793aa87ad1c008ef212a">&#9670;&#160;</a></span>Bd</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Mat MasterEq::Bd</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Real and imaginary parts of constant system matrix. </p>
+
+</div>
+</div>
+<a id="a6c486486fc1feb02cbc77bd44ca3202a" name="a6c486486fc1feb02cbc77bd44ca3202a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6c486486fc1feb02cbc77bd44ca3202a">&#9670;&#160;</a></span>Bd_vec</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;Mat&gt; MasterEq::Bd_vec</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Imaginary parts of dipole-dipole coupling matrices in drift Hamiltonian. </p>
+
+</div>
+</div>
+<a id="a3d518b166eba640dc61c708ba2ea9e2d" name="a3d518b166eba640dc61c708ba2ea9e2d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3d518b166eba640dc61c708ba2ea9e2d">&#9670;&#160;</a></span>cols</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">PetscInt* MasterEq::cols</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Column indices for evaluating dRHS/dp. </p>
+
+</div>
+</div>
+<a id="a3d861dd8d9ad6f4e9b04e0109d3ee128" name="a3d861dd8d9ad6f4e9b04e0109d3ee128"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3d861dd8d9ad6f4e9b04e0109d3ee128">&#9670;&#160;</a></span>crosskerr</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;double&gt; MasterEq::crosskerr</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Cross-Kerr coefficients (rad/time) \(\xi_{kl}\) for ZZ-coupling \(a_k^\dagger a_k a_l^\dagger a_l\). </p>
+
+</div>
+</div>
+<a id="a346265de8ee28b5420cf0fe4b0c180ed" name="a346265de8ee28b5420cf0fe4b0c180ed"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a346265de8ee28b5420cf0fe4b0c180ed">&#9670;&#160;</a></span>dim</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int MasterEq::dim</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger. </p>
+
+</div>
+</div>
+<a id="a5dfe8c17afb1a56643f98e59539949fd" name="a5dfe8c17afb1a56643f98e59539949fd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5dfe8c17afb1a56643f98e59539949fd">&#9670;&#160;</a></span>dim_ess</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int MasterEq::dim_ess</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Dimension of essential level system = N_e. </p>
+
+</div>
+</div>
+<a id="a7112f8144791299af573cf9479a370c8" name="a7112f8144791299af573cf9479a370c8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7112f8144791299af573cf9479a370c8">&#9670;&#160;</a></span>dim_rho</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int MasterEq::dim_rho</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Dimension of Hilbert space = N. </p>
+
+</div>
+</div>
+<a id="aafbc713ebc3d42731dc44d727db530d8" name="aafbc713ebc3d42731dc44d727db530d8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aafbc713ebc3d42731dc44d727db530d8">&#9670;&#160;</a></span>dImdp</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double* MasterEq::dImdp</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Derivative of imaginary part with respect to parameters. </p>
+
+</div>
+</div>
+<a id="a3117c4885b24a0d9d88fff234c5593e8" name="a3117c4885b24a0d9d88fff234c5593e8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3117c4885b24a0d9d88fff234c5593e8">&#9670;&#160;</a></span>dRedp</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double* MasterEq::dRedp</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Derivative of real part with respect to parameters. </p>
+
+</div>
+</div>
+<a id="a7f69aef84b13fada56ebb31adf9fa7fd" name="a7f69aef84b13fada56ebb31adf9fa7fd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7f69aef84b13fada56ebb31adf9fa7fd">&#9670;&#160;</a></span>eta</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;double&gt; MasterEq::eta</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Frequency differences in rotating frame (rad/time) for dipole-dipole coupling. </p>
+
+</div>
+</div>
+<a id="a68172dcac6206bd43927af847b87b822" name="a68172dcac6206bd43927af847b87b822"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a68172dcac6206bd43927af847b87b822">&#9670;&#160;</a></span>hamiltonian_file</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string MasterEq::hamiltonian_file</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Filename for Hamiltonian data ('none' if not used) </p>
+
+</div>
+</div>
+<a id="a44fad9cad554191a82455cf84d1fdd1f" name="a44fad9cad554191a82455cf84d1fdd1f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a44fad9cad554191a82455cf84d1fdd1f">&#9670;&#160;</a></span>isu</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">IS MasterEq::isu</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a53b5dbe948eb0eb8570e4555d7ebedaa" name="a53b5dbe948eb0eb8570e4555d7ebedaa"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a53b5dbe948eb0eb8570e4555d7ebedaa">&#9670;&#160;</a></span>isv</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">IS MasterEq::isv</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Vector strides for accessing real and imaginary parts u=Re(x), v=Im(x) </p>
+
+</div>
+</div>
+<a id="ac53a2013f8ebe3b279be5b04b2bba34e" name="ac53a2013f8ebe3b279be5b04b2bba34e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac53a2013f8ebe3b279be5b04b2bba34e">&#9670;&#160;</a></span>Jkl</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;double&gt; MasterEq::Jkl</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Dipole-dipole coupling coefficients (rad/time), multiplies \(a_k^\dagger a_l + a_k a_l^\dagger\). </p>
+
+</div>
+</div>
+<a id="ac8fd54198c43d043c544e72417e30dba" name="ac8fd54198c43d043c544e72417e30dba"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac8fd54198c43d043c544e72417e30dba">&#9670;&#160;</a></span>lindbladtype</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> MasterEq::lindbladtype</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Type of Lindblad operators to include (NONE means Schroedinger equation) </p>
+
+</div>
+</div>
+<a id="a1a7dfad49bfeafe1ebbaa4a23a4eae29" name="a1a7dfad49bfeafe1ebbaa4a23a4eae29"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1a7dfad49bfeafe1ebbaa4a23a4eae29">&#9670;&#160;</a></span>mpirank_petsc</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int MasterEq::mpirank_petsc</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Rank of PETSc's communicator. </p>
+
+</div>
+</div>
+<a id="ac7b7aa48c2cce32d27d0055e0a8d5990" name="ac7b7aa48c2cce32d27d0055e0a8d5990"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac7b7aa48c2cce32d27d0055e0a8d5990">&#9670;&#160;</a></span>mpirank_world</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int MasterEq::mpirank_world</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Rank of global MPI communicator. </p>
+
+</div>
+</div>
+<a id="a609bd3adeeaf8f9a53e7bdc59cd25be8" name="a609bd3adeeaf8f9a53e7bdc59cd25be8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a609bd3adeeaf8f9a53e7bdc59cd25be8">&#9670;&#160;</a></span>nessential</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;int&gt; MasterEq::nessential</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Number of essential levels per oscillator. </p>
+
+</div>
+</div>
+<a id="a6cadd8dbe3e40e6ea087b6926de72c1f" name="a6cadd8dbe3e40e6ea087b6926de72c1f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6cadd8dbe3e40e6ea087b6926de72c1f">&#9670;&#160;</a></span>nlevels</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;int&gt; MasterEq::nlevels</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Number of levels per oscillator. </p>
+
+</div>
+</div>
+<a id="aaafcd9e3d4a617bbb86d004b44f7ad3d" name="aaafcd9e3d4a617bbb86d004b44f7ad3d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaafcd9e3d4a617bbb86d004b44f7ad3d">&#9670;&#160;</a></span>noscillators</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int MasterEq::noscillators</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Number of oscillators in the system. </p>
+
+</div>
+</div>
+<a id="a1ee5ff4c7f62f433e539c0d790ac39d6" name="a1ee5ff4c7f62f433e539c0d790ac39d6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1ee5ff4c7f62f433e539c0d790ac39d6">&#9670;&#160;</a></span>nparams_max</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int MasterEq::nparams_max</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Maximum number of design parameters per oscillator. </p>
+
+</div>
+</div>
+<a id="a6c35b6e30807ba37c4742a05af80f9ef" name="a6c35b6e30807ba37c4742a05af80f9ef"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6c35b6e30807ba37c4742a05af80f9ef">&#9670;&#160;</a></span>oscil_vec</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classOscillator.html">Oscillator</a>** MasterEq::oscil_vec</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Array of pointers to oscillator objects. </p>
+
+</div>
+</div>
+<a id="a3493e8372960cd42ba4ceab89fe68bb9" name="a3493e8372960cd42ba4ceab89fe68bb9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3493e8372960cd42ba4ceab89fe68bb9">&#9670;&#160;</a></span>quietmode</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool MasterEq::quietmode</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag for quiet mode operation. </p>
+
+</div>
+</div>
+<a id="ab200ca6b9a16be33b8ee7313c41f20d2" name="ab200ca6b9a16be33b8ee7313c41f20d2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab200ca6b9a16be33b8ee7313c41f20d2">&#9670;&#160;</a></span>RHS</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Mat MasterEq::RHS</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Real-valued, vectorized system matrix (2N^2 x 2N^2) </p>
+
+</div>
+</div>
+<a id="a6a3bb1ab8dd49c64f51c90dd5b080f62" name="a6a3bb1ab8dd49c64f51c90dd5b080f62"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6a3bb1ab8dd49c64f51c90dd5b080f62">&#9670;&#160;</a></span>RHSctx</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structMatShellCtx.html">MatShellCtx</a> MasterEq::RHSctx</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>MatShell context containing data for RHS operations. </p>
+
+</div>
+</div>
+<a id="ae881b4c040b27af6bb119b97e8757688" name="ae881b4c040b27af6bb119b97e8757688"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae881b4c040b27af6bb119b97e8757688">&#9670;&#160;</a></span>transfer_Hc_im</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;std::vector&lt;<a class="el" href="classTransferFunction.html">TransferFunction</a>*&gt; &gt; MasterEq::transfer_Hc_im</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Imaginary transfer functions for control terms per oscillator. </p>
+
+</div>
+</div>
+<a id="a30f051e65c04523f63db05f357d2f29f" name="a30f051e65c04523f63db05f357d2f29f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a30f051e65c04523f63db05f357d2f29f">&#9670;&#160;</a></span>transfer_Hc_re</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;std::vector&lt;<a class="el" href="classTransferFunction.html">TransferFunction</a>*&gt; &gt; MasterEq::transfer_Hc_re</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Real transfer functions for control terms per oscillator. </p>
+
+</div>
+</div>
+<a id="ad0644cc00ef5b0616947d733a59c4a01" name="ad0644cc00ef5b0616947d733a59c4a01"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad0644cc00ef5b0616947d733a59c4a01">&#9670;&#160;</a></span>transfer_Hdt_im</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;<a class="el" href="classTransferFunction.html">TransferFunction</a>*&gt; MasterEq::transfer_Hdt_im</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Imaginary transfer functions for time-varying system Hamiltonian. </p>
+
+</div>
+</div>
+<a id="ac268a9ef050250e6b0005f61f284b274" name="ac268a9ef050250e6b0005f61f284b274"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac268a9ef050250e6b0005f61f284b274">&#9670;&#160;</a></span>transfer_Hdt_re</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;<a class="el" href="classTransferFunction.html">TransferFunction</a>*&gt; MasterEq::transfer_Hdt_re</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Real transfer functions for time-varying system Hamiltonian. </p>
+
+</div>
+</div>
+<a id="a2d735524c2b5b205adb1898606b65a19" name="a2d735524c2b5b205adb1898606b65a19"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2d735524c2b5b205adb1898606b65a19">&#9670;&#160;</a></span>usematfree</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool MasterEq::usematfree</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Flag for using matrix-free solver. </p>
+
+</div>
+</div>
+<a id="a6e00f02e3b6cfab7fb90cb70de265aff" name="a6e00f02e3b6cfab7fb90cb70de265aff"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6e00f02e3b6cfab7fb90cb70de265aff">&#9670;&#160;</a></span>vals</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">PetscScalar* MasterEq::vals</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Matrix values for evaluating dRHS/dp. </p>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>/home/runner/work/quandary/quandary/include/<a class="el" href="mastereq_8hpp_source.html">mastereq.hpp</a></li>
-<li>/home/runner/work/quandary/quandary/src/<b>mastereq.cpp</b></li>
+<li>/home/runner/work/quandary/quandary/src/<a class="el" href="mastereq_8cpp.html">mastereq.cpp</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

@@ -1,10 +1,5 @@
 var searchData=
 [
-  ['readfile_0',['ReadFile',['../classMapParam.html#aea852dc966ce49faad4c06e94fedf20f',1,'MapParam']]],
-  ['receivehc_1',['receiveHc',['../classPythonInterface.html#ae4e912ff11761dedbe38c5fa40a1d449',1,'PythonInterface']]],
-  ['receivehsys_2',['receiveHsys',['../classPythonInterface.html#a7b106c6430e2ed6d452d5978e630b41e',1,'PythonInterface']]],
-  ['redgrad_3',['redgrad',['../classTimeStepper.html#a117e801337dbe849388f274d4dec83d0',1,'TimeStepper']]],
-  ['rhs_4',['RHS',['../classMasterEq.html#ab200ca6b9a16be33b8ee7313c41f20d2',1,'MasterEq']]],
-  ['rhsctx_5',['RHSctx',['../classMasterEq.html#a6a3bb1ab8dd49c64f51c90dd5b080f62',1,'MasterEq']]],
-  ['rotb_6',['rotB',['../classGate.html#a70d61c7ab3e509518a6c6d43a09d2690',1,'Gate']]]
+  ['qft_0',['qft',['../classQFT.html',1,'QFT'],['../classQFT.html#a2dace7047611251816207ccf14c5d708',1,'QFT::QFT()']]],
+  ['quietmode_1',['quietmode',['../classGate.html#a00a2add81f121424e235213af74166e2',1,'Gate::quietmode'],['../classMasterEq.html#a3493e8372960cd42ba4ceab89fe68bb9',1,'MasterEq::quietmode'],['../classPythonInterface.html#a65d59a8141db076a3f98e8a4748512ca',1,'PythonInterface::quietmode']]]
 ];

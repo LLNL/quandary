@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -75,18 +82,18 @@ $(function() {
 
 <p>This is the complete list of members for <a class="el" href="classConstantTransferFunction.html">ConstantTransferFunction</a>, including all inherited members.</p>
 <table class="directory">
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>ConstantTransferFunction</b>() (defined in <a class="el" href="classConstantTransferFunction.html">ConstantTransferFunction</a>)</td><td class="entry"><a class="el" href="classConstantTransferFunction.html">ConstantTransferFunction</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classConstantTransferFunction.html#a7f07fca3db91fa8831a3f0b7572edfa7">ConstantTransferFunction</a>()</td><td class="entry"><a class="el" href="classConstantTransferFunction.html">ConstantTransferFunction</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classConstantTransferFunction.html#a11ecb9db87bdaa55f0b792cde52b6aef">ConstantTransferFunction</a>(double constant_)</td><td class="entry"><a class="el" href="classConstantTransferFunction.html">ConstantTransferFunction</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classConstantTransferFunction.html#a8fadc30571546bb609550364990f32f5">ConstantTransferFunction</a>(double constant_, std::vector&lt; double &gt; onofftimes)</td><td class="entry"><a class="el" href="classConstantTransferFunction.html">ConstantTransferFunction</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classConstantTransferFunction.html#a94880fd8ca87f99f411e714c9969fbc7">der</a>(double, double)</td><td class="entry"><a class="el" href="classConstantTransferFunction.html">ConstantTransferFunction</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">virtual</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="classConstantTransferFunction.html#a0ae766a84bc52cc55b0eb45b43cc92d9">eval</a>(double, double time)</td><td class="entry"><a class="el" href="classConstantTransferFunction.html">ConstantTransferFunction</a></td><td class="entry"><span class="mlabel">inline</span><span class="mlabel">virtual</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classTransferFunction.html#a27609de78bbed84187777c994d913b90">isOn</a>(double p, double time)</td><td class="entry"><a class="el" href="classTransferFunction.html">TransferFunction</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>onofftimes</b> (defined in <a class="el" href="classTransferFunction.html">TransferFunction</a>)</td><td class="entry"><a class="el" href="classTransferFunction.html">TransferFunction</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classTransferFunction.html#ad16b61403cb60c4bcba8ab9e9a98b9f0">onofftimes</a></td><td class="entry"><a class="el" href="classTransferFunction.html">TransferFunction</a></td><td class="entry"><span class="mlabel">protected</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classTransferFunction.html#ad9c4e0e4c6abe25b894c11aa99f03918">storeOnOffTimes</a>(std::vector&lt; double &gt; onofftimes_)</td><td class="entry"><a class="el" href="classTransferFunction.html">TransferFunction</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>TransferFunction</b>() (defined in <a class="el" href="classTransferFunction.html">TransferFunction</a>)</td><td class="entry"><a class="el" href="classTransferFunction.html">TransferFunction</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classTransferFunction.html#ad795956a382e996bd71502fa82628270">TransferFunction</a>()</td><td class="entry"><a class="el" href="classTransferFunction.html">TransferFunction</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="classTransferFunction.html#a7abbdb817ceb4422d5474ac799571361">TransferFunction</a>(std::vector&lt; double &gt; onofftimes)</td><td class="entry"><a class="el" href="classTransferFunction.html">TransferFunction</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>~ConstantTransferFunction</b>() (defined in <a class="el" href="classConstantTransferFunction.html">ConstantTransferFunction</a>)</td><td class="entry"><a class="el" href="classConstantTransferFunction.html">ConstantTransferFunction</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>~TransferFunction</b>() (defined in <a class="el" href="classTransferFunction.html">TransferFunction</a>)</td><td class="entry"><a class="el" href="classTransferFunction.html">TransferFunction</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="classConstantTransferFunction.html#a196c3f0f8da86852a09115d84923600e">~ConstantTransferFunction</a>()</td><td class="entry"><a class="el" href="classConstantTransferFunction.html">ConstantTransferFunction</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="classTransferFunction.html#aba60b46f243b3b0c8e9ccdeb391cba27">~TransferFunction</a>()</td><td class="entry"><a class="el" href="classTransferFunction.html">TransferFunction</a></td><td class="entry"><span class="mlabel">virtual</span></td></tr>
 </table></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

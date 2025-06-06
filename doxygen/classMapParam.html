@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -104,9 +111,13 @@ Collaboration diagram for MapParam:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:aa8cbf4454ad8653a25668fb03f6e2d64" id="r_aa8cbf4454ad8653a25668fb03f6e2d64"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMapParam.html#aa8cbf4454ad8653a25668fb03f6e2d64">MapParam</a> ()</td></tr>
+<tr class="separator:aa8cbf4454ad8653a25668fb03f6e2d64"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac8b46f44fd1127a1a2ed07dc65ede5ad" id="r_ac8b46f44fd1127a1a2ed07dc65ede5ad"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMapParam.html#ac8b46f44fd1127a1a2ed07dc65ede5ad">MapParam</a> (MPI_Comm comm_, std::stringstream &amp;logstream, bool quietmode=false)</td></tr>
 <tr class="memdesc:ac8b46f44fd1127a1a2ed07dc65ede5ad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with MPI communicator and logging.  <br /></td></tr>
 <tr class="separator:ac8b46f44fd1127a1a2ed07dc65ede5ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac9f534bceed7ba48c49afd7b7ad26215" id="r_ac9f534bceed7ba48c49afd7b7ad26215"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMapParam.html#ac9f534bceed7ba48c49afd7b7ad26215">~MapParam</a> ()</td></tr>
+<tr class="separator:ac9f534bceed7ba48c49afd7b7ad26215"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aea852dc966ce49faad4c06e94fedf20f" id="r_aea852dc966ce49faad4c06e94fedf20f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMapParam.html#aea852dc966ce49faad4c06e94fedf20f">ReadFile</a> (std::string filename)</td></tr>
 <tr class="memdesc:aea852dc966ce49faad4c06e94fedf20f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parses a configuration file and stores key-value pairs in the map.  <br /></td></tr>
 <tr class="separator:aea852dc966ce49faad4c06e94fedf20f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -137,17 +148,33 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a1b95c08527db60bba2a3be0f0cc0d42e" id="r_a1b95c08527db60bba2a3be0f0cc0d42e"><td class="memItemLeft" align="right" valign="top"><a id="a1b95c08527db60bba2a3be0f0cc0d42e" name="a1b95c08527db60bba2a3be0f0cc0d42e"></a>
-std::stringstream *&#160;</td><td class="memItemRight" valign="bottom"><b>log</b></td></tr>
-<tr class="memdesc:a1b95c08527db60bba2a3be0f0cc0d42e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to log stream for output messages. <br /></td></tr>
+<tr class="memitem:a1b95c08527db60bba2a3be0f0cc0d42e" id="r_a1b95c08527db60bba2a3be0f0cc0d42e"><td class="memItemLeft" align="right" valign="top">std::stringstream *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMapParam.html#a1b95c08527db60bba2a3be0f0cc0d42e">log</a></td></tr>
+<tr class="memdesc:a1b95c08527db60bba2a3be0f0cc0d42e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to log stream for output messages.  <br /></td></tr>
 <tr class="separator:a1b95c08527db60bba2a3be0f0cc0d42e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Configuration parameter management class. </p>
 <p>The <code><a class="el" href="classMapParam.html" title="Configuration parameter management class.">MapParam</a></code> class extends std::map to provide functionality for reading configuration files and retrieving parameters with type conversion and default values. It supports MPI communication and logging capabilities. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="aa8cbf4454ad8653a25668fb03f6e2d64" name="aa8cbf4454ad8653a25668fb03f6e2d64"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa8cbf4454ad8653a25668fb03f6e2d64">&#9670;&#160;</a></span>MapParam() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">MapParam::MapParam </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="ac8b46f44fd1127a1a2ed07dc65ede5ad" name="ac8b46f44fd1127a1a2ed07dc65ede5ad"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac8b46f44fd1127a1a2ed07dc65ede5ad">&#9670;&#160;</a></span>MapParam()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ac8b46f44fd1127a1a2ed07dc65ede5ad">&#9670;&#160;</a></span>MapParam() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -187,6 +214,23 @@ std::stringstream *&#160;</td><td class="memItemRight" valign="bottom"><b>log</b
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="ac9f534bceed7ba48c49afd7b7ad26215" name="ac9f534bceed7ba48c49afd7b7ad26215"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac9f534bceed7ba48c49afd7b7ad26215">&#9670;&#160;</a></span>~MapParam()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">MapParam::~MapParam </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -598,9 +642,26 @@ std::stringstream *&#160;</td><td class="memItemRight" valign="bottom"><b>log</b
 
 </div>
 </div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="a1b95c08527db60bba2a3be0f0cc0d42e" name="a1b95c08527db60bba2a3be0f0cc0d42e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1b95c08527db60bba2a3be0f0cc0d42e">&#9670;&#160;</a></span>log</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::stringstream* MapParam::log</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Pointer to log stream for output messages. </p>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>/home/runner/work/quandary/quandary/include/<a class="el" href="config_8hpp_source.html">config.hpp</a></li>
-<li>/home/runner/work/quandary/quandary/src/<b>config.cpp</b></li>
+<li>/home/runner/work/quandary/quandary/src/<a class="el" href="config_8cpp.html">config.cpp</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

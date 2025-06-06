@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -81,11 +88,11 @@ $(document).ready(function() { init_codefold(0); });
   <div class="headertitle"><div class="title">output.hpp</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="preprocessor">#include &lt;sys/stat.h&gt;</span> </div>
+<a href="output_8hpp.html">Go to the documentation of this file.</a><div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="preprocessor">#include &lt;sys/stat.h&gt;</span> </div>
 <div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span><span class="preprocessor">#include &lt;petscmat.h&gt;</span></div>
 <div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="preprocessor">#include &lt;iostream&gt;</span> </div>
-<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#include &quot;config.hpp&quot;</span></div>
-<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#include &quot;mastereq.hpp&quot;</span></div>
+<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#include &quot;<a class="code" href="config_8hpp.html">config.hpp</a>&quot;</span></div>
+<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#include &quot;<a class="code" href="mastereq_8hpp.html">mastereq.hpp</a>&quot;</span></div>
 <div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="preprocessor">#pragma once</span></div>
 <div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span> </div>
 <div class="foldopen" id="foldopen00015" data-start="{" data-end="};">
@@ -118,11 +125,11 @@ $(document).ready(function() { init_codefold(0); });
 <div class="line"><a id="l00041" name="l00041"></a><span class="lineno"><a class="line" href="classOutput.html#a4700eb37d9698537e4be0ac6aacd4083">   41</a></span>    <span class="keywordtype">int</span> <a class="code hl_variable" href="classOutput.html#a4700eb37d9698537e4be0ac6aacd4083">optim_monitor_freq</a>; </div>
 <div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span> </div>
 <div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>  <span class="keyword">public</span>:</div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>    <a class="code hl_class" href="classOutput.html">Output</a>();</div>
+<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span>    <a class="code hl_function" href="classOutput.html#a428c663520336477a12f1a33504eb067">Output</a>();</div>
 <div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span> </div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>    <a class="code hl_class" href="classOutput.html">Output</a>(<a class="code hl_class" href="classMapParam.html">MapParam</a>&amp; config, MPI_Comm comm_petsc, MPI_Comm comm_init, <span class="keywordtype">int</span> noscillators, <span class="keywordtype">bool</span> quietmode=<span class="keyword">false</span>);</div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>    <a class="code hl_function" href="classOutput.html#a428c663520336477a12f1a33504eb067">Output</a>(<a class="code hl_class" href="classMapParam.html">MapParam</a>&amp; config, MPI_Comm comm_petsc, MPI_Comm comm_init, <span class="keywordtype">int</span> noscillators, <span class="keywordtype">bool</span> quietmode=<span class="keyword">false</span>);</div>
 <div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span> </div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>    <a class="code hl_class" href="classOutput.html">~Output</a>();</div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>    <a class="code hl_function" href="classOutput.html#a61d0840daf98bea49e4dc471f235eeab">~Output</a>();</div>
 <div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span> </div>
 <div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>    <span class="keywordtype">void</span> <a class="code hl_function" href="classOutput.html#aae1a97757ebb839dd3bb0e2dc33159bf">writeOptimFile</a>(<span class="keywordtype">int</span> optim_iter, <span class="keywordtype">double</span> objective, <span class="keywordtype">double</span> gnorm, <span class="keywordtype">double</span> stepsize, <span class="keywordtype">double</span> Favg, <span class="keywordtype">double</span> cost, <span class="keywordtype">double</span> tikh_regul,  <span class="keywordtype">double</span> penalty, <span class="keywordtype">double</span> penalty_dpdm, <span class="keywordtype">double</span> penalty_energy, <span class="keywordtype">double</span> penalty_variation);</div>
 <div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span> </div>
@@ -142,13 +149,17 @@ $(document).ready(function() { init_codefold(0); });
 <div class="ttc" id="aclassMasterEq_html"><div class="ttname"><a href="classMasterEq.html">MasterEq</a></div><div class="ttdoc">Implementation of the Lindblad master equation solver.</div><div class="ttdef"><b>Definition</b> mastereq.hpp:69</div></div>
 <div class="ttc" id="aclassOutput_html"><div class="ttname"><a href="classOutput.html">Output</a></div><div class="ttdoc">Output management for quantum control simulations and optimization.</div><div class="ttdef"><b>Definition</b> output.hpp:15</div></div>
 <div class="ttc" id="aclassOutput_html_a1e6e2376a24daecfea404ed6a156ca16"><div class="ttname"><a href="classOutput.html#a1e6e2376a24daecfea404ed6a156ca16">Output::writeGradient</a></div><div class="ttdeci">void writeGradient(Vec grad)</div><div class="ttdoc">Writes gradient vector for debugging adjoint calculations.</div><div class="ttdef"><b>Definition</b> output.cpp:80</div></div>
+<div class="ttc" id="aclassOutput_html_a428c663520336477a12f1a33504eb067"><div class="ttname"><a href="classOutput.html#a428c663520336477a12f1a33504eb067">Output::Output</a></div><div class="ttdeci">Output()</div><div class="ttdef"><b>Definition</b> output.cpp:3</div></div>
 <div class="ttc" id="aclassOutput_html_a4700eb37d9698537e4be0ac6aacd4083"><div class="ttname"><a href="classOutput.html#a4700eb37d9698537e4be0ac6aacd4083">Output::optim_monitor_freq</a></div><div class="ttdeci">int optim_monitor_freq</div><div class="ttdoc">Write output files every N optimization iterations.</div><div class="ttdef"><b>Definition</b> output.hpp:41</div></div>
 <div class="ttc" id="aclassOutput_html_a53ad70a63b5be91061dd26cd7aabed81"><div class="ttname"><a href="classOutput.html#a53ad70a63b5be91061dd26cd7aabed81">Output::openDataFiles</a></div><div class="ttdeci">void openDataFiles(std::string prefix, int initid)</div><div class="ttdoc">Opens data files for time evolution output.</div><div class="ttdef"><b>Definition</b> output.cpp:151</div></div>
+<div class="ttc" id="aclassOutput_html_a61d0840daf98bea49e4dc471f235eeab"><div class="ttname"><a href="classOutput.html#a61d0840daf98bea49e4dc471f235eeab">Output::~Output</a></div><div class="ttdeci">~Output()</div><div class="ttdef"><b>Definition</b> output.cpp:65</div></div>
 <div class="ttc" id="aclassOutput_html_aa35bfecd4c9d48d2a36d7de958e9bcc9"><div class="ttname"><a href="classOutput.html#aa35bfecd4c9d48d2a36d7de958e9bcc9">Output::datadir</a></div><div class="ttdeci">std::string datadir</div><div class="ttdoc">Directory path for output data files.</div><div class="ttdef"><b>Definition</b> output.hpp:40</div></div>
 <div class="ttc" id="aclassOutput_html_aae1a97757ebb839dd3bb0e2dc33159bf"><div class="ttname"><a href="classOutput.html#aae1a97757ebb839dd3bb0e2dc33159bf">Output::writeOptimFile</a></div><div class="ttdeci">void writeOptimFile(int optim_iter, double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul, double penalty, double penalty_dpdm, double penalty_energy, double penalty_variation)</div><div class="ttdoc">Writes optimization progress to history file.</div><div class="ttdef"><b>Definition</b> output.cpp:71</div></div>
 <div class="ttc" id="aclassOutput_html_ac69f84e7237c74f581e6e919b1180656"><div class="ttname"><a href="classOutput.html#ac69f84e7237c74f581e6e919b1180656">Output::writeDataFiles</a></div><div class="ttdeci">void writeDataFiles(int timestep, double time, const Vec state, MasterEq *mastereq)</div><div class="ttdoc">Writes time evolution data to files.</div><div class="ttdef"><b>Definition</b> output.cpp:199</div></div>
 <div class="ttc" id="aclassOutput_html_ad07c7174bdceca917bdfc858ab2a0f5f"><div class="ttname"><a href="classOutput.html#ad07c7174bdceca917bdfc858ab2a0f5f">Output::closeDataFiles</a></div><div class="ttdeci">void closeDataFiles()</div><div class="ttdoc">Closes all open data files.</div><div class="ttdef"><b>Definition</b> output.cpp:272</div></div>
 <div class="ttc" id="aclassOutput_html_adb389d2f0d8788d8821441cfaf3ce42d"><div class="ttname"><a href="classOutput.html#adb389d2f0d8788d8821441cfaf3ce42d">Output::writeControls</a></div><div class="ttdeci">void writeControls(Vec params, MasterEq *mastereq, int ntime, double dt)</div><div class="ttdoc">Writes current control pulses and parameters.</div><div class="ttdef"><b>Definition</b> output.cpp:103</div></div>
+<div class="ttc" id="aconfig_8hpp_html"><div class="ttname"><a href="config_8hpp.html">config.hpp</a></div></div>
+<div class="ttc" id="amastereq_8hpp_html"><div class="ttname"><a href="mastereq_8hpp.html">mastereq.hpp</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

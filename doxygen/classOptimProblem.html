@@ -12,6 +12,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 </head>
 <body>
@@ -111,6 +118,8 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ae58ed36a5876353a619849533eaec461" id="r_ae58ed36a5876353a619849533eaec461"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ae58ed36a5876353a619849533eaec461">OptimProblem</a> (<a class="el" href="classMapParam.html">MapParam</a> config, <a class="el" href="classTimeStepper.html">TimeStepper</a> *timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, <a class="el" href="classOutput.html">Output</a> *output_, bool quietmode=false)</td></tr>
 <tr class="memdesc:ae58ed36a5876353a619849533eaec461"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for optimization problem.  <br /></td></tr>
 <tr class="separator:ae58ed36a5876353a619849533eaec461"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1faf876ea1193b35fd753e6671f4c024" id="r_a1faf876ea1193b35fd753e6671f4c024"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a1faf876ea1193b35fd753e6671f4c024">~OptimProblem</a> ()</td></tr>
+<tr class="separator:a1faf876ea1193b35fd753e6671f4c024"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8952c51225c4fd2d0a8bac5b09546ab3" id="r_a8952c51225c4fd2d0a8bac5b09546ab3"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a8952c51225c4fd2d0a8bac5b09546ab3">getNdesign</a> ()</td></tr>
 <tr class="memdesc:a8952c51225c4fd2d0a8bac5b09546ab3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the number of design variables.  <br /></td></tr>
 <tr class="separator:a8952c51225c4fd2d0a8bac5b09546ab3"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -171,28 +180,22 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a97d2aa961e34a18a435698b789f35d24" id="r_a97d2aa961e34a18a435698b789f35d24"><td class="memItemLeft" align="right" valign="top"><a id="a97d2aa961e34a18a435698b789f35d24" name="a97d2aa961e34a18a435698b789f35d24"></a>
-<a class="el" href="classOutput.html">Output</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>output</b></td></tr>
-<tr class="memdesc:a97d2aa961e34a18a435698b789f35d24"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to output handler. <br /></td></tr>
+<tr class="memitem:a97d2aa961e34a18a435698b789f35d24" id="r_a97d2aa961e34a18a435698b789f35d24"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classOutput.html">Output</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a97d2aa961e34a18a435698b789f35d24">output</a></td></tr>
+<tr class="memdesc:a97d2aa961e34a18a435698b789f35d24"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to output handler.  <br /></td></tr>
 <tr class="separator:a97d2aa961e34a18a435698b789f35d24"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aadd1fcb24bb7d743311ea2c683e024ec" id="r_aadd1fcb24bb7d743311ea2c683e024ec"><td class="memItemLeft" align="right" valign="top"><a id="aadd1fcb24bb7d743311ea2c683e024ec" name="aadd1fcb24bb7d743311ea2c683e024ec"></a>
-<a class="el" href="classTimeStepper.html">TimeStepper</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>timestepper</b></td></tr>
-<tr class="memdesc:aadd1fcb24bb7d743311ea2c683e024ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to time-stepping scheme. <br /></td></tr>
+<tr class="memitem:aadd1fcb24bb7d743311ea2c683e024ec" id="r_aadd1fcb24bb7d743311ea2c683e024ec"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classTimeStepper.html">TimeStepper</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#aadd1fcb24bb7d743311ea2c683e024ec">timestepper</a></td></tr>
+<tr class="memdesc:aadd1fcb24bb7d743311ea2c683e024ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to time-stepping scheme.  <br /></td></tr>
 <tr class="separator:aadd1fcb24bb7d743311ea2c683e024ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad230b6ccf70849573b17e53156cba6b3" id="r_ad230b6ccf70849573b17e53156cba6b3"><td class="memItemLeft" align="right" valign="top"><a id="ad230b6ccf70849573b17e53156cba6b3" name="ad230b6ccf70849573b17e53156cba6b3"></a>
-Vec&#160;</td><td class="memItemRight" valign="bottom"><b>xlower</b></td></tr>
+<tr class="memitem:ad230b6ccf70849573b17e53156cba6b3" id="r_ad230b6ccf70849573b17e53156cba6b3"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ad230b6ccf70849573b17e53156cba6b3">xlower</a></td></tr>
 <tr class="separator:ad230b6ccf70849573b17e53156cba6b3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aed5a62f40ad17eb20d619956ec1df9fa" id="r_aed5a62f40ad17eb20d619956ec1df9fa"><td class="memItemLeft" align="right" valign="top"><a id="aed5a62f40ad17eb20d619956ec1df9fa" name="aed5a62f40ad17eb20d619956ec1df9fa"></a>
-Vec&#160;</td><td class="memItemRight" valign="bottom"><b>xupper</b></td></tr>
-<tr class="memdesc:aed5a62f40ad17eb20d619956ec1df9fa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lower and upper bounds for optimization variables. <br /></td></tr>
+<tr class="memitem:aed5a62f40ad17eb20d619956ec1df9fa" id="r_aed5a62f40ad17eb20d619956ec1df9fa"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#aed5a62f40ad17eb20d619956ec1df9fa">xupper</a></td></tr>
+<tr class="memdesc:aed5a62f40ad17eb20d619956ec1df9fa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lower and upper bounds for optimization variables.  <br /></td></tr>
 <tr class="separator:aed5a62f40ad17eb20d619956ec1df9fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a04dbacf827dfce52c408e7b3bd64a1f0" id="r_a04dbacf827dfce52c408e7b3bd64a1f0"><td class="memItemLeft" align="right" valign="top"><a id="a04dbacf827dfce52c408e7b3bd64a1f0" name="a04dbacf827dfce52c408e7b3bd64a1f0"></a>
-Vec&#160;</td><td class="memItemRight" valign="bottom"><b>xprev</b></td></tr>
-<tr class="memdesc:a04dbacf827dfce52c408e7b3bd64a1f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Design vector at previous iteration. <br /></td></tr>
+<tr class="memitem:a04dbacf827dfce52c408e7b3bd64a1f0" id="r_a04dbacf827dfce52c408e7b3bd64a1f0"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a04dbacf827dfce52c408e7b3bd64a1f0">xprev</a></td></tr>
+<tr class="memdesc:a04dbacf827dfce52c408e7b3bd64a1f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Design vector at previous iteration.  <br /></td></tr>
 <tr class="separator:a04dbacf827dfce52c408e7b3bd64a1f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2639f136408f418dd5721eec4b8dd2b9" id="r_a2639f136408f418dd5721eec4b8dd2b9"><td class="memItemLeft" align="right" valign="top"><a id="a2639f136408f418dd5721eec4b8dd2b9" name="a2639f136408f418dd5721eec4b8dd2b9"></a>
-Vec&#160;</td><td class="memItemRight" valign="bottom"><b>xinit</b></td></tr>
-<tr class="memdesc:a2639f136408f418dd5721eec4b8dd2b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initial design vector. <br /></td></tr>
+<tr class="memitem:a2639f136408f418dd5721eec4b8dd2b9" id="r_a2639f136408f418dd5721eec4b8dd2b9"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a2639f136408f418dd5721eec4b8dd2b9">xinit</a></td></tr>
+<tr class="memdesc:a2639f136408f418dd5721eec4b8dd2b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initial design vector.  <br /></td></tr>
 <tr class="separator:a2639f136408f418dd5721eec4b8dd2b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
@@ -268,6 +271,23 @@ Vec&#160;</td><td class="memItemRight" valign="bottom"><b>xinit</b></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="a1faf876ea1193b35fd753e6671f4c024" name="a1faf876ea1193b35fd753e6671f4c024"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1faf876ea1193b35fd753e6671f4c024">&#9670;&#160;</a></span>~OptimProblem()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">OptimProblem::~OptimProblem </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -807,9 +827,104 @@ Vec&#160;</td><td class="memItemRight" valign="bottom"><b>xinit</b></td></tr>
 
 </div>
 </div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="a97d2aa961e34a18a435698b789f35d24" name="a97d2aa961e34a18a435698b789f35d24"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a97d2aa961e34a18a435698b789f35d24">&#9670;&#160;</a></span>output</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classOutput.html">Output</a>* OptimProblem::output</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Pointer to output handler. </p>
+
+</div>
+</div>
+<a id="aadd1fcb24bb7d743311ea2c683e024ec" name="aadd1fcb24bb7d743311ea2c683e024ec"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aadd1fcb24bb7d743311ea2c683e024ec">&#9670;&#160;</a></span>timestepper</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classTimeStepper.html">TimeStepper</a>* OptimProblem::timestepper</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Pointer to time-stepping scheme. </p>
+
+</div>
+</div>
+<a id="a2639f136408f418dd5721eec4b8dd2b9" name="a2639f136408f418dd5721eec4b8dd2b9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2639f136408f418dd5721eec4b8dd2b9">&#9670;&#160;</a></span>xinit</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec OptimProblem::xinit</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Initial design vector. </p>
+
+</div>
+</div>
+<a id="ad230b6ccf70849573b17e53156cba6b3" name="ad230b6ccf70849573b17e53156cba6b3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad230b6ccf70849573b17e53156cba6b3">&#9670;&#160;</a></span>xlower</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec OptimProblem::xlower</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a04dbacf827dfce52c408e7b3bd64a1f0" name="a04dbacf827dfce52c408e7b3bd64a1f0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a04dbacf827dfce52c408e7b3bd64a1f0">&#9670;&#160;</a></span>xprev</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec OptimProblem::xprev</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Design vector at previous iteration. </p>
+
+</div>
+</div>
+<a id="aed5a62f40ad17eb20d619956ec1df9fa" name="aed5a62f40ad17eb20d619956ec1df9fa"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aed5a62f40ad17eb20d619956ec1df9fa">&#9670;&#160;</a></span>xupper</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec OptimProblem::xupper</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Lower and upper bounds for optimization variables. </p>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>/home/runner/work/quandary/quandary/include/<a class="el" href="optimproblem_8hpp_source.html">optimproblem.hpp</a></li>
-<li>/home/runner/work/quandary/quandary/src/<b>optimproblem.cpp</b></li>
+<li>/home/runner/work/quandary/quandary/src/<a class="el" href="optimproblem_8cpp.html">optimproblem.cpp</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->
