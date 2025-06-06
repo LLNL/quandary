@@ -37,7 +37,7 @@ class Oscillator {
     int myid; ///< Integer identifier for this oscillator
     int nlevels; ///< Number of energy levels for this oscillator
     double ground_freq; ///< Fundamental transition frequency of this oscillator
-    double selfkerr; ///< Self-Kerr frequency xi_k, multiplies a_k^dagger a_k^dagger a_k a_k
+    double selfkerr; ///< Self-Kerr frequency \f$\xi_k\f$, multiplies \f$a_k^\dagger a_k^\dagger a_k a_k\f$
 
     double detuning_freq; ///< Detuning frequency (rad/time), detuning = ground_freq - rotational_freq
     LindbladType lindbladtype; ///< Type of Lindblad collapse operators to include

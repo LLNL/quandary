@@ -42,8 +42,8 @@ enum class InitialConditionType {
  * Defines the target quantum state or operation for optimization.
  */
 enum class TargetType {
-  GATE,      ///< Gate optimization: \rho_target = V\rho(0) V^\dagger
-  PURE,      ///< Pure state preparation: \rho_target = e_m e_m^\dagger for some integer m
+  GATE,      ///< Gate optimization: \f$\rho_{\text{target}} = V\rho(0) V^\dagger\f$
+  PURE,      ///< Pure state preparation: \f$\rho_{\text{target}} = e_m e_m^\dagger\f$ for some integer \f$m\f$
   FROMFILE   ///< Target read from file with vectorized density matrix format
 };
 
@@ -53,9 +53,9 @@ enum class TargetType {
  * Defines different metrics for measuring the quality of quantum control.
  */
 enum class ObjectiveType {
-  JFROBENIUS, ///< Weighted Frobenius norm: 1/2 * ||\rho_target - rho(T)||^2_F / w, where w = purity of \rho_target
-  JTRACE,     ///< Weighted Hilbert-Schmidt overlap: 1 - Tr(\rho_target^\dagger rho(T)) / w, where w = purity of \rho_target
-  JMEASURE    ///< Pure state measurement: Tr(O_m \rho(T)) for observable O_m
+  JFROBENIUS, ///< Weighted Frobenius norm: \f$\frac{1}{2} \frac{\|\rho_{\text{target}} - \rho(T)\|_F^2}{w}\f$, where \f$w\f$ = purity of \f$\rho_{\text{target}}\f$
+  JTRACE,     ///< Weighted Hilbert-Schmidt overlap: \f$1 - \frac{\text{Tr}(\rho_{\text{target}}^\dagger \rho(T))}{w}\f$, where \f$w\f$ = purity of \f$\rho_{\text{target}}\f$
+  JMEASURE    ///< Pure state measurement: \f$\text{Tr}(O_m \rho(T))\f$ for observable \f$O_m\f$
 };
 
 /**

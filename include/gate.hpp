@@ -12,8 +12,8 @@
  * @brief Base class for quantum gate operations.
  *
  * The Gate class provides the fundamental interface for quantum gate operations
- * in quantum optimal control. It handles the transformation V \rho V^\dagger where V is
- * the unitary gate matrix and \rho is the quantum state density matrix.
+ * in quantum optimal control. It handles the transformation \f$V \rho V^\dagger\f$ where \f$V\f$ is
+ * the unitary gate matrix and \f$\rho\f$ is the quantum state density matrix.
  */
 class Gate {
   protected:
@@ -68,7 +68,7 @@ class Gate {
     /**
      * @brief Assembles the vectorized gate matrices.
      *
-     * Computes VxV_re = Re(\bar V \kron V) and VxV_im = Im(\bar V \kron V)
+     * Computes VxV_re = \f$\text{Re}(\bar{V} \otimes V)\f$ and VxV_im = \f$\text{Im}(\bar{V} \otimes V)\f$
      * where V is the gate matrix and \bar V is its complex conjugate.
      */
     void assembleGate();
@@ -76,7 +76,7 @@ class Gate {
     /**
      * @brief Applies the gate transformation to a quantum state.
      *
-     * Computes VrhoV = V \rho V^\dagger where V is the gate matrix and \rho is the input state.
+     * Computes \f$V\rho V^\dagger\f$ where \f$V\f$ is the gate matrix and \f$\rho\f$ is the input state.
      * The output vector VrhoV must be pre-allocated.
      *
      * @param state Input quantum state vector.

@@ -3,4 +3,5 @@ INPUT                  = @CMAKE_CURRENT_SOURCE_DIR@/../../src @CMAKE_CURRENT_SOU
 FILE_PATTERNS          = *.cpp *.hpp
 GENERATE_HTML          = YES
 GENERATE_LATEX         = NO
+USE_MATHJAX            = YES
 QUIET                  = YES

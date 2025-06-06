@@ -84,8 +84,8 @@ class MasterEq{
     std::vector<Mat> Ad_vec; ///< Real parts of dipole-dipole coupling matrices in drift Hamiltonian
     std::vector<Mat> Bd_vec; ///< Imaginary parts of dipole-dipole coupling matrices in drift Hamiltonian
 
-    std::vector<double> crosskerr; ///< Cross-Kerr coefficients (rad/time) \xi_{kl} for ZZ-coupling a_k^\dagger a_k a_l^\dagger a_l
-    std::vector<double> Jkl; ///< Dipole-dipole coupling coefficients (rad/time), multiplies a_k^\dagger a_l + a_k a_l^\dagger
+    std::vector<double> crosskerr; ///< Cross-Kerr coefficients (rad/time) \f$\xi_{kl}\f$ for ZZ-coupling \f$a_k^\dagger a_k a_l^\dagger a_l\f$
+    std::vector<double> Jkl; ///< Dipole-dipole coupling coefficients (rad/time), multiplies \f$a_k^\dagger a_l + a_k a_l^\dagger\f$
     std::vector<double> eta; ///< Frequency differences in rotating frame (rad/time) for dipole-dipole coupling
     bool addT1, addT2; ///< Flags for including T1 decay and T2 dephasing Lindblad operators
 
@@ -166,7 +166,7 @@ class MasterEq{
     /**
      * @brief Retrieves the dimension of the vectorized system.
      *
-     * @return int N^2 for Lindblad solver, N for Schroedinger solver
+     * @return int \f$N^2\f$ for Lindblad solver, \f$N\f$ for Schroedinger solver
      */
     int getDim();
 
@@ -187,7 +187,7 @@ class MasterEq{
     /**
      * @brief Assembles the vectorized Hamiltonian operator.
      *
-     * Builds the operator M = vec(-i(H\rho - \rho H) + Lindblad terms).
+     * Builds the operator \f$M = \text{vec}(-i(H\rho - \rho H) + \text{Lindblad terms})\f$.
      * Must be called before applying the RHS matrix.
      *
      * @param t Current time
