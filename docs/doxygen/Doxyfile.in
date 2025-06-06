@@ -4,4 +4,6 @@ FILE_PATTERNS          = *.cpp *.hpp
 GENERATE_HTML          = YES
 GENERATE_LATEX         = NO
 USE_MATHJAX            = YES
+EXTRACT_ALL            = YES
+SHOW_FILES             = YES
 QUIET                  = YES

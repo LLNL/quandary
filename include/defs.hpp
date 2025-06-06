@@ -1,4 +1,13 @@
 
+/**
+ * @file defs.hpp
+ * @brief Core type definitions and enumerations for Quandary quantum optimal control.
+ *
+ * This file contains fundamental type definitions, enumeration classes, and constants
+ * used throughout the Quandary quantum optimal control framework. It defines solver
+ * types, target specifications, objective functions, and control parameterizations.
+ */
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
