@@ -69,7 +69,7 @@ class Gate {
      * @brief Assembles the vectorized gate matrices.
      *
      * Computes VxV_re = \f$\text{Re}(\bar{V} \otimes V)\f$ and VxV_im = \f$\text{Im}(\bar{V} \otimes V)\f$
-     * where V is the gate matrix and \bar V is its complex conjugate.
+     * where V is the gate matrix and \f$\bar{V}\f$ is its complex conjugate.
      */
     void assembleGate();
 

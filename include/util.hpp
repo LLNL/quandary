@@ -124,7 +124,7 @@ int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector
 // void projectToEss(Vec state,const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /**
- * @brief Computes Kronecker product Id \kron A.
+ * @brief Computes Kronecker product \f$Id \otimes A\f$.
  *
  * Computes the Kronecker product of an identity matrix with matrix A.
  * Output matrix must be pre-allocated with sufficient non-zeros A * dimI.
@@ -132,14 +132,14 @@ int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector
  * @param A Input matrix
  * @param dimI Dimension of identity matrix
  * @param alpha Scaling factor
- * @param Out Output matrix (Id \kron A)
+ * @param Out Output matrix \f$(Id \otimes A)\f$
  * @param insert_mode INSERT_VALUES or ADD_VALUES
  * @return PetscErrorCode Error code
  */
 PetscErrorCode Ikron(const Mat A, const int dimI, const double alpha, Mat *Out, InsertMode insert_mode);
 
 /**
- * @brief Computes Kronecker product A \kron Id.
+ * @brief Computes Kronecker product \f$A \otimes Id\f$.
  *
  * Computes the Kronecker product of matrix A with an identity matrix.
  * Output matrix must be pre-allocated with sufficient non-zeros A * dimI.
@@ -147,14 +147,14 @@ PetscErrorCode Ikron(const Mat A, const int dimI, const double alpha, Mat *Out, 
  * @param A Input matrix
  * @param dimI Dimension of identity matrix
  * @param alpha Scaling factor
- * @param Out Output matrix (A \kron Id)
+ * @param Out Output matrix \f$(A \otimes Id)\f$
  * @param insert_mode INSERT_VALUES or ADD_VALUES
  * @return PetscErrorCode Error code
  */
 PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, InsertMode insert_mode);
 
 /**
- * @brief Computes general Kronecker product A \kron B.
+ * @brief Computes general Kronecker product \f$A \otimes B\f$.
  *
  * Computes the Kronecker product of two arbitrary matrices A and B.
  * Works in PETSc serial mode only. Output matrix must be pre-allocated
@@ -163,7 +163,7 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
  * @param A First input matrix
  * @param B Second input matrix
  * @param alpha Scaling factor
- * @param Out Output matrix (A \kron B)
+ * @param Out Output matrix \f$(A \otimes B)\f$
  * @param insert_mode INSERT_VALUES or ADD_VALUES
  * @return PetscErrorCode Error code
  */
