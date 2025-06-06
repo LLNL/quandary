@@ -5,7 +5,7 @@
 spack:
   repos: [../.ci-scripts/radiuss-spack-configs/]
   specs:
-  - quandary@develop+test
+  - quandary@develop+test ^petsc+int64
   view: true
   concretizer:
     unify: true
