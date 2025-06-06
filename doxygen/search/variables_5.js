@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['nparams_0',['nparams',['../classControlBasis.html#a93075af8399c469e87ea9b2a7afd1f8b',1,'ControlBasis']]],
-  ['nsplines_1',['nsplines',['../classBSpline2nd.html#ae3b1dadd8bdf567869faa80d0c268dde',1,'BSpline2nd::nsplines'],['../classBSpline2ndAmplitude.html#a5e7cea5d257fba217d019b4369dd38f4',1,'BSpline2ndAmplitude::nsplines'],['../classBSpline0.html#aef106e0fb621b67f678cf28bac158dc4',1,'BSpline0::nsplines']]]
+  ['final_5ftime_0',['final_time',['../classGate.html#a31f6fbb897a03d6cfec880b5b045085f',1,'Gate']]],
+  ['freq_1',['freq',['../classCosineTransferFunction.html#adc67e4e40f20dc39acc76d5108e374d6',1,'CosineTransferFunction::freq'],['../classSineTransferFunction.html#a4cbb615ba9525adbc22610f824fb8149',1,'SineTransferFunction::freq']]]
 ];

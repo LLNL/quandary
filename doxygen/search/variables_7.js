@@ -1,7 +1,4 @@
 var searchData=
 [
-  ['tcenter_0',['tcenter',['../classBSpline2nd.html#ab01f656d7bcf9aca11562a4849b89ec8',1,'BSpline2nd::tcenter'],['../classBSpline2ndAmplitude.html#a5b2f567274ce6402c09f01e9ce36915e',1,'BSpline2ndAmplitude::tcenter']]],
-  ['tramp_1',['tramp',['../classStep.html#a5f24c817d72c367d42143458e19f550a',1,'Step']]],
-  ['tstart_2',['tstart',['../classControlBasis.html#a1f1820a85ad416f02245084619ffb720',1,'ControlBasis']]],
-  ['tstop_3',['tstop',['../classControlBasis.html#af89673125f7918b75b723b7589e4b19f',1,'ControlBasis']]]
+  ['hamiltonian_5ffile_0',['hamiltonian_file',['../classMasterEq.html#a68172dcac6206bd43927af847b87b822',1,'MasterEq::hamiltonian_file'],['../classPythonInterface.html#ab42d086233d4e0433b8a10788207baa8',1,'PythonInterface::hamiltonian_file']]]
 ];

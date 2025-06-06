@@ -76,115 +76,737 @@ $(function() {
   <div class="headertitle"><div class="title">OptimProblem Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Optimization problem solver for quantum optimal control.  
+ <a href="classOptimProblem.html#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="optimproblem_8hpp_source.html">optimproblem.hpp</a>&gt;</code></p>
 <div class="dynheader">
 Collaboration diagram for OptimProblem:</div>
 <div class="dyncontent">
 <div class="center"><img src="classOptimProblem__coll__graph.png" border="0" usemap="#aOptimProblem_coll__map" alt="Collaboration graph"/></div>
 <map name="aOptimProblem_coll__map" id="aOptimProblem_coll__map">
-<area shape="rect" title=" " alt="" coords="5,445,121,471"/>
-<area shape="rect" href="classOutput.html" title=" " alt="" coords="21,269,87,295"/>
+<area shape="rect" title="Optimization problem solver for quantum optimal control." alt="" coords="5,445,121,471"/>
+<area shape="rect" href="classOutput.html" title="Output management for quantum control simulations and optimization." alt="" coords="21,269,87,295"/>
 <area shape="poly" title=" " alt="" coords="56,308,58,383,64,445,59,445,53,383,51,308"/>
-<area shape="rect" href="classTimeStepper.html" title=" " alt="" coords="113,357,219,383"/>
+<area shape="rect" href="classTimeStepper.html" title="Base class for time integration schemes in quantum dynamics." alt="" coords="113,357,219,383"/>
 <area shape="poly" title=" " alt="" coords="77,303,109,331,146,355,143,360,106,335,73,307"/>
 <area shape="poly" title=" " alt="" coords="143,394,79,447,76,443,140,390"/>
-<area shape="rect" href="classMasterEq.html" title=" " alt="" coords="113,269,195,295"/>
+<area shape="rect" href="classMasterEq.html" title="Implementation of the Lindblad master equation solver." alt="" coords="113,269,195,295"/>
 <area shape="poly" title=" " alt="" coords="160,308,167,356,162,357,155,308"/>
-<area shape="rect" href="classOscillator.html" title=" " alt="" coords="88,93,172,119"/>
+<area shape="rect" href="classOscillator.html" title="Quantum harmonic oscillator with control capabilities." alt="" coords="88,93,172,119"/>
 <area shape="poly" title=" " alt="" coords="126,133,121,168,123,206,135,240,149,268,145,270,130,242,118,207,116,168,121,132"/>
-<area shape="rect" href="structMatShellCtx.html" title=" " alt="" coords="198,181,299,207"/>
+<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the RHS matrix to a vector." alt="" coords="198,181,299,207"/>
 <area shape="poly" title=" " alt="" coords="159,125,234,179,231,183,156,129"/>
-<area shape="rect" href="structPiPulse.html" title=" " alt="" coords="95,5,165,31"/>
+<area shape="rect" href="structPiPulse.html" title="Structure for storing pi&#45;pulse parameters." alt="" coords="95,5,165,31"/>
 <area shape="poly" title=" " alt="" coords="133,45,133,93,127,93,127,45"/>
 <area shape="poly" title=" " alt="" coords="227,218,169,271,165,267,224,214"/>
-<area shape="rect" href="classOptimTarget.html" title=" " alt="" coords="220,269,323,295"/>
+<area shape="rect" href="classOptimTarget.html" title="Optimization target specification and evaluation for quantum control." alt="" coords="220,269,323,295"/>
 <area shape="poly" title=" " alt="" coords="259,308,236,335,196,359,193,355,232,331,255,305"/>
 </map>
 <center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ae58ed36a5876353a619849533eaec461" id="r_ae58ed36a5876353a619849533eaec461"><td class="memItemLeft" align="right" valign="top"><a id="ae58ed36a5876353a619849533eaec461" name="ae58ed36a5876353a619849533eaec461"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>OptimProblem</b> (<a class="el" href="classMapParam.html">MapParam</a> config, <a class="el" href="classTimeStepper.html">TimeStepper</a> *timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, <a class="el" href="classOutput.html">Output</a> *output_, bool quietmode=false)</td></tr>
+<tr class="memitem:ae58ed36a5876353a619849533eaec461" id="r_ae58ed36a5876353a619849533eaec461"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ae58ed36a5876353a619849533eaec461">OptimProblem</a> (<a class="el" href="classMapParam.html">MapParam</a> config, <a class="el" href="classTimeStepper.html">TimeStepper</a> *timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, <a class="el" href="classOutput.html">Output</a> *output_, bool quietmode=false)</td></tr>
+<tr class="memdesc:ae58ed36a5876353a619849533eaec461"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for optimization problem.  <br /></td></tr>
 <tr class="separator:ae58ed36a5876353a619849533eaec461"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8952c51225c4fd2d0a8bac5b09546ab3" id="r_a8952c51225c4fd2d0a8bac5b09546ab3"><td class="memItemLeft" align="right" valign="top"><a id="a8952c51225c4fd2d0a8bac5b09546ab3" name="a8952c51225c4fd2d0a8bac5b09546ab3"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>getNdesign</b> ()</td></tr>
+<tr class="memitem:a8952c51225c4fd2d0a8bac5b09546ab3" id="r_a8952c51225c4fd2d0a8bac5b09546ab3"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a8952c51225c4fd2d0a8bac5b09546ab3">getNdesign</a> ()</td></tr>
+<tr class="memdesc:a8952c51225c4fd2d0a8bac5b09546ab3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the number of design variables.  <br /></td></tr>
 <tr class="separator:a8952c51225c4fd2d0a8bac5b09546ab3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5868eefe8ad4e1da4a38ba9c9c0dd8a5" id="r_a5868eefe8ad4e1da4a38ba9c9c0dd8a5"><td class="memItemLeft" align="right" valign="top"><a id="a5868eefe8ad4e1da4a38ba9c9c0dd8a5" name="a5868eefe8ad4e1da4a38ba9c9c0dd8a5"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getObjective</b> ()</td></tr>
+<tr class="memitem:a5868eefe8ad4e1da4a38ba9c9c0dd8a5" id="r_a5868eefe8ad4e1da4a38ba9c9c0dd8a5"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a5868eefe8ad4e1da4a38ba9c9c0dd8a5">getObjective</a> ()</td></tr>
+<tr class="memdesc:a5868eefe8ad4e1da4a38ba9c9c0dd8a5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the current objective function value.  <br /></td></tr>
 <tr class="separator:a5868eefe8ad4e1da4a38ba9c9c0dd8a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a68760cc16e11427d3e8280ad43ca265c" id="r_a68760cc16e11427d3e8280ad43ca265c"><td class="memItemLeft" align="right" valign="top"><a id="a68760cc16e11427d3e8280ad43ca265c" name="a68760cc16e11427d3e8280ad43ca265c"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getCostT</b> ()</td></tr>
+<tr class="memitem:a68760cc16e11427d3e8280ad43ca265c" id="r_a68760cc16e11427d3e8280ad43ca265c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a68760cc16e11427d3e8280ad43ca265c">getCostT</a> ()</td></tr>
+<tr class="memdesc:a68760cc16e11427d3e8280ad43ca265c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the final-time cost term.  <br /></td></tr>
 <tr class="separator:a68760cc16e11427d3e8280ad43ca265c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a96e26ce476a10e1a3054804efa2a84dd" id="r_a96e26ce476a10e1a3054804efa2a84dd"><td class="memItemLeft" align="right" valign="top"><a id="a96e26ce476a10e1a3054804efa2a84dd" name="a96e26ce476a10e1a3054804efa2a84dd"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getRegul</b> ()</td></tr>
+<tr class="memitem:a96e26ce476a10e1a3054804efa2a84dd" id="r_a96e26ce476a10e1a3054804efa2a84dd"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a96e26ce476a10e1a3054804efa2a84dd">getRegul</a> ()</td></tr>
+<tr class="memdesc:a96e26ce476a10e1a3054804efa2a84dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the regularization term.  <br /></td></tr>
 <tr class="separator:a96e26ce476a10e1a3054804efa2a84dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ce1edadd88a55224ae36dd6fc1f8baf" id="r_a8ce1edadd88a55224ae36dd6fc1f8baf"><td class="memItemLeft" align="right" valign="top"><a id="a8ce1edadd88a55224ae36dd6fc1f8baf" name="a8ce1edadd88a55224ae36dd6fc1f8baf"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getPenalty</b> ()</td></tr>
+<tr class="memitem:a8ce1edadd88a55224ae36dd6fc1f8baf" id="r_a8ce1edadd88a55224ae36dd6fc1f8baf"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a8ce1edadd88a55224ae36dd6fc1f8baf">getPenalty</a> ()</td></tr>
+<tr class="memdesc:a8ce1edadd88a55224ae36dd6fc1f8baf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the penalty term.  <br /></td></tr>
 <tr class="separator:a8ce1edadd88a55224ae36dd6fc1f8baf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad79c0988733ae12b4c2919cf030dfb4b" id="r_ad79c0988733ae12b4c2919cf030dfb4b"><td class="memItemLeft" align="right" valign="top"><a id="ad79c0988733ae12b4c2919cf030dfb4b" name="ad79c0988733ae12b4c2919cf030dfb4b"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getPenaltyDpDm</b> ()</td></tr>
+<tr class="memitem:ad79c0988733ae12b4c2919cf030dfb4b" id="r_ad79c0988733ae12b4c2919cf030dfb4b"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ad79c0988733ae12b4c2919cf030dfb4b">getPenaltyDpDm</a> ()</td></tr>
+<tr class="memdesc:ad79c0988733ae12b4c2919cf030dfb4b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the second-order derivative penalty term.  <br /></td></tr>
 <tr class="separator:ad79c0988733ae12b4c2919cf030dfb4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afb6bfd0cb6a3210df6a238df6e59dba4" id="r_afb6bfd0cb6a3210df6a238df6e59dba4"><td class="memItemLeft" align="right" valign="top"><a id="afb6bfd0cb6a3210df6a238df6e59dba4" name="afb6bfd0cb6a3210df6a238df6e59dba4"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getPenaltyVariation</b> ()</td></tr>
+<tr class="memitem:afb6bfd0cb6a3210df6a238df6e59dba4" id="r_afb6bfd0cb6a3210df6a238df6e59dba4"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#afb6bfd0cb6a3210df6a238df6e59dba4">getPenaltyVariation</a> ()</td></tr>
+<tr class="memdesc:afb6bfd0cb6a3210df6a238df6e59dba4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the variation penalty term.  <br /></td></tr>
 <tr class="separator:afb6bfd0cb6a3210df6a238df6e59dba4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae0027c624ccfd205493672ce631b1775" id="r_ae0027c624ccfd205493672ce631b1775"><td class="memItemLeft" align="right" valign="top"><a id="ae0027c624ccfd205493672ce631b1775" name="ae0027c624ccfd205493672ce631b1775"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getPenaltyEnergy</b> ()</td></tr>
+<tr class="memitem:ae0027c624ccfd205493672ce631b1775" id="r_ae0027c624ccfd205493672ce631b1775"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ae0027c624ccfd205493672ce631b1775">getPenaltyEnergy</a> ()</td></tr>
+<tr class="memdesc:ae0027c624ccfd205493672ce631b1775"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the energy penalty term.  <br /></td></tr>
 <tr class="separator:ae0027c624ccfd205493672ce631b1775"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adb0ac69930ce76afb96e882395e04bfa" id="r_adb0ac69930ce76afb96e882395e04bfa"><td class="memItemLeft" align="right" valign="top"><a id="adb0ac69930ce76afb96e882395e04bfa" name="adb0ac69930ce76afb96e882395e04bfa"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getFidelity</b> ()</td></tr>
+<tr class="memitem:adb0ac69930ce76afb96e882395e04bfa" id="r_adb0ac69930ce76afb96e882395e04bfa"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#adb0ac69930ce76afb96e882395e04bfa">getFidelity</a> ()</td></tr>
+<tr class="memdesc:adb0ac69930ce76afb96e882395e04bfa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the current fidelity.  <br /></td></tr>
 <tr class="separator:adb0ac69930ce76afb96e882395e04bfa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a72ec5e38dcfbdd6f1613dc04a11d8e93" id="r_a72ec5e38dcfbdd6f1613dc04a11d8e93"><td class="memItemLeft" align="right" valign="top"><a id="a72ec5e38dcfbdd6f1613dc04a11d8e93" name="a72ec5e38dcfbdd6f1613dc04a11d8e93"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getFaTol</b> ()</td></tr>
+<tr class="memitem:a72ec5e38dcfbdd6f1613dc04a11d8e93" id="r_a72ec5e38dcfbdd6f1613dc04a11d8e93"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a72ec5e38dcfbdd6f1613dc04a11d8e93">getFaTol</a> ()</td></tr>
+<tr class="memdesc:a72ec5e38dcfbdd6f1613dc04a11d8e93"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the objective function tolerance.  <br /></td></tr>
 <tr class="separator:a72ec5e38dcfbdd6f1613dc04a11d8e93"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4cc2cc3a58c9e9d2801c561670c701e3" id="r_a4cc2cc3a58c9e9d2801c561670c701e3"><td class="memItemLeft" align="right" valign="top"><a id="a4cc2cc3a58c9e9d2801c561670c701e3" name="a4cc2cc3a58c9e9d2801c561670c701e3"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getGaTol</b> ()</td></tr>
+<tr class="memitem:a4cc2cc3a58c9e9d2801c561670c701e3" id="r_a4cc2cc3a58c9e9d2801c561670c701e3"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a4cc2cc3a58c9e9d2801c561670c701e3">getGaTol</a> ()</td></tr>
+<tr class="memdesc:a4cc2cc3a58c9e9d2801c561670c701e3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the gradient tolerance.  <br /></td></tr>
 <tr class="separator:a4cc2cc3a58c9e9d2801c561670c701e3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afac290447bfc2bfc232e3e0c5ed83ae3" id="r_afac290447bfc2bfc232e3e0c5ed83ae3"><td class="memItemLeft" align="right" valign="top"><a id="afac290447bfc2bfc232e3e0c5ed83ae3" name="afac290447bfc2bfc232e3e0c5ed83ae3"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>getInfTol</b> ()</td></tr>
+<tr class="memitem:afac290447bfc2bfc232e3e0c5ed83ae3" id="r_afac290447bfc2bfc232e3e0c5ed83ae3"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#afac290447bfc2bfc232e3e0c5ed83ae3">getInfTol</a> ()</td></tr>
+<tr class="memdesc:afac290447bfc2bfc232e3e0c5ed83ae3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the infidelity tolerance.  <br /></td></tr>
 <tr class="separator:afac290447bfc2bfc232e3e0c5ed83ae3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a989b67d38f5b28c0909880564936d041" id="r_a989b67d38f5b28c0909880564936d041"><td class="memItemLeft" align="right" valign="top"><a id="a989b67d38f5b28c0909880564936d041" name="a989b67d38f5b28c0909880564936d041"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>getMPIrank_world</b> ()</td></tr>
+<tr class="memitem:a989b67d38f5b28c0909880564936d041" id="r_a989b67d38f5b28c0909880564936d041"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a989b67d38f5b28c0909880564936d041">getMPIrank_world</a> ()</td></tr>
+<tr class="memdesc:a989b67d38f5b28c0909880564936d041"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the MPI rank in the world communicator.  <br /></td></tr>
 <tr class="separator:a989b67d38f5b28c0909880564936d041"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d161b65a57deb673aba6dd9a48e70d7" id="r_a0d161b65a57deb673aba6dd9a48e70d7"><td class="memItemLeft" align="right" valign="top"><a id="a0d161b65a57deb673aba6dd9a48e70d7" name="a0d161b65a57deb673aba6dd9a48e70d7"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>getMaxIter</b> ()</td></tr>
+<tr class="memitem:a0d161b65a57deb673aba6dd9a48e70d7" id="r_a0d161b65a57deb673aba6dd9a48e70d7"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a0d161b65a57deb673aba6dd9a48e70d7">getMaxIter</a> ()</td></tr>
+<tr class="memdesc:a0d161b65a57deb673aba6dd9a48e70d7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the maximum number of iterations.  <br /></td></tr>
 <tr class="separator:a0d161b65a57deb673aba6dd9a48e70d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aae59b46a85bc1917c21f45d4fba361e2" id="r_aae59b46a85bc1917c21f45d4fba361e2"><td class="memItemLeft" align="right" valign="top"><a id="aae59b46a85bc1917c21f45d4fba361e2" name="aae59b46a85bc1917c21f45d4fba361e2"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>evalF</b> (const Vec x)</td></tr>
+<tr class="memitem:aae59b46a85bc1917c21f45d4fba361e2" id="r_aae59b46a85bc1917c21f45d4fba361e2"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#aae59b46a85bc1917c21f45d4fba361e2">evalF</a> (const Vec x)</td></tr>
+<tr class="memdesc:aae59b46a85bc1917c21f45d4fba361e2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the objective function F(x).  <br /></td></tr>
 <tr class="separator:aae59b46a85bc1917c21f45d4fba361e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a61f9f0c7dd52a454b8cc5823315bc473" id="r_a61f9f0c7dd52a454b8cc5823315bc473"><td class="memItemLeft" align="right" valign="top"><a id="a61f9f0c7dd52a454b8cc5823315bc473" name="a61f9f0c7dd52a454b8cc5823315bc473"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>evalGradF</b> (const Vec x, Vec G)</td></tr>
+<tr class="memitem:a61f9f0c7dd52a454b8cc5823315bc473" id="r_a61f9f0c7dd52a454b8cc5823315bc473"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a61f9f0c7dd52a454b8cc5823315bc473">evalGradF</a> (const Vec x, Vec G)</td></tr>
+<tr class="memdesc:a61f9f0c7dd52a454b8cc5823315bc473"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the gradient of the objective function.  <br /></td></tr>
 <tr class="separator:a61f9f0c7dd52a454b8cc5823315bc473"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af8a76f97039d415b79a7bf9fd525c78a" id="r_af8a76f97039d415b79a7bf9fd525c78a"><td class="memItemLeft" align="right" valign="top"><a id="af8a76f97039d415b79a7bf9fd525c78a" name="af8a76f97039d415b79a7bf9fd525c78a"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>solve</b> (Vec xinit)</td></tr>
+<tr class="memitem:af8a76f97039d415b79a7bf9fd525c78a" id="r_af8a76f97039d415b79a7bf9fd525c78a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#af8a76f97039d415b79a7bf9fd525c78a">solve</a> (Vec <a class="el" href="classOptimProblem.html#a2639f136408f418dd5721eec4b8dd2b9">xinit</a>)</td></tr>
+<tr class="memdesc:af8a76f97039d415b79a7bf9fd525c78a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs the optimization solver.  <br /></td></tr>
 <tr class="separator:af8a76f97039d415b79a7bf9fd525c78a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8d29a7527247328b920ec7ebeb157433" id="r_a8d29a7527247328b920ec7ebeb157433"><td class="memItemLeft" align="right" valign="top"><a id="a8d29a7527247328b920ec7ebeb157433" name="a8d29a7527247328b920ec7ebeb157433"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>getStartingPoint</b> (Vec x)</td></tr>
+<tr class="memitem:a8d29a7527247328b920ec7ebeb157433" id="r_a8d29a7527247328b920ec7ebeb157433"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a8d29a7527247328b920ec7ebeb157433">getStartingPoint</a> (Vec x)</td></tr>
+<tr class="memdesc:a8d29a7527247328b920ec7ebeb157433"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes initial guess for optimization variables.  <br /></td></tr>
 <tr class="separator:a8d29a7527247328b920ec7ebeb157433"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad43ec9e96a73b9a92f17045c379ef733" id="r_ad43ec9e96a73b9a92f17045c379ef733"><td class="memItemLeft" align="right" valign="top"><a id="ad43ec9e96a73b9a92f17045c379ef733" name="ad43ec9e96a73b9a92f17045c379ef733"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>getSolution</b> (Vec *opt)</td></tr>
+<tr class="memitem:ad43ec9e96a73b9a92f17045c379ef733" id="r_ad43ec9e96a73b9a92f17045c379ef733"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ad43ec9e96a73b9a92f17045c379ef733">getSolution</a> (Vec *opt)</td></tr>
+<tr class="memdesc:ad43ec9e96a73b9a92f17045c379ef733"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the optimization solution and prints summary information.  <br /></td></tr>
 <tr class="separator:ad43ec9e96a73b9a92f17045c379ef733"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a97d2aa961e34a18a435698b789f35d24" id="r_a97d2aa961e34a18a435698b789f35d24"><td class="memItemLeft" align="right" valign="top"><a id="a97d2aa961e34a18a435698b789f35d24" name="a97d2aa961e34a18a435698b789f35d24"></a>
 <a class="el" href="classOutput.html">Output</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>output</b></td></tr>
+<tr class="memdesc:a97d2aa961e34a18a435698b789f35d24"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to output handler. <br /></td></tr>
 <tr class="separator:a97d2aa961e34a18a435698b789f35d24"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aadd1fcb24bb7d743311ea2c683e024ec" id="r_aadd1fcb24bb7d743311ea2c683e024ec"><td class="memItemLeft" align="right" valign="top"><a id="aadd1fcb24bb7d743311ea2c683e024ec" name="aadd1fcb24bb7d743311ea2c683e024ec"></a>
 <a class="el" href="classTimeStepper.html">TimeStepper</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>timestepper</b></td></tr>
+<tr class="memdesc:aadd1fcb24bb7d743311ea2c683e024ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to time-stepping scheme. <br /></td></tr>
 <tr class="separator:aadd1fcb24bb7d743311ea2c683e024ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad230b6ccf70849573b17e53156cba6b3" id="r_ad230b6ccf70849573b17e53156cba6b3"><td class="memItemLeft" align="right" valign="top"><a id="ad230b6ccf70849573b17e53156cba6b3" name="ad230b6ccf70849573b17e53156cba6b3"></a>
 Vec&#160;</td><td class="memItemRight" valign="bottom"><b>xlower</b></td></tr>
 <tr class="separator:ad230b6ccf70849573b17e53156cba6b3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aed5a62f40ad17eb20d619956ec1df9fa" id="r_aed5a62f40ad17eb20d619956ec1df9fa"><td class="memItemLeft" align="right" valign="top"><a id="aed5a62f40ad17eb20d619956ec1df9fa" name="aed5a62f40ad17eb20d619956ec1df9fa"></a>
 Vec&#160;</td><td class="memItemRight" valign="bottom"><b>xupper</b></td></tr>
+<tr class="memdesc:aed5a62f40ad17eb20d619956ec1df9fa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lower and upper bounds for optimization variables. <br /></td></tr>
 <tr class="separator:aed5a62f40ad17eb20d619956ec1df9fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a04dbacf827dfce52c408e7b3bd64a1f0" id="r_a04dbacf827dfce52c408e7b3bd64a1f0"><td class="memItemLeft" align="right" valign="top"><a id="a04dbacf827dfce52c408e7b3bd64a1f0" name="a04dbacf827dfce52c408e7b3bd64a1f0"></a>
 Vec&#160;</td><td class="memItemRight" valign="bottom"><b>xprev</b></td></tr>
+<tr class="memdesc:a04dbacf827dfce52c408e7b3bd64a1f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Design vector at previous iteration. <br /></td></tr>
 <tr class="separator:a04dbacf827dfce52c408e7b3bd64a1f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2639f136408f418dd5721eec4b8dd2b9" id="r_a2639f136408f418dd5721eec4b8dd2b9"><td class="memItemLeft" align="right" valign="top"><a id="a2639f136408f418dd5721eec4b8dd2b9" name="a2639f136408f418dd5721eec4b8dd2b9"></a>
 Vec&#160;</td><td class="memItemRight" valign="bottom"><b>xinit</b></td></tr>
+<tr class="memdesc:a2639f136408f418dd5721eec4b8dd2b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initial design vector. <br /></td></tr>
 <tr class="separator:a2639f136408f418dd5721eec4b8dd2b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Optimization problem solver for quantum optimal control. </p>
+<p>This class manages the optimization of quantum control pulses using PETSc's TAO optimization library. It handles objective function evaluation, gradient computation, and the overall optimization process for quantum gates and state preparation. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="ae58ed36a5876353a619849533eaec461" name="ae58ed36a5876353a619849533eaec461"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae58ed36a5876353a619849533eaec461">&#9670;&#160;</a></span>OptimProblem()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">OptimProblem::OptimProblem </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classMapParam.html">MapParam</a>&#160;</td>
+          <td class="paramname"><em>config</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classTimeStepper.html">TimeStepper</a> *&#160;</td>
+          <td class="paramname"><em>timestepper_</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">MPI_Comm&#160;</td>
+          <td class="paramname"><em>comm_init_</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">MPI_Comm&#160;</td>
+          <td class="paramname"><em>comm_optim</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>ninit_</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classOutput.html">Output</a> *&#160;</td>
+          <td class="paramname"><em>output_</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>quietmode</em> = <code>false</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Constructor for optimization problem. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">config</td><td>Configuration parameters from input file </td></tr>
+    <tr><td class="paramname">timestepper_</td><td>Pointer to time-stepping scheme </td></tr>
+    <tr><td class="paramname">comm_init_</td><td>MPI communicator for initial condition parallelization </td></tr>
+    <tr><td class="paramname">comm_optim</td><td>MPI communicator for optimization parallelization </td></tr>
+    <tr><td class="paramname">ninit_</td><td>Number of initial conditions </td></tr>
+    <tr><td class="paramname">output_</td><td>Pointer to output handler </td></tr>
+    <tr><td class="paramname">quietmode</td><td>Flag for quiet operation (default: false) </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="aae59b46a85bc1917c21f45d4fba361e2" name="aae59b46a85bc1917c21f45d4fba361e2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aae59b46a85bc1917c21f45d4fba361e2">&#9670;&#160;</a></span>evalF()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::evalF </td>
+          <td>(</td>
+          <td class="paramtype">const Vec&#160;</td>
+          <td class="paramname"><em>x</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Evaluates the objective function F(x). </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">x</td><td>Design vector </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>double Objective function value </dd></dl>
+
+</div>
+</div>
+<a id="a61f9f0c7dd52a454b8cc5823315bc473" name="a61f9f0c7dd52a454b8cc5823315bc473"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a61f9f0c7dd52a454b8cc5823315bc473">&#9670;&#160;</a></span>evalGradF()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void OptimProblem::evalGradF </td>
+          <td>(</td>
+          <td class="paramtype">const Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>G</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Evaluates the gradient of the objective function. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">x</td><td>Design vector </td></tr>
+    <tr><td class="paramname">G</td><td>Gradient vector to store result </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a68760cc16e11427d3e8280ad43ca265c" name="a68760cc16e11427d3e8280ad43ca265c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a68760cc16e11427d3e8280ad43ca265c">&#9670;&#160;</a></span>getCostT()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::getCostT </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the final-time cost term. </p>
+<dl class="section return"><dt>Returns</dt><dd>double Final-time cost J(T) </dd></dl>
+
+</div>
+</div>
+<a id="a72ec5e38dcfbdd6f1613dc04a11d8e93" name="a72ec5e38dcfbdd6f1613dc04a11d8e93"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a72ec5e38dcfbdd6f1613dc04a11d8e93">&#9670;&#160;</a></span>getFaTol()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::getFaTol </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the objective function tolerance. </p>
+<dl class="section return"><dt>Returns</dt><dd>double Absolute tolerance for objective function convergence </dd></dl>
+
+</div>
+</div>
+<a id="adb0ac69930ce76afb96e882395e04bfa" name="adb0ac69930ce76afb96e882395e04bfa"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adb0ac69930ce76afb96e882395e04bfa">&#9670;&#160;</a></span>getFidelity()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::getFidelity </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the current fidelity. </p>
+<dl class="section return"><dt>Returns</dt><dd>double Quantum fidelity measure </dd></dl>
+
+</div>
+</div>
+<a id="a4cc2cc3a58c9e9d2801c561670c701e3" name="a4cc2cc3a58c9e9d2801c561670c701e3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4cc2cc3a58c9e9d2801c561670c701e3">&#9670;&#160;</a></span>getGaTol()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::getGaTol </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the gradient tolerance. </p>
+<dl class="section return"><dt>Returns</dt><dd>double Absolute tolerance for gradient norm convergence </dd></dl>
+
+</div>
+</div>
+<a id="afac290447bfc2bfc232e3e0c5ed83ae3" name="afac290447bfc2bfc232e3e0c5ed83ae3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afac290447bfc2bfc232e3e0c5ed83ae3">&#9670;&#160;</a></span>getInfTol()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::getInfTol </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the infidelity tolerance. </p>
+<dl class="section return"><dt>Returns</dt><dd>double Tolerance for infidelity convergence </dd></dl>
+
+</div>
+</div>
+<a id="a0d161b65a57deb673aba6dd9a48e70d7" name="a0d161b65a57deb673aba6dd9a48e70d7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0d161b65a57deb673aba6dd9a48e70d7">&#9670;&#160;</a></span>getMaxIter()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::getMaxIter </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the maximum number of iterations. </p>
+<dl class="section return"><dt>Returns</dt><dd>int Maximum iteration limit </dd></dl>
+
+</div>
+</div>
+<a id="a989b67d38f5b28c0909880564936d041" name="a989b67d38f5b28c0909880564936d041"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a989b67d38f5b28c0909880564936d041">&#9670;&#160;</a></span>getMPIrank_world()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::getMPIrank_world </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the MPI rank in the world communicator. </p>
+<dl class="section return"><dt>Returns</dt><dd>int MPI rank </dd></dl>
+
+</div>
+</div>
+<a id="a8952c51225c4fd2d0a8bac5b09546ab3" name="a8952c51225c4fd2d0a8bac5b09546ab3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8952c51225c4fd2d0a8bac5b09546ab3">&#9670;&#160;</a></span>getNdesign()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::getNdesign </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the number of design variables. </p>
+<dl class="section return"><dt>Returns</dt><dd>int Number of optimization parameters </dd></dl>
+
+</div>
+</div>
+<a id="a5868eefe8ad4e1da4a38ba9c9c0dd8a5" name="a5868eefe8ad4e1da4a38ba9c9c0dd8a5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5868eefe8ad4e1da4a38ba9c9c0dd8a5">&#9670;&#160;</a></span>getObjective()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::getObjective </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the current objective function value. </p>
+<dl class="section return"><dt>Returns</dt><dd>double Total objective function value </dd></dl>
+
+</div>
+</div>
+<a id="a8ce1edadd88a55224ae36dd6fc1f8baf" name="a8ce1edadd88a55224ae36dd6fc1f8baf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8ce1edadd88a55224ae36dd6fc1f8baf">&#9670;&#160;</a></span>getPenalty()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::getPenalty </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the penalty term. </p>
+<dl class="section return"><dt>Returns</dt><dd>double Penalty term contribution </dd></dl>
+
+</div>
+</div>
+<a id="ad79c0988733ae12b4c2919cf030dfb4b" name="ad79c0988733ae12b4c2919cf030dfb4b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad79c0988733ae12b4c2919cf030dfb4b">&#9670;&#160;</a></span>getPenaltyDpDm()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::getPenaltyDpDm </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the second-order derivative penalty term. </p>
+<dl class="section return"><dt>Returns</dt><dd>double Second-order penalty contribution </dd></dl>
+
+</div>
+</div>
+<a id="ae0027c624ccfd205493672ce631b1775" name="ae0027c624ccfd205493672ce631b1775"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae0027c624ccfd205493672ce631b1775">&#9670;&#160;</a></span>getPenaltyEnergy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::getPenaltyEnergy </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the energy penalty term. </p>
+<dl class="section return"><dt>Returns</dt><dd>double Energy penalty contribution </dd></dl>
+
+</div>
+</div>
+<a id="afb6bfd0cb6a3210df6a238df6e59dba4" name="afb6bfd0cb6a3210df6a238df6e59dba4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afb6bfd0cb6a3210df6a238df6e59dba4">&#9670;&#160;</a></span>getPenaltyVariation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::getPenaltyVariation </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the variation penalty term. </p>
+<dl class="section return"><dt>Returns</dt><dd>double Control variation penalty contribution </dd></dl>
+
+</div>
+</div>
+<a id="a96e26ce476a10e1a3054804efa2a84dd" name="a96e26ce476a10e1a3054804efa2a84dd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a96e26ce476a10e1a3054804efa2a84dd">&#9670;&#160;</a></span>getRegul()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::getRegul </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Retrieves the regularization term. </p>
+<dl class="section return"><dt>Returns</dt><dd>double Tikhonov regularization contribution </dd></dl>
+
+</div>
+</div>
+<a id="ad43ec9e96a73b9a92f17045c379ef733" name="ad43ec9e96a73b9a92f17045c379ef733"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad43ec9e96a73b9a92f17045c379ef733">&#9670;&#160;</a></span>getSolution()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void OptimProblem::getSolution </td>
+          <td>(</td>
+          <td class="paramtype">Vec *&#160;</td>
+          <td class="paramname"><em>opt</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Retrieves the optimization solution and prints summary information. </p>
+<p>This method should be called after TaoSolve() has finished.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">opt</td><td>Pointer to vector to store the optimal solution </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a8d29a7527247328b920ec7ebeb157433" name="a8d29a7527247328b920ec7ebeb157433"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8d29a7527247328b920ec7ebeb157433">&#9670;&#160;</a></span>getStartingPoint()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void OptimProblem::getStartingPoint </td>
+          <td>(</td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Computes initial guess for optimization variables. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">x</td><td>Vector to store the initial guess </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="af8a76f97039d415b79a7bf9fd525c78a" name="af8a76f97039d415b79a7bf9fd525c78a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af8a76f97039d415b79a7bf9fd525c78a">&#9670;&#160;</a></span>solve()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void OptimProblem::solve </td>
+          <td>(</td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>xinit</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Runs the optimization solver. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">xinit</td><td>Initial guess for design variables </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>/home/runner/work/quandary/quandary/include/<a class="el" href="optimproblem_8hpp_source.html">optimproblem.hpp</a></li>
 <li>/home/runner/work/quandary/quandary/src/<b>optimproblem.cpp</b></li>

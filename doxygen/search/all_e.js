@@ -1,13 +1,16 @@
 var searchData=
 [
-  ['scaling_0',['scaling',['../classBSpline2ndAmplitude.html#a69194b3b1c11bc768877708f72fd2d6e',1,'BSpline2ndAmplitude']]],
-  ['setskip_1',['setSkip',['../classControlBasis.html#ab1b24c656aec7d1eef58f173620d0135',1,'ControlBasis']]],
-  ['sinetransferfunction_2',['sinetransferfunction',['../classSineTransferFunction.html',1,'SineTransferFunction'],['../classSineTransferFunction.html#af00ef5a3c88dabae99bfc7924fb13d24',1,'SineTransferFunction::SineTransferFunction(double amp, double freq)'],['../classSineTransferFunction.html#a2ca8f74c1cd18b1f41aa964ff33ced99',1,'SineTransferFunction::SineTransferFunction(double amp, double freq, std::vector&lt; double &gt; onofftimes)']]],
-  ['skip_3',['skip',['../classControlBasis.html#a9c5c1e7f7c06a9ad55dd550e8886ca4c',1,'ControlBasis']]],
-  ['step_4',['step',['../classStep.html',1,'Step'],['../classStep.html#a57602386460f018e9c712880556b1c15',1,'Step::Step(double step_amp1_, double step_amp2_, double t0, double t1, double tramp, bool enforceZeroBoundary)']]],
-  ['step_5famp1_5',['step_amp1',['../classStep.html#aaf0c93358e9cbbef4df4801424497325',1,'Step']]],
-  ['step_5famp2_6',['step_amp2',['../classStep.html#a2a1d1c8c6ea5cfdcf06494864a445da2',1,'Step']]],
-  ['storeonofftimes_7',['storeOnOffTimes',['../classTransferFunction.html#ad9c4e0e4c6abe25b894c11aa99f03918',1,'TransferFunction']]],
-  ['swap_8',['SWAP',['../classSWAP.html',1,'']]],
-  ['swap_5f0q_9',['SWAP_0Q',['../classSWAP__0Q.html',1,'']]]
+  ['params_0',['params',['../classOscillator.html#aa0f4328787ff7d8bdc06dac4fbd9abc9',1,'Oscillator']]],
+  ['penalty_5fdpdm_1',['penalty_dpdm',['../classTimeStepper.html#a4f04bd683057a0b0c9d7f983cd3e0ba2',1,'TimeStepper']]],
+  ['penalty_5fintegral_2',['penalty_integral',['../classTimeStepper.html#ad904f4e9a7bc465c176813b5ea597e1c',1,'TimeStepper']]],
+  ['penalty_5fparam_3',['penalty_param',['../classTimeStepper.html#adc015010aa8be6a70c99750f5834497b',1,'TimeStepper']]],
+  ['penaltydpdm_4',['penaltyDpDm',['../classTimeStepper.html#ad13591047811f9ae208ece98c17985a3',1,'TimeStepper']]],
+  ['penaltydpdm_5fdiff_5',['penaltyDpDm_diff',['../classTimeStepper.html#ac8fa2931e974b2d1fb9f53527d0eb094',1,'TimeStepper']]],
+  ['penaltyintegral_6',['penaltyIntegral',['../classTimeStepper.html#a20323563a86450e343004279995a55f4',1,'TimeStepper']]],
+  ['penaltyintegral_5fdiff_7',['penaltyIntegral_diff',['../classTimeStepper.html#ac9ae1a39f30f0041375ae4ddf25a60b1',1,'TimeStepper']]],
+  ['pipulse_8',['pipulse',['../structPiPulse.html',1,'PiPulse'],['../classOscillator.html#a6a31719487217b0213f19b76d641ff3c',1,'Oscillator::pipulse']]],
+  ['population_9',['population',['../classMasterEq.html#a9308372d3f1aa99517dd313d5d2a4cd9',1,'MasterEq::population()'],['../classOscillator.html#a8b2aad8df5555fff65a458ce745f9004',1,'Oscillator::population()']]],
+  ['prepareinitialstate_10',['prepareInitialState',['../classOptimTarget.html#aa9ed01e33f5bcdfb677ea1aec4329f2a',1,'OptimTarget']]],
+  ['preparetargetstate_11',['prepareTargetState',['../classOptimTarget.html#a537386e8b5a67bb7ad33010eb915af4c',1,'OptimTarget']]],
+  ['pythoninterface_12',['pythoninterface',['../classPythonInterface.html',1,'PythonInterface'],['../classPythonInterface.html#a20b2af8dd0995af98e423e3d414c5534',1,'PythonInterface::PythonInterface()']]]
 ];

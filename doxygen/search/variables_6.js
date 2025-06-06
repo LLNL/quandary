@@ -1,7 +1,8 @@
 var searchData=
 [
-  ['scaling_0',['scaling',['../classBSpline2ndAmplitude.html#a69194b3b1c11bc768877708f72fd2d6e',1,'BSpline2ndAmplitude']]],
-  ['skip_1',['skip',['../classControlBasis.html#a9c5c1e7f7c06a9ad55dd550e8886ca4c',1,'ControlBasis']]],
-  ['step_5famp1_2',['step_amp1',['../classStep.html#aaf0c93358e9cbbef4df4801424497325',1,'Step']]],
-  ['step_5famp2_3',['step_amp2',['../classStep.html#a2a1d1c8c6ea5cfdcf06494864a445da2',1,'Step']]]
+  ['gamma_5fpenalty_0',['gamma_penalty',['../classTimeStepper.html#a4918ef7617d3067ca4d30fa2ba6d8c0e',1,'TimeStepper']]],
+  ['gamma_5fpenalty_5fdpdm_1',['gamma_penalty_dpdm',['../classTimeStepper.html#a47bd15cf9824ab95288af0cdd50a0c0c',1,'TimeStepper']]],
+  ['gamma_5fpenalty_5fenergy_2',['gamma_penalty_energy',['../classTimeStepper.html#a9dc38ea2f69981ce525681f7bb010c0e',1,'TimeStepper']]],
+  ['gate_5frot_5ffreq_3',['gate_rot_freq',['../classGate.html#a3e01ad590ce8ffa37e497f46b5152010',1,'Gate']]],
+  ['ground_5ffreq_4',['ground_freq',['../classOscillator.html#a6870d89a6d8c93b16fa90a246ea9c250',1,'Oscillator']]]
 ];

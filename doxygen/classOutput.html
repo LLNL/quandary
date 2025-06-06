@@ -76,40 +76,399 @@ $(function() {
   <div class="headertitle"><div class="title">Output Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> management for quantum control simulations and optimization.  
+ <a href="classOutput.html#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="output_8hpp_source.html">output.hpp</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ac3c902543a002d8062ff510d06b9580e" id="r_ac3c902543a002d8062ff510d06b9580e"><td class="memItemLeft" align="right" valign="top"><a id="ac3c902543a002d8062ff510d06b9580e" name="ac3c902543a002d8062ff510d06b9580e"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Output</b> (<a class="el" href="classMapParam.html">MapParam</a> &amp;config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false)</td></tr>
+<tr class="memitem:ac3c902543a002d8062ff510d06b9580e" id="r_ac3c902543a002d8062ff510d06b9580e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#ac3c902543a002d8062ff510d06b9580e">Output</a> (<a class="el" href="classMapParam.html">MapParam</a> &amp;config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false)</td></tr>
+<tr class="memdesc:ac3c902543a002d8062ff510d06b9580e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with configuration and MPI setup.  <br /></td></tr>
 <tr class="separator:ac3c902543a002d8062ff510d06b9580e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aae1a97757ebb839dd3bb0e2dc33159bf" id="r_aae1a97757ebb839dd3bb0e2dc33159bf"><td class="memItemLeft" align="right" valign="top"><a id="aae1a97757ebb839dd3bb0e2dc33159bf" name="aae1a97757ebb839dd3bb0e2dc33159bf"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>writeOptimFile</b> (int optim_iter, double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul, double penalty, double penalty_dpdm, double penalty_energy, double penalty_variation)</td></tr>
+<tr class="memitem:aae1a97757ebb839dd3bb0e2dc33159bf" id="r_aae1a97757ebb839dd3bb0e2dc33159bf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#aae1a97757ebb839dd3bb0e2dc33159bf">writeOptimFile</a> (int optim_iter, double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul, double penalty, double penalty_dpdm, double penalty_energy, double penalty_variation)</td></tr>
+<tr class="memdesc:aae1a97757ebb839dd3bb0e2dc33159bf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes optimization progress to history file.  <br /></td></tr>
 <tr class="separator:aae1a97757ebb839dd3bb0e2dc33159bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adb389d2f0d8788d8821441cfaf3ce42d" id="r_adb389d2f0d8788d8821441cfaf3ce42d"><td class="memItemLeft" align="right" valign="top"><a id="adb389d2f0d8788d8821441cfaf3ce42d" name="adb389d2f0d8788d8821441cfaf3ce42d"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>writeControls</b> (Vec params, <a class="el" href="classMasterEq.html">MasterEq</a> *mastereq, int ntime, double dt)</td></tr>
+<tr class="memitem:adb389d2f0d8788d8821441cfaf3ce42d" id="r_adb389d2f0d8788d8821441cfaf3ce42d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#adb389d2f0d8788d8821441cfaf3ce42d">writeControls</a> (Vec params, <a class="el" href="classMasterEq.html">MasterEq</a> *mastereq, int ntime, double dt)</td></tr>
+<tr class="memdesc:adb389d2f0d8788d8821441cfaf3ce42d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes current control pulses and parameters.  <br /></td></tr>
 <tr class="separator:adb389d2f0d8788d8821441cfaf3ce42d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1e6e2376a24daecfea404ed6a156ca16" id="r_a1e6e2376a24daecfea404ed6a156ca16"><td class="memItemLeft" align="right" valign="top"><a id="a1e6e2376a24daecfea404ed6a156ca16" name="a1e6e2376a24daecfea404ed6a156ca16"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>writeGradient</b> (Vec grad)</td></tr>
+<tr class="memitem:a1e6e2376a24daecfea404ed6a156ca16" id="r_a1e6e2376a24daecfea404ed6a156ca16"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a1e6e2376a24daecfea404ed6a156ca16">writeGradient</a> (Vec grad)</td></tr>
+<tr class="memdesc:a1e6e2376a24daecfea404ed6a156ca16"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes gradient vector for debugging adjoint calculations.  <br /></td></tr>
 <tr class="separator:a1e6e2376a24daecfea404ed6a156ca16"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a53ad70a63b5be91061dd26cd7aabed81" id="r_a53ad70a63b5be91061dd26cd7aabed81"><td class="memItemLeft" align="right" valign="top"><a id="a53ad70a63b5be91061dd26cd7aabed81" name="a53ad70a63b5be91061dd26cd7aabed81"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>openDataFiles</b> (std::string prefix, int initid)</td></tr>
+<tr class="memitem:a53ad70a63b5be91061dd26cd7aabed81" id="r_a53ad70a63b5be91061dd26cd7aabed81"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a53ad70a63b5be91061dd26cd7aabed81">openDataFiles</a> (std::string prefix, int initid)</td></tr>
+<tr class="memdesc:a53ad70a63b5be91061dd26cd7aabed81"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opens data files for time evolution output.  <br /></td></tr>
 <tr class="separator:a53ad70a63b5be91061dd26cd7aabed81"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac69f84e7237c74f581e6e919b1180656" id="r_ac69f84e7237c74f581e6e919b1180656"><td class="memItemLeft" align="right" valign="top"><a id="ac69f84e7237c74f581e6e919b1180656" name="ac69f84e7237c74f581e6e919b1180656"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>writeDataFiles</b> (int timestep, double time, const Vec state, <a class="el" href="classMasterEq.html">MasterEq</a> *mastereq)</td></tr>
+<tr class="memitem:ac69f84e7237c74f581e6e919b1180656" id="r_ac69f84e7237c74f581e6e919b1180656"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#ac69f84e7237c74f581e6e919b1180656">writeDataFiles</a> (int timestep, double time, const Vec state, <a class="el" href="classMasterEq.html">MasterEq</a> *mastereq)</td></tr>
+<tr class="memdesc:ac69f84e7237c74f581e6e919b1180656"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes time evolution data to files.  <br /></td></tr>
 <tr class="separator:ac69f84e7237c74f581e6e919b1180656"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad07c7174bdceca917bdfc858ab2a0f5f" id="r_ad07c7174bdceca917bdfc858ab2a0f5f"><td class="memItemLeft" align="right" valign="top"><a id="ad07c7174bdceca917bdfc858ab2a0f5f" name="ad07c7174bdceca917bdfc858ab2a0f5f"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>closeDataFiles</b> ()</td></tr>
+<tr class="memitem:ad07c7174bdceca917bdfc858ab2a0f5f" id="r_ad07c7174bdceca917bdfc858ab2a0f5f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#ad07c7174bdceca917bdfc858ab2a0f5f">closeDataFiles</a> ()</td></tr>
+<tr class="memdesc:ad07c7174bdceca917bdfc858ab2a0f5f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes all open data files.  <br /></td></tr>
 <tr class="separator:ad07c7174bdceca917bdfc858ab2a0f5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:aa35bfecd4c9d48d2a36d7de958e9bcc9" id="r_aa35bfecd4c9d48d2a36d7de958e9bcc9"><td class="memItemLeft" align="right" valign="top"><a id="aa35bfecd4c9d48d2a36d7de958e9bcc9" name="aa35bfecd4c9d48d2a36d7de958e9bcc9"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><b>datadir</b></td></tr>
+<tr class="memdesc:aa35bfecd4c9d48d2a36d7de958e9bcc9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Directory path for output data files. <br /></td></tr>
 <tr class="separator:aa35bfecd4c9d48d2a36d7de958e9bcc9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4700eb37d9698537e4be0ac6aacd4083" id="r_a4700eb37d9698537e4be0ac6aacd4083"><td class="memItemLeft" align="right" valign="top"><a id="a4700eb37d9698537e4be0ac6aacd4083" name="a4700eb37d9698537e4be0ac6aacd4083"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>optim_monitor_freq</b></td></tr>
+<tr class="memdesc:a4700eb37d9698537e4be0ac6aacd4083"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write output files every N optimization iterations. <br /></td></tr>
 <tr class="separator:a4700eb37d9698537e4be0ac6aacd4083"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> management for quantum control simulations and optimization. </p>
+<p>This class handles all file I/O operations for Quandary, including optimization progress logging, control pulse output, state evolution data, and population dynamics. It manages MPI-aware output to avoid duplicate writes in parallel runs. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="ac3c902543a002d8062ff510d06b9580e" name="ac3c902543a002d8062ff510d06b9580e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac3c902543a002d8062ff510d06b9580e">&#9670;&#160;</a></span>Output()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Output::Output </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classMapParam.html">MapParam</a> &amp;&#160;</td>
+          <td class="paramname"><em>config</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">MPI_Comm&#160;</td>
+          <td class="paramname"><em>comm_petsc</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">MPI_Comm&#160;</td>
+          <td class="paramname"><em>comm_init</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>noscillators</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>quietmode</em> = <code>false</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Constructor with configuration and MPI setup. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">config</td><td>Configuration parameters from input file </td></tr>
+    <tr><td class="paramname">comm_petsc</td><td>MPI communicator for PETSc parallelization </td></tr>
+    <tr><td class="paramname">comm_init</td><td>MPI communicator for initial condition parallelization </td></tr>
+    <tr><td class="paramname">noscillators</td><td>Number of oscillators in the system </td></tr>
+    <tr><td class="paramname">quietmode</td><td>Flag for reduced output (default: false) </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="ad07c7174bdceca917bdfc858ab2a0f5f" name="ad07c7174bdceca917bdfc858ab2a0f5f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad07c7174bdceca917bdfc858ab2a0f5f">&#9670;&#160;</a></span>closeDataFiles()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Output::closeDataFiles </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Closes all open data files. </p>
+<p>Properly closes and flushes all output files after simulation completion. </p>
+
+</div>
+</div>
+<a id="a53ad70a63b5be91061dd26cd7aabed81" name="a53ad70a63b5be91061dd26cd7aabed81"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a53ad70a63b5be91061dd26cd7aabed81">&#9670;&#160;</a></span>openDataFiles()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Output::openDataFiles </td>
+          <td>(</td>
+          <td class="paramtype">std::string&#160;</td>
+          <td class="paramname"><em>prefix</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>initid</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Opens data files for time evolution output. </p>
+<p>Prepares files for writing full state, expected energy, and population data.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">prefix</td><td>Filename prefix for output files </td></tr>
+    <tr><td class="paramname">initid</td><td>Initial condition identifier </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="adb389d2f0d8788d8821441cfaf3ce42d" name="adb389d2f0d8788d8821441cfaf3ce42d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adb389d2f0d8788d8821441cfaf3ce42d">&#9670;&#160;</a></span>writeControls()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Output::writeControls </td>
+          <td>(</td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>params</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classMasterEq.html">MasterEq</a> *&#160;</td>
+          <td class="paramname"><em>mastereq</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>ntime</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>dt</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Writes current control pulses and parameters. </p>
+<p>Called every optim_monitor_freq optimization iterations.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">params</td><td>Current parameter vector </td></tr>
+    <tr><td class="paramname">mastereq</td><td>Pointer to master equation solver </td></tr>
+    <tr><td class="paramname">ntime</td><td>Number of time steps </td></tr>
+    <tr><td class="paramname">dt</td><td>Time step size </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="ac69f84e7237c74f581e6e919b1180656" name="ac69f84e7237c74f581e6e919b1180656"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac69f84e7237c74f581e6e919b1180656">&#9670;&#160;</a></span>writeDataFiles()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Output::writeDataFiles </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>timestep</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>time</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const Vec&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classMasterEq.html">MasterEq</a> *&#160;</td>
+          <td class="paramname"><em>mastereq</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Writes time evolution data to files. </p>
+<p>Outputs state vector, expected energies, and populations at current time step.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">timestep</td><td>Current time step number </td></tr>
+    <tr><td class="paramname">time</td><td>Current time value </td></tr>
+    <tr><td class="paramname">state</td><td>Current state vector </td></tr>
+    <tr><td class="paramname">mastereq</td><td>Pointer to master equation solver </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a1e6e2376a24daecfea404ed6a156ca16" name="a1e6e2376a24daecfea404ed6a156ca16"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1e6e2376a24daecfea404ed6a156ca16">&#9670;&#160;</a></span>writeGradient()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Output::writeGradient </td>
+          <td>(</td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>grad</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Writes gradient vector for debugging adjoint calculations. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">grad</td><td>Gradient vector to output </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="aae1a97757ebb839dd3bb0e2dc33159bf" name="aae1a97757ebb839dd3bb0e2dc33159bf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aae1a97757ebb839dd3bb0e2dc33159bf">&#9670;&#160;</a></span>writeOptimFile()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Output::writeOptimFile </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>optim_iter</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>objective</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>gnorm</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>stepsize</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>Favg</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>cost</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>tikh_regul</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>penalty</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>penalty_dpdm</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>penalty_energy</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>penalty_variation</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Writes optimization progress to history file. </p>
+<p>Called at every optimization iteration to log convergence data.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">optim_iter</td><td>Current optimization iteration </td></tr>
+    <tr><td class="paramname">objective</td><td>Total objective function value </td></tr>
+    <tr><td class="paramname">gnorm</td><td>Gradient norm </td></tr>
+    <tr><td class="paramname">stepsize</td><td>Optimization step size </td></tr>
+    <tr><td class="paramname">Favg</td><td>Average fidelity </td></tr>
+    <tr><td class="paramname">cost</td><td>Final-time cost term </td></tr>
+    <tr><td class="paramname">tikh_regul</td><td>Tikhonov regularization term </td></tr>
+    <tr><td class="paramname">penalty</td><td>Penalty term </td></tr>
+    <tr><td class="paramname">penalty_dpdm</td><td>Second-order derivative penalty </td></tr>
+    <tr><td class="paramname">penalty_energy</td><td>Energy penalty term </td></tr>
+    <tr><td class="paramname">penalty_variation</td><td>Control variation penalty </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following files:<ul>
 <li>/home/runner/work/quandary/quandary/include/<a class="el" href="output_8hpp_source.html">output.hpp</a></li>
 <li>/home/runner/work/quandary/quandary/src/<b>output.cpp</b></li>

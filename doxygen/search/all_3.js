@@ -1,6 +1,19 @@
 var searchData=
 [
-  ['der_0',['der',['../classTransferFunction.html#a764e2e7d8a274199f3fe5d54b0a5317a',1,'TransferFunction::der()'],['../classConstantTransferFunction.html#a94880fd8ca87f99f411e714c9969fbc7',1,'ConstantTransferFunction::der()'],['../classIdentityTransferFunction.html#ac431432a198444e39e66693de5b5c257',1,'IdentityTransferFunction::der()'],['../classCosineTransferFunction.html#a03ec25c0de7de16655bdc5c2f9aa3d7f',1,'CosineTransferFunction::der()'],['../classSineTransferFunction.html#aa0c7e4229094120d524df44b27fbf45d',1,'SineTransferFunction::der()']]],
-  ['derivative_1',['derivative',['../classControlBasis.html#a1b50dc6c86c6c3d3061954491da05cea',1,'ControlBasis::derivative()'],['../classBSpline2nd.html#a4f43e62618771faa4ae3d77fddb61224',1,'BSpline2nd::derivative()'],['../classBSpline2ndAmplitude.html#a3616ef11be3874d380deba9ee48f3b24',1,'BSpline2ndAmplitude::derivative()'],['../classStep.html#acf35992f3f21ba1dadb0967e6bea165c',1,'Step::derivative()'],['../classBSpline0.html#a6daba2ef8670bd474b77861a60d7aacd',1,'BSpline0::derivative()']]],
-  ['dtknot_2',['dtknot',['../classBSpline2nd.html#a4521f6f50bc1001b7911d03c5130721d',1,'BSpline2nd::dtknot'],['../classBSpline2ndAmplitude.html#ac076d8f50877b4bd6e6e8ca4e5057500',1,'BSpline2ndAmplitude::dtknot'],['../classBSpline0.html#a98ae1e5b0046d603ca7951ecbab61583',1,'BSpline0::dtknot']]]
+  ['datadir_0',['datadir',['../classOutput.html#aa35bfecd4c9d48d2a36d7de958e9bcc9',1,'Output']]],
+  ['decay_5ftime_1',['decay_time',['../classOscillator.html#a7b117df6829da2cd619e776a6cd5cf55',1,'Oscillator']]],
+  ['dephase_5ftime_2',['dephase_time',['../classOscillator.html#a8f5b23b7b1c158f086e724fe7627135b',1,'Oscillator']]],
+  ['der_3',['der',['../classTransferFunction.html#a764e2e7d8a274199f3fe5d54b0a5317a',1,'TransferFunction::der()'],['../classConstantTransferFunction.html#a94880fd8ca87f99f411e714c9969fbc7',1,'ConstantTransferFunction::der()'],['../classIdentityTransferFunction.html#ac431432a198444e39e66693de5b5c257',1,'IdentityTransferFunction::der()'],['../classCosineTransferFunction.html#a03ec25c0de7de16655bdc5c2f9aa3d7f',1,'CosineTransferFunction::der()'],['../classSineTransferFunction.html#aa0c7e4229094120d524df44b27fbf45d',1,'SineTransferFunction::der()']]],
+  ['derivative_4',['derivative',['../classControlBasis.html#a1b50dc6c86c6c3d3061954491da05cea',1,'ControlBasis::derivative()'],['../classBSpline2nd.html#a4f43e62618771faa4ae3d77fddb61224',1,'BSpline2nd::derivative()'],['../classBSpline2ndAmplitude.html#a3616ef11be3874d380deba9ee48f3b24',1,'BSpline2ndAmplitude::derivative()'],['../classStep.html#acf35992f3f21ba1dadb0967e6bea165c',1,'Step::derivative()'],['../classBSpline0.html#a6daba2ef8670bd474b77861a60d7aacd',1,'BSpline0::derivative()']]],
+  ['detuning_5ffreq_5',['detuning_freq',['../classOscillator.html#ad4e43e2f5fd49b692bc916a9a93c0a08',1,'Oscillator']]],
+  ['dim_6',['dim',['../classTimeStepper.html#a4d98199ae7556ae11f2528c243cc1292',1,'TimeStepper::dim'],['../classMasterEq.html#a346265de8ee28b5420cf0fe4b0c180ed',1,'MasterEq::dim']]],
+  ['dim_5fess_7',['dim_ess',['../classGate.html#a8747f92bcd4a97768cf841d5c39c330a',1,'Gate::dim_ess'],['../classMasterEq.html#a5dfe8c17afb1a56643f98e59539949fd',1,'MasterEq::dim_ess']]],
+  ['dim_5fpostosc_8',['dim_postOsc',['../classOscillator.html#a8356795f3cf83954c4d372a613c3ab12',1,'Oscillator']]],
+  ['dim_5fpreosc_9',['dim_preOsc',['../classOscillator.html#ae67d95d26ab38cd2200c0b8a33f0b4d1',1,'Oscillator']]],
+  ['dim_5frho_10',['dim_rho',['../classGate.html#ad4b34a3d3057a63f211c7d5c3fa396e8',1,'Gate::dim_rho'],['../classMasterEq.html#a7112f8144791299af573cf9479a370c8',1,'MasterEq::dim_rho'],['../classPythonInterface.html#a2c7fb676b9118f301675783dbbbc5706',1,'PythonInterface::dim_rho']]],
+  ['dimdp_11',['dImdp',['../classMasterEq.html#aafbc713ebc3d42731dc44d727db530d8',1,'MasterEq']]],
+  ['dpdm_5fstates_12',['dpdm_states',['../classTimeStepper.html#a33769128e30e615ac6527991392554e1',1,'TimeStepper']]],
+  ['dredp_13',['dRedp',['../classMasterEq.html#a3117c4885b24a0d9d88fff234c5593e8',1,'MasterEq']]],
+  ['dt_14',['dt',['../classTimeStepper.html#ad261faaaa2066bfaa7ca7d9af834e61e',1,'TimeStepper']]],
+  ['dtknot_15',['dtknot',['../classBSpline2nd.html#a4521f6f50bc1001b7911d03c5130721d',1,'BSpline2nd::dtknot'],['../classBSpline2ndAmplitude.html#ac076d8f50877b4bd6e6e8ca4e5057500',1,'BSpline2ndAmplitude::dtknot'],['../classBSpline0.html#a98ae1e5b0046d603ca7951ecbab61583',1,'BSpline0::dtknot']]]
 ];
