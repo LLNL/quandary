@@ -85,7 +85,7 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>Quantum harmonic oscillator with control capabilities.  
+<p>Quantum oscillator (multi-level qubit) with control capabilities.  
  <a href="classOscillator.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="oscillator_8hpp_source.html">oscillator.hpp</a>&gt;</code></p>
@@ -94,7 +94,7 @@ Collaboration diagram for Oscillator:</div>
 <div class="dyncontent">
 <div class="center"><img src="classOscillator__coll__graph.png" border="0" usemap="#aOscillator_coll__map" alt="Collaboration graph"/></div>
 <map name="aOscillator_coll__map" id="aOscillator_coll__map">
-<area shape="rect" title="Quantum harmonic oscillator with control capabilities." alt="" coords="5,93,89,119"/>
+<area shape="rect" title="Quantum oscillator (multi&#45;level qubit) with control capabilities." alt="" coords="5,93,89,119"/>
 <area shape="rect" href="structPiPulse.html" title="Structure for storing pi&#45;pulse parameters." alt="" coords="13,5,82,31"/>
 <area shape="poly" title=" " alt="" coords="50,45,50,93,45,93,45,45"/>
 </map>
@@ -104,9 +104,9 @@ Collaboration diagram for Oscillator:</div>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a99fd3a4a9ef26a4f8025ac7a519d900b" id="r_a99fd3a4a9ef26a4f8025ac7a519d900b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a99fd3a4a9ef26a4f8025ac7a519d900b">Oscillator</a> ()</td></tr>
 <tr class="separator:a99fd3a4a9ef26a4f8025ac7a519d900b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a68c27e0f6878aabfd7a8828459bf5314" id="r_a68c27e0f6878aabfd7a8828459bf5314"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a68c27e0f6878aabfd7a8828459bf5314">Oscillator</a> (<a class="el" href="classMapParam.html">MapParam</a> config, size_t id, std::vector&lt; int &gt; nlevels_all_, std::vector&lt; std::string &gt; &amp;controlsegments, std::vector&lt; std::string &gt; &amp;controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector&lt; double &gt; carrier_freq_, double Tfinal_, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype_, std::default_random_engine rand_engine)</td></tr>
-<tr class="memdesc:a68c27e0f6878aabfd7a8828459bf5314"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with full oscillator specification.  <br /></td></tr>
-<tr class="separator:a68c27e0f6878aabfd7a8828459bf5314"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a91d2fbadde79c86026a41adfef18eb9a" id="r_a91d2fbadde79c86026a41adfef18eb9a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a91d2fbadde79c86026a41adfef18eb9a">Oscillator</a> (<a class="el" href="classConfig.html">Config</a> config, size_t id, std::vector&lt; int &gt; nlevels_all_, std::vector&lt; std::string &gt; &amp;controlsegments, std::vector&lt; std::string &gt; &amp;controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector&lt; double &gt; carrier_freq_, double Tfinal_, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype_, std::default_random_engine rand_engine)</td></tr>
+<tr class="memdesc:a91d2fbadde79c86026a41adfef18eb9a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with full oscillator specification.  <br /></td></tr>
+<tr class="separator:a91d2fbadde79c86026a41adfef18eb9a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2ad7e67cb42d0a44d430675ffc084c5b" id="r_a2ad7e67cb42d0a44d430675ffc084c5b"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a2ad7e67cb42d0a44d430675ffc084c5b">~Oscillator</a> ()</td></tr>
 <tr class="separator:a2ad7e67cb42d0a44d430675ffc084c5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aee2b84d3889ff76408152dae66d8ecd5" id="r_aee2b84d3889ff76408152dae66d8ecd5"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#aee2b84d3889ff76408152dae66d8ecd5">getNParams</a> ()</td></tr>
@@ -128,7 +128,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a10fc8f521b3263c227f81a4f8f259d86"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the T2 dephasing time.  <br /></td></tr>
 <tr class="separator:a10fc8f521b3263c227f81a4f8f259d86"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4d3a1d5cd3504ff997f9cf8dacf9174c" id="r_a4d3a1d5cd3504ff997f9cf8dacf9174c"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a4d3a1d5cd3504ff997f9cf8dacf9174c">getNSegments</a> ()</td></tr>
-<tr class="memdesc:a4d3a1d5cd3504ff997f9cf8dacf9174c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the number of control segments.  <br /></td></tr>
+<tr class="memdesc:a4d3a1d5cd3504ff997f9cf8dacf9174c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the number of control segments (currently always 1).  <br /></td></tr>
 <tr class="separator:a4d3a1d5cd3504ff997f9cf8dacf9174c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a86e6075424e5adfb690bd36e975c484b" id="r_a86e6075424e5adfb690bd36e975c484b"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a86e6075424e5adfb690bd36e975c484b">getNCarrierfrequencies</a> ()</td></tr>
 <tr class="memdesc:a86e6075424e5adfb690bd36e975c484b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the number of carrier frequencies.  <br /></td></tr>
@@ -146,22 +146,22 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:abafbe67f639ab401a141b41a861a7808"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the number of parameters for a specific segment.  <br /></td></tr>
 <tr class="separator:abafbe67f639ab401a141b41a861a7808"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac9de47930cb8adf8c34280ec9720ee8c" id="r_ac9de47930cb8adf8c34280ec9720ee8c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#ac9de47930cb8adf8c34280ec9720ee8c">setParams</a> (const double *x)</td></tr>
-<tr class="memdesc:ac9de47930cb8adf8c34280ec9720ee8c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets control parameters from an array.  <br /></td></tr>
+<tr class="memdesc:ac9de47930cb8adf8c34280ec9720ee8c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets control parameters from a global storage.  <br /></td></tr>
 <tr class="separator:ac9de47930cb8adf8c34280ec9720ee8c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afd4c234d01e5aaec144f1b7976c107e9" id="r_afd4c234d01e5aaec144f1b7976c107e9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#afd4c234d01e5aaec144f1b7976c107e9">getParams</a> (double *x)</td></tr>
-<tr class="memdesc:afd4c234d01e5aaec144f1b7976c107e9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves control parameters into an array.  <br /></td></tr>
+<tr class="memdesc:afd4c234d01e5aaec144f1b7976c107e9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves control parameters into a global storage.  <br /></td></tr>
 <tr class="separator:afd4c234d01e5aaec144f1b7976c107e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac11241f9fdaf1ee725e3cca7c66afa10" id="r_ac11241f9fdaf1ee725e3cca7c66afa10"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#ac11241f9fdaf1ee725e3cca7c66afa10">clearParams</a> ()</td></tr>
 <tr class="memdesc:ac11241f9fdaf1ee725e3cca7c66afa10"><td class="mdescLeft">&#160;</td><td class="mdescRight">Clears all control parameters.  <br /></td></tr>
 <tr class="separator:ac11241f9fdaf1ee725e3cca7c66afa10"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac96812d204d02d2965f6c59a7b9d2493" id="r_ac96812d204d02d2965f6c59a7b9d2493"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#ac96812d204d02d2965f6c59a7b9d2493">evalControl</a> (const double t, double *Re_ptr, double *Im_ptr)</td></tr>
-<tr class="memdesc:ac96812d204d02d2965f6c59a7b9d2493"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates rotating frame control functions.  <br /></td></tr>
+<tr class="memdesc:ac96812d204d02d2965f6c59a7b9d2493"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the rotating-frame control functions.  <br /></td></tr>
 <tr class="separator:ac96812d204d02d2965f6c59a7b9d2493"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afa461962ffc7ef5d63af3f346a08838b" id="r_afa461962ffc7ef5d63af3f346a08838b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#afa461962ffc7ef5d63af3f346a08838b">evalControl_diff</a> (const double t, double *dRedp, double *dImdp)</td></tr>
 <tr class="memdesc:afa461962ffc7ef5d63af3f346a08838b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes derivatives of control functions with respect to parameters.  <br /></td></tr>
 <tr class="separator:afa461962ffc7ef5d63af3f346a08838b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a51b18bd9d159de0cfbd908407365cf5e" id="r_a51b18bd9d159de0cfbd908407365cf5e"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a51b18bd9d159de0cfbd908407365cf5e">evalControl_Labframe</a> (const double t, double *f_ptr)</td></tr>
-<tr class="memdesc:a51b18bd9d159de0cfbd908407365cf5e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates lab-frame control function f(t).  <br /></td></tr>
+<tr class="memdesc:a51b18bd9d159de0cfbd908407365cf5e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates lab-frame control function.  <br /></td></tr>
 <tr class="separator:a51b18bd9d159de0cfbd908407365cf5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3382fadf8efb599c9757e6f273084237" id="r_a3382fadf8efb599c9757e6f273084237"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a3382fadf8efb599c9757e6f273084237">expectedEnergy</a> (const Vec x)</td></tr>
 <tr class="memdesc:a3382fadf8efb599c9757e6f273084237"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes expected energy for this oscillator.  <br /></td></tr>
@@ -170,7 +170,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:ae8eb7f99ab26c7cd015ed4691775dca5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes derivative of expected energy computation.  <br /></td></tr>
 <tr class="separator:ae8eb7f99ab26c7cd015ed4691775dca5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b2aad8df5555fff65a458ce745f9004" id="r_a8b2aad8df5555fff65a458ce745f9004"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a8b2aad8df5555fff65a458ce745f9004">population</a> (const Vec x, std::vector&lt; double &gt; &amp;pop)</td></tr>
-<tr class="memdesc:a8b2aad8df5555fff65a458ce745f9004"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes population in each energy level.  <br /></td></tr>
+<tr class="memdesc:a8b2aad8df5555fff65a458ce745f9004"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes population in each energy level of this oscillator.  <br /></td></tr>
 <tr class="separator:a8b2aad8df5555fff65a458ce745f9004"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a38c27fb9e2811b938ec40e2ca9068bc7" id="r_a38c27fb9e2811b938ec40e2ca9068bc7"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a38c27fb9e2811b938ec40e2ca9068bc7">evalControlVariation</a> ()</td></tr>
 <tr class="memdesc:a38c27fb9e2811b938ec40e2ca9068bc7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates control variation penalty term.  <br /></td></tr>
@@ -200,13 +200,13 @@ Protected Attributes</h2></td></tr>
 <tr class="memdesc:a14ea0bdd4a2d576d3851738bef9315b8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of energy levels for this oscillator.  <br /></td></tr>
 <tr class="separator:a14ea0bdd4a2d576d3851738bef9315b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6870d89a6d8c93b16fa90a246ea9c250" id="r_a6870d89a6d8c93b16fa90a246ea9c250"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a6870d89a6d8c93b16fa90a246ea9c250">ground_freq</a></td></tr>
-<tr class="memdesc:a6870d89a6d8c93b16fa90a246ea9c250"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fundamental transition frequency of this oscillator.  <br /></td></tr>
+<tr class="memdesc:a6870d89a6d8c93b16fa90a246ea9c250"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fundamental 0-1 transition frequency of this oscillator \(\omega_k\).  <br /></td></tr>
 <tr class="separator:a6870d89a6d8c93b16fa90a246ea9c250"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a513b9eaa57c7351982ad1acfa81d374c" id="r_a513b9eaa57c7351982ad1acfa81d374c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a513b9eaa57c7351982ad1acfa81d374c">selfkerr</a></td></tr>
 <tr class="memdesc:a513b9eaa57c7351982ad1acfa81d374c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Self-Kerr frequency \(\xi_k\), multiplies \(a_k^\dagger a_k^\dagger a_k a_k\).  <br /></td></tr>
 <tr class="separator:a513b9eaa57c7351982ad1acfa81d374c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad4e43e2f5fd49b692bc916a9a93c0a08" id="r_ad4e43e2f5fd49b692bc916a9a93c0a08"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#ad4e43e2f5fd49b692bc916a9a93c0a08">detuning_freq</a></td></tr>
-<tr class="memdesc:ad4e43e2f5fd49b692bc916a9a93c0a08"><td class="mdescLeft">&#160;</td><td class="mdescRight">Detuning frequency (rad/time), detuning = ground_freq - rotational_freq.  <br /></td></tr>
+<tr class="memdesc:ad4e43e2f5fd49b692bc916a9a93c0a08"><td class="mdescLeft">&#160;</td><td class="mdescRight">Detuning frequency, detuning = ground_freq - rotational_freq, multiplies \(a_k^\dagger a_k\).  <br /></td></tr>
 <tr class="separator:ad4e43e2f5fd49b692bc916a9a93c0a08"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad393a00805d44f10e81f5747ffc0c280" id="r_ad393a00805d44f10e81f5747ffc0c280"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#ad393a00805d44f10e81f5747ffc0c280">lindbladtype</a></td></tr>
 <tr class="memdesc:ad393a00805d44f10e81f5747ffc0c280"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of Lindblad collapse operators to include.  <br /></td></tr>
@@ -240,8 +240,9 @@ Protected Attributes</h2></td></tr>
 <tr class="separator:a89b64697e0c5454fa68c1cab1bc74d57"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Quantum harmonic oscillator with control capabilities. </p>
-<p>This class represents a single quantum harmonic oscillator with multiple energy levels, control pulses, and decoherence mechanisms. It manages control parameterization, frequency detuning, and Lindblad collapse operators for decay and dephasing. </p>
+<div class="textblock"><p>Quantum oscillator (multi-level qubit) with control capabilities. </p>
+<p>This class represents a single quantum oscillator that is controlled by external control pulses. It stores the oscillator parameters, such as number of energy levels, frequency detuning, anharmonicity and Lindblad decay and dephasing times. <br  />
+ It also manages this oscillator's control pulse parameterization. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a99fd3a4a9ef26a4f8025ac7a519d900b" name="a99fd3a4a9ef26a4f8025ac7a519d900b"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a99fd3a4a9ef26a4f8025ac7a519d900b">&#9670;&#160;</a></span>Oscillator() <span class="overload">[1/2]</span></h2>
@@ -260,8 +261,8 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a68c27e0f6878aabfd7a8828459bf5314" name="a68c27e0f6878aabfd7a8828459bf5314"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a68c27e0f6878aabfd7a8828459bf5314">&#9670;&#160;</a></span>Oscillator() <span class="overload">[2/2]</span></h2>
+<a id="a91d2fbadde79c86026a41adfef18eb9a" name="a91d2fbadde79c86026a41adfef18eb9a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a91d2fbadde79c86026a41adfef18eb9a">&#9670;&#160;</a></span>Oscillator() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -269,7 +270,7 @@ Protected Attributes</h2></td></tr>
         <tr>
           <td class="memname">Oscillator::Oscillator </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="classMapParam.html">MapParam</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="classConfig.html">Config</a>&#160;</td>
           <td class="paramname"><em>config</em>, </td>
         </tr>
         <tr>
@@ -362,7 +363,7 @@ Protected Attributes</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">config</td><td>Configuration parameters </td></tr>
-    <tr><td class="paramname">id</td><td><a class="el" href="classOscillator.html" title="Quantum harmonic oscillator with control capabilities.">Oscillator</a> identifier </td></tr>
+    <tr><td class="paramname">id</td><td><a class="el" href="classOscillator.html" title="Quantum oscillator (multi-level qubit) with control capabilities.">Oscillator</a> identifier </td></tr>
     <tr><td class="paramname">nlevels_all_</td><td>Number of levels for all oscillators in system </td></tr>
     <tr><td class="paramname">controlsegments</td><td>Control segment specifications </td></tr>
     <tr><td class="paramname">controlinitializations</td><td>Control initialization specifications </td></tr>
@@ -467,7 +468,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Evaluates rotating frame control functions. </p>
+<p>Evaluates the rotating-frame control functions. </p>
 <p>Computes the real and imaginary parts of the control function: Re = p(t), Im = q(t)</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -552,7 +553,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Evaluates lab-frame control function f(t). </p>
+<p>Evaluates lab-frame control function. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">t</td><td>Time at which to evaluate </td></tr>
@@ -646,7 +647,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Computes expected energy for this oscillator. </p>
-<p>Returns the expected value of the energy operator for this oscillator's subsystem.</p>
+<p>Returns the expected value of the number operator for this oscillator's subsystem.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">x</td><td>State vector </td></tr>
@@ -927,7 +928,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Retrieves the number of control segments. </p>
+<p>Retrieves the number of control segments (currently always 1). </p>
 <dl class="section return"><dt>Returns</dt><dd>size_t Number of time segments </dd></dl>
 
 </div>
@@ -1010,7 +1011,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Retrieves control parameters into an array. </p>
+<p>Retrieves control parameters into a global storage. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">x</td><td>Array to store control parameter values </td></tr>
@@ -1102,7 +1103,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Computes population in each energy level. </p>
+<p>Computes population in each energy level of this oscillator. </p>
 <p>Extracts the diagonal elements of the reduced density matrix for this oscillator.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -1130,7 +1131,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Sets control parameters from an array. </p>
+<p>Sets control parameters from a global storage. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">x</td><td>Array of control parameter values </td></tr>
@@ -1281,7 +1282,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Detuning frequency (rad/time), detuning = ground_freq - rotational_freq. </p>
+<p>Detuning frequency, detuning = ground_freq - rotational_freq, multiplies \(a_k^\dagger a_k\). </p>
 
 </div>
 </div>
@@ -1337,7 +1338,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Fundamental transition frequency of this oscillator. </p>
+<p>Fundamental 0-1 transition frequency of this oscillator \(\omega_k\). </p>
 
 </div>
 </div>

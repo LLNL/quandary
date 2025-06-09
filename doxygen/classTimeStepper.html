@@ -85,7 +85,7 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>Base class for time integration schemes in quantum dynamics.  
+<p>Base class for time integration schemes to evolve the quantum dynamics.  
  <a href="classTimeStepper.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="timestepper_8hpp_source.html">timestepper.hpp</a>&gt;</code></p>
@@ -94,7 +94,7 @@ Inheritance diagram for TimeStepper:</div>
 <div class="dyncontent">
 <div class="center"><img src="classTimeStepper__inherit__graph.png" border="0" usemap="#aTimeStepper_inherit__map" alt="Inheritance graph"/></div>
 <map name="aTimeStepper_inherit__map" id="aTimeStepper_inherit__map">
-<area shape="rect" title="Base class for time integration schemes in quantum dynamics." alt="" coords="54,5,159,31"/>
+<area shape="rect" title="Base class for time integration schemes to evolve the quantum dynamics." alt="" coords="54,5,159,31"/>
 <area shape="rect" href="classExplEuler.html" title="Explicit Euler time integration scheme." alt="" coords="5,79,88,104"/>
 <area shape="poly" title=" " alt="" coords="90,43,58,80,54,77,86,40"/>
 <area shape="rect" href="classImplMidpoint.html" title="Implicit midpoint rule time integration scheme." alt="" coords="113,79,221,104"/>
@@ -108,20 +108,22 @@ Collaboration diagram for TimeStepper:</div>
 <div class="dyncontent">
 <div class="center"><img src="classTimeStepper__coll__graph.png" border="0" usemap="#aTimeStepper_coll__map" alt="Collaboration graph"/></div>
 <map name="aTimeStepper_coll__map" id="aTimeStepper_coll__map">
-<area shape="rect" title="Base class for time integration schemes in quantum dynamics." alt="" coords="112,357,217,383"/>
-<area shape="rect" href="classMasterEq.html" title="Implementation of the Lindblad master equation solver." alt="" coords="6,269,89,295"/>
-<area shape="poly" title=" " alt="" coords="66,304,94,331,137,355,134,360,91,335,63,308"/>
-<area shape="rect" href="classOscillator.html" title="Quantum harmonic oscillator with control capabilities." alt="" coords="5,93,89,119"/>
-<area shape="poly" title=" " alt="" coords="45,133,41,168,41,207,48,269,43,269,35,207,36,167,40,132"/>
-<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the RHS matrix to a vector." alt="" coords="115,181,217,207"/>
+<area shape="rect" title="Base class for time integration schemes to evolve the quantum dynamics." alt="" coords="217,357,323,383"/>
+<area shape="rect" href="classMasterEq.html" title="Implementation of the real&#45;valued right&#45;hand&#45;side (RHS) system matrix of the quantum dynamical equati..." alt="" coords="117,269,199,295"/>
+<area shape="poly" title=" " alt="" coords="175,304,200,331,241,355,238,360,196,335,171,308"/>
+<area shape="rect" href="classOscillator.html" title="Quantum oscillator (multi&#45;level qubit) with control capabilities." alt="" coords="5,93,89,119"/>
+<area shape="poly" title=" " alt="" coords="40,133,33,169,34,188,40,205,56,226,77,243,123,267,120,272,74,248,53,230,36,208,29,189,28,169,35,132"/>
+<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the right&#45;hand&#45;side system matrix to a vector." alt="" coords="115,181,217,207"/>
 <area shape="poly" title=" " alt="" coords="76,125,151,179,148,183,73,129"/>
 <area shape="rect" href="structPiPulse.html" title="Structure for storing pi&#45;pulse parameters." alt="" coords="13,5,82,31"/>
 <area shape="poly" title=" " alt="" coords="50,45,50,93,45,93,45,45"/>
-<area shape="poly" title=" " alt="" coords="140,217,65,271,62,267,137,213"/>
-<area shape="rect" href="classOptimTarget.html" title="Optimization target specification and evaluation for quantum control." alt="" coords="113,269,216,295"/>
-<area shape="poly" title=" " alt="" coords="167,309,167,357,162,357,162,309"/>
-<area shape="rect" href="classOutput.html" title="Output management for quantum control simulations and optimization." alt="" coords="251,269,318,295"/>
-<area shape="poly" title=" " alt="" coords="277,309,257,335,236,350,212,360,210,355,233,345,254,331,273,306"/>
+<area shape="poly" title=" " alt="" coords="166,221,162,269,156,269,161,220"/>
+<area shape="rect" href="classOptimTarget.html" title="Optimization target specification for quantum control." alt="" coords="224,269,327,295"/>
+<area shape="poly" title=" " alt="" coords="275,309,274,319,273,357,267,357,269,319,270,308"/>
+<area shape="rect" href="classGate.html" title="Base class for quantum gate operations." alt="" coords="249,181,302,207"/>
+<area shape="poly" title=" " alt="" coords="278,221,278,269,273,269,273,221"/>
+<area shape="rect" href="classOutput.html" title="Output management for quantum control simulations and optimization." alt="" coords="357,269,423,295"/>
+<area shape="poly" title=" " alt="" coords="382,309,362,335,341,350,318,360,316,355,338,345,359,331,378,306"/>
 </map>
 <center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
@@ -162,10 +164,10 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a1b1453a4d14bf199a017661fd67f6dc9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes derivative of energy penalty integral.  <br /></td></tr>
 <tr class="separator:a1b1453a4d14bf199a017661fd67f6dc9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a983a7d5b2c04dfb04caaead7bf5b9a49" id="r_a983a7d5b2c04dfb04caaead7bf5b9a49"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a983a7d5b2c04dfb04caaead7bf5b9a49">evolveFWD</a> (const double tstart, const double tstop, Vec <a class="el" href="classTimeStepper.html#a7b47c0f5ce67d8f4a04c77c2c96bd93c">x</a>)=0</td></tr>
-<tr class="memdesc:a983a7d5b2c04dfb04caaead7bf5b9a49"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evolves state forward from tstart to tstop.  <br /></td></tr>
+<tr class="memdesc:a983a7d5b2c04dfb04caaead7bf5b9a49"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evolves state forward by one time-step from tstart to tstop.  <br /></td></tr>
 <tr class="separator:a983a7d5b2c04dfb04caaead7bf5b9a49"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7893cfa005fac0830ea331cbbe6b0dde" id="r_a7893cfa005fac0830ea331cbbe6b0dde"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a7893cfa005fac0830ea331cbbe6b0dde">evolveBWD</a> (const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient)</td></tr>
-<tr class="memdesc:a7893cfa005fac0830ea331cbbe6b0dde"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evolves adjoint backward and updates reduced gradient.  <br /></td></tr>
+<tr class="memdesc:a7893cfa005fac0830ea331cbbe6b0dde"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evolves adjoint state backward by one time-step and updates reduced gradient.  <br /></td></tr>
 <tr class="separator:a7893cfa005fac0830ea331cbbe6b0dde"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
@@ -183,19 +185,19 @@ Public Attributes</h2></td></tr>
 <tr class="memdesc:ad261faaaa2066bfaa7ca7d9af834e61e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time step size.  <br /></td></tr>
 <tr class="separator:ad261faaaa2066bfaa7ca7d9af834e61e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b6233ad7101f7c8c02d29f3efe3faa6" id="r_a8b6233ad7101f7c8c02d29f3efe3faa6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a8b6233ad7101f7c8c02d29f3efe3faa6">writeDataFiles</a></td></tr>
-<tr class="memdesc:a8b6233ad7101f7c8c02d29f3efe3faa6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to write trajectory data during forward simulation.  <br /></td></tr>
+<tr class="memdesc:a8b6233ad7101f7c8c02d29f3efe3faa6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to write evolution data during forward simulation.  <br /></td></tr>
 <tr class="separator:a8b6233ad7101f7c8c02d29f3efe3faa6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a117e801337dbe849388f274d4dec83d0" id="r_a117e801337dbe849388f274d4dec83d0"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a117e801337dbe849388f274d4dec83d0">redgrad</a></td></tr>
 <tr class="memdesc:a117e801337dbe849388f274d4dec83d0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reduced gradient vector for optimization.  <br /></td></tr>
 <tr class="separator:a117e801337dbe849388f274d4dec83d0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad904f4e9a7bc465c176813b5ea597e1c" id="r_ad904f4e9a7bc465c176813b5ea597e1c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#ad904f4e9a7bc465c176813b5ea597e1c">penalty_integral</a></td></tr>
-<tr class="memdesc:ad904f4e9a7bc465c176813b5ea597e1c"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a>: integral penalty term value.  <br /></td></tr>
+<tr class="memdesc:ad904f4e9a7bc465c176813b5ea597e1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sums the integral penalty term.  <br /></td></tr>
 <tr class="separator:ad904f4e9a7bc465c176813b5ea597e1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3c30655966d681d63abf2bf681246c27" id="r_a3c30655966d681d63abf2bf681246c27"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a3c30655966d681d63abf2bf681246c27">energy_penalty_integral</a></td></tr>
-<tr class="memdesc:a3c30655966d681d63abf2bf681246c27"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a>: energy penalty integral term.  <br /></td></tr>
+<tr class="memdesc:a3c30655966d681d63abf2bf681246c27"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sums the energy penalty term.  <br /></td></tr>
 <tr class="separator:a3c30655966d681d63abf2bf681246c27"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4f04bd683057a0b0c9d7f983cd3e0ba2" id="r_a4f04bd683057a0b0c9d7f983cd3e0ba2"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a4f04bd683057a0b0c9d7f983cd3e0ba2">penalty_dpdm</a></td></tr>
-<tr class="memdesc:a4f04bd683057a0b0c9d7f983cd3e0ba2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Second-order derivative penalty value.  <br /></td></tr>
+<tr class="memdesc:a4f04bd683057a0b0c9d7f983cd3e0ba2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sums second-order derivative penalty value.  <br /></td></tr>
 <tr class="separator:a4f04bd683057a0b0c9d7f983cd3e0ba2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adc015010aa8be6a70c99750f5834497b" id="r_adc015010aa8be6a70c99750f5834497b"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#adc015010aa8be6a70c99750f5834497b">penalty_param</a></td></tr>
 <tr class="memdesc:adc015010aa8be6a70c99750f5834497b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parameter for penalty term (Gaussian variance)  <br /></td></tr>
@@ -244,8 +246,8 @@ Protected Attributes</h2></td></tr>
 <tr class="separator:a354e57936c67ef0191a90d2c8c343e39"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Base class for time integration schemes in quantum dynamics. </p>
-<p>This abstract class provides the interface for time-stepping methods used to integrate quantum evolution equations (Lindblad master equation or Schroedinger equation). It supports both forward and adjoint time integration for optimization. </p>
+<div class="textblock"><p>Base class for time integration schemes to evolve the quantum dynamics. </p>
+<p>This abstract class provides the interface for time-stepping methods used to integrate the quantum evolution equations (Lindblad master equation or Schroedinger equation). It supports both forward and adjoint time integration, handles output of evolution data, and evaluates penalty integral terms. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a88c17d2b22882ca947e83c25e903be1d" name="a88c17d2b22882ca947e83c25e903be1d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a88c17d2b22882ca947e83c25e903be1d">&#9670;&#160;</a></span>TimeStepper() <span class="overload">[1/2]</span></h2>
@@ -477,7 +479,8 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Evolves adjoint backward and updates reduced gradient. </p>
+<p>Evolves adjoint state backward by one time-step and updates reduced gradient. </p>
+<p>Abstract base-class implementation is empty. Derived classes that need backward time-stepping should implement this function.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">tstart</td><td>Start time (backward evolution) </td></tr>
@@ -534,8 +537,8 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Evolves state forward from tstart to tstop. </p>
-<p>Pure virtual function to be implemented by derived classes.</p>
+<p>Evolves state forward by one time-step from tstart to tstop. </p>
+<p>Pure virtual function to be implemented by the derived time-stepping classes.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">tstart</td><td>Start time </td></tr>
@@ -799,6 +802,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Solves the adjoint ODE backward in time. </p>
+<p>This performs backward time-stepping to backpropagate an adjoint initial condition at final time (aka a terminal condtion) to time t=0, while accumulating the reduced gradient.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">rho_t0_bar</td><td>Terminal condition for adjoint state </td></tr>
@@ -839,6 +843,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Solves the ODE forward in time. </p>
+<p>This performs the time-stepping to propagate an initial condition to the final time.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">initid</td><td>Initial condition identifier </td></tr>
@@ -951,7 +956,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a>: energy penalty integral term. </p>
+<p>Sums the energy penalty term. </p>
 
 </div>
 </div>
@@ -1103,7 +1108,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Second-order derivative penalty value. </p>
+<p>Sums second-order derivative penalty value. </p>
 
 </div>
 </div>
@@ -1119,7 +1124,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a>: integral penalty term value. </p>
+<p>Sums the integral penalty term. </p>
 
 </div>
 </div>
@@ -1223,7 +1228,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Flag to write trajectory data during forward simulation. </p>
+<p>Flag to write evolution data during forward simulation. </p>
 
 </div>
 </div>

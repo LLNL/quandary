@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['main_2ecpp_0',['main.cpp',['../main_8cpp.html',1,'']]],
-  ['mastereq_2ecpp_1',['mastereq.cpp',['../mastereq_8cpp.html',1,'']]],
-  ['mastereq_2ehpp_2',['mastereq.hpp',['../mastereq_8hpp.html',1,'']]]
+  ['hamiltonianfilereader_2ecpp_0',['hamiltonianfilereader.cpp',['../hamiltonianfilereader_8cpp.html',1,'']]],
+  ['hamiltonianfilereader_2ehpp_1',['hamiltonianfilereader.hpp',['../hamiltonianfilereader_8hpp.html',1,'']]]
 ];

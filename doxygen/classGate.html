@@ -122,7 +122,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a4fc24ecebc0ca8252bf7ab96a705e58a" id="r_a4fc24ecebc0ca8252bf7ab96a705e58a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a4fc24ecebc0ca8252bf7ab96a705e58a">Gate</a> ()</td></tr>
 <tr class="separator:a4fc24ecebc0ca8252bf7ab96a705e58a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adf66e54c2271a8c93f53fd76f1364b47" id="r_adf66e54c2271a8c93f53fd76f1364b47"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#adf66e54c2271a8c93f53fd76f1364b47">Gate</a> (std::vector&lt; int &gt; nlevels_, std::vector&lt; int &gt; nessential_, double time_, std::vector&lt; double &gt; <a class="el" href="classGate.html#a3e01ad590ce8ffa37e497f46b5152010">gate_rot_freq</a>, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype_, bool <a class="el" href="classGate.html#a00a2add81f121424e235213af74166e2">quietmode</a>=false)</td></tr>
-<tr class="memdesc:adf66e54c2271a8c93f53fd76f1364b47"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for quantum gate with specified parameters.  <br /></td></tr>
+<tr class="memdesc:adf66e54c2271a8c93f53fd76f1364b47"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for quantum gates.  <br /></td></tr>
 <tr class="separator:adf66e54c2271a8c93f53fd76f1364b47"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa04556acb1cdc5715e38ced8f28c6b27" id="r_aa04556acb1cdc5715e38ced8f28c6b27"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#aa04556acb1cdc5715e38ced8f28c6b27">~Gate</a> ()</td></tr>
 <tr class="separator:aa04556acb1cdc5715e38ced8f28c6b27"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -130,7 +130,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:acc6f80b5380abba99a73ec14eb3e03fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the dimension of the density matrix.  <br /></td></tr>
 <tr class="separator:acc6f80b5380abba99a73ec14eb3e03fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ace3facb0e9ae58a9196bac886df1faf0" id="r_ace3facb0e9ae58a9196bac886df1faf0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#ace3facb0e9ae58a9196bac886df1faf0">assembleGate</a> ()</td></tr>
-<tr class="memdesc:ace3facb0e9ae58a9196bac886df1faf0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Assembles the vectorized gate matrices.  <br /></td></tr>
+<tr class="memdesc:ace3facb0e9ae58a9196bac886df1faf0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Assembles the vectorized gate matrix.  <br /></td></tr>
 <tr class="separator:ace3facb0e9ae58a9196bac886df1faf0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a77f7425734396a0248b3d8fedaecedd8" id="r_a77f7425734396a0248b3d8fedaecedd8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a77f7425734396a0248b3d8fedaecedd8">applyGate</a> (const Vec state, Vec VrhoV)</td></tr>
 <tr class="memdesc:a77f7425734396a0248b3d8fedaecedd8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Applies the gate transformation to a quantum state.  <br /></td></tr>
@@ -141,13 +141,8 @@ Protected Attributes</h2></td></tr>
 <tr class="memitem:a59327fe9a53f4aa6fff8317305b88f97" id="r_a59327fe9a53f4aa6fff8317305b88f97"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a59327fe9a53f4aa6fff8317305b88f97">V_re</a></td></tr>
 <tr class="separator:a59327fe9a53f4aa6fff8317305b88f97"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a975206acbbef7b29e706cbcd38050b6e" id="r_a975206acbbef7b29e706cbcd38050b6e"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a975206acbbef7b29e706cbcd38050b6e">V_im</a></td></tr>
-<tr class="memdesc:a975206acbbef7b29e706cbcd38050b6e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Input: Real and imaginary parts of V_target, non-vectorized, essential levels only.  <br /></td></tr>
+<tr class="memdesc:a975206acbbef7b29e706cbcd38050b6e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real and imaginary parts of V_target, non-vectorized, essential levels only.  <br /></td></tr>
 <tr class="separator:a975206acbbef7b29e706cbcd38050b6e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab131fde8d498cd7fd405690913f9a3d5" id="r_ab131fde8d498cd7fd405690913f9a3d5"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#ab131fde8d498cd7fd405690913f9a3d5">rotA</a></td></tr>
-<tr class="separator:ab131fde8d498cd7fd405690913f9a3d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a70d61c7ab3e509518a6c6d43a09d2690" id="r_a70d61c7ab3e509518a6c6d43a09d2690"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a70d61c7ab3e509518a6c6d43a09d2690">rotB</a></td></tr>
-<tr class="memdesc:a70d61c7ab3e509518a6c6d43a09d2690"><td class="mdescLeft">&#160;</td><td class="mdescRight">Input: Diagonal elements of real and imaginary rotational matrices.  <br /></td></tr>
-<tr class="separator:a70d61c7ab3e509518a6c6d43a09d2690"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a79d4b22e99a52bf855b173fa08fcd54f" id="r_a79d4b22e99a52bf855b173fa08fcd54f"><td class="memItemLeft" align="right" valign="top">std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a79d4b22e99a52bf855b173fa08fcd54f">nessential</a></td></tr>
 <tr class="memdesc:a79d4b22e99a52bf855b173fa08fcd54f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of essential levels per oscillator.  <br /></td></tr>
 <tr class="separator:a79d4b22e99a52bf855b173fa08fcd54f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -173,7 +168,7 @@ Protected Attributes</h2></td></tr>
 <tr class="memdesc:a31f6fbb897a03d6cfec880b5b045085f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Final time T. Time of gate rotation.  <br /></td></tr>
 <tr class="separator:a31f6fbb897a03d6cfec880b5b045085f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3e01ad590ce8ffa37e497f46b5152010" id="r_a3e01ad590ce8ffa37e497f46b5152010"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a3e01ad590ce8ffa37e497f46b5152010">gate_rot_freq</a></td></tr>
-<tr class="memdesc:a3e01ad590ce8ffa37e497f46b5152010"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequencies of gate rotation (rad/time). Often same as rotational frequencies.  <br /></td></tr>
+<tr class="memdesc:a3e01ad590ce8ffa37e497f46b5152010"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequencies of gate rotation (rad/time). Default: same as the rotational frequencies.  <br /></td></tr>
 <tr class="separator:a3e01ad590ce8ffa37e497f46b5152010"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a10d2277f4b3d8a32c442dde26dffd5c6" id="r_a10d2277f4b3d8a32c442dde26dffd5c6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGate.html#a10d2277f4b3d8a32c442dde26dffd5c6">lindbladtype</a></td></tr>
 <tr class="memdesc:a10d2277f4b3d8a32c442dde26dffd5c6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of Lindblad operators for open system dynamics.  <br /></td></tr>
@@ -181,7 +176,7 @@ Protected Attributes</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Base class for quantum gate operations. </p>
-<p>The <a class="el" href="classGate.html" title="Base class for quantum gate operations.">Gate</a> class provides the fundamental interface for quantum gate operations in quantum optimal control. It handles the transformation \(V \rho V^\dagger\) where \(V\) is the unitary gate matrix and \(\rho\) is the quantum state density matrix. </p>
+<p>The <a class="el" href="classGate.html" title="Base class for quantum gate operations.">Gate</a> class provides the fundamental interface for quantum gate operations in quantum optimal control. It handles the transformation \(V \rho V^\dagger\) where \(V\) is the unitary gate matrix (target unitary transformation). </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a4fc24ecebc0ca8252bf7ab96a705e58a" name="a4fc24ecebc0ca8252bf7ab96a705e58a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a4fc24ecebc0ca8252bf7ab96a705e58a">&#9670;&#160;</a></span>Gate() <span class="overload">[1/2]</span></h2>
@@ -250,7 +245,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Constructor for quantum gate with specified parameters. </p>
+<p>Constructor for quantum gates. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">nlevels_</td><td>Number of levels per oscillator. </td></tr>
@@ -344,8 +339,8 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Assembles the vectorized gate matrices. </p>
-<p>Computes VxV_re = \(\text{Re}(\bar{V} \otimes V)\) and VxV_im = \(\text{Im}(\bar{V} \otimes V)\) where V is the gate matrix and \(\bar{V}\) is its complex conjugate. </p>
+<p>Assembles the vectorized gate matrix. </p>
+<p>Computes VxV_re = \(\text{Re}(\bar{V} \otimes V)\) and VxV_im = \(\text{Im}(\bar{V} \otimes V)\) where V is the gate matrix. </p>
 
 </div>
 </div>
@@ -470,7 +465,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Frequencies of gate rotation (rad/time). Often same as rotational frequencies. </p>
+<p>Frequencies of gate rotation (rad/time). Default: same as the rotational frequencies. </p>
 
 </div>
 </div>
@@ -618,52 +613,6 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="ab131fde8d498cd7fd405690913f9a3d5" name="ab131fde8d498cd7fd405690913f9a3d5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab131fde8d498cd7fd405690913f9a3d5">&#9670;&#160;</a></span>rotA</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">Vec Gate::rotA</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a70d61c7ab3e509518a6c6d43a09d2690" name="a70d61c7ab3e509518a6c6d43a09d2690"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a70d61c7ab3e509518a6c6d43a09d2690">&#9670;&#160;</a></span>rotB</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">Vec Gate::rotB</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Input: Diagonal elements of real and imaginary rotational matrices. </p>
-
-</div>
-</div>
 <a id="a975206acbbef7b29e706cbcd38050b6e" name="a975206acbbef7b29e706cbcd38050b6e"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a975206acbbef7b29e706cbcd38050b6e">&#9670;&#160;</a></span>V_im</h2>
 
@@ -684,7 +633,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Input: Real and imaginary parts of V_target, non-vectorized, essential levels only. </p>
+<p>Real and imaginary parts of V_target, non-vectorized, essential levels only. </p>
 
 </div>
 </div>

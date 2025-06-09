@@ -78,6 +78,7 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pro-attribs">Protected Attributes</a> &#124;
 <a href="classExplEuler-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">ExplEuler Class Reference</div></div>
 </div><!--header-->
@@ -93,7 +94,7 @@ Inheritance diagram for ExplEuler:</div>
 <div class="center"><img src="classExplEuler__inherit__graph.png" border="0" usemap="#aExplEuler_inherit__map" alt="Inheritance graph"/></div>
 <map name="aExplEuler_inherit__map" id="aExplEuler_inherit__map">
 <area shape="rect" title="Explicit Euler time integration scheme." alt="" coords="17,79,99,104"/>
-<area shape="rect" href="classTimeStepper.html" title="Base class for time integration schemes in quantum dynamics." alt="" coords="5,5,111,31"/>
+<area shape="rect" href="classTimeStepper.html" title="Base class for time integration schemes to evolve the quantum dynamics." alt="" coords="5,5,111,31"/>
 <area shape="poly" title=" " alt="" coords="61,44,61,79,55,79,55,44"/>
 </map>
 <center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
@@ -102,22 +103,24 @@ Collaboration diagram for ExplEuler:</div>
 <div class="dyncontent">
 <div class="center"><img src="classExplEuler__coll__graph.png" border="0" usemap="#aExplEuler_coll__map" alt="Collaboration graph"/></div>
 <map name="aExplEuler_coll__map" id="aExplEuler_coll__map">
-<area shape="rect" title="Explicit Euler time integration scheme." alt="" coords="123,432,206,457"/>
-<area shape="rect" href="classTimeStepper.html" title="Base class for time integration schemes in quantum dynamics." alt="" coords="112,357,217,383"/>
-<area shape="poly" title=" " alt="" coords="167,397,167,432,162,432,162,397"/>
-<area shape="rect" href="classMasterEq.html" title="Implementation of the Lindblad master equation solver." alt="" coords="6,269,89,295"/>
-<area shape="poly" title=" " alt="" coords="66,304,94,331,137,355,134,360,91,335,63,308"/>
-<area shape="rect" href="classOscillator.html" title="Quantum harmonic oscillator with control capabilities." alt="" coords="5,93,89,119"/>
-<area shape="poly" title=" " alt="" coords="45,133,41,168,41,207,48,269,43,269,35,207,36,167,40,132"/>
-<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the RHS matrix to a vector." alt="" coords="115,181,217,207"/>
+<area shape="rect" title="Explicit Euler time integration scheme." alt="" coords="229,432,311,457"/>
+<area shape="rect" href="classTimeStepper.html" title="Base class for time integration schemes to evolve the quantum dynamics." alt="" coords="217,357,323,383"/>
+<area shape="poly" title=" " alt="" coords="273,397,273,432,267,432,267,397"/>
+<area shape="rect" href="classMasterEq.html" title="Implementation of the real&#45;valued right&#45;hand&#45;side (RHS) system matrix of the quantum dynamical equati..." alt="" coords="117,269,199,295"/>
+<area shape="poly" title=" " alt="" coords="175,304,200,331,241,355,238,360,196,335,171,308"/>
+<area shape="rect" href="classOscillator.html" title="Quantum oscillator (multi&#45;level qubit) with control capabilities." alt="" coords="5,93,89,119"/>
+<area shape="poly" title=" " alt="" coords="40,133,33,169,34,188,40,205,56,226,77,243,123,267,120,272,74,248,53,230,36,208,29,189,28,169,35,132"/>
+<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the right&#45;hand&#45;side system matrix to a vector." alt="" coords="115,181,217,207"/>
 <area shape="poly" title=" " alt="" coords="76,125,151,179,148,183,73,129"/>
 <area shape="rect" href="structPiPulse.html" title="Structure for storing pi&#45;pulse parameters." alt="" coords="13,5,82,31"/>
 <area shape="poly" title=" " alt="" coords="50,45,50,93,45,93,45,45"/>
-<area shape="poly" title=" " alt="" coords="140,217,65,271,62,267,137,213"/>
-<area shape="rect" href="classOptimTarget.html" title="Optimization target specification and evaluation for quantum control." alt="" coords="113,269,216,295"/>
-<area shape="poly" title=" " alt="" coords="167,309,167,357,162,357,162,309"/>
-<area shape="rect" href="classOutput.html" title="Output management for quantum control simulations and optimization." alt="" coords="251,269,318,295"/>
-<area shape="poly" title=" " alt="" coords="277,309,257,335,236,350,212,360,210,355,233,345,254,331,273,306"/>
+<area shape="poly" title=" " alt="" coords="166,221,162,269,156,269,161,220"/>
+<area shape="rect" href="classOptimTarget.html" title="Optimization target specification for quantum control." alt="" coords="224,269,327,295"/>
+<area shape="poly" title=" " alt="" coords="275,309,274,319,273,357,267,357,269,319,270,308"/>
+<area shape="rect" href="classGate.html" title="Base class for quantum gate operations." alt="" coords="249,181,302,207"/>
+<area shape="poly" title=" " alt="" coords="278,221,278,269,273,269,273,221"/>
+<area shape="rect" href="classOutput.html" title="Output management for quantum control simulations and optimization." alt="" coords="357,269,423,295"/>
+<area shape="poly" title=" " alt="" coords="382,309,362,335,341,350,318,360,316,355,338,345,359,331,378,306"/>
 </map>
 <center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
@@ -170,57 +173,11 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a1b1453a4d14bf199a017661fd67f6dc9 inherit pub_methods_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes derivative of energy penalty integral.  <br /></td></tr>
 <tr class="separator:a1b1453a4d14bf199a017661fd67f6dc9 inherit pub_methods_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
-Additional Inherited Members</h2></td></tr>
-<tr class="inherit_header pub_attribs_classTimeStepper"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classTimeStepper')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="classTimeStepper.html">TimeStepper</a></td></tr>
-<tr class="memitem:a19a5d08c76bf1580122ec82665c2f7ef inherit pub_attribs_classTimeStepper" id="r_a19a5d08c76bf1580122ec82665c2f7ef"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classMasterEq.html">MasterEq</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a19a5d08c76bf1580122ec82665c2f7ef">mastereq</a></td></tr>
-<tr class="memdesc:a19a5d08c76bf1580122ec82665c2f7ef inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to master equation solver.  <br /></td></tr>
-<tr class="separator:a19a5d08c76bf1580122ec82665c2f7ef inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1e462962525e2b0960c8d5ac813d3873 inherit pub_attribs_classTimeStepper" id="r_a1e462962525e2b0960c8d5ac813d3873"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a1e462962525e2b0960c8d5ac813d3873">ntime</a></td></tr>
-<tr class="memdesc:a1e462962525e2b0960c8d5ac813d3873 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of time steps.  <br /></td></tr>
-<tr class="separator:a1e462962525e2b0960c8d5ac813d3873 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4094b333f65e347f95c78aea0effe544 inherit pub_attribs_classTimeStepper" id="r_a4094b333f65e347f95c78aea0effe544"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a4094b333f65e347f95c78aea0effe544">total_time</a></td></tr>
-<tr class="memdesc:a4094b333f65e347f95c78aea0effe544 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Final evolution time.  <br /></td></tr>
-<tr class="separator:a4094b333f65e347f95c78aea0effe544 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad261faaaa2066bfaa7ca7d9af834e61e inherit pub_attribs_classTimeStepper" id="r_ad261faaaa2066bfaa7ca7d9af834e61e"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#ad261faaaa2066bfaa7ca7d9af834e61e">dt</a></td></tr>
-<tr class="memdesc:ad261faaaa2066bfaa7ca7d9af834e61e inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time step size.  <br /></td></tr>
-<tr class="separator:ad261faaaa2066bfaa7ca7d9af834e61e inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8b6233ad7101f7c8c02d29f3efe3faa6 inherit pub_attribs_classTimeStepper" id="r_a8b6233ad7101f7c8c02d29f3efe3faa6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a8b6233ad7101f7c8c02d29f3efe3faa6">writeDataFiles</a></td></tr>
-<tr class="memdesc:a8b6233ad7101f7c8c02d29f3efe3faa6 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to write trajectory data during forward simulation.  <br /></td></tr>
-<tr class="separator:a8b6233ad7101f7c8c02d29f3efe3faa6 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a117e801337dbe849388f274d4dec83d0 inherit pub_attribs_classTimeStepper" id="r_a117e801337dbe849388f274d4dec83d0"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a117e801337dbe849388f274d4dec83d0">redgrad</a></td></tr>
-<tr class="memdesc:a117e801337dbe849388f274d4dec83d0 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reduced gradient vector for optimization.  <br /></td></tr>
-<tr class="separator:a117e801337dbe849388f274d4dec83d0 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad904f4e9a7bc465c176813b5ea597e1c inherit pub_attribs_classTimeStepper" id="r_ad904f4e9a7bc465c176813b5ea597e1c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#ad904f4e9a7bc465c176813b5ea597e1c">penalty_integral</a></td></tr>
-<tr class="memdesc:ad904f4e9a7bc465c176813b5ea597e1c inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a>: integral penalty term value.  <br /></td></tr>
-<tr class="separator:ad904f4e9a7bc465c176813b5ea597e1c inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3c30655966d681d63abf2bf681246c27 inherit pub_attribs_classTimeStepper" id="r_a3c30655966d681d63abf2bf681246c27"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a3c30655966d681d63abf2bf681246c27">energy_penalty_integral</a></td></tr>
-<tr class="memdesc:a3c30655966d681d63abf2bf681246c27 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a>: energy penalty integral term.  <br /></td></tr>
-<tr class="separator:a3c30655966d681d63abf2bf681246c27 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4f04bd683057a0b0c9d7f983cd3e0ba2 inherit pub_attribs_classTimeStepper" id="r_a4f04bd683057a0b0c9d7f983cd3e0ba2"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a4f04bd683057a0b0c9d7f983cd3e0ba2">penalty_dpdm</a></td></tr>
-<tr class="memdesc:a4f04bd683057a0b0c9d7f983cd3e0ba2 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Second-order derivative penalty value.  <br /></td></tr>
-<tr class="separator:a4f04bd683057a0b0c9d7f983cd3e0ba2 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adc015010aa8be6a70c99750f5834497b inherit pub_attribs_classTimeStepper" id="r_adc015010aa8be6a70c99750f5834497b"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#adc015010aa8be6a70c99750f5834497b">penalty_param</a></td></tr>
-<tr class="memdesc:adc015010aa8be6a70c99750f5834497b inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parameter for penalty term (Gaussian variance)  <br /></td></tr>
-<tr class="separator:adc015010aa8be6a70c99750f5834497b inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4918ef7617d3067ca4d30fa2ba6d8c0e inherit pub_attribs_classTimeStepper" id="r_a4918ef7617d3067ca4d30fa2ba6d8c0e"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a4918ef7617d3067ca4d30fa2ba6d8c0e">gamma_penalty</a></td></tr>
-<tr class="memdesc:a4918ef7617d3067ca4d30fa2ba6d8c0e inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Weight for integral penalty term.  <br /></td></tr>
-<tr class="separator:a4918ef7617d3067ca4d30fa2ba6d8c0e inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a47bd15cf9824ab95288af0cdd50a0c0c inherit pub_attribs_classTimeStepper" id="r_a47bd15cf9824ab95288af0cdd50a0c0c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a47bd15cf9824ab95288af0cdd50a0c0c">gamma_penalty_dpdm</a></td></tr>
-<tr class="memdesc:a47bd15cf9824ab95288af0cdd50a0c0c inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Weight for second-order derivative penalty.  <br /></td></tr>
-<tr class="separator:a47bd15cf9824ab95288af0cdd50a0c0c inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9dc38ea2f69981ce525681f7bb010c0e inherit pub_attribs_classTimeStepper" id="r_a9dc38ea2f69981ce525681f7bb010c0e"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a9dc38ea2f69981ce525681f7bb010c0e">gamma_penalty_energy</a></td></tr>
-<tr class="memdesc:a9dc38ea2f69981ce525681f7bb010c0e inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Weight for energy penalty.  <br /></td></tr>
-<tr class="separator:a9dc38ea2f69981ce525681f7bb010c0e inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a46de3914a9b905cc78a0bc3539e9aca5 inherit pub_attribs_classTimeStepper" id="r_a46de3914a9b905cc78a0bc3539e9aca5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classOptimTarget.html">OptimTarget</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a46de3914a9b905cc78a0bc3539e9aca5">optim_target</a></td></tr>
-<tr class="memdesc:a46de3914a9b905cc78a0bc3539e9aca5 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to optimization target specification.  <br /></td></tr>
-<tr class="separator:a46de3914a9b905cc78a0bc3539e9aca5 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4b4076027ab970589a3b91b247423043 inherit pub_attribs_classTimeStepper" id="r_a4b4076027ab970589a3b91b247423043"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classOutput.html">Output</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a4b4076027ab970589a3b91b247423043">output</a></td></tr>
-<tr class="memdesc:a4b4076027ab970589a3b91b247423043 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to output handler.  <br /></td></tr>
-<tr class="separator:a4b4076027ab970589a3b91b247423043 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae82adcec57a6945822726d1643f44102 inherit pub_attribs_classTimeStepper" id="r_ae82adcec57a6945822726d1643f44102"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#ae82adcec57a6945822726d1643f44102">storeFWD</a></td></tr>
-<tr class="memdesc:ae82adcec57a6945822726d1643f44102 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to store primal states during forward evaluation.  <br /></td></tr>
-<tr class="separator:ae82adcec57a6945822726d1643f44102 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
+Protected Attributes</h2></td></tr>
+<tr class="memitem:adddd7963e495697d506338bcf923f331" id="r_adddd7963e495697d506338bcf923f331"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classExplEuler.html#adddd7963e495697d506338bcf923f331">stage</a></td></tr>
+<tr class="memdesc:adddd7963e495697d506338bcf923f331"><td class="mdescLeft">&#160;</td><td class="mdescRight">Intermediate vector.  <br /></td></tr>
+<tr class="separator:adddd7963e495697d506338bcf923f331"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_attribs_classTimeStepper"><td colspan="2" onclick="javascript:toggleInherit('pro_attribs_classTimeStepper')"><img src="closed.png" alt="-"/>&#160;Protected Attributes inherited from <a class="el" href="classTimeStepper.html">TimeStepper</a></td></tr>
 <tr class="memitem:a4d98199ae7556ae11f2528c243cc1292 inherit pro_attribs_classTimeStepper" id="r_a4d98199ae7556ae11f2528c243cc1292"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a4d98199ae7556ae11f2528c243cc1292">dim</a></td></tr>
 <tr class="memdesc:a4d98199ae7556ae11f2528c243cc1292 inherit pro_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">State vector dimension.  <br /></td></tr>
@@ -243,10 +200,62 @@ Additional Inherited Members</h2></td></tr>
 <tr class="memitem:a354e57936c67ef0191a90d2c8c343e39 inherit pro_attribs_classTimeStepper" id="r_a354e57936c67ef0191a90d2c8c343e39"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a354e57936c67ef0191a90d2c8c343e39">mpirank_world</a></td></tr>
 <tr class="memdesc:a354e57936c67ef0191a90d2c8c343e39 inherit pro_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank in global communicator.  <br /></td></tr>
 <tr class="separator:a354e57936c67ef0191a90d2c8c343e39 inherit pro_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="inherited" name="inherited"></a>
+Additional Inherited Members</h2></td></tr>
+<tr class="inherit_header pub_attribs_classTimeStepper"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classTimeStepper')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="classTimeStepper.html">TimeStepper</a></td></tr>
+<tr class="memitem:a19a5d08c76bf1580122ec82665c2f7ef inherit pub_attribs_classTimeStepper" id="r_a19a5d08c76bf1580122ec82665c2f7ef"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classMasterEq.html">MasterEq</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a19a5d08c76bf1580122ec82665c2f7ef">mastereq</a></td></tr>
+<tr class="memdesc:a19a5d08c76bf1580122ec82665c2f7ef inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to master equation solver.  <br /></td></tr>
+<tr class="separator:a19a5d08c76bf1580122ec82665c2f7ef inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1e462962525e2b0960c8d5ac813d3873 inherit pub_attribs_classTimeStepper" id="r_a1e462962525e2b0960c8d5ac813d3873"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a1e462962525e2b0960c8d5ac813d3873">ntime</a></td></tr>
+<tr class="memdesc:a1e462962525e2b0960c8d5ac813d3873 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of time steps.  <br /></td></tr>
+<tr class="separator:a1e462962525e2b0960c8d5ac813d3873 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4094b333f65e347f95c78aea0effe544 inherit pub_attribs_classTimeStepper" id="r_a4094b333f65e347f95c78aea0effe544"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a4094b333f65e347f95c78aea0effe544">total_time</a></td></tr>
+<tr class="memdesc:a4094b333f65e347f95c78aea0effe544 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Final evolution time.  <br /></td></tr>
+<tr class="separator:a4094b333f65e347f95c78aea0effe544 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad261faaaa2066bfaa7ca7d9af834e61e inherit pub_attribs_classTimeStepper" id="r_ad261faaaa2066bfaa7ca7d9af834e61e"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#ad261faaaa2066bfaa7ca7d9af834e61e">dt</a></td></tr>
+<tr class="memdesc:ad261faaaa2066bfaa7ca7d9af834e61e inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time step size.  <br /></td></tr>
+<tr class="separator:ad261faaaa2066bfaa7ca7d9af834e61e inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8b6233ad7101f7c8c02d29f3efe3faa6 inherit pub_attribs_classTimeStepper" id="r_a8b6233ad7101f7c8c02d29f3efe3faa6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a8b6233ad7101f7c8c02d29f3efe3faa6">writeDataFiles</a></td></tr>
+<tr class="memdesc:a8b6233ad7101f7c8c02d29f3efe3faa6 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to write evolution data during forward simulation.  <br /></td></tr>
+<tr class="separator:a8b6233ad7101f7c8c02d29f3efe3faa6 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a117e801337dbe849388f274d4dec83d0 inherit pub_attribs_classTimeStepper" id="r_a117e801337dbe849388f274d4dec83d0"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a117e801337dbe849388f274d4dec83d0">redgrad</a></td></tr>
+<tr class="memdesc:a117e801337dbe849388f274d4dec83d0 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reduced gradient vector for optimization.  <br /></td></tr>
+<tr class="separator:a117e801337dbe849388f274d4dec83d0 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad904f4e9a7bc465c176813b5ea597e1c inherit pub_attribs_classTimeStepper" id="r_ad904f4e9a7bc465c176813b5ea597e1c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#ad904f4e9a7bc465c176813b5ea597e1c">penalty_integral</a></td></tr>
+<tr class="memdesc:ad904f4e9a7bc465c176813b5ea597e1c inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sums the integral penalty term.  <br /></td></tr>
+<tr class="separator:ad904f4e9a7bc465c176813b5ea597e1c inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3c30655966d681d63abf2bf681246c27 inherit pub_attribs_classTimeStepper" id="r_a3c30655966d681d63abf2bf681246c27"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a3c30655966d681d63abf2bf681246c27">energy_penalty_integral</a></td></tr>
+<tr class="memdesc:a3c30655966d681d63abf2bf681246c27 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sums the energy penalty term.  <br /></td></tr>
+<tr class="separator:a3c30655966d681d63abf2bf681246c27 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4f04bd683057a0b0c9d7f983cd3e0ba2 inherit pub_attribs_classTimeStepper" id="r_a4f04bd683057a0b0c9d7f983cd3e0ba2"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a4f04bd683057a0b0c9d7f983cd3e0ba2">penalty_dpdm</a></td></tr>
+<tr class="memdesc:a4f04bd683057a0b0c9d7f983cd3e0ba2 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sums second-order derivative penalty value.  <br /></td></tr>
+<tr class="separator:a4f04bd683057a0b0c9d7f983cd3e0ba2 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adc015010aa8be6a70c99750f5834497b inherit pub_attribs_classTimeStepper" id="r_adc015010aa8be6a70c99750f5834497b"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#adc015010aa8be6a70c99750f5834497b">penalty_param</a></td></tr>
+<tr class="memdesc:adc015010aa8be6a70c99750f5834497b inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parameter for penalty term (Gaussian variance)  <br /></td></tr>
+<tr class="separator:adc015010aa8be6a70c99750f5834497b inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4918ef7617d3067ca4d30fa2ba6d8c0e inherit pub_attribs_classTimeStepper" id="r_a4918ef7617d3067ca4d30fa2ba6d8c0e"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a4918ef7617d3067ca4d30fa2ba6d8c0e">gamma_penalty</a></td></tr>
+<tr class="memdesc:a4918ef7617d3067ca4d30fa2ba6d8c0e inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Weight for integral penalty term.  <br /></td></tr>
+<tr class="separator:a4918ef7617d3067ca4d30fa2ba6d8c0e inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a47bd15cf9824ab95288af0cdd50a0c0c inherit pub_attribs_classTimeStepper" id="r_a47bd15cf9824ab95288af0cdd50a0c0c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a47bd15cf9824ab95288af0cdd50a0c0c">gamma_penalty_dpdm</a></td></tr>
+<tr class="memdesc:a47bd15cf9824ab95288af0cdd50a0c0c inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Weight for second-order derivative penalty.  <br /></td></tr>
+<tr class="separator:a47bd15cf9824ab95288af0cdd50a0c0c inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9dc38ea2f69981ce525681f7bb010c0e inherit pub_attribs_classTimeStepper" id="r_a9dc38ea2f69981ce525681f7bb010c0e"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a9dc38ea2f69981ce525681f7bb010c0e">gamma_penalty_energy</a></td></tr>
+<tr class="memdesc:a9dc38ea2f69981ce525681f7bb010c0e inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Weight for energy penalty.  <br /></td></tr>
+<tr class="separator:a9dc38ea2f69981ce525681f7bb010c0e inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a46de3914a9b905cc78a0bc3539e9aca5 inherit pub_attribs_classTimeStepper" id="r_a46de3914a9b905cc78a0bc3539e9aca5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classOptimTarget.html">OptimTarget</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a46de3914a9b905cc78a0bc3539e9aca5">optim_target</a></td></tr>
+<tr class="memdesc:a46de3914a9b905cc78a0bc3539e9aca5 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to optimization target specification.  <br /></td></tr>
+<tr class="separator:a46de3914a9b905cc78a0bc3539e9aca5 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4b4076027ab970589a3b91b247423043 inherit pub_attribs_classTimeStepper" id="r_a4b4076027ab970589a3b91b247423043"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classOutput.html">Output</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a4b4076027ab970589a3b91b247423043">output</a></td></tr>
+<tr class="memdesc:a4b4076027ab970589a3b91b247423043 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to output handler.  <br /></td></tr>
+<tr class="separator:a4b4076027ab970589a3b91b247423043 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae82adcec57a6945822726d1643f44102 inherit pub_attribs_classTimeStepper" id="r_ae82adcec57a6945822726d1643f44102"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#ae82adcec57a6945822726d1643f44102">storeFWD</a></td></tr>
+<tr class="memdesc:ae82adcec57a6945822726d1643f44102 inherit pub_attribs_classTimeStepper"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to store primal states during forward evaluation.  <br /></td></tr>
+<tr class="separator:ae82adcec57a6945822726d1643f44102 inherit pub_attribs_classTimeStepper"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Explicit Euler time integration scheme. </p>
-<p>First-order explicit time stepping method. Simple but requires small time steps for stability. Mainly used for testing and comparison purposes. </p>
+<p>First-order explicit time stepping method. Simple, requires small time steps for stability. Mainly used for testing and comparison purposes. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a163c376f15b889de25ba16ca0333e466" name="a163c376f15b889de25ba16ca0333e466"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a163c376f15b889de25ba16ca0333e466">&#9670;&#160;</a></span>ExplEuler()</h2>
@@ -450,6 +459,31 @@ Additional Inherited Members</h2></td></tr>
 </dl>
 
 <p>Implements <a class="el" href="classTimeStepper.html#a983a7d5b2c04dfb04caaead7bf5b9a49">TimeStepper</a>.</p>
+
+</div>
+</div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="adddd7963e495697d506338bcf923f331" name="adddd7963e495697d506338bcf923f331"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adddd7963e495697d506338bcf923f331">&#9670;&#160;</a></span>stage</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec ExplEuler::stage</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Intermediate vector. </p>
 
 </div>
 </div>

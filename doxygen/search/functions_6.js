@@ -1,7 +1,7 @@
 var searchData=
 [
   ['gate_0',['gate',['../classGate.html#adf66e54c2271a8c93f53fd76f1364b47',1,'Gate::Gate(std::vector&lt; int &gt; nlevels_, std::vector&lt; int &gt; nessential_, double time_, std::vector&lt; double &gt; gate_rot_freq, LindbladType lindbladtype_, bool quietmode=false)'],['../classGate.html#a4fc24ecebc0ca8252bf7ab96a705e58a',1,'Gate::Gate()']]],
-  ['getboolparam_1',['GetBoolParam',['../classMapParam.html#a87ce868201ec9c6c6d3131bbb58a10c3',1,'MapParam']]],
+  ['getboolparam_1',['GetBoolParam',['../classConfig.html#a636e08fe2e0495dc01e6b7627b73eec8',1,'Config']]],
   ['getcontroltype_2',['getControlType',['../classOscillator.html#a5ddf640854d328ce82f8bd3e7aee6492',1,'Oscillator']]],
   ['getcostt_3',['getCostT',['../classOptimProblem.html#a68760cc16e11427d3e8280ad43ca265c',1,'OptimProblem']]],
   ['getdecaytime_4',['getDecayTime',['../classOscillator.html#a8f04f008de3b822173972c022ca02085',1,'Oscillator']]],
@@ -10,7 +10,7 @@ var searchData=
   ['getdim_7',['getDim',['../classMasterEq.html#a3410d6f6f9ef27932610fea1c2e28d39',1,'MasterEq']]],
   ['getdimess_8',['getDimEss',['../classMasterEq.html#a94c9e247bd0aac8468c07d94cfb3097b',1,'MasterEq']]],
   ['getdimrho_9',['getdimrho',['../classGate.html#acc6f80b5380abba99a73ec14eb3e03fd',1,'Gate::getDimRho()'],['../classMasterEq.html#aa8fcd6a14c34c63cf8036c300c48f1ed',1,'MasterEq::getDimRho()']]],
-  ['getdoubleparam_10',['GetDoubleParam',['../classMapParam.html#a973c23618888082f1e7eebdebcb67624',1,'MapParam']]],
+  ['getdoubleparam_10',['GetDoubleParam',['../classConfig.html#a164a9e3e08f2156e96638fd13497ae73',1,'Config']]],
   ['geteigvals_11',['geteigvals',['../util_8cpp.html#a03a4be7bd54768a5c6b0e53036d4b5f3',1,'getEigvals(const Mat A, const int neigvals, std::vector&lt; double &gt; &amp;eigvals, std::vector&lt; Vec &gt; &amp;eigvecs):&#160;util.cpp'],['../util_8hpp.html#a03a4be7bd54768a5c6b0e53036d4b5f3',1,'getEigvals(const Mat A, const int neigvals, std::vector&lt; double &gt; &amp;eigvals, std::vector&lt; Vec &gt; &amp;eigvecs):&#160;util.cpp']]],
   ['getfatol_12',['getFaTol',['../classOptimProblem.html#a72ec5e38dcfbdd6f1613dc04a11d8e93',1,'OptimProblem']]],
   ['getfidelity_13',['getFidelity',['../classOptimProblem.html#adb0ac69930ce76afb96e882395e04bfa',1,'OptimProblem']]],
@@ -18,9 +18,9 @@ var searchData=
   ['getindeximag_15',['getindeximag',['../util_8hpp.html#a82dd81c4e0a2068d3706773e1a1a5ec4',1,'getIndexImag(const int i):&#160;util.cpp'],['../util_8cpp.html#a82dd81c4e0a2068d3706773e1a1a5ec4',1,'getIndexImag(const int i):&#160;util.cpp']]],
   ['getindexreal_16',['getindexreal',['../util_8hpp.html#a09af5f588eae760f90201f0f7074e831',1,'getIndexReal(const int i):&#160;util.cpp'],['../util_8cpp.html#a09af5f588eae760f90201f0f7074e831',1,'getIndexReal(const int i):&#160;util.cpp']]],
   ['getinftol_17',['getInfTol',['../classOptimProblem.html#afac290447bfc2bfc232e3e0c5ed83ae3',1,'OptimProblem']]],
-  ['getintparam_18',['GetIntParam',['../classMapParam.html#a50a74033791deb3ff14ac0fd88047c08',1,'MapParam']]],
+  ['getintparam_18',['GetIntParam',['../classConfig.html#a0b95ff4eb04725d2581e92bc9e498124',1,'Config']]],
   ['getmaxiter_19',['getMaxIter',['../classOptimProblem.html#a0d161b65a57deb673aba6dd9a48e70d7',1,'OptimProblem']]],
-  ['getmpirank_20',['GetMpiRank',['../classMapParam.html#aa5bdbb0c9e25c7886361fecab2664b3c',1,'MapParam']]],
+  ['getmpirank_20',['GetMpiRank',['../classConfig.html#a86983fb6414f92585df934d331d6470e',1,'Config']]],
   ['getmpirank_5fworld_21',['getMPIrank_world',['../classOptimProblem.html#a989b67d38f5b28c0909880564936d041',1,'OptimProblem']]],
   ['getncarrierfrequencies_22',['getNCarrierfrequencies',['../classOscillator.html#a86e6075424e5adfb690bd36e975c484b',1,'Oscillator']]],
   ['getndesign_23',['getNdesign',['../classOptimProblem.html#a8952c51225c4fd2d0a8bac5b09546ab3',1,'OptimProblem']]],
@@ -48,13 +48,13 @@ var searchData=
   ['getsolution_45',['getSolution',['../classOptimProblem.html#ad43ec9e96a73b9a92f17045c379ef733',1,'OptimProblem']]],
   ['getstartingpoint_46',['getStartingPoint',['../classOptimProblem.html#a8d29a7527247328b920ec7ebeb157433',1,'OptimProblem']]],
   ['getstate_47',['getState',['../classTimeStepper.html#afdf523a5e2230eec37e27f4a9e590796',1,'TimeStepper']]],
-  ['getstrparam_48',['GetStrParam',['../classMapParam.html#ada9c360606f593cd300271d1d0de2631',1,'MapParam']]],
+  ['getstrparam_48',['GetStrParam',['../classConfig.html#a0bdf56a2f5c97d4de7af6479bd0a6eae',1,'Config']]],
   ['gettargettype_49',['getTargetType',['../classOptimTarget.html#a4fc47d3feac302dfdb6bfb64fa56de68',1,'OptimTarget']]],
   ['gettstart_50',['getTstart',['../classControlBasis.html#aae8e90bcf64e025484a12cfd7494956c',1,'ControlBasis']]],
   ['gettstop_51',['getTstop',['../classControlBasis.html#affe7d27d115befe42ca541e3272d929b',1,'ControlBasis']]],
   ['gettype_52',['getType',['../classControlBasis.html#a8ad1ac99e9a6b4748ceaa803141745b4',1,'ControlBasis']]],
-  ['getvecdoubleparam_53',['GetVecDoubleParam',['../classMapParam.html#aac39f105d0840384d7e4d677a3e10375',1,'MapParam']]],
+  ['getvecdoubleparam_53',['GetVecDoubleParam',['../classConfig.html#abf8ad4be9360bf9d1d64ecd26935bd36',1,'Config']]],
   ['getvecid_54',['getvecid',['../util_8cpp.html#a2d90f5a42abfad1e3377f7c447222da7',1,'getVecID(const int row, const int col, const int dim):&#160;util.cpp'],['../util_8hpp.html#a2d90f5a42abfad1e3377f7c447222da7',1,'getVecID(const int row, const int col, const int dim):&#160;util.cpp']]],
-  ['getvecintparam_55',['GetVecIntParam',['../classMapParam.html#a3d42af54e3a7c1dcbfdd21e388afd665',1,'MapParam']]],
-  ['getvecstrparam_56',['GetVecStrParam',['../classMapParam.html#a20cc0fc169b523d0b21d35174d147754',1,'MapParam']]]
+  ['getvecintparam_55',['GetVecIntParam',['../classConfig.html#aee95e30e7f334cd35ea445893e2816a7',1,'Config']]],
+  ['getvecstrparam_56',['GetVecStrParam',['../classConfig.html#a132bfcae3458d637d00cc73e7e2366ac',1,'Config']]]
 ];

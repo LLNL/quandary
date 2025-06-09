@@ -124,10 +124,10 @@ Functions</h2></td></tr>
 <tr class="memdesc:afa56983887ff02fe6da5b6ab182b889a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Derivative of ramping factor with respect to stop time.  <br /></td></tr>
 <tr class="separator:afa56983887ff02fe6da5b6ab182b889a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a09af5f588eae760f90201f0f7074e831" id="r_a09af5f588eae760f90201f0f7074e831"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a09af5f588eae760f90201f0f7074e831">getIndexReal</a> (const int i)</td></tr>
-<tr class="memdesc:a09af5f588eae760f90201f0f7074e831"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns storage index for real part of complex vector element.  <br /></td></tr>
+<tr class="memdesc:a09af5f588eae760f90201f0f7074e831"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns storage index for real part of a state vector element.  <br /></td></tr>
 <tr class="separator:a09af5f588eae760f90201f0f7074e831"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a82dd81c4e0a2068d3706773e1a1a5ec4" id="r_a82dd81c4e0a2068d3706773e1a1a5ec4"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a82dd81c4e0a2068d3706773e1a1a5ec4">getIndexImag</a> (const int i)</td></tr>
-<tr class="memdesc:a82dd81c4e0a2068d3706773e1a1a5ec4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns storage index for imaginary part of complex vector element.  <br /></td></tr>
+<tr class="memdesc:a82dd81c4e0a2068d3706773e1a1a5ec4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns storage index for imaginary part of a state vector element.  <br /></td></tr>
 <tr class="separator:a82dd81c4e0a2068d3706773e1a1a5ec4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2d90f5a42abfad1e3377f7c447222da7" id="r_a2d90f5a42abfad1e3377f7c447222da7"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a2d90f5a42abfad1e3377f7c447222da7">getVecID</a> (const int row, const int col, const int dim)</td></tr>
 <tr class="memdesc:a2d90f5a42abfad1e3377f7c447222da7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns vectorized index for matrix element (row,col).  <br /></td></tr>
@@ -239,7 +239,7 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Computes general Kronecker product \(A \otimes B\). </p>
-<p>Computes the Kronecker product of two arbitrary matrices A and B. Works in PETSc serial mode only. <a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> matrix must be pre-allocated and should be assembled afterwards if necessary.</p>
+<p>Computes the Kronecker product of two arbitrary matrices A and B. Works in PETSc serial mode only. <a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> matrix must be pre-allocated and should be assembled afterwards.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">A</td><td>First input matrix </td></tr>
@@ -323,14 +323,14 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Returns storage index for imaginary part of complex vector element. </p>
+<p>Returns storage index for imaginary part of a state vector element. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">i</td><td>Element index </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>int Storage index (colocated: x[2*i+1], blocked: x[i+dim]) </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>int Storage index (colocated: x[2*i+1]) </dd></dl>
 
 </div>
 </div>
@@ -350,14 +350,14 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Returns storage index for real part of complex vector element. </p>
+<p>Returns storage index for real part of a state vector element. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">i</td><td>Element index </td></tr>
   </table>
   </dd>
 </dl>
-<dl class="section return"><dt>Returns</dt><dd>int Storage index (colocated: x[2*i], blocked: x[i]) </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>int Storage index (colocated: x[2*i]) </dd></dl>
 
 </div>
 </div>

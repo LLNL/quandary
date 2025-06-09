@@ -78,15 +78,26 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pro-attribs">Protected Attributes</a> &#124;
 <a href="classOptimTarget-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">OptimTarget Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
 
-<p>Optimization target specification and evaluation for quantum control.  
+<p>Optimization target specification for quantum control.  
  <a href="classOptimTarget.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="optimtarget_8hpp_source.html">optimtarget.hpp</a>&gt;</code></p>
+<div class="dynheader">
+Collaboration diagram for OptimTarget:</div>
+<div class="dyncontent">
+<div class="center"><img src="classOptimTarget__coll__graph.png" border="0" usemap="#aOptimTarget_coll__map" alt="Collaboration graph"/></div>
+<map name="aOptimTarget_coll__map" id="aOptimTarget_coll__map">
+<area shape="rect" title="Optimization target specification for quantum control." alt="" coords="5,93,108,119"/>
+<area shape="rect" href="classGate.html" title="Base class for quantum gate operations." alt="" coords="30,5,83,31"/>
+<area shape="poly" title=" " alt="" coords="59,45,59,93,54,93,54,45"/>
+</map>
+<center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
@@ -110,10 +121,10 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a537386e8b5a67bb7ad33010eb915af4c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Prepares the target state for gate optimization.  <br /></td></tr>
 <tr class="separator:a537386e8b5a67bb7ad33010eb915af4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9599d91584bbdcd4a9e5133a60d97dc5" id="r_a9599d91584bbdcd4a9e5133a60d97dc5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a9599d91584bbdcd4a9e5133a60d97dc5">evalJ</a> (const Vec state, double *J_re_ptr, double *J_im_ptr)</td></tr>
-<tr class="memdesc:a9599d91584bbdcd4a9e5133a60d97dc5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the objective function J.  <br /></td></tr>
+<tr class="memdesc:a9599d91584bbdcd4a9e5133a60d97dc5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the final-time objective function measure \(J(\rho(T))\).  <br /></td></tr>
 <tr class="separator:a9599d91584bbdcd4a9e5133a60d97dc5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeda8d95a617cfd015593eef8552c3841" id="r_aeda8d95a617cfd015593eef8552c3841"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#aeda8d95a617cfd015593eef8552c3841">evalJ_diff</a> (const Vec state, Vec statebar, const double J_re_bar, const double J_im_bar)</td></tr>
-<tr class="memdesc:aeda8d95a617cfd015593eef8552c3841"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes derivative of objective function.  <br /></td></tr>
+<tr class="memdesc:aeda8d95a617cfd015593eef8552c3841"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes derivative of the final-time objective function measure.  <br /></td></tr>
 <tr class="separator:aeda8d95a617cfd015593eef8552c3841"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a342568f752fd2898c6f27ecb41ea305a" id="r_a342568f752fd2898c6f27ecb41ea305a"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a342568f752fd2898c6f27ecb41ea305a">finalizeJ</a> (const double obj_cost_re, const double obj_cost_im)</td></tr>
 <tr class="memdesc:a342568f752fd2898c6f27ecb41ea305a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Finalizes the objective function computation.  <br /></td></tr>
@@ -133,10 +144,61 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a22206893538fa23fd54b1bb29a9dd468" id="r_a22206893538fa23fd54b1bb29a9dd468"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a22206893538fa23fd54b1bb29a9dd468">HilbertSchmidtOverlap_diff</a> (const Vec state, Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar)</td></tr>
 <tr class="memdesc:a22206893538fa23fd54b1bb29a9dd468"><td class="mdescLeft">&#160;</td><td class="mdescRight">Derivative of Hilbert-Schmidt overlap computation.  <br /></td></tr>
 <tr class="separator:a22206893538fa23fd54b1bb29a9dd468"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
+Protected Attributes</h2></td></tr>
+<tr class="memitem:a163cc0e1216221c23d28eb3a82a04f2b" id="r_a163cc0e1216221c23d28eb3a82a04f2b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a163cc0e1216221c23d28eb3a82a04f2b">dim</a></td></tr>
+<tr class="memdesc:a163cc0e1216221c23d28eb3a82a04f2b"><td class="mdescLeft">&#160;</td><td class="mdescRight">State dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger.  <br /></td></tr>
+<tr class="separator:a163cc0e1216221c23d28eb3a82a04f2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5a486b857856394f3afe98a07472feb5" id="r_a5a486b857856394f3afe98a07472feb5"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a5a486b857856394f3afe98a07472feb5">dim_rho</a></td></tr>
+<tr class="memdesc:a5a486b857856394f3afe98a07472feb5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of Hilbert space = N.  <br /></td></tr>
+<tr class="separator:a5a486b857856394f3afe98a07472feb5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af797139b253e0ca43169b8e28a8227f9" id="r_af797139b253e0ca43169b8e28a8227f9"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#af797139b253e0ca43169b8e28a8227f9">dim_ess</a></td></tr>
+<tr class="memdesc:af797139b253e0ca43169b8e28a8227f9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of essential level system = N_e.  <br /></td></tr>
+<tr class="separator:af797139b253e0ca43169b8e28a8227f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7f014cfafd676e826d877e95d42f68f1" id="r_a7f014cfafd676e826d877e95d42f68f1"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a7f014cfafd676e826d877e95d42f68f1">noscillators</a></td></tr>
+<tr class="memdesc:a7f014cfafd676e826d877e95d42f68f1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of oscillators in the system.  <br /></td></tr>
+<tr class="separator:a7f014cfafd676e826d877e95d42f68f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a44c54b6a658798cc964f4c46070a19c4" id="r_a44c54b6a658798cc964f4c46070a19c4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a0d59972970c855496cb4c877501e668f">TargetType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a44c54b6a658798cc964f4c46070a19c4">target_type</a></td></tr>
+<tr class="memdesc:a44c54b6a658798cc964f4c46070a19c4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of optimization target (pure state preparation or gate optimization)  <br /></td></tr>
+<tr class="separator:a44c54b6a658798cc964f4c46070a19c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a177e47037e091e35c89a61261b5c3a70" id="r_a177e47037e091e35c89a61261b5c3a70"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a45660f9909187129a953fa05e664576e">ObjectiveType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a177e47037e091e35c89a61261b5c3a70">objective_type</a></td></tr>
+<tr class="memdesc:a177e47037e091e35c89a61261b5c3a70"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of objective function measure (Frobenius, trace, pure-state measure)  <br /></td></tr>
+<tr class="separator:a177e47037e091e35c89a61261b5c3a70"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a760721e590199816c6e78c0dd212fc47" id="r_a760721e590199816c6e78c0dd212fc47"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classGate.html">Gate</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a760721e590199816c6e78c0dd212fc47">targetgate</a></td></tr>
+<tr class="memdesc:a760721e590199816c6e78c0dd212fc47"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to target gate (if gate optimization)  <br /></td></tr>
+<tr class="separator:a760721e590199816c6e78c0dd212fc47"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a821937fbbb90e0149ef0604e0296ded7" id="r_a821937fbbb90e0149ef0604e0296ded7"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a821937fbbb90e0149ef0604e0296ded7">purity_rho0</a></td></tr>
+<tr class="memdesc:a821937fbbb90e0149ef0604e0296ded7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Purity of initial state Tr(rho(0)^2)  <br /></td></tr>
+<tr class="separator:a821937fbbb90e0149ef0604e0296ded7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa69e0b67c4310287c217d84bf984789e" id="r_aa69e0b67c4310287c217d84bf984789e"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#aa69e0b67c4310287c217d84bf984789e">purestateID</a></td></tr>
+<tr class="memdesc:aa69e0b67c4310287c217d84bf984789e"><td class="mdescLeft">&#160;</td><td class="mdescRight">For pure state preparation: integer m for preparing the target state \( e_m e_m^{\dagger}\).  <br /></td></tr>
+<tr class="separator:aa69e0b67c4310287c217d84bf984789e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5f0dcc6280b4a0566551b5cee17233d5" id="r_a5f0dcc6280b4a0566551b5cee17233d5"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a5f0dcc6280b4a0566551b5cee17233d5">target_filename</a></td></tr>
+<tr class="memdesc:a5f0dcc6280b4a0566551b5cee17233d5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filename if target state is read from file.  <br /></td></tr>
+<tr class="separator:a5f0dcc6280b4a0566551b5cee17233d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8fbf4a56a771afe523bd3722f29930dc" id="r_a8fbf4a56a771afe523bd3722f29930dc"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a8fbf4a56a771afe523bd3722f29930dc">targetstate</a></td></tr>
+<tr class="memdesc:a8fbf4a56a771afe523bd3722f29930dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Storage for the target state vector (NULL for pure states, \(V\rho V^\dagger\) for gates, density matrix from file)  <br /></td></tr>
+<tr class="separator:a8fbf4a56a771afe523bd3722f29930dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9ad253f14dc10cb6973c69a749e99a94" id="r_a9ad253f14dc10cb6973c69a749e99a94"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a83753afdf4b4b0d70f2a478cfba82d35">InitialConditionType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a9ad253f14dc10cb6973c69a749e99a94">initcond_type</a></td></tr>
+<tr class="memdesc:a9ad253f14dc10cb6973c69a749e99a94"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of initial conditions.  <br /></td></tr>
+<tr class="separator:a9ad253f14dc10cb6973c69a749e99a94"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3e1ec452b0fe3e71285fc98b03fc54ff" id="r_a3e1ec452b0fe3e71285fc98b03fc54ff"><td class="memItemLeft" align="right" valign="top">std::vector&lt; size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a3e1ec452b0fe3e71285fc98b03fc54ff">initcond_IDs</a></td></tr>
+<tr class="memdesc:a3e1ec452b0fe3e71285fc98b03fc54ff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Integer list for pure-state initialization.  <br /></td></tr>
+<tr class="separator:a3e1ec452b0fe3e71285fc98b03fc54ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2b104e0388ba61c811a89101a1216a53" id="r_a2b104e0388ba61c811a89101a1216a53"><td class="memItemLeft" align="right" valign="top"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a2b104e0388ba61c811a89101a1216a53">lindbladtype</a></td></tr>
+<tr class="memdesc:a2b104e0388ba61c811a89101a1216a53"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of Lindblad decoherence operators, or NONE for Schroedinger solver.  <br /></td></tr>
+<tr class="separator:a2b104e0388ba61c811a89101a1216a53"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a09f7c5e3e0464e954c188719b1843458" id="r_a09f7c5e3e0464e954c188719b1843458"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a09f7c5e3e0464e954c188719b1843458">aux</a></td></tr>
+<tr class="memdesc:a09f7c5e3e0464e954c188719b1843458"><td class="mdescLeft">&#160;</td><td class="mdescRight">Auxiliary vector for gate optimization objective computation.  <br /></td></tr>
+<tr class="separator:a09f7c5e3e0464e954c188719b1843458"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4c36ccb6411cea9f218c853bced62fcb" id="r_a4c36ccb6411cea9f218c853bced62fcb"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimTarget.html#a4c36ccb6411cea9f218c853bced62fcb">quietmode</a></td></tr>
+<tr class="memdesc:a4c36ccb6411cea9f218c853bced62fcb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag for quiet mode operation.  <br /></td></tr>
+<tr class="separator:a4c36ccb6411cea9f218c853bced62fcb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Optimization target specification and evaluation for quantum control. </p>
-<p>This class manages the target specification for quantum optimal control problems, including gate optimization and pure state preparation. It handles target state preparation, objective function evaluation, and gradient computation. </p>
+<div class="textblock"><p>Optimization target specification for quantum control. </p>
+<p>This class manages the target specification for quantum optimal control problems, including gate optimization and pure state preparation. It handles target and initial state preparation and the evaluation of the final-time objective function measure. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="ad4e0df2f3df0dfdf8ef8ecbfd299ca5a" name="ad4e0df2f3df0dfdf8ef8ecbfd299ca5a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad4e0df2f3df0dfdf8ef8ecbfd299ca5a">&#9670;&#160;</a></span>OptimTarget() <span class="overload">[1/2]</span></h2>
@@ -284,8 +346,8 @@ Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Evaluates the objective function J. </p>
-<p>The target state must be prepared and stored before calling this function. Returns both real and imaginary parts of the objective. The imaginary part is generally zero except for Schroedinger solver with trace objective.</p>
+<p>Evaluates the final-time objective function measure \(J(\rho(T))\). </p>
+<p>The target state must be prepared and stored before calling this function. Returns both real and imaginary parts of the final-time measure. The imaginary part is generally zero except for Schroedinger solver with the trace objective function measure.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">state</td><td>Current state vector </td></tr>
@@ -335,11 +397,11 @@ Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Computes derivative of objective function. </p>
+<p>Computes derivative of the final-time objective function measure. </p>
 <p>Updates the adjoint state vector for gradient computation.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">state</td><td>Current state vector </td></tr>
+    <tr><td class="paramname">state</td><td>Final-time state vector </td></tr>
     <tr><td class="paramname">statebar</td><td>Adjoint state vector to update </td></tr>
     <tr><td class="paramname">J_re_bar</td><td>Adjoint of real part of objective </td></tr>
     <tr><td class="paramname">J_im_bar</td><td>Adjoint of imaginary part of objective </td></tr>
@@ -376,6 +438,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Finalizes the objective function computation. </p>
+<p>Compute the infidelity (1-fidelity).</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">obj_cost_re</td><td>Real part of objective cost </td></tr>
@@ -455,7 +518,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Computes Frobenius distance between target and current state. </p>
-<p>Calculates F = 1/2 ||targetstate - state||^2_F</p>
+<p>Calculates \(F = 1/2 || \rho_{target} - \rho||^2_F\)</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">state</td><td>Current state vector </td></tr>
@@ -503,7 +566,7 @@ Public Member Functions</h2></td></tr>
   <table class="params">
     <tr><td class="paramname">state</td><td>Current state vector </td></tr>
     <tr><td class="paramname">statebar</td><td>Adjoint state vector to update </td></tr>
-    <tr><td class="paramname">Jbar</td><td>Adjoint of Frobenius distance </td></tr>
+    <tr><td class="paramname">Jbar</td><td>Adjoint seed </td></tr>
   </table>
   </dd>
 </dl>
@@ -605,7 +668,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Computes Hilbert-Schmidt overlap between state and target. </p>
-<p>Calculates Tr(state * target^dagger), optionally scaled by target purity.</p>
+<p>Calculates \( Tr(\rho^\dagger \rho_{target})\), optionally scaled by the purity of the target state.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">state</td><td>Current state vector </td></tr>
@@ -752,13 +815,398 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Prepares the target state for gate optimization. </p>
-<p>For gate optimization, computes the rotated target state V*rho*V^dagger for a given initial state rho. Also stores the purity of rho(0) for scaling the Hilbert-Schmidt overlap in the trace objective function.</p>
+<p>For gate optimization, computes the rotated target state \(V \rho V^{\dagger}\) for a given initial state \(\rho\) and stores it locally as a class member. Also stores the purity of \(rho\) needed for scaling the Hilbert-Schmidt overlap in the trace objective function.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">rho</td><td>Initial state vector </td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="a09f7c5e3e0464e954c188719b1843458" name="a09f7c5e3e0464e954c188719b1843458"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a09f7c5e3e0464e954c188719b1843458">&#9670;&#160;</a></span>aux</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec OptimTarget::aux</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Auxiliary vector for gate optimization objective computation. </p>
+
+</div>
+</div>
+<a id="a163cc0e1216221c23d28eb3a82a04f2b" name="a163cc0e1216221c23d28eb3a82a04f2b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a163cc0e1216221c23d28eb3a82a04f2b">&#9670;&#160;</a></span>dim</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimTarget::dim</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>State dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger. </p>
+
+</div>
+</div>
+<a id="af797139b253e0ca43169b8e28a8227f9" name="af797139b253e0ca43169b8e28a8227f9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af797139b253e0ca43169b8e28a8227f9">&#9670;&#160;</a></span>dim_ess</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimTarget::dim_ess</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Dimension of essential level system = N_e. </p>
+
+</div>
+</div>
+<a id="a5a486b857856394f3afe98a07472feb5" name="a5a486b857856394f3afe98a07472feb5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5a486b857856394f3afe98a07472feb5">&#9670;&#160;</a></span>dim_rho</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimTarget::dim_rho</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Dimension of Hilbert space = N. </p>
+
+</div>
+</div>
+<a id="a3e1ec452b0fe3e71285fc98b03fc54ff" name="a3e1ec452b0fe3e71285fc98b03fc54ff"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3e1ec452b0fe3e71285fc98b03fc54ff">&#9670;&#160;</a></span>initcond_IDs</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;size_t&gt; OptimTarget::initcond_IDs</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Integer list for pure-state initialization. </p>
+
+</div>
+</div>
+<a id="a9ad253f14dc10cb6973c69a749e99a94" name="a9ad253f14dc10cb6973c69a749e99a94"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9ad253f14dc10cb6973c69a749e99a94">&#9670;&#160;</a></span>initcond_type</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="defs_8hpp.html#a83753afdf4b4b0d70f2a478cfba82d35">InitialConditionType</a> OptimTarget::initcond_type</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Type of initial conditions. </p>
+
+</div>
+</div>
+<a id="a2b104e0388ba61c811a89101a1216a53" name="a2b104e0388ba61c811a89101a1216a53"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2b104e0388ba61c811a89101a1216a53">&#9670;&#160;</a></span>lindbladtype</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> OptimTarget::lindbladtype</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Type of Lindblad decoherence operators, or NONE for Schroedinger solver. </p>
+
+</div>
+</div>
+<a id="a7f014cfafd676e826d877e95d42f68f1" name="a7f014cfafd676e826d877e95d42f68f1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7f014cfafd676e826d877e95d42f68f1">&#9670;&#160;</a></span>noscillators</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimTarget::noscillators</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Number of oscillators in the system. </p>
+
+</div>
+</div>
+<a id="a177e47037e091e35c89a61261b5c3a70" name="a177e47037e091e35c89a61261b5c3a70"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a177e47037e091e35c89a61261b5c3a70">&#9670;&#160;</a></span>objective_type</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="defs_8hpp.html#a45660f9909187129a953fa05e664576e">ObjectiveType</a> OptimTarget::objective_type</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Type of objective function measure (Frobenius, trace, pure-state measure) </p>
+
+</div>
+</div>
+<a id="aa69e0b67c4310287c217d84bf984789e" name="aa69e0b67c4310287c217d84bf984789e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa69e0b67c4310287c217d84bf984789e">&#9670;&#160;</a></span>purestateID</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimTarget::purestateID</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>For pure state preparation: integer m for preparing the target state \( e_m e_m^{\dagger}\). </p>
+
+</div>
+</div>
+<a id="a821937fbbb90e0149ef0604e0296ded7" name="a821937fbbb90e0149ef0604e0296ded7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a821937fbbb90e0149ef0604e0296ded7">&#9670;&#160;</a></span>purity_rho0</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimTarget::purity_rho0</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Purity of initial state Tr(rho(0)^2) </p>
+
+</div>
+</div>
+<a id="a4c36ccb6411cea9f218c853bced62fcb" name="a4c36ccb6411cea9f218c853bced62fcb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4c36ccb6411cea9f218c853bced62fcb">&#9670;&#160;</a></span>quietmode</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool OptimTarget::quietmode</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag for quiet mode operation. </p>
+
+</div>
+</div>
+<a id="a5f0dcc6280b4a0566551b5cee17233d5" name="a5f0dcc6280b4a0566551b5cee17233d5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5f0dcc6280b4a0566551b5cee17233d5">&#9670;&#160;</a></span>target_filename</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string OptimTarget::target_filename</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Filename if target state is read from file. </p>
+
+</div>
+</div>
+<a id="a44c54b6a658798cc964f4c46070a19c4" name="a44c54b6a658798cc964f4c46070a19c4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a44c54b6a658798cc964f4c46070a19c4">&#9670;&#160;</a></span>target_type</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="defs_8hpp.html#a0d59972970c855496cb4c877501e668f">TargetType</a> OptimTarget::target_type</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Type of optimization target (pure state preparation or gate optimization) </p>
+
+</div>
+</div>
+<a id="a760721e590199816c6e78c0dd212fc47" name="a760721e590199816c6e78c0dd212fc47"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a760721e590199816c6e78c0dd212fc47">&#9670;&#160;</a></span>targetgate</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classGate.html">Gate</a>* OptimTarget::targetgate</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Pointer to target gate (if gate optimization) </p>
+
+</div>
+</div>
+<a id="a8fbf4a56a771afe523bd3722f29930dc" name="a8fbf4a56a771afe523bd3722f29930dc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8fbf4a56a771afe523bd3722f29930dc">&#9670;&#160;</a></span>targetstate</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec OptimTarget::targetstate</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Storage for the target state vector (NULL for pure states, \(V\rho V^\dagger\) for gates, density matrix from file) </p>
 
 </div>
 </div>

@@ -1,8 +1,4 @@
 var searchData=
 [
-  ['redgrad_0',['redgrad',['../classTimeStepper.html#a117e801337dbe849388f274d4dec83d0',1,'TimeStepper']]],
-  ['rhs_1',['RHS',['../classMasterEq.html#ab200ca6b9a16be33b8ee7313c41f20d2',1,'MasterEq']]],
-  ['rhsctx_2',['RHSctx',['../classMasterEq.html#a6a3bb1ab8dd49c64f51c90dd5b080f62',1,'MasterEq']]],
-  ['rota_3',['rotA',['../classGate.html#ab131fde8d498cd7fd405690913f9a3d5',1,'Gate']]],
-  ['rotb_4',['rotB',['../classGate.html#a70d61c7ab3e509518a6c6d43a09d2690',1,'Gate']]]
+  ['quietmode_0',['quietmode',['../classConfig.html#a69e43e26e8fc671e1aa858843b7c546b',1,'Config::quietmode'],['../classGate.html#a00a2add81f121424e235213af74166e2',1,'Gate::quietmode'],['../classHamiltonianFileReader.html#ae0d6a7a10dae9d0bc85952624fde1a3b',1,'HamiltonianFileReader::quietmode'],['../classMasterEq.html#a3493e8372960cd42ba4ceab89fe68bb9',1,'MasterEq::quietmode'],['../classOptimProblem.html#ae7ab3209affb52e393a1f58a4b0173b2',1,'OptimProblem::quietmode'],['../classOptimTarget.html#a4c36ccb6411cea9f218c853bced62fcb',1,'OptimTarget::quietmode'],['../classOutput.html#a8ef405c7e586c0b0d6ca71030b7ac5b9',1,'Output::quietmode']]]
 ];

@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['v_5fim_0',['V_im',['../classGate.html#a975206acbbef7b29e706cbcd38050b6e',1,'Gate']]],
-  ['v_5fre_1',['V_re',['../classGate.html#a59327fe9a53f4aa6fff8317305b88f97',1,'Gate']]],
-  ['vals_2',['vals',['../classMasterEq.html#a6e00f02e3b6cfab7fb90cb70de265aff',1,'MasterEq']]]
+  ['ufile_0',['ufile',['../classOutput.html#a2e421c9b5dbde2d7616f3c0abfedf2ab',1,'Output']]],
+  ['usematfree_1',['usematfree',['../classMasterEq.html#a2d735524c2b5b205adb1898606b65a19',1,'MasterEq']]]
 ];

@@ -117,7 +117,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:aaedd45ac621bb7f9a8383078d37d5d2c" id="r_aaedd45ac621bb7f9a8383078d37d5d2c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStep.html#aaedd45ac621bb7f9a8383078d37d5d2c">~Step</a> ()</td></tr>
 <tr class="separator:aaedd45ac621bb7f9a8383078d37d5d2c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3dd80b52bb37b3ad7609525325a4e4a3" id="r_a3dd80b52bb37b3ad7609525325a4e4a3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStep.html#a3dd80b52bb37b3ad7609525325a4e4a3">evaluate</a> (const double t, const std::vector&lt; double &gt; &amp;coeff, int carrier_freq_id, double *Blt1, double *Blt2)</td></tr>
-<tr class="memdesc:a3dd80b52bb37b3ad7609525325a4e4a3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the control basis at a given time using coefficients.  <br /></td></tr>
+<tr class="memdesc:a3dd80b52bb37b3ad7609525325a4e4a3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the control basis at a given time using the provided coefficients.  <br /></td></tr>
 <tr class="separator:a3dd80b52bb37b3ad7609525325a4e4a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acf35992f3f21ba1dadb0967e6bea165c" id="r_acf35992f3f21ba1dadb0967e6bea165c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStep.html#acf35992f3f21ba1dadb0967e6bea165c">derivative</a> (const double t, const std::vector&lt; double &gt; &amp;coeff, double *coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id)</td></tr>
 <tr class="memdesc:acf35992f3f21ba1dadb0967e6bea165c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the derivative of the control basis at a given time.  <br /></td></tr>
@@ -164,17 +164,17 @@ Public Member Functions</h2></td></tr>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
 <tr class="memitem:aaf0c93358e9cbbef4df4801424497325" id="r_aaf0c93358e9cbbef4df4801424497325"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStep.html#aaf0c93358e9cbbef4df4801424497325">step_amp1</a></td></tr>
-<tr class="memdesc:aaf0c93358e9cbbef4df4801424497325"><td class="mdescLeft">&#160;</td><td class="mdescRight">Amplitude of the first step.  <br /></td></tr>
+<tr class="memdesc:aaf0c93358e9cbbef4df4801424497325"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real part of amplitude of the step pulse.  <br /></td></tr>
 <tr class="separator:aaf0c93358e9cbbef4df4801424497325"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2a1d1c8c6ea5cfdcf06494864a445da2" id="r_a2a1d1c8c6ea5cfdcf06494864a445da2"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStep.html#a2a1d1c8c6ea5cfdcf06494864a445da2">step_amp2</a></td></tr>
-<tr class="memdesc:a2a1d1c8c6ea5cfdcf06494864a445da2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Amplitude of the second step.  <br /></td></tr>
+<tr class="memdesc:a2a1d1c8c6ea5cfdcf06494864a445da2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary part of amplitude of the step pulse.  <br /></td></tr>
 <tr class="separator:a2a1d1c8c6ea5cfdcf06494864a445da2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5f24c817d72c367d42143458e19f550a" id="r_a5f24c817d72c367d42143458e19f550a"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStep.html#a5f24c817d72c367d42143458e19f550a">tramp</a></td></tr>
 <tr class="memdesc:a5f24c817d72c367d42143458e19f550a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ramp time.  <br /></td></tr>
 <tr class="separator:a5f24c817d72c367d42143458e19f550a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pro_attribs_classControlBasis"><td colspan="2" onclick="javascript:toggleInherit('pro_attribs_classControlBasis')"><img src="closed.png" alt="-"/>&#160;Protected Attributes inherited from <a class="el" href="classControlBasis.html">ControlBasis</a></td></tr>
 <tr class="memitem:a93075af8399c469e87ea9b2a7afd1f8b inherit pro_attribs_classControlBasis" id="r_a93075af8399c469e87ea9b2a7afd1f8b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#a93075af8399c469e87ea9b2a7afd1f8b">nparams</a></td></tr>
-<tr class="memdesc:a93075af8399c469e87ea9b2a7afd1f8b inherit pro_attribs_classControlBasis"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of parameters that define the controls.  <br /></td></tr>
+<tr class="memdesc:a93075af8399c469e87ea9b2a7afd1f8b inherit pro_attribs_classControlBasis"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of parameters that define the control pulse.  <br /></td></tr>
 <tr class="separator:a93075af8399c469e87ea9b2a7afd1f8b inherit pro_attribs_classControlBasis"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f1820a85ad416f02245084619ffb720 inherit pro_attribs_classControlBasis" id="r_a1f1820a85ad416f02245084619ffb720"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#a1f1820a85ad416f02245084619ffb720">tstart</a></td></tr>
 <tr class="memdesc:a1f1820a85ad416f02245084619ffb720 inherit pro_attribs_classControlBasis"><td class="mdescLeft">&#160;</td><td class="mdescRight">Start time of the interval where the control basis is applied.  <br /></td></tr>
@@ -189,7 +189,7 @@ Protected Attributes</h2></td></tr>
 <tr class="memdesc:aa47f10d7033e83b174a97d6cc7e91d89 inherit pro_attribs_classControlBasis"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of control parameterization.  <br /></td></tr>
 <tr class="separator:aa47f10d7033e83b174a97d6cc7e91d89 inherit pro_attribs_classControlBasis"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad88d2345b9f9df57685c12e2dbda419d inherit pro_attribs_classControlBasis" id="r_ad88d2345b9f9df57685c12e2dbda419d"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classControlBasis.html#ad88d2345b9f9df57685c12e2dbda419d">enforceZeroBoundary</a></td></tr>
-<tr class="memdesc:ad88d2345b9f9df57685c12e2dbda419d inherit pro_attribs_classControlBasis"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to enforce zero boundary conditions for controls.  <br /></td></tr>
+<tr class="memdesc:ad88d2345b9f9df57685c12e2dbda419d inherit pro_attribs_classControlBasis"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to enforce zero boundary conditions for control pulses.  <br /></td></tr>
 <tr class="separator:ad88d2345b9f9df57685c12e2dbda419d inherit pro_attribs_classControlBasis"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
@@ -249,8 +249,8 @@ Protected Attributes</h2></td></tr>
 <p>Constructor for the step function. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">step_amp1_</td><td>Amplitude of the first step. </td></tr>
-    <tr><td class="paramname">step_amp2_</td><td>Amplitude of the second step. </td></tr>
+    <tr><td class="paramname">step_amp1_</td><td>Real amplitude of the step pulse. </td></tr>
+    <tr><td class="paramname">step_amp2_</td><td>Imaginary amplitude of the step pulse. </td></tr>
     <tr><td class="paramname">t0</td><td>Start time of the interval. </td></tr>
     <tr><td class="paramname">t1</td><td>Stop time of the interval. </td></tr>
     <tr><td class="paramname">tramp</td><td>Ramp time. </td></tr>
@@ -343,8 +343,8 @@ Protected Attributes</h2></td></tr>
     <tr><td class="paramname">t</td><td>Time at which to evaluate. </td></tr>
     <tr><td class="paramname">coeff</td><td>Vector of coefficients. </td></tr>
     <tr><td class="paramname">coeff_diff</td><td>Pointer to the derivative coefficients. </td></tr>
-    <tr><td class="paramname">valbar1</td><td>Multiplier for the first derivative term. </td></tr>
-    <tr><td class="paramname">valbar2</td><td>Multiplier for the second derivative term. </td></tr>
+    <tr><td class="paramname">valbar1</td><td>Multiplier for the real derivative term. </td></tr>
+    <tr><td class="paramname">valbar2</td><td>Multiplier for the imaginary derivative term. </td></tr>
     <tr><td class="paramname">carrier_freq_id</td><td>ID of the carrier frequency. </td></tr>
   </table>
   </dd>
@@ -406,14 +406,14 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Evaluates the control basis at a given time using coefficients. </p>
+<p>Evaluates the control basis at a given time using the provided coefficients. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">t</td><td>Time at which to evaluate. </td></tr>
-    <tr><td class="paramdir">[in]</td><td class="paramname">coeff</td><td>Vector of coefficients. </td></tr>
-    <tr><td class="paramdir">[in]</td><td class="paramname">carrier_freq_id</td><td>ID of the carrier frequency. </td></tr>
-    <tr><td class="paramdir">[out]</td><td class="paramname">Blt1</td><td>Pointer to store the first evaluated control value. </td></tr>
-    <tr><td class="paramdir">[out]</td><td class="paramname">Blt2</td><td>Pointer to store the second evaluated control value. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">coeff</td><td>Vector of parameters (coefficients of the basis parameterization). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">carrier_freq_id</td><td>ID of the carrier frequency, provided by the oscillator. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Blt1</td><td>Pointer to store the real part of the control parameterization. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Blt2</td><td>Pointer to store the imaginary part of the control parameterization. </td></tr>
   </table>
   </dd>
 </dl>
@@ -443,7 +443,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Amplitude of the first step. </p>
+<p>Real part of amplitude of the step pulse. </p>
 
 </div>
 </div>
@@ -467,7 +467,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Amplitude of the second step. </p>
+<p>Imaginary part of amplitude of the step pulse. </p>
 
 </div>
 </div>

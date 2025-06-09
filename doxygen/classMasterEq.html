@@ -85,7 +85,7 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>Implementation of the Lindblad master equation solver.  
+<p>Implementation of the real-valued right-hand-side (RHS) system matrix of the quantum dynamical equations.  
  <a href="classMasterEq.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="mastereq_8hpp_source.html">mastereq.hpp</a>&gt;</code></p>
@@ -94,10 +94,10 @@ Collaboration diagram for MasterEq:</div>
 <div class="dyncontent">
 <div class="center"><img src="classMasterEq__coll__graph.png" border="0" usemap="#aMasterEq_coll__map" alt="Collaboration graph"/></div>
 <map name="aMasterEq_coll__map" id="aMasterEq_coll__map">
-<area shape="rect" title="Implementation of the Lindblad master equation solver." alt="" coords="6,269,89,295"/>
-<area shape="rect" href="classOscillator.html" title="Quantum harmonic oscillator with control capabilities." alt="" coords="5,93,89,119"/>
+<area shape="rect" title="Implementation of the real&#45;valued right&#45;hand&#45;side (RHS) system matrix of the quantum dynamical equati..." alt="" coords="6,269,89,295"/>
+<area shape="rect" href="classOscillator.html" title="Quantum oscillator (multi&#45;level qubit) with control capabilities." alt="" coords="5,93,89,119"/>
 <area shape="poly" title=" " alt="" coords="45,133,41,168,41,207,48,269,43,269,35,207,36,167,40,132"/>
-<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the RHS matrix to a vector." alt="" coords="115,181,217,207"/>
+<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the right&#45;hand&#45;side system matrix to a vector." alt="" coords="115,181,217,207"/>
 <area shape="poly" title=" " alt="" coords="76,125,151,179,148,183,73,129"/>
 <area shape="rect" href="structPiPulse.html" title="Structure for storing pi&#45;pulse parameters." alt="" coords="13,5,82,31"/>
 <area shape="poly" title=" " alt="" coords="50,45,50,93,45,93,45,45"/>
@@ -136,7 +136,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:aa8fcd6a14c34c63cf8036c300c48f1ed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the dimension of the density matrix.  <br /></td></tr>
 <tr class="separator:aa8fcd6a14c34c63cf8036c300c48f1ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aadb9c6cdd2162ee2df713e40a72f7d5c" id="r_aadb9c6cdd2162ee2df713e40a72f7d5c"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#aadb9c6cdd2162ee2df713e40a72f7d5c">assemble_RHS</a> (const double t)</td></tr>
-<tr class="memdesc:aadb9c6cdd2162ee2df713e40a72f7d5c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Assembles the vectorized Hamiltonian operator.  <br /></td></tr>
+<tr class="memdesc:aadb9c6cdd2162ee2df713e40a72f7d5c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Assembles the real-valued system matrix (RHS) at time t.  <br /></td></tr>
 <tr class="separator:aadb9c6cdd2162ee2df713e40a72f7d5c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a114fff980e3a46ceeb53bbd7167c416f" id="r_a114fff980e3a46ceeb53bbd7167c416f"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a114fff980e3a46ceeb53bbd7167c416f">getRHS</a> ()</td></tr>
 <tr class="memdesc:a114fff980e3a46ceeb53bbd7167c416f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the right-hand-side matrix.  <br /></td></tr>
@@ -145,7 +145,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:aefff9fce71e094f6b2d25c70caf6ef22"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes gradient of RHS with respect to control parameters.  <br /></td></tr>
 <tr class="separator:aefff9fce71e094f6b2d25c70caf6ef22"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af747a9c4013860f785cd80fe52e7f457" id="r_af747a9c4013860f785cd80fe52e7f457"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#af747a9c4013860f785cd80fe52e7f457">setControlAmplitudes</a> (const Vec x)</td></tr>
-<tr class="memdesc:af747a9c4013860f785cd80fe52e7f457"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets control function parameters from global design vector.  <br /></td></tr>
+<tr class="memdesc:af747a9c4013860f785cd80fe52e7f457"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pass control parameters from global design vector to each oscillator.  <br /></td></tr>
 <tr class="separator:af747a9c4013860f785cd80fe52e7f457"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae5fbd62a0766d20ec823a001da6f570" id="r_aae5fbd62a0766d20ec823a001da6f570"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#aae5fbd62a0766d20ec823a001da6f570">expectedEnergy</a> (const Vec x)</td></tr>
 <tr class="memdesc:aae5fbd62a0766d20ec823a001da6f570"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes expected energy of the full composite system.  <br /></td></tr>
@@ -181,7 +181,7 @@ Public Attributes</h2></td></tr>
 <tr class="memdesc:ad0644cc00ef5b0616947d733a59c4a01"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary transfer functions for time-varying system Hamiltonian.  <br /></td></tr>
 <tr class="separator:ad0644cc00ef5b0616947d733a59c4a01"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a68172dcac6206bd43927af847b87b822" id="r_a68172dcac6206bd43927af847b87b822"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a68172dcac6206bd43927af847b87b822">hamiltonian_file</a></td></tr>
-<tr class="memdesc:a68172dcac6206bd43927af847b87b822"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filename for Hamiltonian data ('none' if not used)  <br /></td></tr>
+<tr class="memdesc:a68172dcac6206bd43927af847b87b822"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filename if a custom Hamiltonian is read from file ('none' if standard Hamiltonian is used)  <br /></td></tr>
 <tr class="separator:a68172dcac6206bd43927af847b87b822"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
@@ -193,7 +193,7 @@ Protected Attributes</h2></td></tr>
 <tr class="memdesc:a7112f8144791299af573cf9479a370c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of Hilbert space = N.  <br /></td></tr>
 <tr class="separator:a7112f8144791299af573cf9479a370c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5dfe8c17afb1a56643f98e59539949fd" id="r_a5dfe8c17afb1a56643f98e59539949fd"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a5dfe8c17afb1a56643f98e59539949fd">dim_ess</a></td></tr>
-<tr class="memdesc:a5dfe8c17afb1a56643f98e59539949fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of essential level system = N_e.  <br /></td></tr>
+<tr class="memdesc:a5dfe8c17afb1a56643f98e59539949fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimension of essential levels = N_e.  <br /></td></tr>
 <tr class="separator:a5dfe8c17afb1a56643f98e59539949fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaafcd9e3d4a617bbb86d004b44f7ad3d" id="r_aaafcd9e3d4a617bbb86d004b44f7ad3d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#aaafcd9e3d4a617bbb86d004b44f7ad3d">noscillators</a></td></tr>
 <tr class="memdesc:aaafcd9e3d4a617bbb86d004b44f7ad3d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of oscillators in the system.  <br /></td></tr>
@@ -202,10 +202,10 @@ Protected Attributes</h2></td></tr>
 <tr class="memdesc:a6c35b6e30807ba37c4742a05af80f9ef"><td class="mdescLeft">&#160;</td><td class="mdescRight">Array of pointers to oscillator objects.  <br /></td></tr>
 <tr class="separator:a6c35b6e30807ba37c4742a05af80f9ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab200ca6b9a16be33b8ee7313c41f20d2" id="r_ab200ca6b9a16be33b8ee7313c41f20d2"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ab200ca6b9a16be33b8ee7313c41f20d2">RHS</a></td></tr>
-<tr class="memdesc:ab200ca6b9a16be33b8ee7313c41f20d2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real-valued, vectorized system matrix (2N^2 x 2N^2)  <br /></td></tr>
+<tr class="memdesc:ab200ca6b9a16be33b8ee7313c41f20d2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real-valued, vectorized system matrix (size 2N^2 x 2N^2)  <br /></td></tr>
 <tr class="separator:ab200ca6b9a16be33b8ee7313c41f20d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6a3bb1ab8dd49c64f51c90dd5b080f62" id="r_a6a3bb1ab8dd49c64f51c90dd5b080f62"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatShellCtx.html">MatShellCtx</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a6a3bb1ab8dd49c64f51c90dd5b080f62">RHSctx</a></td></tr>
-<tr class="memdesc:a6a3bb1ab8dd49c64f51c90dd5b080f62"><td class="mdescLeft">&#160;</td><td class="mdescRight">MatShell context containing data for RHS operations.  <br /></td></tr>
+<tr class="memdesc:a6a3bb1ab8dd49c64f51c90dd5b080f62"><td class="mdescLeft">&#160;</td><td class="mdescRight">MatShell context containing data for applying the RHS to a state.  <br /></td></tr>
 <tr class="separator:a6a3bb1ab8dd49c64f51c90dd5b080f62"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa30454ed43e280918df0e2dc06954e84" id="r_aa30454ed43e280918df0e2dc06954e84"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::vector&lt; Mat &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#aa30454ed43e280918df0e2dc06954e84">Ac_vec</a></td></tr>
 <tr class="memdesc:aa30454ed43e280918df0e2dc06954e84"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real parts of control matrices for each oscillator.  <br /></td></tr>
@@ -214,9 +214,10 @@ Protected Attributes</h2></td></tr>
 <tr class="memdesc:afb1c97886b5a327dc888caf9ba902db8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary parts of control matrices for each oscillator.  <br /></td></tr>
 <tr class="separator:afb1c97886b5a327dc888caf9ba902db8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7aa65ae612c591230c41eec8454936ee" id="r_a7aa65ae612c591230c41eec8454936ee"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a7aa65ae612c591230c41eec8454936ee">Ad</a></td></tr>
+<tr class="memdesc:a7aa65ae612c591230c41eec8454936ee"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real part of time-independent system matrix without the coupling terms.  <br /></td></tr>
 <tr class="separator:a7aa65ae612c591230c41eec8454936ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2afd1529a3b1793aa87ad1c008ef212a" id="r_a2afd1529a3b1793aa87ad1c008ef212a"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a2afd1529a3b1793aa87ad1c008ef212a">Bd</a></td></tr>
-<tr class="memdesc:a2afd1529a3b1793aa87ad1c008ef212a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real and imaginary parts of constant system matrix.  <br /></td></tr>
+<tr class="memdesc:a2afd1529a3b1793aa87ad1c008ef212a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary part of time-independent system matrix without coupling terms.  <br /></td></tr>
 <tr class="separator:a2afd1529a3b1793aa87ad1c008ef212a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab0d2504ab06b61b6bfe11f623e5a002c" id="r_ab0d2504ab06b61b6bfe11f623e5a002c"><td class="memItemLeft" align="right" valign="top">std::vector&lt; Mat &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#ab0d2504ab06b61b6bfe11f623e5a002c">Ad_vec</a></td></tr>
 <tr class="memdesc:ab0d2504ab06b61b6bfe11f623e5a002c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real parts of dipole-dipole coupling matrices in drift Hamiltonian.  <br /></td></tr>
@@ -265,15 +266,15 @@ Protected Attributes</h2></td></tr>
 <tr class="memdesc:a3d518b166eba640dc61c708ba2ea9e2d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Column indices for evaluating dRHS/dp.  <br /></td></tr>
 <tr class="separator:a3d518b166eba640dc61c708ba2ea9e2d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6e00f02e3b6cfab7fb90cb70de265aff" id="r_a6e00f02e3b6cfab7fb90cb70de265aff"><td class="memItemLeft" align="right" valign="top">PetscScalar *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a6e00f02e3b6cfab7fb90cb70de265aff">vals</a></td></tr>
-<tr class="memdesc:a6e00f02e3b6cfab7fb90cb70de265aff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix values for evaluating dRHS/dp.  <br /></td></tr>
+<tr class="memdesc:a6e00f02e3b6cfab7fb90cb70de265aff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Values for evaluating dRHS/dp.  <br /></td></tr>
 <tr class="separator:a6e00f02e3b6cfab7fb90cb70de265aff"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3493e8372960cd42ba4ceab89fe68bb9" id="r_a3493e8372960cd42ba4ceab89fe68bb9"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a3493e8372960cd42ba4ceab89fe68bb9">quietmode</a></td></tr>
 <tr class="memdesc:a3493e8372960cd42ba4ceab89fe68bb9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag for quiet mode operation.  <br /></td></tr>
 <tr class="separator:a3493e8372960cd42ba4ceab89fe68bb9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Implementation of the Lindblad master equation solver. </p>
-<p>This class provides functionality for solving both the Lindblad master equation for open quantum systems and the Schroedinger equation for closed systems. It supports matrix-free and sparse matrix solvers for different system sizes. </p>
+<div class="textblock"><p>Implementation of the real-valued right-hand-side (RHS) system matrix of the quantum dynamical equations. </p>
+<p>This class provides functionality for evaluating and applying the real-valued right-hand-side (RHS) system matrix of the vectorized Lindblad master equation (open quantum systems, \(M = \text{vec}(-i(H(t)\rho - \rho H(t)) + \text{Lindblad terms})\)) or Schroedinger equation (closed systems \(M = -iH(t)\)). The system matrix (RHS) is stored as a Matrix Shell, and needs to be assembled and applied at each time step during the forward and backward time evolution of the timestepper. It supports a matrix-free and a sparse-matrix version for applying the system matrix to a state vector. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a24841be28d3b2ba8fec73988b07d16a5" name="a24841be28d3b2ba8fec73988b07d16a5"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a24841be28d3b2ba8fec73988b07d16a5">&#9670;&#160;</a></span>MasterEq() <span class="overload">[1/2]</span></h2>
@@ -419,8 +420,8 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Assembles the vectorized Hamiltonian operator. </p>
-<p>Builds the operator \(M = \text{vec}(-i(H\rho - \rho H) + \text{Lindblad terms})\). Must be called before applying the RHS matrix.</p>
+<p>Assembles the real-valued system matrix (RHS) at time t. </p>
+<p>Schroedinger solver: Assembles the operator \(M = \text{vec}(-iH(t))\). Lindblad solver: Assembles the operator \(M = \text{vec}(-i(H(t)\rho - \rho H(t)) + \text{Lindblad terms})\). Must be called before applying the RHS matrix.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">t</td><td>Current time </td></tr>
@@ -476,7 +477,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Computes gradient of RHS with respect to control parameters. </p>
-<p>Computes grad += alpha * <a class="el" href="classMasterEq.html#ab200ca6b9a16be33b8ee7313c41f20d2" title="Real-valued, vectorized system matrix (2N^2 x 2N^2)">RHS(x)</a>^T * x_bar.</p>
+<p>Computes grad += alpha * <a class="el" href="classMasterEq.html#ab200ca6b9a16be33b8ee7313c41f20d2" title="Real-valued, vectorized system matrix (size 2N^2 x 2N^2)">RHS(x)</a>^T * x_bar.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">t</td><td>Current time </td></tr>
@@ -716,7 +717,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Sets control function parameters from global design vector. </p>
+<p>Pass control parameters from global design vector to each oscillator. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">x</td><td>Global design vector containing control parameters </td></tr>
@@ -796,6 +797,8 @@ Protected Attributes</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+
+<p>Real part of time-independent system matrix without the coupling terms. </p>
 
 </div>
 </div>
@@ -937,7 +940,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Real and imaginary parts of constant system matrix. </p>
+<p>Imaginary part of time-independent system matrix without coupling terms. </p>
 
 </div>
 </div>
@@ -1057,7 +1060,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Dimension of essential level system = N_e. </p>
+<p>Dimension of essential levels = N_e. </p>
 
 </div>
 </div>
@@ -1169,7 +1172,7 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Filename for Hamiltonian data ('none' if not used) </p>
+<p>Filename if a custom Hamiltonian is read from file ('none' if standard Hamiltonian is used) </p>
 
 </div>
 </div>
@@ -1455,7 +1458,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Real-valued, vectorized system matrix (2N^2 x 2N^2) </p>
+<p>Real-valued, vectorized system matrix (size 2N^2 x 2N^2) </p>
 
 </div>
 </div>
@@ -1479,7 +1482,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>MatShell context containing data for RHS operations. </p>
+<p>MatShell context containing data for applying the RHS to a state. </p>
 
 </div>
 </div>
@@ -1583,7 +1586,7 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Matrix values for evaluating dRHS/dp. </p>
+<p>Values for evaluating dRHS/dp. </p>
 
 </div>
 </div>

@@ -1,10 +1,18 @@
 var searchData=
 [
-  ['nessential_0',['nessential',['../classGate.html#a79d4b22e99a52bf855b173fa08fcd54f',1,'Gate::nessential'],['../classMasterEq.html#a609bd3adeeaf8f9a53e7bdc59cd25be8',1,'MasterEq::nessential']]],
-  ['nlevels_1',['nlevels',['../classGate.html#a9640ecf75904027255053123f97ff129',1,'Gate::nlevels'],['../structMatShellCtx.html#a064ecab1e678a757d3555ea1d8fd13b7',1,'MatShellCtx::nlevels'],['../classMasterEq.html#a6cadd8dbe3e40e6ea087b6926de72c1f',1,'MasterEq::nlevels'],['../classOscillator.html#a14ea0bdd4a2d576d3851738bef9315b8',1,'Oscillator::nlevels']]],
-  ['noscillators_2',['noscillators',['../classMasterEq.html#aaafcd9e3d4a617bbb86d004b44f7ad3d',1,'MasterEq']]],
-  ['nparams_3',['nparams',['../classControlBasis.html#a93075af8399c469e87ea9b2a7afd1f8b',1,'ControlBasis']]],
-  ['nparams_5fmax_4',['nparams_max',['../classMasterEq.html#a1ee5ff4c7f62f433e539c0d790ac39d6',1,'MasterEq']]],
-  ['nsplines_5',['nsplines',['../classBSpline2nd.html#ae3b1dadd8bdf567869faa80d0c268dde',1,'BSpline2nd::nsplines'],['../classBSpline2ndAmplitude.html#a5e7cea5d257fba217d019b4369dd38f4',1,'BSpline2ndAmplitude::nsplines'],['../classBSpline0.html#aef106e0fb621b67f678cf28bac158dc4',1,'BSpline0::nsplines']]],
-  ['ntime_6',['ntime',['../classTimeStepper.html#a1e462962525e2b0960c8d5ac813d3873',1,'TimeStepper']]]
+  ['mastereq_0',['mastereq',['../classTimeStepper.html#a19a5d08c76bf1580122ec82665c2f7ef',1,'TimeStepper']]],
+  ['maxiter_1',['maxiter',['../classOptimProblem.html#ac99d463f281ff1a798fb965ed4998a2f',1,'OptimProblem']]],
+  ['mpi_5frank_2',['mpi_rank',['../classConfig.html#aa8542ccac5fe7eb941e51fb023f2bf3e',1,'Config']]],
+  ['mpirank_5finit_3',['mpirank_init',['../classOptimProblem.html#abb7e3db2faa9946ac362c95e97d1bd5a',1,'OptimProblem::mpirank_init'],['../classOutput.html#a85cc2f53a43f7e53e67632302109f2ad',1,'Output::mpirank_init']]],
+  ['mpirank_5foptim_4',['mpirank_optim',['../classOptimProblem.html#ace37bf2c0355c974244c6662c9f15b85',1,'OptimProblem']]],
+  ['mpirank_5fpetsc_5',['mpirank_petsc',['../classGate.html#abf4d2508bd3cabdef86f7cb40ff45331',1,'Gate::mpirank_petsc'],['../classMasterEq.html#a1a7dfad49bfeafe1ebbaa4a23a4eae29',1,'MasterEq::mpirank_petsc'],['../classOscillator.html#ab568836a8dcac299a93f84ee130e2d31',1,'Oscillator::mpirank_petsc'],['../classOutput.html#a94e3d28cc2a05fda08cab1567fbf5dd7',1,'Output::mpirank_petsc']]],
+  ['mpirank_5fspace_6',['mpirank_space',['../classOptimProblem.html#aa98b198c99fd5509e65539474f8bd5e6',1,'OptimProblem']]],
+  ['mpirank_5fworld_7',['mpirank_world',['../classHamiltonianFileReader.html#a43c0a5c4219721995919d84d04ce27cc',1,'HamiltonianFileReader::mpirank_world'],['../classTimeStepper.html#a354e57936c67ef0191a90d2c8c343e39',1,'TimeStepper::mpirank_world'],['../classOutput.html#af673b14df095f068350a8ac6e39ae5de',1,'Output::mpirank_world'],['../classOscillator.html#a60f21a24f232900b09fdcfeedd662d0b',1,'Oscillator::mpirank_world'],['../classOptimProblem.html#a9ff4b767eef4af36a48630d9e4a9cf15',1,'OptimProblem::mpirank_world'],['../classMasterEq.html#ac7b7aa48c2cce32d27d0055e0a8d5990',1,'MasterEq::mpirank_world'],['../classGate.html#ac437b20392283b55ee8edeeef4305b22',1,'Gate::mpirank_world']]],
+  ['mpisize_5finit_8',['mpisize_init',['../classOptimProblem.html#ab2836619ca47cc60b76f6cda2ebde6af',1,'OptimProblem']]],
+  ['mpisize_5foptim_9',['mpisize_optim',['../classOptimProblem.html#af1e168e956b9a8c5bc8c746588781a3d',1,'OptimProblem']]],
+  ['mpisize_5fpetsc_10',['mpisize_petsc',['../classOutput.html#a7858e0fb0c415dbdc836124d2c953bad',1,'Output']]],
+  ['mpisize_5fspace_11',['mpisize_space',['../classOptimProblem.html#acdb99dc589ca9dc4f4c6b1e4237e4ede',1,'OptimProblem']]],
+  ['mpisize_5fworld_12',['mpisize_world',['../classOptimProblem.html#a04e1c1653c1e1baff1082d4376b367e2',1,'OptimProblem']]],
+  ['mygrad_13',['mygrad',['../classOptimProblem.html#aca954c0720e353e005e75f182264b243',1,'OptimProblem']]],
+  ['myid_14',['myid',['../classOscillator.html#ac0a88741b82e3a8101fc2ef085773b28',1,'Oscillator']]]
 ];

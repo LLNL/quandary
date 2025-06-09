@@ -1,7 +1,12 @@
 var searchData=
 [
-  ['mastereq_0',['mastereq',['../classTimeStepper.html#a19a5d08c76bf1580122ec82665c2f7ef',1,'TimeStepper']]],
-  ['mpirank_5fpetsc_1',['mpirank_petsc',['../classGate.html#abf4d2508bd3cabdef86f7cb40ff45331',1,'Gate::mpirank_petsc'],['../classMasterEq.html#a1a7dfad49bfeafe1ebbaa4a23a4eae29',1,'MasterEq::mpirank_petsc'],['../classOscillator.html#ab568836a8dcac299a93f84ee130e2d31',1,'Oscillator::mpirank_petsc']]],
-  ['mpirank_5fworld_2',['mpirank_world',['../classGate.html#ac437b20392283b55ee8edeeef4305b22',1,'Gate::mpirank_world'],['../classMasterEq.html#ac7b7aa48c2cce32d27d0055e0a8d5990',1,'MasterEq::mpirank_world'],['../classOscillator.html#a60f21a24f232900b09fdcfeedd662d0b',1,'Oscillator::mpirank_world'],['../classPythonInterface.html#aacfaa0465422aae809c1a2c9ecb1dede',1,'PythonInterface::mpirank_world'],['../classTimeStepper.html#a354e57936c67ef0191a90d2c8c343e39',1,'TimeStepper::mpirank_world']]],
-  ['myid_3',['myid',['../classOscillator.html#ac0a88741b82e3a8101fc2ef085773b28',1,'Oscillator']]]
+  ['lindbladtype_0',['lindbladtype',['../classGate.html#a10d2277f4b3d8a32c442dde26dffd5c6',1,'Gate::lindbladtype'],['../classHamiltonianFileReader.html#a80435be798d3d79f6c5f2a4df3b7bba7',1,'HamiltonianFileReader::lindbladtype'],['../structMatShellCtx.html#a82a20720c0e8ad791f959153ffee0a7b',1,'MatShellCtx::lindbladtype'],['../classMasterEq.html#ac8fd54198c43d043c544e72417e30dba',1,'MasterEq::lindbladtype'],['../classOptimTarget.html#a2b104e0388ba61c811a89101a1216a53',1,'OptimTarget::lindbladtype'],['../classOscillator.html#ad393a00805d44f10e81f5747ffc0c280',1,'Oscillator::lindbladtype']]],
+  ['linsolve_5fabstol_1',['linsolve_abstol',['../classImplMidpoint.html#aba90b2ff563f157da2d5c36103a4192f',1,'ImplMidpoint']]],
+  ['linsolve_5fcounter_2',['linsolve_counter',['../classImplMidpoint.html#ab1e8639d39f2733a1ce5abb56302e936',1,'ImplMidpoint']]],
+  ['linsolve_5ferror_5favg_3',['linsolve_error_avg',['../classImplMidpoint.html#a4e6836853dd9fe8bfb306d6df9a02996',1,'ImplMidpoint']]],
+  ['linsolve_5fiterstaken_5favg_4',['linsolve_iterstaken_avg',['../classImplMidpoint.html#a2ea5a6fbaf01803bd8f690a026dc6254',1,'ImplMidpoint']]],
+  ['linsolve_5fmaxiter_5',['linsolve_maxiter',['../classImplMidpoint.html#a72e82f014b268ef416dcef2882b0f4f3',1,'ImplMidpoint']]],
+  ['linsolve_5freltol_6',['linsolve_reltol',['../classImplMidpoint.html#a6036ac823f95d982d8c75dd8781a4b34',1,'ImplMidpoint']]],
+  ['linsolve_5ftype_7',['linsolve_type',['../classImplMidpoint.html#a2748b0f3a312762a6ecab2ac5442c64c',1,'ImplMidpoint']]],
+  ['log_8',['log',['../classConfig.html#a52f64cb2653c5d13c4d91ff6a67c3d94',1,'Config']]]
 ];

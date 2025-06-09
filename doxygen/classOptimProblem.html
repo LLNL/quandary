@@ -79,6 +79,7 @@ $(function() {
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pro-attribs">Protected Attributes</a> &#124;
 <a href="classOptimProblem-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">OptimProblem Class Reference</div></div>
 </div><!--header-->
@@ -93,31 +94,34 @@ Collaboration diagram for OptimProblem:</div>
 <div class="dyncontent">
 <div class="center"><img src="classOptimProblem__coll__graph.png" border="0" usemap="#aOptimProblem_coll__map" alt="Collaboration graph"/></div>
 <map name="aOptimProblem_coll__map" id="aOptimProblem_coll__map">
-<area shape="rect" title="Optimization problem solver for quantum optimal control." alt="" coords="5,445,121,471"/>
-<area shape="rect" href="classOutput.html" title="Output management for quantum control simulations and optimization." alt="" coords="21,269,87,295"/>
-<area shape="poly" title=" " alt="" coords="56,308,58,383,64,445,59,445,53,383,51,308"/>
-<area shape="rect" href="classTimeStepper.html" title="Base class for time integration schemes in quantum dynamics." alt="" coords="113,357,219,383"/>
-<area shape="poly" title=" " alt="" coords="77,303,109,331,146,355,143,360,106,335,73,307"/>
-<area shape="poly" title=" " alt="" coords="143,394,79,447,76,443,140,390"/>
-<area shape="rect" href="classMasterEq.html" title="Implementation of the Lindblad master equation solver." alt="" coords="113,269,195,295"/>
-<area shape="poly" title=" " alt="" coords="160,308,167,356,162,357,155,308"/>
-<area shape="rect" href="classOscillator.html" title="Quantum harmonic oscillator with control capabilities." alt="" coords="88,93,172,119"/>
-<area shape="poly" title=" " alt="" coords="126,133,121,168,123,206,135,240,149,268,145,270,130,242,118,207,116,168,121,132"/>
-<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the RHS matrix to a vector." alt="" coords="198,181,299,207"/>
-<area shape="poly" title=" " alt="" coords="159,125,234,179,231,183,156,129"/>
-<area shape="rect" href="structPiPulse.html" title="Structure for storing pi&#45;pulse parameters." alt="" coords="95,5,165,31"/>
-<area shape="poly" title=" " alt="" coords="133,45,133,93,127,93,127,45"/>
-<area shape="poly" title=" " alt="" coords="227,218,169,271,165,267,224,214"/>
-<area shape="rect" href="classOptimTarget.html" title="Optimization target specification and evaluation for quantum control." alt="" coords="220,269,323,295"/>
-<area shape="poly" title=" " alt="" coords="259,308,236,335,196,359,193,355,232,331,255,305"/>
+<area shape="rect" title="Optimization problem solver for quantum optimal control." alt="" coords="93,445,209,471"/>
+<area shape="rect" href="classOptimTarget.html" title="Optimization target specification for quantum control." alt="" coords="289,269,391,295"/>
+<area shape="poly" title=" " alt="" coords="344,309,338,334,319,366,299,387,241,424,189,448,187,443,239,419,295,383,315,363,334,332,339,308"/>
+<area shape="rect" href="classTimeStepper.html" title="Base class for time integration schemes to evolve the quantum dynamics." alt="" coords="98,357,203,383"/>
+<area shape="poly" title=" " alt="" coords="295,302,248,321,172,360,170,355,246,316,293,297"/>
+<area shape="rect" href="classGate.html" title="Base class for quantum gate operations." alt="" coords="313,181,367,207"/>
+<area shape="poly" title=" " alt="" coords="343,221,343,269,337,269,337,221"/>
+<area shape="rect" href="classOutput.html" title="Output management for quantum control simulations and optimization." alt="" coords="5,269,72,295"/>
+<area shape="poly" title=" " alt="" coords="35,309,32,345,35,364,41,381,56,402,76,419,119,443,117,448,73,423,52,406,36,384,29,365,27,345,30,309"/>
+<area shape="poly" title=" " alt="" coords="63,302,99,331,134,355,131,359,96,335,60,306"/>
+<area shape="poly" title=" " alt="" coords="153,397,153,445,148,445,148,397"/>
+<area shape="rect" href="classMasterEq.html" title="Implementation of the real&#45;valued right&#45;hand&#45;side (RHS) system matrix of the quantum dynamical equati..." alt="" coords="107,269,189,295"/>
+<area shape="poly" title=" " alt="" coords="151,309,152,333,153,357,148,357,147,333,146,309"/>
+<area shape="rect" href="classOscillator.html" title="Quantum oscillator (multi&#45;level qubit) with control capabilities." alt="" coords="50,93,134,119"/>
+<area shape="poly" title=" " alt="" coords="86,132,80,168,81,187,85,206,95,224,107,241,134,267,131,271,103,245,90,227,80,208,76,188,75,168,81,132"/>
+<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the right&#45;hand&#45;side system matrix to a vector." alt="" coords="160,181,261,207"/>
+<area shape="poly" title=" " alt="" coords="121,125,196,179,193,183,118,129"/>
+<area shape="rect" href="structPiPulse.html" title="Structure for storing pi&#45;pulse parameters." alt="" coords="57,5,127,31"/>
+<area shape="poly" title=" " alt="" coords="95,45,95,93,89,93,89,45"/>
+<area shape="poly" title=" " alt="" coords="196,219,159,270,155,267,192,216"/>
 </map>
 <center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ae58ed36a5876353a619849533eaec461" id="r_ae58ed36a5876353a619849533eaec461"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ae58ed36a5876353a619849533eaec461">OptimProblem</a> (<a class="el" href="classMapParam.html">MapParam</a> config, <a class="el" href="classTimeStepper.html">TimeStepper</a> *timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, <a class="el" href="classOutput.html">Output</a> *output_, bool quietmode=false)</td></tr>
-<tr class="memdesc:ae58ed36a5876353a619849533eaec461"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for optimization problem.  <br /></td></tr>
-<tr class="separator:ae58ed36a5876353a619849533eaec461"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af1945265d6399722dc335ec2fb6b6b66" id="r_af1945265d6399722dc335ec2fb6b6b66"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#af1945265d6399722dc335ec2fb6b6b66">OptimProblem</a> (<a class="el" href="classConfig.html">Config</a> config, <a class="el" href="classTimeStepper.html">TimeStepper</a> *timestepper_, MPI_Comm comm_init_, MPI_Comm <a class="el" href="classOptimProblem.html#a3c909a708d205ea7f7cc2db472c10723">comm_optim</a>, int ninit_, <a class="el" href="classOutput.html">Output</a> *output_, bool <a class="el" href="classOptimProblem.html#ae7ab3209affb52e393a1f58a4b0173b2">quietmode</a>=false)</td></tr>
+<tr class="memdesc:af1945265d6399722dc335ec2fb6b6b66"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor for optimization problem.  <br /></td></tr>
+<tr class="separator:af1945265d6399722dc335ec2fb6b6b66"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1faf876ea1193b35fd753e6671f4c024" id="r_a1faf876ea1193b35fd753e6671f4c024"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a1faf876ea1193b35fd753e6671f4c024">~OptimProblem</a> ()</td></tr>
 <tr class="separator:a1faf876ea1193b35fd753e6671f4c024"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8952c51225c4fd2d0a8bac5b09546ab3" id="r_a8952c51225c4fd2d0a8bac5b09546ab3"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a8952c51225c4fd2d0a8bac5b09546ab3">getNdesign</a> ()</td></tr>
@@ -130,19 +134,19 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:a68760cc16e11427d3e8280ad43ca265c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the final-time cost term.  <br /></td></tr>
 <tr class="separator:a68760cc16e11427d3e8280ad43ca265c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a96e26ce476a10e1a3054804efa2a84dd" id="r_a96e26ce476a10e1a3054804efa2a84dd"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a96e26ce476a10e1a3054804efa2a84dd">getRegul</a> ()</td></tr>
-<tr class="memdesc:a96e26ce476a10e1a3054804efa2a84dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the regularization term.  <br /></td></tr>
+<tr class="memdesc:a96e26ce476a10e1a3054804efa2a84dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the Tikhonov regularization term.  <br /></td></tr>
 <tr class="separator:a96e26ce476a10e1a3054804efa2a84dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8ce1edadd88a55224ae36dd6fc1f8baf" id="r_a8ce1edadd88a55224ae36dd6fc1f8baf"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a8ce1edadd88a55224ae36dd6fc1f8baf">getPenalty</a> ()</td></tr>
-<tr class="memdesc:a8ce1edadd88a55224ae36dd6fc1f8baf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the penalty term.  <br /></td></tr>
+<tr class="memdesc:a8ce1edadd88a55224ae36dd6fc1f8baf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the integral penalty term for pure-state preparation.  <br /></td></tr>
 <tr class="separator:a8ce1edadd88a55224ae36dd6fc1f8baf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad79c0988733ae12b4c2919cf030dfb4b" id="r_ad79c0988733ae12b4c2919cf030dfb4b"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ad79c0988733ae12b4c2919cf030dfb4b">getPenaltyDpDm</a> ()</td></tr>
-<tr class="memdesc:ad79c0988733ae12b4c2919cf030dfb4b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the second-order derivative penalty term.  <br /></td></tr>
+<tr class="memdesc:ad79c0988733ae12b4c2919cf030dfb4b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the second-order state derivative penalty term.  <br /></td></tr>
 <tr class="separator:ad79c0988733ae12b4c2919cf030dfb4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afb6bfd0cb6a3210df6a238df6e59dba4" id="r_afb6bfd0cb6a3210df6a238df6e59dba4"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#afb6bfd0cb6a3210df6a238df6e59dba4">getPenaltyVariation</a> ()</td></tr>
-<tr class="memdesc:afb6bfd0cb6a3210df6a238df6e59dba4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the variation penalty term.  <br /></td></tr>
+<tr class="memdesc:afb6bfd0cb6a3210df6a238df6e59dba4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the control variation penalty term.  <br /></td></tr>
 <tr class="separator:afb6bfd0cb6a3210df6a238df6e59dba4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae0027c624ccfd205493672ce631b1775" id="r_ae0027c624ccfd205493672ce631b1775"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ae0027c624ccfd205493672ce631b1775">getPenaltyEnergy</a> ()</td></tr>
-<tr class="memdesc:ae0027c624ccfd205493672ce631b1775"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the energy penalty term.  <br /></td></tr>
+<tr class="memdesc:ae0027c624ccfd205493672ce631b1775"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the control energy penalty term.  <br /></td></tr>
 <tr class="separator:ae0027c624ccfd205493672ce631b1775"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adb0ac69930ce76afb96e882395e04bfa" id="r_adb0ac69930ce76afb96e882395e04bfa"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#adb0ac69930ce76afb96e882395e04bfa">getFidelity</a> ()</td></tr>
 <tr class="memdesc:adb0ac69930ce76afb96e882395e04bfa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the current fidelity.  <br /></td></tr>
@@ -166,7 +170,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:aae59b46a85bc1917c21f45d4fba361e2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the objective function F(x).  <br /></td></tr>
 <tr class="separator:aae59b46a85bc1917c21f45d4fba361e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a61f9f0c7dd52a454b8cc5823315bc473" id="r_a61f9f0c7dd52a454b8cc5823315bc473"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a61f9f0c7dd52a454b8cc5823315bc473">evalGradF</a> (const Vec x, Vec G)</td></tr>
-<tr class="memdesc:a61f9f0c7dd52a454b8cc5823315bc473"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the gradient of the objective function.  <br /></td></tr>
+<tr class="memdesc:a61f9f0c7dd52a454b8cc5823315bc473"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluates the gradient of the objective function with respect to the control parameters.  <br /></td></tr>
 <tr class="separator:a61f9f0c7dd52a454b8cc5823315bc473"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af8a76f97039d415b79a7bf9fd525c78a" id="r_af8a76f97039d415b79a7bf9fd525c78a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#af8a76f97039d415b79a7bf9fd525c78a">solve</a> (Vec <a class="el" href="classOptimProblem.html#a2639f136408f418dd5721eec4b8dd2b9">xinit</a>)</td></tr>
 <tr class="memdesc:af8a76f97039d415b79a7bf9fd525c78a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs the optimization solver.  <br /></td></tr>
@@ -197,13 +201,144 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a2639f136408f418dd5721eec4b8dd2b9" id="r_a2639f136408f418dd5721eec4b8dd2b9"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a2639f136408f418dd5721eec4b8dd2b9">xinit</a></td></tr>
 <tr class="memdesc:a2639f136408f418dd5721eec4b8dd2b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initial design vector.  <br /></td></tr>
 <tr class="separator:a2639f136408f418dd5721eec4b8dd2b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
+Protected Attributes</h2></td></tr>
+<tr class="memitem:a59c67f305464ddbd810768606abb2bea" id="r_a59c67f305464ddbd810768606abb2bea"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a59c67f305464ddbd810768606abb2bea">ninit</a></td></tr>
+<tr class="memdesc:a59c67f305464ddbd810768606abb2bea"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of initial conditions to be considered (N^2, N, or 1)  <br /></td></tr>
+<tr class="separator:a59c67f305464ddbd810768606abb2bea"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac58c5f5036c4b92e4543e295b626702b" id="r_ac58c5f5036c4b92e4543e295b626702b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ac58c5f5036c4b92e4543e295b626702b">ninit_local</a></td></tr>
+<tr class="memdesc:ac58c5f5036c4b92e4543e295b626702b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Local number of initial conditions on this processor.  <br /></td></tr>
+<tr class="separator:ac58c5f5036c4b92e4543e295b626702b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a67a02fd11c640443212754747b1f1973" id="r_a67a02fd11c640443212754747b1f1973"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a67a02fd11c640443212754747b1f1973">rho_t0</a></td></tr>
+<tr class="memdesc:a67a02fd11c640443212754747b1f1973"><td class="mdescLeft">&#160;</td><td class="mdescRight">Storage for initial condition of the ODE.  <br /></td></tr>
+<tr class="separator:a67a02fd11c640443212754747b1f1973"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad3da3f81836a24e435991e3b976fe872" id="r_ad3da3f81836a24e435991e3b976fe872"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ad3da3f81836a24e435991e3b976fe872">rho_t0_bar</a></td></tr>
+<tr class="memdesc:ad3da3f81836a24e435991e3b976fe872"><td class="mdescLeft">&#160;</td><td class="mdescRight">Storage for adjoint initial condition of the adjoint ODE (aka the terminal condition)  <br /></td></tr>
+<tr class="separator:ad3da3f81836a24e435991e3b976fe872"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a01e84cd0dd404254f92724c9e01cf282" id="r_a01e84cd0dd404254f92724c9e01cf282"><td class="memItemLeft" align="right" valign="top">std::vector&lt; Vec &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a01e84cd0dd404254f92724c9e01cf282">store_finalstates</a></td></tr>
+<tr class="memdesc:a01e84cd0dd404254f92724c9e01cf282"><td class="mdescLeft">&#160;</td><td class="mdescRight">Storage for final states for each initial condition.  <br /></td></tr>
+<tr class="separator:a01e84cd0dd404254f92724c9e01cf282"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a70589b41c7146c6557ea49b15c6c3e2d" id="r_a70589b41c7146c6557ea49b15c6c3e2d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classOptimTarget.html">OptimTarget</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a70589b41c7146c6557ea49b15c6c3e2d">optim_target</a></td></tr>
+<tr class="memdesc:a70589b41c7146c6557ea49b15c6c3e2d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer to the optimization target (gate or state)  <br /></td></tr>
+<tr class="separator:a70589b41c7146c6557ea49b15c6c3e2d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a721a317cb5f00ccec5b03ff0608e0ac8" id="r_a721a317cb5f00ccec5b03ff0608e0ac8"><td class="memItemLeft" align="right" valign="top">MPI_Comm&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a721a317cb5f00ccec5b03ff0608e0ac8">comm_init</a></td></tr>
+<tr class="memdesc:a721a317cb5f00ccec5b03ff0608e0ac8"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI communicator for initial condition parallelization.  <br /></td></tr>
+<tr class="separator:a721a317cb5f00ccec5b03ff0608e0ac8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3c909a708d205ea7f7cc2db472c10723" id="r_a3c909a708d205ea7f7cc2db472c10723"><td class="memItemLeft" align="right" valign="top">MPI_Comm&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a3c909a708d205ea7f7cc2db472c10723">comm_optim</a></td></tr>
+<tr class="memdesc:a3c909a708d205ea7f7cc2db472c10723"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI communicator for optimization parallelization, currently not used (size 1)  <br /></td></tr>
+<tr class="separator:a3c909a708d205ea7f7cc2db472c10723"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ace37bf2c0355c974244c6662c9f15b85" id="r_ace37bf2c0355c974244c6662c9f15b85"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ace37bf2c0355c974244c6662c9f15b85">mpirank_optim</a></td></tr>
+<tr class="separator:ace37bf2c0355c974244c6662c9f15b85"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af1e168e956b9a8c5bc8c746588781a3d" id="r_af1e168e956b9a8c5bc8c746588781a3d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#af1e168e956b9a8c5bc8c746588781a3d">mpisize_optim</a></td></tr>
+<tr class="memdesc:af1e168e956b9a8c5bc8c746588781a3d"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank and size for optimization communicator.  <br /></td></tr>
+<tr class="separator:af1e168e956b9a8c5bc8c746588781a3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa98b198c99fd5509e65539474f8bd5e6" id="r_aa98b198c99fd5509e65539474f8bd5e6"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#aa98b198c99fd5509e65539474f8bd5e6">mpirank_space</a></td></tr>
+<tr class="separator:aa98b198c99fd5509e65539474f8bd5e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acdb99dc589ca9dc4f4c6b1e4237e4ede" id="r_acdb99dc589ca9dc4f4c6b1e4237e4ede"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#acdb99dc589ca9dc4f4c6b1e4237e4ede">mpisize_space</a></td></tr>
+<tr class="memdesc:acdb99dc589ca9dc4f4c6b1e4237e4ede"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank and size for spatial parallelization (PETSc)  <br /></td></tr>
+<tr class="separator:acdb99dc589ca9dc4f4c6b1e4237e4ede"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9ff4b767eef4af36a48630d9e4a9cf15" id="r_a9ff4b767eef4af36a48630d9e4a9cf15"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a9ff4b767eef4af36a48630d9e4a9cf15">mpirank_world</a></td></tr>
+<tr class="separator:a9ff4b767eef4af36a48630d9e4a9cf15"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a04e1c1653c1e1baff1082d4376b367e2" id="r_a04e1c1653c1e1baff1082d4376b367e2"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a04e1c1653c1e1baff1082d4376b367e2">mpisize_world</a></td></tr>
+<tr class="memdesc:a04e1c1653c1e1baff1082d4376b367e2"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank and size for global communicator.  <br /></td></tr>
+<tr class="separator:a04e1c1653c1e1baff1082d4376b367e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abb7e3db2faa9946ac362c95e97d1bd5a" id="r_abb7e3db2faa9946ac362c95e97d1bd5a"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#abb7e3db2faa9946ac362c95e97d1bd5a">mpirank_init</a></td></tr>
+<tr class="separator:abb7e3db2faa9946ac362c95e97d1bd5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab2836619ca47cc60b76f6cda2ebde6af" id="r_ab2836619ca47cc60b76f6cda2ebde6af"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ab2836619ca47cc60b76f6cda2ebde6af">mpisize_init</a></td></tr>
+<tr class="memdesc:ab2836619ca47cc60b76f6cda2ebde6af"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank and size for initial condition communicator.  <br /></td></tr>
+<tr class="separator:ab2836619ca47cc60b76f6cda2ebde6af"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae7ab3209affb52e393a1f58a4b0173b2" id="r_ae7ab3209affb52e393a1f58a4b0173b2"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ae7ab3209affb52e393a1f58a4b0173b2">quietmode</a></td></tr>
+<tr class="memdesc:ae7ab3209affb52e393a1f58a4b0173b2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag for quiet mode operation.  <br /></td></tr>
+<tr class="separator:ae7ab3209affb52e393a1f58a4b0173b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4673d31bfb0eeb1652010e914c46530d" id="r_a4673d31bfb0eeb1652010e914c46530d"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a4673d31bfb0eeb1652010e914c46530d">obj_weights</a></td></tr>
+<tr class="memdesc:a4673d31bfb0eeb1652010e914c46530d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Weights for averaging objective over initial conditions.  <br /></td></tr>
+<tr class="separator:a4673d31bfb0eeb1652010e914c46530d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac98a1c62abf9e85b392cb9afc4d410d9" id="r_ac98a1c62abf9e85b392cb9afc4d410d9"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ac98a1c62abf9e85b392cb9afc4d410d9">ndesign</a></td></tr>
+<tr class="memdesc:ac98a1c62abf9e85b392cb9afc4d410d9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of global design (optimization) parameters.  <br /></td></tr>
+<tr class="separator:ac98a1c62abf9e85b392cb9afc4d410d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af4d97849338bb89dbc665abc21e94121" id="r_af4d97849338bb89dbc665abc21e94121"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#af4d97849338bb89dbc665abc21e94121">objective</a></td></tr>
+<tr class="memdesc:af4d97849338bb89dbc665abc21e94121"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current objective function value (sum over final-time cost, regularization terms and penalty terms)  <br /></td></tr>
+<tr class="separator:af4d97849338bb89dbc665abc21e94121"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a38d08b99138862cf3cb1d8a51fcb0f86" id="r_a38d08b99138862cf3cb1d8a51fcb0f86"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a38d08b99138862cf3cb1d8a51fcb0f86">obj_cost</a></td></tr>
+<tr class="memdesc:a38d08b99138862cf3cb1d8a51fcb0f86"><td class="mdescLeft">&#160;</td><td class="mdescRight">Final-time measure J(T) in objective.  <br /></td></tr>
+<tr class="separator:a38d08b99138862cf3cb1d8a51fcb0f86"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1a97b51707e086ec070e18b9be5595e9" id="r_a1a97b51707e086ec070e18b9be5595e9"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a1a97b51707e086ec070e18b9be5595e9">obj_regul</a></td></tr>
+<tr class="memdesc:a1a97b51707e086ec070e18b9be5595e9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Regularization term in objective.  <br /></td></tr>
+<tr class="separator:a1a97b51707e086ec070e18b9be5595e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a81f764943f1e98d9f66e0a8e16071240" id="r_a81f764943f1e98d9f66e0a8e16071240"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a81f764943f1e98d9f66e0a8e16071240">obj_penal</a></td></tr>
+<tr class="memdesc:a81f764943f1e98d9f66e0a8e16071240"><td class="mdescLeft">&#160;</td><td class="mdescRight">Penalty integral term for pure-state preparation in objective.  <br /></td></tr>
+<tr class="separator:a81f764943f1e98d9f66e0a8e16071240"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abf30934c1b97045369c4bc13ad4f6fbc" id="r_abf30934c1b97045369c4bc13ad4f6fbc"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#abf30934c1b97045369c4bc13ad4f6fbc">obj_penal_dpdm</a></td></tr>
+<tr class="memdesc:abf30934c1b97045369c4bc13ad4f6fbc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Penalty term second-order state derivatives (penalizes variations of the state evolution)  <br /></td></tr>
+<tr class="separator:abf30934c1b97045369c4bc13ad4f6fbc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa70ce11d52ffd73b9cd5ade03cacf2e7" id="r_aa70ce11d52ffd73b9cd5ade03cacf2e7"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#aa70ce11d52ffd73b9cd5ade03cacf2e7">obj_penal_variation</a></td></tr>
+<tr class="memdesc:aa70ce11d52ffd73b9cd5ade03cacf2e7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Penalty term for variation of control parameters.  <br /></td></tr>
+<tr class="separator:aa70ce11d52ffd73b9cd5ade03cacf2e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7f6d350e41c84f42eb104b15407b56ec" id="r_a7f6d350e41c84f42eb104b15407b56ec"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a7f6d350e41c84f42eb104b15407b56ec">obj_penal_energy</a></td></tr>
+<tr class="memdesc:a7f6d350e41c84f42eb104b15407b56ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy penalty term in objective.  <br /></td></tr>
+<tr class="separator:a7f6d350e41c84f42eb104b15407b56ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9abe0ffc9a027c157132f5375465cbb3" id="r_a9abe0ffc9a027c157132f5375465cbb3"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a9abe0ffc9a027c157132f5375465cbb3">fidelity</a></td></tr>
+<tr class="memdesc:a9abe0ffc9a027c157132f5375465cbb3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Final-time fidelity: 1/ninit sum_i Tr(rho_target^dag rho(T)) for Lindblad, |1/ninit sum_i phi_target^dag phi|^2 for Schrodinger.  <br /></td></tr>
+<tr class="separator:a9abe0ffc9a027c157132f5375465cbb3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aac5f48ffc495a239a684f78e8ed50ade" id="r_aac5f48ffc495a239a684f78e8ed50ade"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#aac5f48ffc495a239a684f78e8ed50ade">gnorm</a></td></tr>
+<tr class="memdesc:aac5f48ffc495a239a684f78e8ed50ade"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current norm of gradient.  <br /></td></tr>
+<tr class="separator:aac5f48ffc495a239a684f78e8ed50ade"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afed5d75b033372f75ed04fca102e5f8a" id="r_afed5d75b033372f75ed04fca102e5f8a"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#afed5d75b033372f75ed04fca102e5f8a">gamma_tik</a></td></tr>
+<tr class="memdesc:afed5d75b033372f75ed04fca102e5f8a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parameter for Tikhonov regularization.  <br /></td></tr>
+<tr class="separator:afed5d75b033372f75ed04fca102e5f8a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae28a5779c6ea7a6bfdfac89268df4474" id="r_ae28a5779c6ea7a6bfdfac89268df4474"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ae28a5779c6ea7a6bfdfac89268df4474">gamma_tik_interpolate</a></td></tr>
+<tr class="memdesc:ae28a5779c6ea7a6bfdfac89268df4474"><td class="mdescLeft">&#160;</td><td class="mdescRight">Switch to use ||x - x0||^2 for Tikhonov regularization instead of ||x||^2.  <br /></td></tr>
+<tr class="separator:ae28a5779c6ea7a6bfdfac89268df4474"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5670db1fc0ca73912edeb657568ece4f" id="r_a5670db1fc0ca73912edeb657568ece4f"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a5670db1fc0ca73912edeb657568ece4f">gamma_penalty</a></td></tr>
+<tr class="memdesc:a5670db1fc0ca73912edeb657568ece4f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parameter multiplying integral penalty term on infidelity.  <br /></td></tr>
+<tr class="separator:a5670db1fc0ca73912edeb657568ece4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a40ae7399915feb0bb9d4f02e8cb9d8e7" id="r_a40ae7399915feb0bb9d4f02e8cb9d8e7"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a40ae7399915feb0bb9d4f02e8cb9d8e7">gamma_penalty_dpdm</a></td></tr>
+<tr class="memdesc:a40ae7399915feb0bb9d4f02e8cb9d8e7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parameter multiplying integral penalty term for 2nd derivative of state variation.  <br /></td></tr>
+<tr class="separator:a40ae7399915feb0bb9d4f02e8cb9d8e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8097778c5da89a70c24c9bdeffb6bc1e" id="r_a8097778c5da89a70c24c9bdeffb6bc1e"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a8097778c5da89a70c24c9bdeffb6bc1e">gamma_penalty_energy</a></td></tr>
+<tr class="memdesc:a8097778c5da89a70c24c9bdeffb6bc1e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parameter multiplying energy penalty.  <br /></td></tr>
+<tr class="separator:a8097778c5da89a70c24c9bdeffb6bc1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a12c8870f7d283dbbb972a1d931651053" id="r_a12c8870f7d283dbbb972a1d931651053"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a12c8870f7d283dbbb972a1d931651053">gamma_penalty_variation</a></td></tr>
+<tr class="memdesc:a12c8870f7d283dbbb972a1d931651053"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parameter multiplying finite-difference squared regularization term.  <br /></td></tr>
+<tr class="separator:a12c8870f7d283dbbb972a1d931651053"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac86858ce067113701c0d2bebff2da928" id="r_ac86858ce067113701c0d2bebff2da928"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ac86858ce067113701c0d2bebff2da928">penalty_param</a></td></tr>
+<tr class="memdesc:ac86858ce067113701c0d2bebff2da928"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parameter inside integral penalty term w(t) (Gaussian variance)  <br /></td></tr>
+<tr class="separator:ac86858ce067113701c0d2bebff2da928"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad5d378129ec251089803739c5fd1f01b" id="r_ad5d378129ec251089803739c5fd1f01b"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ad5d378129ec251089803739c5fd1f01b">gatol</a></td></tr>
+<tr class="memdesc:ad5d378129ec251089803739c5fd1f01b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stopping criterion based on absolute gradient norm.  <br /></td></tr>
+<tr class="separator:ad5d378129ec251089803739c5fd1f01b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afb2f924b5a6b4b0c3b20bd438ff56824" id="r_afb2f924b5a6b4b0c3b20bd438ff56824"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#afb2f924b5a6b4b0c3b20bd438ff56824">fatol</a></td></tr>
+<tr class="memdesc:afb2f924b5a6b4b0c3b20bd438ff56824"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stopping criterion based on objective function value.  <br /></td></tr>
+<tr class="separator:afb2f924b5a6b4b0c3b20bd438ff56824"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afd40511e697729370bea30cf20ad1d5c" id="r_afd40511e697729370bea30cf20ad1d5c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#afd40511e697729370bea30cf20ad1d5c">inftol</a></td></tr>
+<tr class="memdesc:afd40511e697729370bea30cf20ad1d5c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stopping criterion based on infidelity.  <br /></td></tr>
+<tr class="separator:afd40511e697729370bea30cf20ad1d5c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aed7435b9d9e9f9bb4208dd18fd12b665" id="r_aed7435b9d9e9f9bb4208dd18fd12b665"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#aed7435b9d9e9f9bb4208dd18fd12b665">grtol</a></td></tr>
+<tr class="memdesc:aed7435b9d9e9f9bb4208dd18fd12b665"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stopping criterion based on relative gradient norm.  <br /></td></tr>
+<tr class="separator:aed7435b9d9e9f9bb4208dd18fd12b665"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac99d463f281ff1a798fb965ed4998a2f" id="r_ac99d463f281ff1a798fb965ed4998a2f"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ac99d463f281ff1a798fb965ed4998a2f">maxiter</a></td></tr>
+<tr class="memdesc:ac99d463f281ff1a798fb965ed4998a2f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stopping criterion based on maximum number of iterations.  <br /></td></tr>
+<tr class="separator:ac99d463f281ff1a798fb965ed4998a2f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac00b58346b5fa353060b50d60545c33f" id="r_ac00b58346b5fa353060b50d60545c33f"><td class="memItemLeft" align="right" valign="top">Tao&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#ac00b58346b5fa353060b50d60545c33f">tao</a></td></tr>
+<tr class="memdesc:ac00b58346b5fa353060b50d60545c33f"><td class="mdescLeft">&#160;</td><td class="mdescRight">PETSc's TAO optimization solver.  <br /></td></tr>
+<tr class="separator:ac00b58346b5fa353060b50d60545c33f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aadae69f5cd5e7966fcfbbdd7690c8770" id="r_aadae69f5cd5e7966fcfbbdd7690c8770"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#aadae69f5cd5e7966fcfbbdd7690c8770">initguess_fromfile</a></td></tr>
+<tr class="memdesc:aadae69f5cd5e7966fcfbbdd7690c8770"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initial guess read from file.  <br /></td></tr>
+<tr class="separator:aadae69f5cd5e7966fcfbbdd7690c8770"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aca954c0720e353e005e75f182264b243" id="r_aca954c0720e353e005e75f182264b243"><td class="memItemLeft" align="right" valign="top">double *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#aca954c0720e353e005e75f182264b243">mygrad</a></td></tr>
+<tr class="memdesc:aca954c0720e353e005e75f182264b243"><td class="mdescLeft">&#160;</td><td class="mdescRight">Auxiliary gradient storage.  <br /></td></tr>
+<tr class="separator:aca954c0720e353e005e75f182264b243"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a443e4719cf74a682edff166662760a64" id="r_a443e4719cf74a682edff166662760a64"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a443e4719cf74a682edff166662760a64">xtmp</a></td></tr>
+<tr class="memdesc:a443e4719cf74a682edff166662760a64"><td class="mdescLeft">&#160;</td><td class="mdescRight">Temporary vector storage.  <br /></td></tr>
+<tr class="separator:a443e4719cf74a682edff166662760a64"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Optimization problem solver for quantum optimal control. </p>
 <p>This class manages the optimization of quantum control pulses using PETSc's TAO optimization library. It handles objective function evaluation, gradient computation, and the overall optimization process for quantum gates and state preparation. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="ae58ed36a5876353a619849533eaec461" name="ae58ed36a5876353a619849533eaec461"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae58ed36a5876353a619849533eaec461">&#9670;&#160;</a></span>OptimProblem()</h2>
+<a id="af1945265d6399722dc335ec2fb6b6b66" name="af1945265d6399722dc335ec2fb6b6b66"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af1945265d6399722dc335ec2fb6b6b66">&#9670;&#160;</a></span>OptimProblem()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -211,7 +346,7 @@ Public Attributes</h2></td></tr>
         <tr>
           <td class="memname">OptimProblem::OptimProblem </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="classMapParam.html">MapParam</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="classConfig.html">Config</a>&#160;</td>
           <td class="paramname"><em>config</em>, </td>
         </tr>
         <tr>
@@ -309,6 +444,7 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Evaluates the objective function F(x). </p>
+<p>Performs forward simulations for each initial conditions and evaluates the objective function.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">x</td><td>Design vector </td></tr>
@@ -345,10 +481,10 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Evaluates the gradient of the objective function. </p>
+<p>Evaluates the gradient of the objective function with respect to the control parameters. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">x</td><td>Design vector </td></tr>
+    <tr><td class="paramname">x</td><td>Design (optimization) vector </td></tr>
     <tr><td class="paramname">G</td><td>Gradient vector to store result </td></tr>
   </table>
   </dd>
@@ -631,7 +767,7 @@ Public Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Retrieves the penalty term. </p>
+<p>Retrieves the integral penalty term for pure-state preparation. </p>
 <dl class="section return"><dt>Returns</dt><dd>double Penalty term contribution </dd></dl>
 
 </div>
@@ -659,7 +795,7 @@ Public Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Retrieves the second-order derivative penalty term. </p>
+<p>Retrieves the second-order state derivative penalty term. </p>
 <dl class="section return"><dt>Returns</dt><dd>double Second-order penalty contribution </dd></dl>
 
 </div>
@@ -687,7 +823,7 @@ Public Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Retrieves the energy penalty term. </p>
+<p>Retrieves the control energy penalty term. </p>
 <dl class="section return"><dt>Returns</dt><dd>double Energy penalty contribution </dd></dl>
 
 </div>
@@ -715,7 +851,7 @@ Public Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Retrieves the variation penalty term. </p>
+<p>Retrieves the control variation penalty term. </p>
 <dl class="section return"><dt>Returns</dt><dd>double Control variation penalty contribution </dd></dl>
 
 </div>
@@ -743,7 +879,7 @@ Public Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Retrieves the regularization term. </p>
+<p>Retrieves the Tikhonov regularization term. </p>
 <dl class="section return"><dt>Returns</dt><dd>double Tikhonov regularization contribution </dd></dl>
 
 </div>
@@ -828,6 +964,886 @@ Public Attributes</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Data Documentation</h2>
+<a id="a721a317cb5f00ccec5b03ff0608e0ac8" name="a721a317cb5f00ccec5b03ff0608e0ac8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a721a317cb5f00ccec5b03ff0608e0ac8">&#9670;&#160;</a></span>comm_init</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">MPI_Comm OptimProblem::comm_init</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>MPI communicator for initial condition parallelization. </p>
+
+</div>
+</div>
+<a id="a3c909a708d205ea7f7cc2db472c10723" name="a3c909a708d205ea7f7cc2db472c10723"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3c909a708d205ea7f7cc2db472c10723">&#9670;&#160;</a></span>comm_optim</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">MPI_Comm OptimProblem::comm_optim</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>MPI communicator for optimization parallelization, currently not used (size 1) </p>
+
+</div>
+</div>
+<a id="afb2f924b5a6b4b0c3b20bd438ff56824" name="afb2f924b5a6b4b0c3b20bd438ff56824"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afb2f924b5a6b4b0c3b20bd438ff56824">&#9670;&#160;</a></span>fatol</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::fatol</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Stopping criterion based on objective function value. </p>
+
+</div>
+</div>
+<a id="a9abe0ffc9a027c157132f5375465cbb3" name="a9abe0ffc9a027c157132f5375465cbb3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9abe0ffc9a027c157132f5375465cbb3">&#9670;&#160;</a></span>fidelity</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::fidelity</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Final-time fidelity: 1/ninit sum_i Tr(rho_target^dag rho(T)) for Lindblad, |1/ninit sum_i phi_target^dag phi|^2 for Schrodinger. </p>
+
+</div>
+</div>
+<a id="a5670db1fc0ca73912edeb657568ece4f" name="a5670db1fc0ca73912edeb657568ece4f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5670db1fc0ca73912edeb657568ece4f">&#9670;&#160;</a></span>gamma_penalty</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::gamma_penalty</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Parameter multiplying integral penalty term on infidelity. </p>
+
+</div>
+</div>
+<a id="a40ae7399915feb0bb9d4f02e8cb9d8e7" name="a40ae7399915feb0bb9d4f02e8cb9d8e7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a40ae7399915feb0bb9d4f02e8cb9d8e7">&#9670;&#160;</a></span>gamma_penalty_dpdm</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::gamma_penalty_dpdm</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Parameter multiplying integral penalty term for 2nd derivative of state variation. </p>
+
+</div>
+</div>
+<a id="a8097778c5da89a70c24c9bdeffb6bc1e" name="a8097778c5da89a70c24c9bdeffb6bc1e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8097778c5da89a70c24c9bdeffb6bc1e">&#9670;&#160;</a></span>gamma_penalty_energy</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::gamma_penalty_energy</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Parameter multiplying energy penalty. </p>
+
+</div>
+</div>
+<a id="a12c8870f7d283dbbb972a1d931651053" name="a12c8870f7d283dbbb972a1d931651053"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a12c8870f7d283dbbb972a1d931651053">&#9670;&#160;</a></span>gamma_penalty_variation</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::gamma_penalty_variation</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Parameter multiplying finite-difference squared regularization term. </p>
+
+</div>
+</div>
+<a id="afed5d75b033372f75ed04fca102e5f8a" name="afed5d75b033372f75ed04fca102e5f8a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afed5d75b033372f75ed04fca102e5f8a">&#9670;&#160;</a></span>gamma_tik</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::gamma_tik</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Parameter for Tikhonov regularization. </p>
+
+</div>
+</div>
+<a id="ae28a5779c6ea7a6bfdfac89268df4474" name="ae28a5779c6ea7a6bfdfac89268df4474"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae28a5779c6ea7a6bfdfac89268df4474">&#9670;&#160;</a></span>gamma_tik_interpolate</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool OptimProblem::gamma_tik_interpolate</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Switch to use ||x - x0||^2 for Tikhonov regularization instead of ||x||^2. </p>
+
+</div>
+</div>
+<a id="ad5d378129ec251089803739c5fd1f01b" name="ad5d378129ec251089803739c5fd1f01b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad5d378129ec251089803739c5fd1f01b">&#9670;&#160;</a></span>gatol</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::gatol</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Stopping criterion based on absolute gradient norm. </p>
+
+</div>
+</div>
+<a id="aac5f48ffc495a239a684f78e8ed50ade" name="aac5f48ffc495a239a684f78e8ed50ade"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aac5f48ffc495a239a684f78e8ed50ade">&#9670;&#160;</a></span>gnorm</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::gnorm</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Current norm of gradient. </p>
+
+</div>
+</div>
+<a id="aed7435b9d9e9f9bb4208dd18fd12b665" name="aed7435b9d9e9f9bb4208dd18fd12b665"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aed7435b9d9e9f9bb4208dd18fd12b665">&#9670;&#160;</a></span>grtol</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::grtol</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Stopping criterion based on relative gradient norm. </p>
+
+</div>
+</div>
+<a id="afd40511e697729370bea30cf20ad1d5c" name="afd40511e697729370bea30cf20ad1d5c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afd40511e697729370bea30cf20ad1d5c">&#9670;&#160;</a></span>inftol</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::inftol</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Stopping criterion based on infidelity. </p>
+
+</div>
+</div>
+<a id="aadae69f5cd5e7966fcfbbdd7690c8770" name="aadae69f5cd5e7966fcfbbdd7690c8770"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aadae69f5cd5e7966fcfbbdd7690c8770">&#9670;&#160;</a></span>initguess_fromfile</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;double&gt; OptimProblem::initguess_fromfile</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Initial guess read from file. </p>
+
+</div>
+</div>
+<a id="ac99d463f281ff1a798fb965ed4998a2f" name="ac99d463f281ff1a798fb965ed4998a2f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac99d463f281ff1a798fb965ed4998a2f">&#9670;&#160;</a></span>maxiter</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::maxiter</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Stopping criterion based on maximum number of iterations. </p>
+
+</div>
+</div>
+<a id="abb7e3db2faa9946ac362c95e97d1bd5a" name="abb7e3db2faa9946ac362c95e97d1bd5a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abb7e3db2faa9946ac362c95e97d1bd5a">&#9670;&#160;</a></span>mpirank_init</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::mpirank_init</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ace37bf2c0355c974244c6662c9f15b85" name="ace37bf2c0355c974244c6662c9f15b85"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ace37bf2c0355c974244c6662c9f15b85">&#9670;&#160;</a></span>mpirank_optim</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::mpirank_optim</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa98b198c99fd5509e65539474f8bd5e6" name="aa98b198c99fd5509e65539474f8bd5e6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa98b198c99fd5509e65539474f8bd5e6">&#9670;&#160;</a></span>mpirank_space</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::mpirank_space</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a9ff4b767eef4af36a48630d9e4a9cf15" name="a9ff4b767eef4af36a48630d9e4a9cf15"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9ff4b767eef4af36a48630d9e4a9cf15">&#9670;&#160;</a></span>mpirank_world</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::mpirank_world</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab2836619ca47cc60b76f6cda2ebde6af" name="ab2836619ca47cc60b76f6cda2ebde6af"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab2836619ca47cc60b76f6cda2ebde6af">&#9670;&#160;</a></span>mpisize_init</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::mpisize_init</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>MPI rank and size for initial condition communicator. </p>
+
+</div>
+</div>
+<a id="af1e168e956b9a8c5bc8c746588781a3d" name="af1e168e956b9a8c5bc8c746588781a3d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af1e168e956b9a8c5bc8c746588781a3d">&#9670;&#160;</a></span>mpisize_optim</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::mpisize_optim</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>MPI rank and size for optimization communicator. </p>
+
+</div>
+</div>
+<a id="acdb99dc589ca9dc4f4c6b1e4237e4ede" name="acdb99dc589ca9dc4f4c6b1e4237e4ede"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acdb99dc589ca9dc4f4c6b1e4237e4ede">&#9670;&#160;</a></span>mpisize_space</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::mpisize_space</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>MPI rank and size for spatial parallelization (PETSc) </p>
+
+</div>
+</div>
+<a id="a04e1c1653c1e1baff1082d4376b367e2" name="a04e1c1653c1e1baff1082d4376b367e2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a04e1c1653c1e1baff1082d4376b367e2">&#9670;&#160;</a></span>mpisize_world</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::mpisize_world</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>MPI rank and size for global communicator. </p>
+
+</div>
+</div>
+<a id="aca954c0720e353e005e75f182264b243" name="aca954c0720e353e005e75f182264b243"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aca954c0720e353e005e75f182264b243">&#9670;&#160;</a></span>mygrad</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double* OptimProblem::mygrad</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Auxiliary gradient storage. </p>
+
+</div>
+</div>
+<a id="ac98a1c62abf9e85b392cb9afc4d410d9" name="ac98a1c62abf9e85b392cb9afc4d410d9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac98a1c62abf9e85b392cb9afc4d410d9">&#9670;&#160;</a></span>ndesign</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::ndesign</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Number of global design (optimization) parameters. </p>
+
+</div>
+</div>
+<a id="a59c67f305464ddbd810768606abb2bea" name="a59c67f305464ddbd810768606abb2bea"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a59c67f305464ddbd810768606abb2bea">&#9670;&#160;</a></span>ninit</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">size_t OptimProblem::ninit</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Number of initial conditions to be considered (N^2, N, or 1) </p>
+
+</div>
+</div>
+<a id="ac58c5f5036c4b92e4543e295b626702b" name="ac58c5f5036c4b92e4543e295b626702b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac58c5f5036c4b92e4543e295b626702b">&#9670;&#160;</a></span>ninit_local</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int OptimProblem::ninit_local</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Local number of initial conditions on this processor. </p>
+
+</div>
+</div>
+<a id="a38d08b99138862cf3cb1d8a51fcb0f86" name="a38d08b99138862cf3cb1d8a51fcb0f86"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a38d08b99138862cf3cb1d8a51fcb0f86">&#9670;&#160;</a></span>obj_cost</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::obj_cost</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Final-time measure J(T) in objective. </p>
+
+</div>
+</div>
+<a id="a81f764943f1e98d9f66e0a8e16071240" name="a81f764943f1e98d9f66e0a8e16071240"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a81f764943f1e98d9f66e0a8e16071240">&#9670;&#160;</a></span>obj_penal</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::obj_penal</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Penalty integral term for pure-state preparation in objective. </p>
+
+</div>
+</div>
+<a id="abf30934c1b97045369c4bc13ad4f6fbc" name="abf30934c1b97045369c4bc13ad4f6fbc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abf30934c1b97045369c4bc13ad4f6fbc">&#9670;&#160;</a></span>obj_penal_dpdm</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::obj_penal_dpdm</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Penalty term second-order state derivatives (penalizes variations of the state evolution) </p>
+
+</div>
+</div>
+<a id="a7f6d350e41c84f42eb104b15407b56ec" name="a7f6d350e41c84f42eb104b15407b56ec"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7f6d350e41c84f42eb104b15407b56ec">&#9670;&#160;</a></span>obj_penal_energy</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::obj_penal_energy</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Energy penalty term in objective. </p>
+
+</div>
+</div>
+<a id="aa70ce11d52ffd73b9cd5ade03cacf2e7" name="aa70ce11d52ffd73b9cd5ade03cacf2e7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa70ce11d52ffd73b9cd5ade03cacf2e7">&#9670;&#160;</a></span>obj_penal_variation</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::obj_penal_variation</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Penalty term for variation of control parameters. </p>
+
+</div>
+</div>
+<a id="a1a97b51707e086ec070e18b9be5595e9" name="a1a97b51707e086ec070e18b9be5595e9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1a97b51707e086ec070e18b9be5595e9">&#9670;&#160;</a></span>obj_regul</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::obj_regul</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Regularization term in objective. </p>
+
+</div>
+</div>
+<a id="a4673d31bfb0eeb1652010e914c46530d" name="a4673d31bfb0eeb1652010e914c46530d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4673d31bfb0eeb1652010e914c46530d">&#9670;&#160;</a></span>obj_weights</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;double&gt; OptimProblem::obj_weights</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Weights for averaging objective over initial conditions. </p>
+
+</div>
+</div>
+<a id="af4d97849338bb89dbc665abc21e94121" name="af4d97849338bb89dbc665abc21e94121"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af4d97849338bb89dbc665abc21e94121">&#9670;&#160;</a></span>objective</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::objective</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Current objective function value (sum over final-time cost, regularization terms and penalty terms) </p>
+
+</div>
+</div>
+<a id="a70589b41c7146c6557ea49b15c6c3e2d" name="a70589b41c7146c6557ea49b15c6c3e2d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a70589b41c7146c6557ea49b15c6c3e2d">&#9670;&#160;</a></span>optim_target</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classOptimTarget.html">OptimTarget</a>* OptimProblem::optim_target</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Pointer to the optimization target (gate or state) </p>
+
+</div>
+</div>
 <a id="a97d2aa961e34a18a435698b789f35d24" name="a97d2aa961e34a18a435698b789f35d24"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a97d2aa961e34a18a435698b789f35d24">&#9670;&#160;</a></span>output</h2>
 
@@ -841,6 +1857,150 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Pointer to output handler. </p>
+
+</div>
+</div>
+<a id="ac86858ce067113701c0d2bebff2da928" name="ac86858ce067113701c0d2bebff2da928"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac86858ce067113701c0d2bebff2da928">&#9670;&#160;</a></span>penalty_param</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double OptimProblem::penalty_param</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Parameter inside integral penalty term w(t) (Gaussian variance) </p>
+
+</div>
+</div>
+<a id="ae7ab3209affb52e393a1f58a4b0173b2" name="ae7ab3209affb52e393a1f58a4b0173b2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae7ab3209affb52e393a1f58a4b0173b2">&#9670;&#160;</a></span>quietmode</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool OptimProblem::quietmode</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag for quiet mode operation. </p>
+
+</div>
+</div>
+<a id="a67a02fd11c640443212754747b1f1973" name="a67a02fd11c640443212754747b1f1973"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a67a02fd11c640443212754747b1f1973">&#9670;&#160;</a></span>rho_t0</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec OptimProblem::rho_t0</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Storage for initial condition of the ODE. </p>
+
+</div>
+</div>
+<a id="ad3da3f81836a24e435991e3b976fe872" name="ad3da3f81836a24e435991e3b976fe872"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad3da3f81836a24e435991e3b976fe872">&#9670;&#160;</a></span>rho_t0_bar</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec OptimProblem::rho_t0_bar</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Storage for adjoint initial condition of the adjoint ODE (aka the terminal condition) </p>
+
+</div>
+</div>
+<a id="a01e84cd0dd404254f92724c9e01cf282" name="a01e84cd0dd404254f92724c9e01cf282"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a01e84cd0dd404254f92724c9e01cf282">&#9670;&#160;</a></span>store_finalstates</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;Vec&gt; OptimProblem::store_finalstates</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Storage for final states for each initial condition. </p>
+
+</div>
+</div>
+<a id="ac00b58346b5fa353060b50d60545c33f" name="ac00b58346b5fa353060b50d60545c33f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac00b58346b5fa353060b50d60545c33f">&#9670;&#160;</a></span>tao</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Tao OptimProblem::tao</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>PETSc's TAO optimization solver. </p>
 
 </div>
 </div>
@@ -903,6 +2063,30 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Design vector at previous iteration. </p>
+
+</div>
+</div>
+<a id="a443e4719cf74a682edff166662760a64" name="a443e4719cf74a682edff166662760a64"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a443e4719cf74a682edff166662760a64">&#9670;&#160;</a></span>xtmp</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Vec OptimProblem::xtmp</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Temporary vector storage. </p>
 
 </div>
 </div>

@@ -79,6 +79,7 @@ $(function() {
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pro-attribs">Protected Attributes</a> &#124;
 <a href="classOutput-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">Output Class Reference</div></div>
 </div><!--header-->
@@ -93,9 +94,9 @@ $(function() {
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a428c663520336477a12f1a33504eb067" id="r_a428c663520336477a12f1a33504eb067"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a428c663520336477a12f1a33504eb067">Output</a> ()</td></tr>
 <tr class="separator:a428c663520336477a12f1a33504eb067"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac3c902543a002d8062ff510d06b9580e" id="r_ac3c902543a002d8062ff510d06b9580e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#ac3c902543a002d8062ff510d06b9580e">Output</a> (<a class="el" href="classMapParam.html">MapParam</a> &amp;config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false)</td></tr>
-<tr class="memdesc:ac3c902543a002d8062ff510d06b9580e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with configuration and MPI setup.  <br /></td></tr>
-<tr class="separator:ac3c902543a002d8062ff510d06b9580e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6f770b1058abb28abe61a0130e62b4e2" id="r_a6f770b1058abb28abe61a0130e62b4e2"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a6f770b1058abb28abe61a0130e62b4e2">Output</a> (<a class="el" href="classConfig.html">Config</a> &amp;config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool <a class="el" href="classOutput.html#a8ef405c7e586c0b0d6ca71030b7ac5b9">quietmode</a>=false)</td></tr>
+<tr class="memdesc:a6f770b1058abb28abe61a0130e62b4e2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with configuration and MPI setup.  <br /></td></tr>
+<tr class="separator:a6f770b1058abb28abe61a0130e62b4e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a61d0840daf98bea49e4dc471f235eeab" id="r_a61d0840daf98bea49e4dc471f235eeab"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a61d0840daf98bea49e4dc471f235eeab">~Output</a> ()</td></tr>
 <tr class="separator:a61d0840daf98bea49e4dc471f235eeab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae1a97757ebb839dd3bb0e2dc33159bf" id="r_aae1a97757ebb839dd3bb0e2dc33159bf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#aae1a97757ebb839dd3bb0e2dc33159bf">writeOptimFile</a> (int optim_iter, double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul, double penalty, double penalty_dpdm, double penalty_energy, double penalty_variation)</td></tr>
@@ -114,7 +115,7 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:ac69f84e7237c74f581e6e919b1180656"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes time evolution data to files.  <br /></td></tr>
 <tr class="separator:ac69f84e7237c74f581e6e919b1180656"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad07c7174bdceca917bdfc858ab2a0f5f" id="r_ad07c7174bdceca917bdfc858ab2a0f5f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#ad07c7174bdceca917bdfc858ab2a0f5f">closeDataFiles</a> ()</td></tr>
-<tr class="memdesc:ad07c7174bdceca917bdfc858ab2a0f5f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes all open data files.  <br /></td></tr>
+<tr class="memdesc:ad07c7174bdceca917bdfc858ab2a0f5f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes open time evolution data files.  <br /></td></tr>
 <tr class="separator:ad07c7174bdceca917bdfc858ab2a0f5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
@@ -125,10 +126,58 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a4700eb37d9698537e4be0ac6aacd4083" id="r_a4700eb37d9698537e4be0ac6aacd4083"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a4700eb37d9698537e4be0ac6aacd4083">optim_monitor_freq</a></td></tr>
 <tr class="memdesc:a4700eb37d9698537e4be0ac6aacd4083"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write output files every N optimization iterations.  <br /></td></tr>
 <tr class="separator:a4700eb37d9698537e4be0ac6aacd4083"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
+Protected Attributes</h2></td></tr>
+<tr class="memitem:af673b14df095f068350a8ac6e39ae5de" id="r_af673b14df095f068350a8ac6e39ae5de"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#af673b14df095f068350a8ac6e39ae5de">mpirank_world</a></td></tr>
+<tr class="memdesc:af673b14df095f068350a8ac6e39ae5de"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of processor in MPI_COMM_WORLD.  <br /></td></tr>
+<tr class="separator:af673b14df095f068350a8ac6e39ae5de"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a94e3d28cc2a05fda08cab1567fbf5dd7" id="r_a94e3d28cc2a05fda08cab1567fbf5dd7"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a94e3d28cc2a05fda08cab1567fbf5dd7">mpirank_petsc</a></td></tr>
+<tr class="memdesc:a94e3d28cc2a05fda08cab1567fbf5dd7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of processor for PETSc parallelization.  <br /></td></tr>
+<tr class="separator:a94e3d28cc2a05fda08cab1567fbf5dd7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7858e0fb0c415dbdc836124d2c953bad" id="r_a7858e0fb0c415dbdc836124d2c953bad"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a7858e0fb0c415dbdc836124d2c953bad">mpisize_petsc</a></td></tr>
+<tr class="memdesc:a7858e0fb0c415dbdc836124d2c953bad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of communicator for PETSc parallelization.  <br /></td></tr>
+<tr class="separator:a7858e0fb0c415dbdc836124d2c953bad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a85cc2f53a43f7e53e67632302109f2ad" id="r_a85cc2f53a43f7e53e67632302109f2ad"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a85cc2f53a43f7e53e67632302109f2ad">mpirank_init</a></td></tr>
+<tr class="memdesc:a85cc2f53a43f7e53e67632302109f2ad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of processor for initial condition parallelization.  <br /></td></tr>
+<tr class="separator:a85cc2f53a43f7e53e67632302109f2ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8ef405c7e586c0b0d6ca71030b7ac5b9" id="r_a8ef405c7e586c0b0d6ca71030b7ac5b9"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a8ef405c7e586c0b0d6ca71030b7ac5b9">quietmode</a></td></tr>
+<tr class="memdesc:a8ef405c7e586c0b0d6ca71030b7ac5b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag for reduced screen output.  <br /></td></tr>
+<tr class="separator:a8ef405c7e586c0b0d6ca71030b7ac5b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a28061ff23c5742ceae1c47ea8eb3336e" id="r_a28061ff23c5742ceae1c47ea8eb3336e"><td class="memItemLeft" align="right" valign="top">FILE *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a28061ff23c5742ceae1c47ea8eb3336e">optimfile</a></td></tr>
+<tr class="memdesc:a28061ff23c5742ceae1c47ea8eb3336e"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> file for logging optimization progress.  <br /></td></tr>
+<tr class="separator:a28061ff23c5742ceae1c47ea8eb3336e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad8a65e01f04182f2c682021a23e82567" id="r_ad8a65e01f04182f2c682021a23e82567"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#ad8a65e01f04182f2c682021a23e82567">output_frequency</a></td></tr>
+<tr class="memdesc:ad8a65e01f04182f2c682021a23e82567"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time domain output frequency (write every N time steps)  <br /></td></tr>
+<tr class="separator:ad8a65e01f04182f2c682021a23e82567"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a33c0d74e93b61d150c34cf380d71d990" id="r_a33c0d74e93b61d150c34cf380d71d990"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::vector&lt; std::string &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a33c0d74e93b61d150c34cf380d71d990">outputstr</a></td></tr>
+<tr class="memdesc:a33c0d74e93b61d150c34cf380d71d990"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of output specifications for each oscillator.  <br /></td></tr>
+<tr class="separator:a33c0d74e93b61d150c34cf380d71d990"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5932161e1ff224ff6bbb5e2e05342b5e" id="r_a5932161e1ff224ff6bbb5e2e05342b5e"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a5932161e1ff224ff6bbb5e2e05342b5e">writefullstate</a></td></tr>
+<tr class="memdesc:a5932161e1ff224ff6bbb5e2e05342b5e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to determine if full state vector should be written to file.  <br /></td></tr>
+<tr class="separator:a5932161e1ff224ff6bbb5e2e05342b5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2e421c9b5dbde2d7616f3c0abfedf2ab" id="r_a2e421c9b5dbde2d7616f3c0abfedf2ab"><td class="memItemLeft" align="right" valign="top">FILE *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a2e421c9b5dbde2d7616f3c0abfedf2ab">ufile</a></td></tr>
+<tr class="memdesc:a2e421c9b5dbde2d7616f3c0abfedf2ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">File for writing real part of fullstate evolution.  <br /></td></tr>
+<tr class="separator:a2e421c9b5dbde2d7616f3c0abfedf2ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a104d18f925c3c3f02d30cfe0d7fa5e00" id="r_a104d18f925c3c3f02d30cfe0d7fa5e00"><td class="memItemLeft" align="right" valign="top">FILE *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a104d18f925c3c3f02d30cfe0d7fa5e00">vfile</a></td></tr>
+<tr class="memdesc:a104d18f925c3c3f02d30cfe0d7fa5e00"><td class="mdescLeft">&#160;</td><td class="mdescRight">File for writing imaginary part of fullstate evolution.  <br /></td></tr>
+<tr class="separator:a104d18f925c3c3f02d30cfe0d7fa5e00"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3a3c6af574caaefa8717eb13bf63a351" id="r_a3a3c6af574caaefa8717eb13bf63a351"><td class="memItemLeft" align="right" valign="top">std::vector&lt; FILE * &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a3a3c6af574caaefa8717eb13bf63a351">expectedfile</a></td></tr>
+<tr class="memdesc:a3a3c6af574caaefa8717eb13bf63a351"><td class="mdescLeft">&#160;</td><td class="mdescRight">Files for expected energy evolution per oscillator.  <br /></td></tr>
+<tr class="separator:a3a3c6af574caaefa8717eb13bf63a351"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af5cecbdd746abaf4288b4b05ea51274d" id="r_af5cecbdd746abaf4288b4b05ea51274d"><td class="memItemLeft" align="right" valign="top">std::vector&lt; FILE * &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#af5cecbdd746abaf4288b4b05ea51274d">populationfile</a></td></tr>
+<tr class="memdesc:af5cecbdd746abaf4288b4b05ea51274d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Files for population evolution per oscillator.  <br /></td></tr>
+<tr class="separator:af5cecbdd746abaf4288b4b05ea51274d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a149ffb06b4b3ac5576b40b80a7810485" id="r_a149ffb06b4b3ac5576b40b80a7810485"><td class="memItemLeft" align="right" valign="top">FILE *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a149ffb06b4b3ac5576b40b80a7810485">expectedfile_comp</a></td></tr>
+<tr class="memdesc:a149ffb06b4b3ac5576b40b80a7810485"><td class="mdescLeft">&#160;</td><td class="mdescRight">File for expected energy evolution of the full composite system.  <br /></td></tr>
+<tr class="separator:a149ffb06b4b3ac5576b40b80a7810485"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a61d5d34b19b88a30c1a0d9dcc19cb2a8" id="r_a61d5d34b19b88a30c1a0d9dcc19cb2a8"><td class="memItemLeft" align="right" valign="top">FILE *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a61d5d34b19b88a30c1a0d9dcc19cb2a8">populationfile_comp</a></td></tr>
+<tr class="memdesc:a61d5d34b19b88a30c1a0d9dcc19cb2a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">File for population evolution of the full composite system.  <br /></td></tr>
+<tr class="separator:a61d5d34b19b88a30c1a0d9dcc19cb2a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> management for quantum control simulations and optimization. </p>
-<p>This class handles all file I/O operations for Quandary, including optimization progress logging, control pulse output, state evolution data, and population dynamics. It manages MPI-aware output to avoid duplicate writes in parallel runs. </p>
+<p>This class handles all file output operations for Quandary, including optimization progress logging, control pulse output, state evolution data, and population dynamics. It manages MPI-aware output to avoid duplicate writes in parallel runs. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a428c663520336477a12f1a33504eb067" name="a428c663520336477a12f1a33504eb067"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a428c663520336477a12f1a33504eb067">&#9670;&#160;</a></span>Output() <span class="overload">[1/2]</span></h2>
@@ -147,8 +196,8 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="ac3c902543a002d8062ff510d06b9580e" name="ac3c902543a002d8062ff510d06b9580e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac3c902543a002d8062ff510d06b9580e">&#9670;&#160;</a></span>Output() <span class="overload">[2/2]</span></h2>
+<a id="a6f770b1058abb28abe61a0130e62b4e2" name="a6f770b1058abb28abe61a0130e62b4e2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6f770b1058abb28abe61a0130e62b4e2">&#9670;&#160;</a></span>Output() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -156,7 +205,7 @@ Public Attributes</h2></td></tr>
         <tr>
           <td class="memname">Output::Output </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="classMapParam.html">MapParam</a> &amp;&#160;</td>
+          <td class="paramtype"><a class="el" href="classConfig.html">Config</a> &amp;&#160;</td>
           <td class="paramname"><em>config</em>, </td>
         </tr>
         <tr>
@@ -238,8 +287,8 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Closes all open data files. </p>
-<p>Properly closes and flushes all output files after simulation completion. </p>
+<p>Closes open time evolution data files. </p>
+<p>Properly closes and flushes all output files after time-stepping completion. </p>
 
 </div>
 </div>
@@ -270,7 +319,7 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Opens data files for time evolution output. </p>
-<p>Prepares files for writing full state, expected energy, and population data.</p>
+<p>Prepares files for writing full state, expected energy, and population evolution data.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">prefix</td><td>Filename prefix for output files </td></tr>
@@ -325,7 +374,7 @@ Public Attributes</h2></td></tr>
   <table class="params">
     <tr><td class="paramname">params</td><td>Current parameter vector </td></tr>
     <tr><td class="paramname">mastereq</td><td>Pointer to master equation solver </td></tr>
-    <tr><td class="paramname">ntime</td><td>Number of time steps </td></tr>
+    <tr><td class="paramname">ntime</td><td>Total number of time steps </td></tr>
     <tr><td class="paramname">dt</td><td>Time step size </td></tr>
   </table>
   </dd>
@@ -529,6 +578,150 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a3a3c6af574caaefa8717eb13bf63a351" name="a3a3c6af574caaefa8717eb13bf63a351"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3a3c6af574caaefa8717eb13bf63a351">&#9670;&#160;</a></span>expectedfile</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;FILE *&gt; Output::expectedfile</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Files for expected energy evolution per oscillator. </p>
+
+</div>
+</div>
+<a id="a149ffb06b4b3ac5576b40b80a7810485" name="a149ffb06b4b3ac5576b40b80a7810485"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a149ffb06b4b3ac5576b40b80a7810485">&#9670;&#160;</a></span>expectedfile_comp</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">FILE* Output::expectedfile_comp</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>File for expected energy evolution of the full composite system. </p>
+
+</div>
+</div>
+<a id="a85cc2f53a43f7e53e67632302109f2ad" name="a85cc2f53a43f7e53e67632302109f2ad"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a85cc2f53a43f7e53e67632302109f2ad">&#9670;&#160;</a></span>mpirank_init</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Output::mpirank_init</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Rank of processor for initial condition parallelization. </p>
+
+</div>
+</div>
+<a id="a94e3d28cc2a05fda08cab1567fbf5dd7" name="a94e3d28cc2a05fda08cab1567fbf5dd7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a94e3d28cc2a05fda08cab1567fbf5dd7">&#9670;&#160;</a></span>mpirank_petsc</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Output::mpirank_petsc</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Rank of processor for PETSc parallelization. </p>
+
+</div>
+</div>
+<a id="af673b14df095f068350a8ac6e39ae5de" name="af673b14df095f068350a8ac6e39ae5de"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af673b14df095f068350a8ac6e39ae5de">&#9670;&#160;</a></span>mpirank_world</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Output::mpirank_world</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Rank of processor in MPI_COMM_WORLD. </p>
+
+</div>
+</div>
+<a id="a7858e0fb0c415dbdc836124d2c953bad" name="a7858e0fb0c415dbdc836124d2c953bad"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7858e0fb0c415dbdc836124d2c953bad">&#9670;&#160;</a></span>mpisize_petsc</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Output::mpisize_petsc</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Size of communicator for PETSc parallelization. </p>
+
+</div>
+</div>
 <a id="a4700eb37d9698537e4be0ac6aacd4083" name="a4700eb37d9698537e4be0ac6aacd4083"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a4700eb37d9698537e4be0ac6aacd4083">&#9670;&#160;</a></span>optim_monitor_freq</h2>
 
@@ -542,6 +735,222 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Write output files every N optimization iterations. </p>
+
+</div>
+</div>
+<a id="a28061ff23c5742ceae1c47ea8eb3336e" name="a28061ff23c5742ceae1c47ea8eb3336e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a28061ff23c5742ceae1c47ea8eb3336e">&#9670;&#160;</a></span>optimfile</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">FILE* Output::optimfile</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p><a class="el" href="classOutput.html" title="Output management for quantum control simulations and optimization.">Output</a> file for logging optimization progress. </p>
+
+</div>
+</div>
+<a id="ad8a65e01f04182f2c682021a23e82567" name="ad8a65e01f04182f2c682021a23e82567"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad8a65e01f04182f2c682021a23e82567">&#9670;&#160;</a></span>output_frequency</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Output::output_frequency</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Time domain output frequency (write every N time steps) </p>
+
+</div>
+</div>
+<a id="a33c0d74e93b61d150c34cf380d71d990" name="a33c0d74e93b61d150c34cf380d71d990"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a33c0d74e93b61d150c34cf380d71d990">&#9670;&#160;</a></span>outputstr</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;std::vector&lt;std::string&gt; &gt; Output::outputstr</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>List of output specifications for each oscillator. </p>
+
+</div>
+</div>
+<a id="af5cecbdd746abaf4288b4b05ea51274d" name="af5cecbdd746abaf4288b4b05ea51274d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af5cecbdd746abaf4288b4b05ea51274d">&#9670;&#160;</a></span>populationfile</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;FILE *&gt; Output::populationfile</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Files for population evolution per oscillator. </p>
+
+</div>
+</div>
+<a id="a61d5d34b19b88a30c1a0d9dcc19cb2a8" name="a61d5d34b19b88a30c1a0d9dcc19cb2a8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a61d5d34b19b88a30c1a0d9dcc19cb2a8">&#9670;&#160;</a></span>populationfile_comp</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">FILE* Output::populationfile_comp</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>File for population evolution of the full composite system. </p>
+
+</div>
+</div>
+<a id="a8ef405c7e586c0b0d6ca71030b7ac5b9" name="a8ef405c7e586c0b0d6ca71030b7ac5b9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8ef405c7e586c0b0d6ca71030b7ac5b9">&#9670;&#160;</a></span>quietmode</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Output::quietmode</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag for reduced screen output. </p>
+
+</div>
+</div>
+<a id="a2e421c9b5dbde2d7616f3c0abfedf2ab" name="a2e421c9b5dbde2d7616f3c0abfedf2ab"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2e421c9b5dbde2d7616f3c0abfedf2ab">&#9670;&#160;</a></span>ufile</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">FILE* Output::ufile</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>File for writing real part of fullstate evolution. </p>
+
+</div>
+</div>
+<a id="a104d18f925c3c3f02d30cfe0d7fa5e00" name="a104d18f925c3c3f02d30cfe0d7fa5e00"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a104d18f925c3c3f02d30cfe0d7fa5e00">&#9670;&#160;</a></span>vfile</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">FILE* Output::vfile</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>File for writing imaginary part of fullstate evolution. </p>
+
+</div>
+</div>
+<a id="a5932161e1ff224ff6bbb5e2e05342b5e" name="a5932161e1ff224ff6bbb5e2e05342b5e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5932161e1ff224ff6bbb5e2e05342b5e">&#9670;&#160;</a></span>writefullstate</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Output::writefullstate</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag to determine if full state vector should be written to file. </p>
 
 </div>
 </div>
