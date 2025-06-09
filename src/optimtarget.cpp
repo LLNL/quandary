@@ -84,7 +84,7 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
       }
       diag_id += initcond_IDs[k] * dim_postkron;
     }
-    int ndim = mastereq->getDimRho();
+    PetscInt ndim = mastereq->getDimRho();
     int vec_id = -1;
     if (lindbladtype != LindbladType::NONE) vec_id = getIndexReal(getVecID( diag_id, diag_id, ndim )); // Real part of x
     else vec_id = getIndexReal(diag_id);
@@ -144,8 +144,8 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
       if (initcond_IDs[0] <= i && i <= initcond_IDs[initcond_IDs.size()-1]) dimsub *= mastereq->nessential[i];
       else dimpost *= mastereq->nessential[i];
     }
-    int dimrho = mastereq->getDimRho();
-    int dimrhoess = mastereq->getDimEss();
+    PetscInt dimrho = mastereq->getDimRho();
+    PetscInt dimrhoess = mastereq->getDimEss();
     // Loop over ensemble state elements in essential level dimensions of the subsystem defined by the initcond_ids:
     for (int i=0; i < dimsub; i++){
       for (int j=i; j < dimsub; j++){

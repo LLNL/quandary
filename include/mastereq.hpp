@@ -56,8 +56,8 @@ class MasterEq{
 
   protected:
     PetscInt dim;              // Dimension of full vectorized system: either N^2 if Lindblad, or N if Schrodinger
-    int dim_rho;               // Dimension of Hilbertspace = N
-    int dim_ess;               // Dimension of system of essential levels = N_e
+    PetscInt dim_rho;          // Dimension of Hilbertspace = N
+    PetscInt dim_ess;          // Dimension of system of essential levels = N_e
     int noscillators;          // Number of oscillators
     Oscillator** oscil_vec;    // Vector storing pointers to the oscillators
 
@@ -120,13 +120,13 @@ class MasterEq{
     size_t getNOscillators();
 
     /* Return dimension of vectorized system N^2 (for Lindblad solver) or N (for Schroedinger solver) */
-    int getDim();
+    PetscInt getDim();
 
     /* Return dimension of essential level system: N_e */
-    int getDimEss();
+    PetscInt getDimEss();
     
     /* Return dimension of system matrix rho: N */
-    int getDimRho();
+    PetscInt getDimRho();
 
     /* 
      * Uses Re and Im to build the vectorized Hamiltonian operator M = vec(-i(Hq-qH)+Lindblad). 

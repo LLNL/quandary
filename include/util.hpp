@@ -20,7 +20,7 @@ PetscInt getIndexReal(const PetscInt i); // Return storage index of Re(x[i]) (co
 PetscInt getIndexImag(const PetscInt i); // Return storage index of Im(x[i]) (colocated: x[2*i+1], blocked: x[i+dim])
 
 /* Return the index of vectorized matrix element (row,col) with matrix dimension dim x dim */
-int getVecID(const int row, const int col, const int dim);
+PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim);
 
 /* Map an index i in essential level system to the corresponding index in full-dimension system */
 int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);

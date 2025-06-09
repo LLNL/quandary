@@ -76,7 +76,7 @@ PetscInt getIndexImag(const PetscInt i) {
   return 2*i + 1;
 }
 
-int getVecID(const int row, const int col, const int dim){
+PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim){
   return row + col * dim;  
 } 
 
@@ -275,7 +275,7 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
             //printf("A: row = %d, col = %d, val = %f\n", i, cols[j], Avals[j]);
             
             // dimI rows. global row indices: i, i+dimI
-            for (int k=0; k<dimI; k++) {
+            for (PetscInt k=0; k<dimI; k++) {
                rowid = i*dimI + k;
                colid = cols[j]*dimI + k;
                insertval = Avals[j] * alpha;
