@@ -69,10 +69,18 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   /* Create matrix shell for applying system matrix (RHS), */
   /* dimension: 2*dim x 2*dim for the real-valued system */
-  MatCreateShell(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, 2*dim, 2*dim, (void**) &RHSctx, &RHS);
-  MatSetOptionsPrefix(RHS, "system");
-  MatSetFromOptions(RHS); MatSetUp(RHS);
-  MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
+  PetscErrorCode ierr;
+  ierr = MatCreateShell(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, 2*dim, 2*dim, (void**) &RHSctx, &RHS);
+  if (mpirank_world == 0) printf("DEBUG: MatCreateShell returned ierr=%d for rho_t0\n", ierr);
+
+  ierr = MatSetOptionsPrefix(RHS, "system");
+  if (mpirank_world == 0) printf("DEBUG: MatSetOptionsPrefix returned ierr=%d for rho_t0\n", ierr);
+
+  ierr = MatSetFromOptions(RHS); MatSetUp(RHS);
+  if (mpirank_world == 0) printf("DEBUG: MatSetFromOptions returned ierr=%d for rho_t0\n", ierr);
+
+  ierr = MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
+  if (mpirank_world == 0) printf("DEBUG: MatAssemblyBegin returned ierr=%d for rho_t0\n", ierr);
 
   /* Check Lindblad collapse operator configuration */
   switch (lindbladtype)  {
@@ -123,15 +131,20 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   /* Initialize Hamiltonian matrices */
   if (!usematfree) {
+    if (mpirank_world == 0) printf("DEBUG: start initSparseMatSolver\n");
     initSparseMatSolver();
+    if (mpirank_world == 0) printf("DEBUG: end initSparseMatSolver\n");
   } 
 
   /* Create vector strides for accessing Re and Im part in x */
   PetscInt ilow, iupp;
-  MatGetOwnershipRange(RHS, &ilow, &iupp);
+  ierr = MatGetOwnershipRange(RHS, &ilow, &iupp);
+  if (mpirank_world == 0) printf("DEBUG: MatGetOwnershipRange returned ierr=%d\n", ierr);
   PetscInt dimis = (iupp - ilow)/2;
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
+  if (mpirank_world == 0) printf("DEBUG: ISCreateStride 1 returned ierr=%d\n", ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
+  if (mpirank_world == 0) printf("DEBUG: ISCreateStride 2 returned ierr=%d\n", ierr);
 
   /* Compute maximum number of design parameters over all oscillators */
   nparams_max = 0;
@@ -184,6 +197,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
 
   /* Set the MatMult routine for applying the RHS to a vector x */
   if (usematfree) { // matrix-free solver
+    if (mpirank_world == 0) printf("DEBUG: start MatShellSetOperation with nosc=%d\n", noscillators);
     if (noscillators == 1) {
       MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_1Osc);
       MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_1Osc);
@@ -205,6 +219,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     }
   }
   else { // sparse-matrix solver
+    if (mpirank_world == 0) printf("DEBUG: start MatShellSetOperation with matfree\n");
     MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_sparsemat);
     MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_sparsemat);
   }
@@ -269,20 +284,33 @@ void MasterEq::initSparseMatSolver(){
 
   // Time-independent system Hamiltonian
   // Ad = real(-i Hsys) and Bd = imag(-i Hsys)
-  MatCreate(PETSC_COMM_WORLD, &Ad);
-  MatCreate(PETSC_COMM_WORLD, &Bd);
-  MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetSizes(Bd, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetType(Ad, MATMPIAIJ);
-  MatSetType(Bd, MATMPIAIJ);
-  if (addT1 || addT2) MatMPIAIJSetPreallocation(Ad, noscillators+5, NULL, noscillators+5, NULL);
-  MatMPIAIJSetPreallocation(Bd, 1, NULL, 1, NULL);
-  MatSetUp(Ad);
-  MatSetUp(Bd);
-  MatSetFromOptions(Ad);
-  MatSetFromOptions(Bd);
+  PetscErrorCode ierr;
+  ierr = MatCreate(PETSC_COMM_WORLD, &Ad);
+  if (mpirank_world == 0) printf("DEBUG: MatCreate 1 returned ierr=%d\n", ierr);
+  ierr = MatCreate(PETSC_COMM_WORLD, &Bd);
+  if (mpirank_world == 0) printf("DEBUG: MatCreate 2 returned ierr=%d\n", ierr);
+  ierr = MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  if (mpirank_world == 0) printf("DEBUG: MatSetSizes 1 returned ierr=%d\n", ierr);
+  ierr = MatSetSizes(Bd, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  if (mpirank_world == 0) printf("DEBUG: MatSetSizes 2 returned ierr=%d\n", ierr);
+  ierr = MatSetType(Ad, MATMPIAIJ);
+  if (mpirank_world == 0) printf("DEBUG: MatSetType 1 returned ierr=%d\n", ierr);
+  ierr = MatSetType(Bd, MATMPIAIJ);
+  if (mpirank_world == 0) printf("DEBUG: MatSetType 2 returned ierr=%d\n", ierr);
+  if (addT1 || addT2) ierr = MatMPIAIJSetPreallocation(Ad, noscillators+5, NULL, noscillators+5, NULL); if (mpirank_world == 0) printf("DEBUG: MatMPIAIJSetPreallocation 1 returned ierr=%d\n", ierr);
+  ierr = MatMPIAIJSetPreallocation(Bd, 1, NULL, 1, NULL);
+  if (mpirank_world == 0) printf("DEBUG: MatMPIAIJSetPreallocation 2 returned ierr=%d\n", ierr);
+  ierr = MatSetUp(Ad);
+  if (mpirank_world == 0) printf("DEBUG: MatSetUp 1 returned ierr=%d\n", ierr);
+  ierr = MatSetUp(Bd);
+  if (mpirank_world == 0) printf("DEBUG: MatSetUp 2 returned ierr=%d\n", ierr);
+  ierr = MatSetFromOptions(Ad);
+  if (mpirank_world == 0) printf("DEBUG: MatSetFromOptions 1 returned ierr=%d\n", ierr);
+  ierr = MatSetFromOptions(Bd);
+  if (mpirank_world == 0) printf("DEBUG: MatSetFromOptions 2 returned ierr=%d\n", ierr);
   // One control operator per oscillator
   // Ac_vec[0] = real(-i Hc) and Bc_vec[0] = imag(-i Hc)
+  if (mpirank_world == 0) printf("DEBUG: Start loop over osc\n");
   for (int iosc = 0; iosc < noscillators; iosc++) {
     Mat myAcMatk = nullptr, myBcMatk = nullptr;
     std::vector<Mat> myAcvec_k{myAcMatk};   
@@ -307,7 +335,10 @@ void MasterEq::initSparseMatSolver(){
     MatSetFromOptions(Ac_vec[iosc][0]);
     MatSetFromOptions(Bc_vec[iosc][0]); 
   }
+  if (mpirank_world == 0) printf("DEBUG: End loop over osc\n");
+
   // Time-dependent system Hamiltonian matrices (other than controls)
+  if (mpirank_world == 0) printf("DEBUG: Start loop over ham matrices\n");
   int id_kl = 0;
   for (int iosc = 0; iosc < noscillators; iosc++) {
     for (int josc=iosc+1; josc<noscillators; josc++){
@@ -337,10 +368,12 @@ void MasterEq::initSparseMatSolver(){
       id_kl++;
     }
   }
+  if (mpirank_world == 0) printf("DEBUG: End loop over osc\n");
 
   PetscInt dimmat = dim_rho; // this is N!
 
   /* If a Hamiltonian file is given, read the system matrices from file. */ 
+  if (mpirank_world == 0) printf("DEBUG: Start ham\n");
   if (hamiltonian_file.compare("none") != 0 ) {
     if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from file %s.\n\n", hamiltonian_file.c_str());
 
@@ -440,6 +473,7 @@ void MasterEq::initSparseMatSolver(){
         }
       }
     }
+    if (mpirank_world == 0) printf("DEBUG: End ham\n");
 
     /* Set Jaynes-Cummings coupling system Hamiltonian */
     /* Lindblad solver: 
@@ -450,6 +484,7 @@ void MasterEq::initSparseMatSolver(){
        Bd_kl(t) = -(ak^Tal + akal^T)  */
     id_kl=0;
     int matid=0;
+    if (mpirank_world == 0) printf("DEBUG: Start another loop over osc\n");
     for (int iosc = 0; iosc < noscillators; iosc++) {
       // Dimensions of ioscillator
       int nk     = oscil_vec[iosc]->getNLevels();
@@ -511,9 +546,11 @@ void MasterEq::initSparseMatSolver(){
         id_kl++;
       }
     }
+    if (mpirank_world == 0) printf("DEBUG: End another loop over osc\n");
 
     /* Set system Hamiltonian part Bd = imag(iHsys) */
     int coupling_id = 0;
+    if (mpirank_world == 0) printf("DEBUG: Start loop over osc for ham part Bd\n");
     for (int iosc = 0; iosc < noscillators; iosc++) {
 
       int nk     = oscil_vec[iosc]->getNLevels();
@@ -574,9 +611,11 @@ void MasterEq::initSparseMatSolver(){
         }
       }
     }
+    if (mpirank_world == 0) printf("DEBUG: End loop over osc for ham part Bd\n");
 
     /* Set Ad = Lindblad terms */
     if (addT1 || addT2) {  // leave matrix empty if no T1 or T2 decay
+      if (mpirank_world == 0) printf("DEBUG: Start loop over osc for ham part Ad\n");
       for (int iosc = 0; iosc < noscillators; iosc++) {
 
         /* Get T1, T2 times */
@@ -639,9 +678,11 @@ void MasterEq::initSparseMatSolver(){
         }
       }
     }
+    if (mpirank_world == 0) printf("DEBUG: End loop over osc for ham part Ad\n");
   }
 
   /* Assemble all system matrices */
+  if (mpirank_world == 0) printf("DEBUG: Start Assemble system mat \n");
   MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
   MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
@@ -662,8 +703,10 @@ void MasterEq::initSparseMatSolver(){
     MatAssemblyBegin(Bd_vec[i], MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Bd_vec[i], MAT_FINAL_ASSEMBLY);
   }
+  if (mpirank_world == 0) printf("DEBUG: End Assemble system mat \n");
 
   // Remove control parameters for those oscillators that are non-controllable
+  if (mpirank_world == 0) printf("DEBUG: Start Remove control parameters for those oscillators \n");
   for (size_t k=0; k<nlevels.size(); k++){
     PetscScalar norm;
     MatNorm(Ac_vec[k][0], NORM_FROBENIUS, &norm);
@@ -678,6 +721,7 @@ void MasterEq::initSparseMatSolver(){
     }
      if (Ac_vec[k].size() == 0 && Bc_vec[k].size() == 0) getOscillator(k)->clearParams();
   }
+  if (mpirank_world == 0) printf("DEBUG: End Remove control parameters for those oscillators \n");
 
 
 
@@ -708,7 +752,9 @@ void MasterEq::initSparseMatSolver(){
 
 
   /* Allocate some auxiliary vectors */
+  if (mpirank_world == 0) printf("DEBUG: Start aux vec \n");
   MatCreateVecs(Bd, &aux, NULL);
+  if (mpirank_world == 0) printf("DEBUG: End function initSparseMatSolver \n");
 }
 
 PetscInt MasterEq::getDim(){ return dim; }

@@ -26,11 +26,20 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
 
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
+    if (mpirank_world == 0) printf("DEBUG: Creating %d final state vectors for Schroedinger solver\n", ninit_local);
     for (int i = 0; i < ninit_local; i++) {
       Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
-      VecSetFromOptions(state);
+      PetscErrorCode ierr;
+      if (mpirank_world == 0) printf("DEBUG: Creating final state vector %d\n", i);
+      ierr = VecCreate(PETSC_COMM_WORLD, &state);
+      if (mpirank_world == 0) printf("DEBUG: VecCreate returned ierr=%d for final state vector %d\n", ierr, i);
+      if (mpirank_world == 0) printf("DEBUG: Setting sizes for final state vector %d, dim=%lld\n", i, (long long)(2*timestepper->mastereq->getDim()));
+      ierr = VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+      if (mpirank_world == 0) printf("DEBUG: VecSetSizes returned ierr=%d for final state vector %d\n", ierr, i);
+      if (mpirank_world == 0) printf("DEBUG: Setting options for final state vector %d\n", i);
+      ierr = VecSetFromOptions(state);
+      if (mpirank_world == 0) printf("DEBUG: VecSetFromOptions returned ierr=%d for final state vector %d\n", ierr, i);
+      if (mpirank_world == 0) printf("DEBUG: Successfully created final state vector %d\n", i);
       store_finalstates.push_back(state);
     }
   }
@@ -44,14 +53,36 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   if (mpirank_world == 0 && !quietmode) std::cout<< "Number of control parameters: " << ndesign << std::endl;
 
   /* Allocate the initial condition vector and adjoint terminal state */
-  VecCreate(PETSC_COMM_WORLD, &rho_t0); 
-  VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
-  VecSetFromOptions(rho_t0);
-  VecZeroEntries(rho_t0);
-  VecAssemblyBegin(rho_t0); VecAssemblyEnd(rho_t0);
-  VecDuplicate(rho_t0, &rho_t0_bar);
-  VecZeroEntries(rho_t0_bar);
-  VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
+  if (mpirank_world == 0) printf("DEBUG: Creating rho_t0 vector with dim=%lld\n", (long long)(2*timestepper->mastereq->getDim()));
+  PetscErrorCode ierr;
+  ierr = VecCreate(PETSC_COMM_WORLD, &rho_t0);
+  if (mpirank_world == 0) printf("DEBUG: VecCreate returned ierr=%d for rho_t0\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Setting sizes for rho_t0\n");
+  ierr = VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
+  if (mpirank_world == 0) printf("DEBUG: VecSetSizes returned ierr=%d for rho_t0\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Setting options for rho_t0\n");
+  ierr = VecSetFromOptions(rho_t0);
+  if (mpirank_world == 0) printf("DEBUG: VecSetFromOptions returned ierr=%d for rho_t0\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Zeroing entries for rho_t0\n");
+  ierr = VecZeroEntries(rho_t0);
+  if (mpirank_world == 0) printf("DEBUG: VecZeroEntries returned ierr=%d for rho_t0\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Assembling rho_t0\n");
+  ierr = VecAssemblyBegin(rho_t0);
+  if (mpirank_world == 0) printf("DEBUG: VecAssemblyBegin returned ierr=%d for rho_t0\n", ierr);
+  ierr = VecAssemblyEnd(rho_t0);
+  if (mpirank_world == 0) printf("DEBUG: VecAssemblyEnd returned ierr=%d for rho_t0\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Duplicating rho_t0 to create rho_t0_bar\n");
+  ierr = VecDuplicate(rho_t0, &rho_t0_bar);
+  if (mpirank_world == 0) printf("DEBUG: VecDuplicate returned ierr=%d for rho_t0_bar\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Zeroing entries for rho_t0_bar\n");
+  ierr = VecZeroEntries(rho_t0_bar);
+  if (mpirank_world == 0) printf("DEBUG: VecZeroEntries returned ierr=%d for rho_t0_bar\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Assembling rho_t0_bar\n");
+  ierr = VecAssemblyBegin(rho_t0_bar);
+  if (mpirank_world == 0) printf("DEBUG: VecAssemblyBegin returned ierr=%d for rho_t0_bar\n", ierr);
+  ierr = VecAssemblyEnd(rho_t0_bar);
+  if (mpirank_world == 0) printf("DEBUG: VecAssemblyEnd returned ierr=%d for rho_t0_bar\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Successfully created rho_t0 and rho_t0_bar vectors\n");
 
   /* Initialize the optimization target, including setting of initial state rho_t0 if read from file or pure state or ensemble */
   std::vector<std::string> target_str;
@@ -118,9 +149,15 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   timestepper->optim_target = optim_target;
 
   /* Store optimization bounds */
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
-  VecSetFromOptions(xlower);
-  VecDuplicate(xlower, &xupper);
+  if (mpirank_world == 0) printf("DEBUG: Creating optimization bounds vectors with ndesign=%d\n", ndesign);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
+  if (mpirank_world == 0) printf("DEBUG: VecCreateSeq returned ierr=%d for xlower\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Setting options for xlower\n");
+  ierr = VecSetFromOptions(xlower);
+  if (mpirank_world == 0) printf("DEBUG: VecSetFromOptions returned ierr=%d for xlower\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Duplicating xlower to create xupper\n");
+  ierr = VecDuplicate(xlower, &xupper);
+  if (mpirank_world == 0) printf("DEBUG: VecDuplicate returned ierr=%d for xupper\n", ierr);
   int col = 0;
   for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     std::vector<std::string> bound_str;
@@ -179,12 +216,25 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   mygrad = new double[ndesign];
 
   /* Allocat xinit, xtmp */
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
-  VecSetFromOptions(xinit);
-  VecZeroEntries(xinit);
-  VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
-  VecSetFromOptions(xtmp);
-  VecZeroEntries(xtmp);
+  if (mpirank_world == 0) printf("DEBUG: Creating xinit vector with ndesign=%d\n", ndesign);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, ndesign, &xinit);
+  if (mpirank_world == 0) printf("DEBUG: VecCreateSeq returned ierr=%d for xinit\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Setting options for xinit\n");
+  ierr = VecSetFromOptions(xinit);
+  if (mpirank_world == 0) printf("DEBUG: VecSetFromOptions returned ierr=%d for xinit\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Zeroing entries for xinit\n");
+  ierr = VecZeroEntries(xinit);
+  if (mpirank_world == 0) printf("DEBUG: VecZeroEntries returned ierr=%d for xinit\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Creating xtmp vector with ndesign=%d\n", ndesign);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
+  if (mpirank_world == 0) printf("DEBUG: VecCreateSeq returned ierr=%d for xtmp\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Setting options for xtmp\n");
+  ierr = VecSetFromOptions(xtmp);
+  if (mpirank_world == 0) printf("DEBUG: VecSetFromOptions returned ierr=%d for xtmp\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: Zeroing entries for xtmp\n");
+  ierr = VecZeroEntries(xtmp);
+  if (mpirank_world == 0) printf("DEBUG: VecZeroEntries returned ierr=%d for xtmp\n", ierr);
+  if (mpirank_world == 0) printf("DEBUG: OptimProblem constructor completed successfully\n");
 }
 
 
