@@ -81,10 +81,10 @@ PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim){
 } 
 
 
-int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
 
-  int id = 0;
-  int index = i;
+  PetscInt id = 0;
+  PetscInt index = i;
   for (size_t iosc = 0; iosc<nlevels.size()-1; iosc++){
     int postdim = 1;
     int postdim_ess = 1;
@@ -92,7 +92,7 @@ int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
     }
-    int iblock = (int) index / postdim_ess;
+    PetscInt iblock = index / postdim_ess;
     index = index % postdim_ess;
     // move id to that block
     id += iblock * postdim;  
@@ -103,10 +103,10 @@ int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector
   return id;
 }
 
-int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
 
-  int id = 0;
-  int index = i;
+  PetscInt id = 0;
+  PetscInt index = i;
   for (size_t iosc = 0; iosc<nlevels.size(); iosc++){
     int postdim = 1;
     int postdim_ess = 1;
@@ -114,7 +114,7 @@ int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
     }
-    int iblock = (int) index / postdim;
+    PetscInt iblock = index / postdim;
     index = index % postdim;
     if (iblock >= nessential[iosc]) return -1; // this row/col belongs to a guard level, no mapping defined. 
     // move id to that block

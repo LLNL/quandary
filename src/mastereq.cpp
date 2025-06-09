@@ -338,7 +338,7 @@ void MasterEq::initSparseMatSolver(){
     }
   }
 
-  int dimmat = dim_rho; // this is N!
+  PetscInt dimmat = dim_rho; // this is N!
 
   /* If a Hamiltonian file is given, read the system matrices from file. */ 
   if (hamiltonian_file.compare("none") != 0 ) {
@@ -3142,7 +3142,7 @@ double MasterEq::expectedEnergy(const Vec x){
  
   PetscInt dim;
   VecGetSize(x, &dim);
-  int dimmat = dim_rho; // N 
+  PetscInt dimmat = dim_rho; // N
 
   /* Get locally owned portion of x */
   PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
@@ -3151,9 +3151,9 @@ double MasterEq::expectedEnergy(const Vec x){
 
   /* Iterate over diagonal elements to add up expected energy level */
   double expected = 0.0;
-  for (int i=0; i<dimmat; i++) {
+  for (PetscInt i=0; i<dimmat; i++) {
     /* Get diagonal element in number operator */
-    int num_diag = i ;
+    PetscInt num_diag = i ;
 
     /* Get diagonal element in rho (real) and sum up */
     if (lindbladtype != LindbladType::NONE){ // Lindblad solver: += i * rho_ii
@@ -3185,7 +3185,7 @@ double MasterEq::expectedEnergy(const Vec x){
 void MasterEq::population(const Vec x, std::vector<double> &pop){
 
   pop.clear();
-  for (int k=0; k<dim_rho; k++){
+  for (PetscInt k=0; k<dim_rho; k++){
     pop.push_back(0.0);
   }
   assert (pop.size() == static_cast<size_t>(dim_rho));
@@ -3197,7 +3197,7 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
   VecGetOwnershipRange(x, &ilow, &iupp);
 
   /* Iterate over diagonal elements of the density matrix */
-  for (int idiag=0; idiag < dim_rho; idiag++) {
+  for (PetscInt idiag=0; idiag < dim_rho; idiag++) {
     double popi = 0.0;
     /* Get the diagonal element */
     if (lindbladtype != LindbladType::NONE) { // Lindblad solver

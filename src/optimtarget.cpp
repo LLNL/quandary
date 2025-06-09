@@ -103,15 +103,15 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
     }
     MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     if (lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
-      for (int i = 0; i < dim_ess*dim_ess; i++) {
-        int k = i % dim_ess;
-        int j = (int) i / dim_ess;
+      for (PetscInt i = 0; i < dim_ess*dim_ess; i++) {
+        PetscInt k = i % dim_ess;
+        PetscInt j = (int) i / dim_ess;
         if (dim_ess*dim_ess < mastereq->getDim()) {
           k = mapEssToFull(k, mastereq->nlevels, mastereq->nessential);
           j = mapEssToFull(j, mastereq->nlevels, mastereq->nessential);
         }
-        int elemid_re = getIndexReal(getVecID(k,j,dim_rho));
-        int elemid_im = getIndexImag(getVecID(k,j,dim_rho));
+        PetscInt elemid_re = getIndexReal(getVecID(k,j,dim_rho));
+        PetscInt elemid_im = getIndexImag(getVecID(k,j,dim_rho));
         if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
         if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
       }
@@ -348,7 +348,7 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
       VecGetArrayRead(state, &state_ptr);
       PetscInt ilo, ihi;
       VecGetOwnershipRange(state, &ilo, &ihi);
-      for (int i=0; i<dim; i++){
+      for (PetscInt i=0; i<dim; i++){
         PetscInt ia = getIndexReal(i);
         PetscInt ib = getIndexImag(i);
         if (ilo <= ia && ia < ihi) {
@@ -390,7 +390,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
     PetscInt ilo, ihi;
     VecGetOwnershipRange(state, &ilo, &ihi);
     int idm = purestateID;
-    if (lindbladtype != LindbladType::NONE) idm = getVecID(purestateID, purestateID, (int)sqrt(dim));
+    if (lindbladtype != LindbladType::NONE) idm = getVecID(purestateID, purestateID, (PetscInt)sqrt(dim));
     PetscInt idm_re = getIndexReal(idm);
     PetscInt idm_im = getIndexImag(idm);
     if (ilo <= idm_re && idm_re < ihi) VecSetValue(statebar, idm_re, HS_re_bar*scale, ADD_VALUES);
@@ -407,12 +407,12 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
       VecGetArray(statebar, &statebar_ptr);
       PetscInt ilo, ihi;
       VecGetOwnershipRange(state, &ilo, &ihi);
-      for (int i=0; i<dim; i++){
+      for (PetscInt i=0; i<dim; i++){
         PetscInt ia = getIndexReal(i);
         PetscInt ib = getIndexImag(i);
         if (ilo <= ia && ia < ihi) {
-          int idre = ia - ilo;
-          int idim = ib - ilo;
+          PetscInt idre = ia - ilo;
+          PetscInt idim = ib - ilo;
           statebar_ptr[idre] += target_ptr[idre] * HS_re_bar*scale  - target_ptr[idim] * HS_im_bar;
           statebar_ptr[idim] += target_ptr[idim] * HS_re_bar*scale  + target_ptr[idre] * HS_im_bar;
         }
@@ -439,7 +439,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
       /* Set up Input state psi = 1/sqrt(2N)*(Ones(N) + im*Ones(N)) or rho = psi*psi^\dag */
       VecZeroEntries(rho0);
       VecGetOwnershipRange(rho0, &ilow, &iupp);
-      for (int i=0; i<dim_rho; i++){
+      for (PetscInt i=0; i<dim_rho; i++){
         if (lindbladtype == LindbladType::NONE) {
           PetscInt elem_re = getIndexReal(i);
           PetscInt elem_im = getIndexImag(i);
@@ -447,7 +447,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
           if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
           if (ilow <= elem_im && elem_im < iupp) VecSetValue(rho0, elem_im, val, INSERT_VALUES);
         } else {
-          int elem_re = getIndexReal(getVecID(i, i, dim_rho));
+          PetscInt elem_re = getIndexReal(getVecID(i, i, dim_rho));
           double val = 1./ dim_rho;
           if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
         }
@@ -475,16 +475,16 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
       if (iinit == 0) {
         // 1st initial state: rho(0)_IJ = 2(N-i)/(N(N+1)) Delta_IJ
         initID = 1;
-        for (int i_full = 0; i_full<dim_rho; i_full++) {
-          int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
+        for (PetscInt i_full = 0; i_full<dim_rho; i_full++) {
+          PetscInt diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
           double val = 2.*(dim_rho - i_full) / (dim_rho * (dim_rho + 1));
           if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
         }
       } else if (iinit == 1) {
         // 2nd initial state: rho(0)_IJ = 1/N
         initID = 2;
-        for (int i_full = 0; i_full<dim_rho; i_full++) {
-          for (int j_full = 0; j_full<dim_rho; j_full++) {
+        for (PetscInt i_full = 0; i_full<dim_rho; i_full++) {
+          for (PetscInt j_full = 0; j_full<dim_rho; j_full++) {
             double val = 1./dim_rho;
             PetscInt index = getIndexReal(getVecID(i_full,j_full,dim_rho));   // Re(rho_ij)
             if (ilow <= index && index < iupp) VecSetValue(rho0, index, val, INSERT_VALUES); 
@@ -493,7 +493,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
       } else if (iinit == 2) {
         // 3rd initial state: rho(0)_IJ = 1/N Delta_IJ
         initID = 3;
-        for (int i_full = 0; i_full<dim_rho; i_full++) {
+        for (PetscInt i_full = 0; i_full<dim_rho; i_full++) {
           PetscInt diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
           double val = 1./ dim_rho;
           if (ilow <= diagID && diagID < iupp) VecSetValue(rho0, diagID, val, INSERT_VALUES);
@@ -516,8 +516,8 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
         if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
       }
       else if (iinit == dim_rho) { // fully rotated 1/d*Ones(d)
-        for (int i=0; i<dim_rho; i++){
-          for (int j=0; j<dim_rho; j++){
+        for (PetscInt i=0; i<dim_rho; i++){
+          for (PetscInt j=0; j<dim_rho; j++){
             elemID = getIndexReal(getVecID(i,j,dim_rho));
             val = 1.0 / dim_rho;
             if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
@@ -665,7 +665,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
   PetscInt diagID, diagID_re, diagID_im;
   double sum, rhoii, rhoii_re, rhoii_im, lambdai, norm;
   PetscInt ilo, ihi;
-  int dimsq;
+  PetscInt dimsq;
 
   switch(objective_type) {
 
@@ -679,7 +679,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
       else {  // target = e_me_m^\dagger ( or target = e_m for Schroedinger)
         assert(target_type == TargetType::PURE);
         // substract 1.0 from m-th diagonal element then take the vector norm 
-        if (lindbladtype != LindbladType::NONE) diagID = getIndexReal(getVecID(purestateID,purestateID,(int)sqrt(dim)));
+        if (lindbladtype != LindbladType::NONE) diagID = getIndexReal(getVecID(purestateID,purestateID,(PetscInt)sqrt(dim)));
         else diagID = getIndexReal(purestateID);
         VecGetOwnershipRange(state, &ilo, &ihi);
         if (ilo <= diagID && diagID < ihi) VecSetValue(state, diagID, -1.0, ADD_VALUES);
@@ -706,7 +706,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
         exit(1);
       }
 
-      if (lindbladtype != LindbladType::NONE) dimsq = (int)sqrt(dim); // Lindblad solver: dim = N^2
+      if (lindbladtype != LindbladType::NONE) dimsq = (PetscInt)sqrt(dim); // Lindblad solver: dim = N^2
       else dimsq = dim;   // Schroedinger solver: dim = N
 
       VecGetOwnershipRange(state, &ilo, &ihi);
@@ -756,7 +756,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
         // Derivative of J = 1/2||x||^2 is xbar += x * Jbar, where x = rho(t) - E_mm
         VecAXPY(statebar, J_re_bar, state);
         // now substract 1.0*Jbar from m-th diagonal element
-        if (lindbladtype != LindbladType::NONE) diagID = getIndexReal(getVecID(purestateID,purestateID,(int)sqrt(dim)));
+        if (lindbladtype != LindbladType::NONE) diagID = getIndexReal(getVecID(purestateID,purestateID,(PetscInt)sqrt(dim)));
         else diagID = getIndexReal(purestateID);
         VecGetOwnershipRange(state, &ilo, &ihi);
         if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, -1.0*J_re_bar, ADD_VALUES);
@@ -770,7 +770,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
     case ObjectiveType::JMEASURE:
       assert(target_type == TargetType::PURE);         
 
-      if (lindbladtype != LindbladType::NONE) dimsq = (int)sqrt(dim); // Lindblad solver: dim = N^2
+      if (lindbladtype != LindbladType::NONE) dimsq = (PetscInt)sqrt(dim); // Lindblad solver: dim = N^2
       else dimsq = dim;   // Schroedinger solver: dim = N
 
       // iterate over diagonal elements 

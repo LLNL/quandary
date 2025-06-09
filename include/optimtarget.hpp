@@ -6,9 +6,9 @@
 /* Collects stuff specifying the optimization target */
 class OptimTarget{
 
-    int dim;                   /* State dimension of full vectorized system: either N^2 if Lindblad, or N if Schrodinger */
-    int dim_rho;               /* Dimension of Hilbertspace = N */
-    int dim_ess;               /* Dimension of system of essential levels = N_e */
+    PetscInt dim;              /* State dimension of full vectorized system: either N^2 if Lindblad, or N if Schrodinger */
+    PetscInt dim_rho;          /* Dimension of Hilbertspace = N */
+    PetscInt dim_ess;          /* Dimension of system of essential levels = N_e */
     int noscillators;          /* Number of oscillators */
  
     TargetType target_type;        /* Type of the optimization (pure-state preparation, or gate optimization) */

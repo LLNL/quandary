@@ -4,7 +4,7 @@ PythonInterface::PythonInterface(){
 }
 
 
-PythonInterface::PythonInterface(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_) {
+PythonInterface::PythonInterface(std::string hamiltonian_file_, LindbladType lindbladtype_, PetscInt dim_rho_, bool quietmode_) {
 
   lindbladtype = lindbladtype_;
   dim_rho = dim_rho_;
@@ -85,8 +85,8 @@ void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>&
   // if (mpirank_world == 0) printf("Receiving control Hamiltonian terms...\n");
 
   /* Get the dimensions right */
-  int sqdim = dim_rho; //  N!
-  int nelems = dim_rho*dim_rho;
+  PetscInt sqdim = dim_rho; //  N!
+  PetscInt nelems = dim_rho*dim_rho;
 
   // Skip first Hd lines in the file
   int skiplines = nelems+1; // nelems for Hsys and +1 for the first comment line

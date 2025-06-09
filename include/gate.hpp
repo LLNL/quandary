@@ -20,8 +20,8 @@ class Gate {
 
     bool quietmode;
 
-    int dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
-    int dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels, N */
+    PetscInt dim_ess;   /* Dimension of target Gate matrix (non-vectorized), essential levels only */
+    PetscInt dim_rho;   /* Dimension of system matrix rho (non-vectorized), all levels, N */
 
     double final_time;  /* Final time T. Time of gate rotation. */
     std::vector<double> gate_rot_freq; /* Frequencies of gate rotation (rad/time). Often same as rotational frequencies. */

@@ -46,7 +46,7 @@ Gate::Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_
   /* Allocate vectorized Gate in full dimensions */
   /* If Lindblad solver: Gate G = V_full x V_full, where V is the full-dimension gate (inserting identities for all non-essential levels) */ 
   /* Else Schroedinger solver: Gate G = V_full */
-  int dim_gate;
+  PetscInt dim_gate;
   if (lindbladtype != LindbladType::NONE) dim_gate = dim_rho*dim_rho;
   else dim_gate = dim_rho;
   MatCreate(PETSC_COMM_WORLD, &VxV_re);
@@ -165,8 +165,8 @@ void Gate::assembleGate(){
         MatGetValues(V_im, 1, &row_e, 1, &col_e, &vim_ij);
         // for all nonzeros in this row, place block \bar Ve_{i,j} * (V_f) at starting position G[a,b]
         if (fabs(vre_ij) > 1e-14 || fabs(vim_ij) > 1e-14 ) {
-          int a = row_f * dim_rho;
-          int b = mapEssToFull(col_e, nlevels, nessential) * dim_rho;
+          PetscInt a = row_f * dim_rho;
+          PetscInt b = mapEssToFull(col_e, nlevels, nessential) * dim_rho;
           // iterate over rows in V_f
           for (PetscInt r=0; r<dim_rho; r++) {
             PetscInt rowout = a + r;  // row in G
@@ -195,9 +195,9 @@ void Gate::assembleGate(){
         }
       }
     } else { // place Vf block starting at G[a,a], a=row_f * N
-      int a = row_f * dim_rho;
+      PetscInt a = row_f * dim_rho;
       // iterate over rows in V_f
-      for (int r=0; r<dim_rho; r++) {
+      for (PetscInt r=0; r<dim_rho; r++) {
         PetscInt rowout = a + r;  // row in G
         if (ilow <= rowout && rowout < iupp) {
           if (isEssential(r, nlevels, nessential)){ // place ve_rc at G[a+r, a+map(ce)]
@@ -237,7 +237,7 @@ void Gate::assembleGate(){
           MatGetValues(V_re, 1, &row_e, 1, &col_e, &vre_ij);
           MatGetValues(V_im, 1, &row_e, 1, &col_e, &vim_ij);
           // for all nonzeros in this row, place Ve_{i,j} at G[row_f,mapEssToFull(coll_e)]
-          int col_f = mapEssToFull(col_e, nlevels, nessential);
+          PetscInt col_f = mapEssToFull(col_e, nlevels, nessential);
           if (fabs(vre_ij) > 1e-14) MatSetValue(VxV_re, row_f, col_f, vre_ij, INSERT_VALUES);
           if (fabs(vim_ij) > 1e-14) MatSetValue(VxV_im, row_f, col_f, vim_ij, INSERT_VALUES);
         }

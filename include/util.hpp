@@ -23,9 +23,9 @@ PetscInt getIndexImag(const PetscInt i); // Return storage index of Im(x[i]) (co
 PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim);
 
 /* Map an index i in essential level system to the corresponding index in full-dimension system */
-int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 /* Map an index i in full dimension to the corresponding index in essential dimensions */
-int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /* Test if a certain row/column i of the full density matrix corresponds to an essential level */
 int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
