@@ -15,7 +15,7 @@ class OptimTarget{
     ObjectiveType objective_type;  /* Type of the bjective function */
     Gate *targetgate;              /* The target gate (if any) */
     double purity_rho0;            /* Holds the purity of the initial state Tr(rho(0)^2) */
-    int purestateID;               /* For pure-state preparation, this is the integer m for preparing e_m e_m^\dagger */
+    PetscInt purestateID;               /* For pure-state preparation, this is the integer m for preparing e_m e_m^\dagger */
     std::string target_filename;   /* If a target is read from file, this holds it's filename. */
     Vec targetstate;   	           /* Holds the target state (unless its a pure one in which case this is NULL). 
                                       If target is a gate, this holds the transformed state VrhoV^\dagger.

@@ -96,16 +96,16 @@ void Gate::assembleGate(){
   PetscMalloc1(dim_ess, &cols); 
   // get the frequency of the diagonal scaling e^{iwt} for each row rotation matrix R=R1\otimes R2\otimes...
   for (PetscInt row=0; row<dim_ess; row++){
-    int r = row;
+    PetscInt r = row;
     double freq = 0.0;
     for (size_t iosc=0; iosc<nlevels.size(); iosc++){
       // compute dimension of essential levels of all following subsystems 
-      int dim_post = 1;
+      PetscInt dim_post = 1;
       for (size_t josc=iosc+1; josc<nlevels.size();josc++) {
         dim_post *= nessential[josc];
       }
       // compute the frequency 
-      int rk = (int) r / dim_post;
+      PetscInt rk = r / dim_post;
       freq = freq + rk * gate_rot_freq[iosc];
       r = r % dim_post;
     }
@@ -414,16 +414,16 @@ SWAP_0Q::SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double
   /* Fill lab-frame swap 0<->Q-1 gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
 
   // diagonal elements. don't swap on states |0xx0> and |1xx1>
-  for (int i=0; i< (int) pow(2, Q-2); i++) {
+  for (PetscInt i=0; i< (PetscInt) pow(2, Q-2); i++) {
     MatSetValue(V_re, 2*i, 2*i, 1.0, INSERT_VALUES);
   }
-  for (int i=(int) pow(2, Q-2); i< pow(2, Q-1); i++) {
+  for (PetscInt i=(PetscInt) pow(2, Q-2); i< pow(2, Q-1); i++) {
     MatSetValue(V_re, 2*i+1, 2*i+1, 1.0, INSERT_VALUES);
   }
   // off-diagonal elements, swap on |0xx1> and |1xx0>
   for (int i=0; i< pow(2, Q-2); i++) {
-    MatSetValue(V_re, 2*i + 1, 2*i + (int) pow(2,Q-1), 1.0, INSERT_VALUES);
-    MatSetValue(V_re, 2*i + (int) pow(2,Q-1), 2*i + 1, 1.0, INSERT_VALUES);
+    MatSetValue(V_re, 2*i + 1, 2*i + (PetscInt) pow(2,Q-1), 1.0, INSERT_VALUES);
+    MatSetValue(V_re, 2*i + (PetscInt) pow(2,Q-1), 2*i + 1, 1.0, INSERT_VALUES);
   }
  
 

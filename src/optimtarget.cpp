@@ -71,21 +71,21 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
       printf("ERROR during pure-state initialization: List of IDs must contain %zu elements!\n", mastereq->getNOscillators());
       exit(1);
     }
-    int diag_id = 0;
+    PetscInt diag_id = 0;
     for (size_t k=0; k < initcond_IDs.size(); k++) {
       if (initcond_IDs[k] > mastereq->getOscillator(k)->getNLevels()-1){
         printf("ERROR in config setting. The requested pure state initialization |%zu> exceeds the number of allowed levels for that oscillator (%zu).\n", initcond_IDs[k], mastereq->getOscillator(k)->getNLevels());
         exit(1);
       }
       assert (initcond_IDs[k] < mastereq->getOscillator(k)->getNLevels());
-      int dim_postkron = 1;
+      PetscInt dim_postkron = 1;
       for (size_t m=k+1; m < initcond_IDs.size(); m++) {
         dim_postkron *= mastereq->getOscillator(m)->getNLevels();
       }
       diag_id += initcond_IDs[k] * dim_postkron;
     }
     PetscInt ndim = mastereq->getDimRho();
-    int vec_id = -1;
+    PetscInt vec_id = -1;
     if (lindbladtype != LindbladType::NONE) vec_id = getIndexReal(getVecID( diag_id, diag_id, ndim )); // Real part of x
     else vec_id = getIndexReal(diag_id);
     if (ilow <= vec_id && vec_id < iupp) VecSetValue(rho_t0, vec_id, 1.0, INSERT_VALUES);
@@ -105,7 +105,7 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
     if (lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
       for (PetscInt i = 0; i < dim_ess*dim_ess; i++) {
         PetscInt k = i % dim_ess;
-        PetscInt j = (int) i / dim_ess;
+        PetscInt j = i / dim_ess;
         if (dim_ess*dim_ess < mastereq->getDim()) {
           k = mapEssToFull(k, mastereq->nlevels, mastereq->nessential);
           j = mapEssToFull(j, mastereq->nlevels, mastereq->nessential);
@@ -116,12 +116,12 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
         if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
       }
     } else { // Schroedinger solver, fill vector 
-      for (int i = 0; i < dim_ess; i++) {
-        int k = i;
+      for (PetscInt i = 0; i < dim_ess; i++) {
+        PetscInt k = i;
         if (dim_ess < mastereq->getDim()) 
           k = mapEssToFull(i, mastereq->nlevels, mastereq->nessential);
-        int elemid_re = getIndexReal(k);
-        int elemid_im = getIndexImag(k);
+        PetscInt elemid_re = getIndexReal(k);
+        PetscInt elemid_im = getIndexImag(k);
         if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
         if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess], INSERT_VALUES); // Imaginary Part
       }
@@ -138,8 +138,8 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
       }
     }
     // get dimension of subsystems defined by initcond_IDs, as well as the one before and after. Span in essential levels only.
-    int dimpost = 1;
-    int dimsub = 1;
+    PetscInt dimpost = 1;
+    PetscInt dimsub = 1;
     for (size_t i=0; i<mastereq->getNOscillators(); i++){
       if (initcond_IDs[0] <= i && i <= initcond_IDs[initcond_IDs.size()-1]) dimsub *= mastereq->nessential[i];
       else dimpost *= mastereq->nessential[i];
@@ -147,10 +147,10 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
     PetscInt dimrho = mastereq->getDimRho();
     PetscInt dimrhoess = mastereq->getDimEss();
     // Loop over ensemble state elements in essential level dimensions of the subsystem defined by the initcond_ids:
-    for (int i=0; i < dimsub; i++){
-      for (int j=i; j < dimsub; j++){
-        int ifull = i * dimpost; // account for the system behind
-        int jfull = j * dimpost;
+    for (PetscInt i=0; i < dimsub; i++){
+      for (PetscInt j=i; j < dimsub; j++){
+        PetscInt ifull = i * dimpost; // account for the system behind
+        PetscInt jfull = j * dimpost;
         if (dimrhoess < dimrho) ifull = mapEssToFull(ifull, mastereq->nlevels, mastereq->nessential);
         if (dimrhoess < dimrho) jfull = mapEssToFull(jfull, mastereq->nlevels, mastereq->nessential);
         // printf(" i=%d j=%d ifull %d, jfull %d\n", i, j, ifull, jfull);
@@ -243,7 +243,7 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
 
   /* Read the target state from file into vec */
   if (target_type == TargetType::FROMFILE) {
-    int nelems = 0;
+    PetscInt nelems = 0;
     if (mastereq->lindbladtype != LindbladType::NONE) nelems = 2*dim_ess*dim_ess;
     else nelems = 2 * dim_ess;
     double* vec = new double[nelems];
@@ -251,9 +251,9 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string object
       read_vector(target_filename.c_str(), vec, nelems, quietmode);
     MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     if (lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
-      for (int i = 0; i < dim_ess*dim_ess; i++) { 
-        int k = i % dim_ess;
-        int j = (int) i / dim_ess;
+      for (PetscInt i = 0; i < dim_ess*dim_ess; i++) {
+        PetscInt k = i % dim_ess;
+        PetscInt j = i / dim_ess;
         if (dim_ess*dim_ess < mastereq->getDim()) {
           k = mapEssToFull(k, mastereq->nlevels, mastereq->nessential);
           j = mapEssToFull(j, mastereq->nlevels, mastereq->nessential);
@@ -324,7 +324,7 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
     VecGetOwnershipRange(state, &ilo, &ihi);
 
     int idm = purestateID;
-    if (lindbladtype != LindbladType::NONE) idm = getVecID(purestateID, purestateID, (int)sqrt(dim));
+    if (lindbladtype != LindbladType::NONE) idm = getVecID(purestateID, purestateID, (PetscInt)sqrt(dim));
     PetscInt idm_re = getIndexReal(idm);
     PetscInt idm_im = getIndexImag(idm);
     if (ilo <= idm_re && idm_re < ihi) VecGetValues(state, 1, &idm_re, &HS_re); // local!
@@ -389,7 +389,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
   if (target_type == TargetType::PURE){
     PetscInt ilo, ihi;
     VecGetOwnershipRange(state, &ilo, &ihi);
-    int idm = purestateID;
+    PetscInt idm = purestateID;
     if (lindbladtype != LindbladType::NONE) idm = getVecID(purestateID, purestateID, (PetscInt)sqrt(dim));
     PetscInt idm_re = getIndexReal(idm);
     PetscInt idm_im = getIndexImag(idm);
@@ -429,7 +429,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
   PetscInt ilow, iupp; 
   PetscInt elemID;
   double val;
-  int dim_post;
+  PetscInt dim_post;
   int initID = 0;    // Output: ID for this initial condition */
 
   /* Switch over type of initial condition */
@@ -533,7 +533,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
       break;
 
     case InitialConditionType::DIAGONAL:
-      int diagelem;
+      PetscInt diagelem;
       VecZeroEntries(rho0);
 
       /* Get dimension of partial system behind last oscillator ID (essential levels only) */
@@ -577,9 +577,9 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vect
       }
 
       /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
-      int k, j;
+      PetscInt k, j;
       k = iinit % ( (int) sqrt(ninit) );
-      j = (int) iinit / ( (int) sqrt(ninit) );
+      j = iinit / ( (int) sqrt(ninit) );
 
       /* Set initial condition ID */
       initID = j * ( (int) sqrt(ninit)) + k;
@@ -712,7 +712,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
       VecGetOwnershipRange(state, &ilo, &ihi);
       // iterate over diagonal elements 
       sum = 0.0;
-      for (int i=0; i<dimsq; i++){
+      for (PetscInt i=0; i<dimsq; i++){
         if (lindbladtype != LindbladType::NONE) {
           diagID = getIndexReal(getVecID(i,i,dimsq));
           rhoii = 0.0;
@@ -774,7 +774,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
       else dimsq = dim;   // Schroedinger solver: dim = N
 
       // iterate over diagonal elements 
-      for (int i=0; i<dimsq; i++){
+      for (PetscInt i=0; i<dimsq; i++){
         lambdai = fabs(i - purestateID);
         VecGetOwnershipRange(state, &ilo, &ihi);
         if (lindbladtype != LindbladType::NONE) {

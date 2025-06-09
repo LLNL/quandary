@@ -23,8 +23,8 @@ void PythonInterface::receiveHsys(Mat& Bd){
   /* Get sizes */ 
   PetscInt dim = 0;
   MatGetSize(Bd, &dim, NULL); // could be N^2 or N
-  int sqdim = dim;
-  if (lindbladtype != LindbladType::NONE) sqdim = (int) sqrt(dim); // sqdim = N 
+  PetscInt sqdim = dim;
+  if (lindbladtype != LindbladType::NONE) sqdim = (PetscInt) sqrt(dim); // sqdim = N
 
   /* ----- Real system matrix Hd_real, write it into Bd ---- */
   // if (mpirank_world == 0) printf("Receiving system Hamiltonian...\n");

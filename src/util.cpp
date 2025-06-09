@@ -86,8 +86,8 @@ PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const s
   PetscInt id = 0;
   PetscInt index = i;
   for (size_t iosc = 0; iosc<nlevels.size()-1; iosc++){
-    int postdim = 1;
-    int postdim_ess = 1;
+    PetscInt postdim = 1;
+    PetscInt postdim_ess = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
@@ -108,8 +108,8 @@ PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const s
   PetscInt id = 0;
   PetscInt index = i;
   for (size_t iosc = 0; iosc<nlevels.size(); iosc++){
-    int postdim = 1;
-    int postdim_ess = 1;
+    PetscInt postdim = 1;
+    PetscInt postdim_ess = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
@@ -169,7 +169,7 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
   int index = i;
   for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
 
-    int postdim = 1;
+    PetscInt postdim = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }
@@ -190,7 +190,7 @@ int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector
   int index = i;
   for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
 
-    int postdim = 1;
+    PetscInt postdim = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }

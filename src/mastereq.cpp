@@ -129,7 +129,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   /* Create vector strides for accessing Re and Im part in x */
   PetscInt ilow, iupp;
   MatGetOwnershipRange(RHS, &ilow, &iupp);
-  int dimis = (iupp - ilow)/2;
+  PetscInt dimis = (iupp - ilow)/2;
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
@@ -355,21 +355,21 @@ void MasterEq::initSparseMatSolver(){
   } else {
 
     PetscInt ilow, iupp;
-    int r1,r2, r1a, r2a, r1b, r2b;
-    int col, col1, col2;
+    PetscInt r1,r2, r1a, r2a, r1b, r2b;
+    PetscInt col, col1, col2;
     double val;
 
     for (int iosc = 0; iosc < noscillators; iosc++) {
 
       /* Get dimensions */
       int nk     = oscil_vec[iosc]->getNLevels();
-      int npostk = oscil_vec[iosc]->dim_postOsc;
+      PetscInt npostk = oscil_vec[iosc]->dim_postOsc;
 
       /* Set control Hamiltonian system matrix real(-iHc) */
       /* Lindblad solver:     Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N   \in C^{N^2 x N^2}*/
       /* Schroedinger solver: Ac = a - a^T   \in C^{N x N}  */
       MatGetOwnershipRange(Ac_vec[iosc][0], &ilow, &iupp);
-      for (int row = ilow; row<iupp; row++){
+      for (PetscInt row = ilow; row<iupp; row++){
         // A_c or I_N \kron A_c
         col1 = row + npostk;
         col2 = row - npostk;
@@ -407,7 +407,7 @@ void MasterEq::initSparseMatSolver(){
       /* Schroedinger solver: Bc = -(a+a^T) */
       /* Iterate over local rows of Bc_vec */
       MatGetOwnershipRange(Bc_vec[iosc][0], &ilow, &iupp);
-      for (int row = ilow; row<iupp; row++){
+      for (PetscInt row = ilow; row<iupp; row++){
         // B_c or  I_n \kron B_c 
         col1 = row + npostk;
         col2 = row - npostk;
@@ -453,25 +453,25 @@ void MasterEq::initSparseMatSolver(){
     for (int iosc = 0; iosc < noscillators; iosc++) {
       // Dimensions of ioscillator
       int nk     = oscil_vec[iosc]->getNLevels();
-      int nprek  = oscil_vec[iosc]->dim_preOsc;
-      int npostk = oscil_vec[iosc]->dim_postOsc;
+      PetscInt nprek  = oscil_vec[iosc]->dim_preOsc;
+      PetscInt npostk = oscil_vec[iosc]->dim_postOsc;
 
       for (int josc=iosc+1; josc<noscillators; josc++){
         if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if coefficient is non-zero to save memory.
           // Dimensions of joscillator
           int nj     = oscil_vec[josc]->getNLevels();
-          int npostj = oscil_vec[josc]->dim_postOsc;
+          PetscInt npostj = oscil_vec[josc]->dim_postOsc;
 
           /* Iterate over local rows of Ad_vec / Bd_vec */
           MatGetOwnershipRange(Ad_vec[matid], &ilow, &iupp);
-          for (int row = ilow; row<iupp; row++){
+          for (PetscInt row = ilow; row<iupp; row++){
             // Add +/- I_N \kron (ak^Tal -/+ akal^T) (Lindblad)
             // or  +/- (ak^Tal -/+ akal^T) (Schrodinger)
             r1 = row % (dimmat / nprek);
-            r1a = (int) r1 / npostk;
+            r1a = r1 / npostk;
             r1b = r1 % (nj*npostj);
             r1b = r1b % (nj*npostj);
-            r1b = (int) r1b / npostj;
+            r1b = r1b / npostj;
             if (r1a > 0 && r1b < nj-1) {
               val = Jkl[id_kl] * sqrt(r1a * (r1b+1));
               col = row - npostk + npostj;
@@ -488,10 +488,10 @@ void MasterEq::initSparseMatSolver(){
             if (lindbladtype != LindbladType::NONE) {
               // Add -/+ (al^Tak -/+ alak^T) \kron I
               r1 = row % (dimmat * dimmat / nprek );
-              r1a = (int) r1 / (npostk*dimmat);
+              r1a = r1 / (npostk*dimmat);
               r1b = r1 % (npostk*dimmat);
               r1b = r1b % (nj*npostj*dimmat);
-              r1b = (int) r1b / (npostj*dimmat);
+              r1b = r1b / (npostj*dimmat);
               if (r1a < nk-1 && r1b > 0) {
                 val = Jkl[id_kl] * sqrt((r1a+1) * r1b);
                 col = row + npostk*dimmat - npostj*dimmat;
@@ -517,24 +517,24 @@ void MasterEq::initSparseMatSolver(){
     for (int iosc = 0; iosc < noscillators; iosc++) {
 
       int nk     = oscil_vec[iosc]->getNLevels();
-      int npostk = oscil_vec[iosc]->dim_postOsc;
+      PetscInt npostk = oscil_vec[iosc]->dim_postOsc;
       double xik = oscil_vec[iosc]->getSelfkerr();
       double detunek = oscil_vec[iosc]->getDetuning();
 
       /* Diagonal: detuning and anharmonicity  */
       /* Iterate over local rows of Bd */
       MatGetOwnershipRange(Bd, &ilow, &iupp);
-      for (int row = ilow; row<iupp; row++){
+      for (PetscInt row = ilow; row<iupp; row++){
 
         // Indices for -I_N \kron B_d
         if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
         else r1 = row;
         r1 = r1 % (nk * npostk);
-        r1 = (int) r1 / npostk;
+        r1 = r1 / npostk;
         // Indices for B_d \kron I_N
-        r2 = (int) row / dimmat;
+        r2 = row / dimmat;
         r2 = r2 % (nk * npostk);
-        r2 = (int) r2 / npostk;
+        r2 = r2 / npostk;
         if (lindbladtype == LindbladType::NONE) r2 = 0;
 
         // -Bd, or -I_N \kron B_d + B_d \kron I_N
@@ -546,11 +546,11 @@ void MasterEq::initSparseMatSolver(){
       /* zz-coupling term  -xi_ij * 2 * PI * (N_i*N_j) for j > i */
       for (int josc = iosc+1; josc < noscillators; josc++) {
         int nj     = oscil_vec[josc]->getNLevels();
-        int npostj = oscil_vec[josc]->dim_postOsc;
+        PetscInt npostj = oscil_vec[josc]->dim_postOsc;
         double xikj = crosskerr[coupling_id];
         coupling_id++;
 
-        for (int row = ilow; row<iupp; row++){
+        for (PetscInt row = ilow; row<iupp; row++){
           if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
           else r1 = row;
           r1 = r1 % (nk * npostk);
@@ -559,7 +559,7 @@ void MasterEq::initSparseMatSolver(){
           r1b = r1b % (nj*npostj);
           r1b = r1b / npostj;
 
-          r2 = (int) row / dimmat;
+          r2 = row / dimmat;
           r2 = r2 % (nk * npostk);
           r2a = r2 / npostk;
           r2b = r2 % npostk;
@@ -587,11 +587,11 @@ void MasterEq::initSparseMatSolver(){
 
         // Dimensions 
         int nk     = oscil_vec[iosc]->getNLevels();
-        int npostk = oscil_vec[iosc]->dim_postOsc;
+        PetscInt npostk = oscil_vec[iosc]->dim_postOsc;
 
         /* Iterate over local rows of Ad */
         MatGetOwnershipRange(Ad, &ilow, &iupp);
-        for (int row = ilow; row<iupp; row++){
+        for (PetscInt row = ilow; row<iupp; row++){
 
           /* Add Ad += gamma_j * L \kron L */
           r1 = row % (dimmat*nk*npostk);

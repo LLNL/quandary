@@ -44,8 +44,8 @@ class Oscillator {
 
   public:
     PiPulse pipulse;  // Store a dummy pipulse that does nothing
-    int dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
-    int dim_postOsc;               // Dimension of coupled subsystem following this oscillator
+    PetscInt dim_preOsc;                // Dimension of coupled subsystems preceding this oscillator
+    PetscInt dim_postOsc;               // Dimension of coupled subsystem following this oscillator
 
     Oscillator();
     Oscillator(MapParam config, size_t id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine);
