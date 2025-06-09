@@ -13,12 +13,11 @@
  *
  * The Gate class provides the fundamental interface for quantum gate operations
  * in quantum optimal control. It handles the transformation \f$V \rho V^\dagger\f$ where \f$V\f$ is
- * the unitary gate matrix and \f$\rho\f$ is the quantum state density matrix.
+ * the unitary gate matrix (target unitary transformation).
  */
 class Gate {
   protected:
-    Mat V_re, V_im; ///< Input: Real and imaginary parts of V_target, non-vectorized, essential levels only.
-    Vec rotA, rotB; ///< Input: Diagonal elements of real and imaginary rotational matrices.
+    Mat V_re, V_im; ///< Real and imaginary parts of V_target, non-vectorized, essential levels only.
 
     std::vector<int> nessential; ///< Number of essential levels per oscillator.
     std::vector<int> nlevels; ///< Total number of levels per oscillator.
@@ -31,21 +30,21 @@ class Gate {
     int dim_rho; ///< Dimension of system matrix rho (non-vectorized), all levels, N.
 
     double final_time; ///< Final time T. Time of gate rotation.
-    std::vector<double> gate_rot_freq; ///< Frequencies of gate rotation (rad/time). Often same as rotational frequencies.
+    std::vector<double> gate_rot_freq; ///< Frequencies of gate rotation (rad/time). Default: same as the rotational frequencies.
 
     LindbladType lindbladtype; ///< Type of Lindblad operators for open system dynamics.
 
 
   private:
-    Mat VxV_re, VxV_im;     ///< Real and imaginary parts of vectorized gate G=\bar V \kron V.
-    Vec x;                  ///< Auxiliary vector for computations.
+    Mat VxV_re, VxV_im;     ///< Real and imaginary parts of vectorized gate \f$\bar V \kron V\f$.
+    Vec x;                  ///< Auxiliary state vector for computations.
     IS isu, isv;            ///< Vector strides for accessing real and imaginary parts of the state.
 
   public:
     Gate();
 
     /**
-     * @brief Constructor for quantum gate with specified parameters.
+     * @brief Constructor for quantum gates.
      *
      * @param nlevels_ Number of levels per oscillator.
      * @param nessential_ Number of essential levels per oscillator.
@@ -66,10 +65,10 @@ class Gate {
     int getDimRho() { return dim_rho; };
 
     /**
-     * @brief Assembles the vectorized gate matrices.
+     * @brief Assembles the vectorized gate matrix.
      *
      * Computes VxV_re = \f$\text{Re}(\bar{V} \otimes V)\f$ and VxV_im = \f$\text{Im}(\bar{V} \otimes V)\f$
-     * where V is the gate matrix and \f$\bar{V}\f$ is its complex conjugate.
+     * where V is the gate matrix.
      */
     void assembleGate();
 
@@ -239,7 +238,7 @@ class FromFile: public Gate {
 
 
 /**
- * @brief Factory function to initialize a gate from target string.
+ * @brief Factory function to initialize a gate from configuration string.
  *
  * Creates and returns a pointer to the appropriate Gate subclass based on
  * the target specification string.

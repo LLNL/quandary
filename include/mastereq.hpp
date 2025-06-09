@@ -6,44 +6,45 @@
 #include <assert.h>
 #include <iostream> 
 #include "gate.hpp"
-#include "pythoninterface.hpp"
+#include "hamiltonianfilereader.hpp"
 
 #pragma once
 
 /**
- * @brief MatShell context containing data needed for applying the RHS matrix to a vector.
+ * @brief MatShell context containing data needed for applying the right-hand-side system matrix to a vector.
  *
- * This structure holds all the necessary data for matrix-free operations
- * in the Lindblad master equation solver.
+ * This structure holds all the necessary data for applying the real-valued 
+ * and vectorized system matrix to a state vector.
  */
 typedef struct {
   std::vector<int> nlevels; ///< Number of levels per oscillator
   IS *isu, *isv; ///< Vector strides for accessing real and imaginary parts
-  Oscillator** oscil_vec; ///< Array of pointers to oscillators
+  Oscillator** oscil_vec; ///< Array of pointers to the oscillators
   std::vector<double> crosskerr; ///< Cross-Kerr coupling coefficients
   std::vector<double> Jkl; ///< Dipole-dipole coupling coefficients
-  std::vector<double> eta; ///< Frequency differences for rotating frame
+  std::vector<double> eta; ///< Frequency differences of the rotating frames
   LindbladType lindbladtype; ///< Type of Lindblad operators to include
   bool addT1, addT2; ///< Flags for T1 decay and T2 dephasing
-  std::vector<std::vector<double>> control_Re; ///< Real parts of control amplitudes
-  std::vector<std::vector<double>> control_Im; ///< Imaginary parts of control amplitudes
+  std::vector<std::vector<double>> control_Re; ///< Real parts of control pulse \f$p(t)\f$
+  std::vector<std::vector<double>> control_Im; ///< Imaginary parts of control pulse \f$q(t)\f$
   std::vector<double> eval_transfer_Hdt_re; ///< Evaluated real transfer functions for time-varying Hamiltonian
   std::vector<double> eval_transfer_Hdt_im; ///< Evaluated imaginary transfer functions for time-varying Hamiltonian
-  std::vector<std::vector<Mat>> Ac_vec; ///< Real parts of control matrices
-  std::vector<std::vector<Mat>> Bc_vec; ///< Imaginary parts of control matrices
-  Mat *Ad, *Bd; ///< Real and imaginary parts of drift Hamiltonian matrices
-  std::vector<Mat> Ad_vec; ///< Real parts of dipole-dipole coupling matrices
-  std::vector<Mat> Bd_vec; ///< Imaginary parts of dipole-dipole coupling matrices
+  std::vector<std::vector<Mat>> Ac_vec; ///< Vector of Real parts of control matrices per oscillator
+  std::vector<std::vector<Mat>> Bc_vec; ///< Vector of Imaginary parts of control matrices per oscillator
+  Mat *Ad; ///< Real parts of time-independent system matrix \f$Re(-iH_d)\f$, without the coupling terms
+  Mat *Bd; ///< Imaginary parts of time-independent system matrix \f$Im(-iH_d)\f$, without the coupling terms
+  std::vector<Mat> Ad_vec; ///< Real parts of dipole-dipole coupling system matrices
+  std::vector<Mat> Bd_vec; ///< Imaginary parts of dipole-dipole coupling system matrices
   Vec *aux; ///< Auxiliary vector for computations
   double time; ///< Current time
 } MatShellCtx;
 
 
 /**
- * @brief Matrix-vector product functions for the RHS MatShell.
+ * @brief Interface for Matrix-vector products to apply the RHS system matrix to a state.
  *
  * These functions implement matrix-free solvers for different numbers of oscillators
- * and sparse matrix solvers for larger systems.
+ * and the sparse matrix solvers.
  */
 int myMatMult_matfree_1Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 1 oscillator
 int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 1 oscillator
@@ -60,27 +61,31 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y); ///< Transpose sparse m
 
 
 /**
- * @brief Implementation of the Lindblad master equation solver.
+ * @brief Implementation of the real-valued right-hand-side (RHS) system matrix of the quantum dynamical equations.
  *
- * This class provides functionality for solving both the Lindblad master equation
- * for open quantum systems and the Schroedinger equation for closed systems.
- * It supports matrix-free and sparse matrix solvers for different system sizes.
+ * This class provides functionality for evaluating and applying the real-valued right-hand-side (RHS) 
+ * system matrix of the vectorized Lindblad master equation (open quantum systems, \f$M = \text{vec}(-i(H(t)\rho - \rho H(t)) + \text{Lindblad terms})\f$) 
+ * or Schroedinger equation (closed systems\f$M = -iH(t)\f$). 
+ * The system matrix (RHS) is stored as a Matrix Shell, and needs to be assembled and applied at each 
+ * time step during the forward and backward time evolution of the timestepper. 
+ * It supports a matrix-free and a sparse-matrix version for applying the system matrix to a state vector.
  */
 class MasterEq{
 
   protected:
     int dim; ///< Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
     int dim_rho; ///< Dimension of Hilbert space = N
-    int dim_ess; ///< Dimension of essential level system = N_e
+    int dim_ess; ///< Dimension of essential levels = N_e
     int noscillators; ///< Number of oscillators in the system
     Oscillator** oscil_vec; ///< Array of pointers to oscillator objects
 
-    Mat RHS; ///< Real-valued, vectorized system matrix (2N^2 x 2N^2)
-    MatShellCtx RHSctx; ///< MatShell context containing data for RHS operations
+    Mat RHS; ///< Real-valued, vectorized system matrix (size 2N^2 x 2N^2)
+    MatShellCtx RHSctx; ///< MatShell context containing data for applying the RHS to a state
 
     std::vector<std::vector<Mat>> Ac_vec; ///< Real parts of control matrices for each oscillator
     std::vector<std::vector<Mat>> Bc_vec; ///< Imaginary parts of control matrices for each oscillator
-    Mat  Ad, Bd; ///< Real and imaginary parts of constant system matrix
+    Mat Ad;  ///< Real part of time-independent system matrix without the coupling terms
+    Mat Bd; ///< Imaginary part of time-independent system matrix without coupling terms
     std::vector<Mat> Ad_vec; ///< Real parts of dipole-dipole coupling matrices in drift Hamiltonian
     std::vector<Mat> Bd_vec; ///< Imaginary parts of dipole-dipole coupling matrices in drift Hamiltonian
 
@@ -98,7 +103,7 @@ class MasterEq{
     double *dImdp; ///< Derivative of imaginary part with respect to parameters
     Vec aux; ///< Auxiliary vector for computations
     PetscInt* cols; ///< Column indices for evaluating dRHS/dp
-    PetscScalar* vals; ///< Matrix values for evaluating dRHS/dp
+    PetscScalar* vals; ///< Values for evaluating dRHS/dp
 
     bool quietmode; ///< Flag for quiet mode operation
 
@@ -112,7 +117,7 @@ class MasterEq{
     std::vector<std::vector<TransferFunction*>> transfer_Hc_im; ///< Imaginary transfer functions for control terms per oscillator
     std::vector<TransferFunction*> transfer_Hdt_re; ///< Real transfer functions for time-varying system Hamiltonian
     std::vector<TransferFunction*> transfer_Hdt_im; ///< Imaginary transfer functions for time-varying system Hamiltonian
-    std::string hamiltonian_file; ///< Filename for Hamiltonian data ('none' if not used)
+    std::string hamiltonian_file; ///< Filename if a custom Hamiltonian is read from file ('none' if standard Hamiltonian is used)
 
 
   public:
@@ -185,9 +190,10 @@ class MasterEq{
     int getDimRho();
 
     /**
-     * @brief Assembles the vectorized Hamiltonian operator.
+     * @brief Assembles the real-valued system matrix (RHS) at time t.
      *
-     * Builds the operator \f$M = \text{vec}(-i(H\rho - \rho H) + \text{Lindblad terms})\f$.
+     * Schroedinger solver: Assembles the operator \f$M = \text{vec}(-iH(t))\f$.
+     * Lindblad solver: Assembles the operator \f$M = \text{vec}(-i(H(t)\rho - \rho H(t)) + \text{Lindblad terms})\f$.
      * Must be called before applying the RHS matrix.
      *
      * @param t Current time
@@ -221,7 +227,7 @@ class MasterEq{
     // void createReducedDensity_diff(Vec rhobar, const Vec reducedbar, const std::vector<int>& oscilIDs);
 
     /**
-     * @brief Sets control function parameters from global design vector.
+     * @brief Pass control parameters from global design vector to each oscillator.
      *
      * @param x Global design vector containing control parameters
      */

@@ -15,20 +15,21 @@
 /**
  * @brief Configuration parameter management class.
  *
- * The `MapParam` class extends std::map to provide functionality for reading
+ * The `Config` class extends std::map to provide functionality for reading
  * configuration files and retrieving parameters with type conversion and default values.
  * It supports MPI communication and logging capabilities.
  */
-class MapParam : public std::map<std::string, std::string>
-{
+class Config : public std::map<std::string, std::string> {
+  protected:
+
   MPI_Comm comm; ///< MPI communicator for parallel operations.
   int mpi_rank; ///< MPI rank of the current process.
   bool quietmode; ///< Flag to control verbose output.
 
-public:
+  public:
   std::stringstream* log; ///< Pointer to log stream for output messages.
 
-  MapParam();
+  Config();
 
   /**
    * @brief Constructor with MPI communicator and logging.
@@ -37,9 +38,9 @@ public:
    * @param logstream Reference to the log stream for output.
    * @param quietmode Flag to enable quiet mode (default: false).
    */
-  MapParam(MPI_Comm comm_, std::stringstream& logstream, bool quietmode=false);
+  Config(MPI_Comm comm_, std::stringstream& logstream, bool quietmode=false);
 
-  ~MapParam();
+  ~Config();
   
   /**
    * @brief Parses a configuration file and stores key-value pairs in the map.

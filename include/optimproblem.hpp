@@ -29,31 +29,32 @@
  * and the overall optimization process for quantum gates and state preparation.
  */
 class OptimProblem {
+  protected:
 
   size_t ninit; ///< Number of initial conditions to be considered (N^2, N, or 1)
   int ninit_local; ///< Local number of initial conditions on this processor
   Vec rho_t0; ///< Storage for initial condition of the ODE
-  Vec rho_t0_bar; ///< Adjoint of ODE initial condition
+  Vec rho_t0_bar; ///< Storage for adjoint initial condition of the adjoint ODE (aka the terminal condition)
   std::vector<Vec> store_finalstates; ///< Storage for final states for each initial condition
 
   OptimTarget* optim_target; ///< Pointer to the optimization target (gate or state)
 
   MPI_Comm comm_init; ///< MPI communicator for initial condition parallelization
-  MPI_Comm comm_optim; ///< MPI communicator for optimization parallelization
+  MPI_Comm comm_optim; ///< MPI communicator for optimization parallelization, currently not used (size 1)
   int mpirank_optim, mpisize_optim; ///< MPI rank and size for optimization communicator
-  int mpirank_space, mpisize_space; ///< MPI rank and size for spatial parallelization
+  int mpirank_space, mpisize_space; ///< MPI rank and size for spatial parallelization (PETSc)
   int mpirank_world, mpisize_world; ///< MPI rank and size for global communicator
   int mpirank_init, mpisize_init; ///< MPI rank and size for initial condition communicator
 
   bool quietmode; ///< Flag for quiet mode operation
 
   std::vector<double> obj_weights; ///< Weights for averaging objective over initial conditions
-  int ndesign; ///< Number of global design parameters
-  double objective; ///< Current objective function value
-  double obj_cost; ///< Final-time term J(T) in objective
+  int ndesign; ///< Number of global design (optimization) parameters
+  double objective; ///< Current objective function value (sum over final-time cost, regularization terms and penalty terms)
+  double obj_cost; ///< Final-time measure J(T) in objective
   double obj_regul; ///< Regularization term in objective
-  double obj_penal; ///< Penalty term in objective
-  double obj_penal_dpdm; ///< Penalty term for second-order state derivatives
+  double obj_penal; ///< Penalty integral term for pure-state preparation in objective 
+  double obj_penal_dpdm; ///< Penalty term second-order state derivatives (penalizes variations of the state evolution)
   double obj_penal_variation; ///< Penalty term for variation of control parameters
   double obj_penal_energy; ///< Energy penalty term in objective
   double fidelity; ///< Final-time fidelity: 1/ninit sum_i Tr(rho_target^dag rho(T)) for Lindblad, |1/ninit sum_i phi_target^dag phi|^2 for Schrodinger
@@ -94,7 +95,7 @@ class OptimProblem {
    * @param output_ Pointer to output handler
    * @param quietmode Flag for quiet operation (default: false)
    */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, Output* output_, bool quietmode=false);
+  OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, Output* output_, bool quietmode=false);
 
   ~OptimProblem();
 
@@ -120,35 +121,35 @@ class OptimProblem {
   double getCostT()    { return obj_cost; };
 
   /**
-   * @brief Retrieves the regularization term.
+   * @brief Retrieves the Tikhonov regularization term.
    *
    * @return double Tikhonov regularization contribution
    */
   double getRegul()    { return obj_regul; };
 
   /**
-   * @brief Retrieves the penalty term.
+   * @brief Retrieves the integral penalty term for pure-state preparation.
    *
    * @return double Penalty term contribution
    */
   double getPenalty()  { return obj_penal; };
 
   /**
-   * @brief Retrieves the second-order derivative penalty term.
+   * @brief Retrieves the second-order state derivative penalty term.
    *
    * @return double Second-order penalty contribution
    */
   double getPenaltyDpDm()  { return obj_penal_dpdm; };
 
   /**
-   * @brief Retrieves the variation penalty term.
+   * @brief Retrieves the control variation penalty term.
    *
    * @return double Control variation penalty contribution
    */
   double getPenaltyVariation()  { return obj_penal_variation; };
 
   /**
-   * @brief Retrieves the energy penalty term.
+   * @brief Retrieves the control energy penalty term.
    *
    * @return double Energy penalty contribution
    */
@@ -198,6 +199,9 @@ class OptimProblem {
 
   /**
    * @brief Evaluates the objective function F(x).
+   * 
+   * Performs forward simulations for each initial conditions and
+   * evaluates the objective function. 
    *
    * @param x Design vector
    * @return double Objective function value
@@ -205,9 +209,9 @@ class OptimProblem {
   double evalF(const Vec x);
 
   /**
-   * @brief Evaluates the gradient of the objective function.
+   * @brief Evaluates the gradient of the objective function with respect to the control parameters
    *
-   * @param x Design vector
+   * @param x Design (optimization) vector
    * @param G Gradient vector to store result
    */
   void evalGradF(const Vec x, Vec G);
@@ -237,7 +241,7 @@ class OptimProblem {
 };
 
 /**
- * @brief Monitors optimization progress during TAO iterations.
+ * @brief Monitors optimization progress during TAO optimization iterations.
  *
  * This callback function is called at each iteration of TaoSolve() to
  * track convergence and output progress information.

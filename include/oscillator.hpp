@@ -26,20 +26,21 @@ struct PiPulse {
 };
 
 /**
- * @brief Quantum harmonic oscillator with control capabilities.
+ * @brief Quantum oscillator (multi-level qubit) with control capabilities.
  *
- * This class represents a single quantum harmonic oscillator with multiple energy levels,
- * control pulses, and decoherence mechanisms. It manages control parameterization,
- * frequency detuning, and Lindblad collapse operators for decay and dephasing.
+ * This class represents a single quantum oscillator that is controlled by external 
+ * control pulses. It stores the oscillator parameters, such as number of energy levels, 
+ * frequency detuning, anharmonicity and Lindblad decay and dephasing times.  
+ * It also manages this oscillator's control pulse parameterization.
  */
 class Oscillator {
   protected:
     int myid; ///< Integer identifier for this oscillator
     int nlevels; ///< Number of energy levels for this oscillator
-    double ground_freq; ///< Fundamental transition frequency of this oscillator
+    double ground_freq; ///< Fundamental 0-1 transition frequency of this oscillator \f$\omega_k\f$
     double selfkerr; ///< Self-Kerr frequency \f$\xi_k\f$, multiplies \f$a_k^\dagger a_k^\dagger a_k a_k\f$
 
-    double detuning_freq; ///< Detuning frequency (rad/time), detuning = ground_freq - rotational_freq
+    double detuning_freq; ///< Detuning frequency, detuning = ground_freq - rotational_freq, multiplies \f$a_k^\dagger a_k\f$
     LindbladType lindbladtype; ///< Type of Lindblad collapse operators to include
     double decay_time; ///< Characteristic time for T1 decay collapse operations
     double dephase_time; ///< Characteristic time for T2 dephasing collapse operations
@@ -79,7 +80,7 @@ class Oscillator {
      * @param lindbladtype_ Type of Lindblad operators
      * @param rand_engine Random number generator engine
      */
-    Oscillator(MapParam config, size_t id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine);
+    Oscillator(Config config, size_t id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine);
 
     virtual ~Oscillator();
 
@@ -126,7 +127,7 @@ class Oscillator {
     double getDephaseTime() {return dephase_time; };
 
     /**
-     * @brief Retrieves the number of control segments.
+     * @brief Retrieves the number of control segments (currently always 1).
      *
      * @return size_t Number of time segments
      */
@@ -171,14 +172,14 @@ class Oscillator {
     int getNSegParams(int segmentID);
 
     /**
-     * @brief Sets control parameters from an array.
+     * @brief Sets control parameters from a global storage.
      *
      * @param x Array of control parameter values
      */
     void setParams(const double* x);
 
     /**
-     * @brief Retrieves control parameters into an array.
+     * @brief Retrieves control parameters into a global storage.
      *
      * @param x Array to store control parameter values
      */
@@ -192,7 +193,7 @@ class Oscillator {
     void clearParams() { params.clear(); };
 
     /**
-     * @brief Evaluates rotating frame control functions.
+     * @brief Evaluates the rotating-frame control functions.
      *
      * Computes the real and imaginary parts of the control function: Re = p(t), Im = q(t)
      *
@@ -214,7 +215,7 @@ class Oscillator {
     int evalControl_diff(const double t, double* dRedp, double* dImdp);
 
     /**
-     * @brief Evaluates lab-frame control function f(t).
+     * @brief Evaluates lab-frame control function.
      *
      * @param t Time at which to evaluate
      * @param f_ptr Pointer to store lab-frame control value
@@ -225,7 +226,7 @@ class Oscillator {
     /**
      * @brief Computes expected energy for this oscillator.
      *
-     * Returns the expected value of the energy operator for this oscillator's subsystem.
+     * Returns the expected value of the number operator for this oscillator's subsystem.
      *
      * @param x State vector
      * @return double Expected energy value
@@ -242,7 +243,7 @@ class Oscillator {
     void expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar);
 
     /**
-     * @brief Computes population in each energy level.
+     * @brief Computes population in each energy level of this oscillator.
      *
      * Extracts the diagonal elements of the reduced density matrix for this oscillator.
      *

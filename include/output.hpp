@@ -8,11 +8,12 @@
 /**
  * @brief Output management for quantum control simulations and optimization.
  *
- * This class handles all file I/O operations for Quandary, including optimization
+ * This class handles all file output operations for Quandary, including optimization
  * progress logging, control pulse output, state evolution data, and population dynamics.
  * It manages MPI-aware output to avoid duplicate writes in parallel runs.
  */
 class Output{
+  protected:
 
   int mpirank_world; ///< Rank of processor in MPI_COMM_WORLD
   int mpirank_petsc; ///< Rank of processor for PETSc parallelization
@@ -26,12 +27,12 @@ class Output{
   std::vector<std::vector<std::string> > outputstr; ///< List of output specifications for each oscillator
 
   bool writefullstate; ///< Flag to determine if full state vector should be written to file
-  FILE *ufile; ///< File for writing real part of solution vector
-  FILE *vfile; ///< File for writing imaginary part of solution vector
+  FILE *ufile; ///< File for writing real part of fullstate evolution
+  FILE *vfile; ///< File for writing imaginary part of fullstate evolution
   std::vector<FILE *>expectedfile; ///< Files for expected energy evolution per oscillator
-  FILE *expectedfile_comp; ///< File for expected energy evolution of composite system
-  FILE *populationfile_comp; ///< File for population evolution of composite system
   std::vector<FILE *>populationfile; ///< Files for population evolution per oscillator
+  FILE *expectedfile_comp; ///< File for expected energy evolution of the full composite system
+  FILE *populationfile_comp; ///< File for population evolution of the full composite system
 
   // VecScatter scat; ///< PETSc's scatter context for state communication across cores
   // Vec xseq; ///< Sequential vector for I/O operations
@@ -52,7 +53,7 @@ class Output{
      * @param noscillators Number of oscillators in the system
      * @param quietmode Flag for reduced output (default: false)
      */
-    Output(MapParam& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false);
+    Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false);
 
     ~Output();
 
@@ -82,7 +83,7 @@ class Output{
      *
      * @param params Current parameter vector
      * @param mastereq Pointer to master equation solver
-     * @param ntime Number of time steps
+     * @param ntime Total number of time steps
      * @param dt Time step size
      */
     void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt);
@@ -97,7 +98,7 @@ class Output{
     /**
      * @brief Opens data files for time evolution output.
      *
-     * Prepares files for writing full state, expected energy, and population data.
+     * Prepares files for writing full state, expected energy, and population evolution data.
      *
      * @param prefix Filename prefix for output files
      * @param initid Initial condition identifier
@@ -117,9 +118,9 @@ class Output{
     void writeDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq);
 
     /**
-     * @brief Closes all open data files.
+     * @brief Closes open time evolution data files.
      *
-     * Properly closes and flushes all output files after simulation completion.
+     * Properly closes and flushes all output files after time-stepping completion.
      */
     void closeDataFiles();
 

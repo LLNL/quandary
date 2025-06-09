@@ -52,18 +52,18 @@ double getRampFactor(const double time, const double tstart, const double tstop,
 double getRampFactor_diff(const double time, const double tstart, const double tstop, const double tramp);
 
 /**
- * @brief Returns storage index for real part of complex vector element.
+ * @brief Returns storage index for real part of a state vector element.
  *
  * @param i Element index
- * @return int Storage index (colocated: x[2*i], blocked: x[i])
+ * @return int Storage index (colocated: x[2*i])
  */
 int getIndexReal(const int i);
 
 /**
- * @brief Returns storage index for imaginary part of complex vector element.
+ * @brief Returns storage index for imaginary part of a state vector element.
  *
  * @param i Element index
- * @return int Storage index (colocated: x[2*i+1], blocked: x[i+dim])
+ * @return int Storage index (colocated: x[2*i+1])
  */
 int getIndexImag(const int i);
 
@@ -120,9 +120,6 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
  */
 int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
-// /* Project a state vector onto essential levels by zero'ing out elements that belong to guard-levels. */
-// void projectToEss(Vec state,const std::vector<int> &nlevels, const std::vector<int> &nessential);
-
 /**
  * @brief Computes Kronecker product \f$Id \otimes A\f$.
  *
@@ -158,7 +155,7 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
  *
  * Computes the Kronecker product of two arbitrary matrices A and B.
  * Works in PETSc serial mode only. Output matrix must be pre-allocated
- * and should be assembled afterwards if necessary.
+ * and should be assembled afterwards.
  *
  * @param A First input matrix
  * @param B Second input matrix
@@ -203,7 +200,7 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag);
 PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag);
 
 /**
- * @brief Performs comprehensive sanity tests on state vector.
+ * @brief Performs all sanity tests on state vector.
  *
  * @param x State vector to test
  * @param time Current time for diagnostic output

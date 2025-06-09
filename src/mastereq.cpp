@@ -345,7 +345,7 @@ void MasterEq::initSparseMatSolver(){
     if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from file %s.\n\n", hamiltonian_file.c_str());
 
     /* Read Hamiltonians from file */
-    PythonInterface* py = new PythonInterface(hamiltonian_file, lindbladtype, dim_rho, quietmode);
+    HamiltonianFileReader* py = new HamiltonianFileReader(hamiltonian_file, lindbladtype, dim_rho, quietmode);
     py->receiveHsys(Bd);
     py->receiveHc(noscillators, Ac_vec, Bc_vec); 
 

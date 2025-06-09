@@ -16,10 +16,13 @@
 #pragma once
 
 /**
- * @brief Available Lindblad operator types for open quantum systems.
+ * @brief Available Lindblad operator types for open quantum systems, or NONE for closed quantum systems.
  *
- * Defines the types of dissipation and decoherence operators that can be
- * applied to the quantum system in the Lindblad master equation.
+ * For open quantum systems, this defines the types of dissipation and decoherence operators 
+ * that can be applied to the quantum system in Lindblad master equation. 
+ * 
+ * @note If this is NONE, the quantum system is considered closed, solving Schroedinger's 
+ * equation rather than Lindblad's master equation.
  */
 enum class LindbladType {
   NONE,    ///< No Lindblad operators (closed system)
@@ -29,7 +32,7 @@ enum class LindbladType {
 };
 
 /**
- * @brief Available types of initial conditions for quantum systems.
+ * @brief Available types of initial conditions that are propagated through the quantum dynamics.
  *
  * Defines how the initial quantum state is specified and prepared
  * for simulation or optimization.
@@ -53,7 +56,7 @@ enum class InitialConditionType {
 enum class TargetType {
   GATE,      ///< Gate optimization: \f$\rho_{\text{target}} = V\rho(0) V^\dagger\f$
   PURE,      ///< Pure state preparation: \f$\rho_{\text{target}} = e_m e_m^\dagger\f$ for some integer \f$m\f$
-  FROMFILE   ///< Target read from file with vectorized density matrix format
+  FROMFILE   ///< Target state read from file, vectorized density matrix format
 };
 
 /**
@@ -68,39 +71,38 @@ enum class ObjectiveType {
 };
 
 /**
- * @brief Available linear solver types for quantum dynamics.
+ * @brief Available types for solving linear systems at each time step.
  *
  * Defines the numerical methods used to solve linear systems
- * arising in quantum dynamics simulations.
+ * arising in quantum dynamics simulations at each time step.
  */
 enum class LinearSolverType{
-  GMRES,   ///< Uses Petsc's GMRES solver
+  GMRES,   ///< Uses Petsc's GMRES solver (default)
   NEUMANN  ///< Uses Neuman power iterations
 };
 
 /**
- * @brief Types of solver execution modes.
+ * @brief Types of execution modes.
  *
- * Defines what type of computation the solver should perform.
+ * Defines what type of computation should be performed.
  */
 enum class RunType {
   SIMULATION,   ///< Runs one simulation to compute the objective function (forward)
   GRADIENT,     ///< Runs a simulation followed by the adjoint for gradient computation (forward & backward)
   OPTIMIZATION, ///< Runs optimization iterations
-  EVALCONTROLS, ///< Runs optimization iterations
+  EVALCONTROLS, ///< Only evaluates the current control pulses (no simulation)
   NONE          ///< Don't run anything
 };
 
 /**
  * @brief Types of control parameterizations for quantum control pulses.
  *
- * Defines how control pulses are mathematically represented and parameterized
- * for optimization and simulation.
+ * Defines how control pulses are parameterized for optimization and simulation.
  */
 enum class ControlType {
   NONE,       ///< Non-controllable
-  BSPLINE,    ///< Control parameters are the amplitudes of 2nd order BSpline basis functions
-  BSPLINEAMP, ///< Control parameters are the amplitudes of BSpline basis functions (amplitude only)
-  STEP,       ///< Control parameter is the width of a step envelope function for a given amplitude
-  BSPLINE0    ///< Zeroth order Bspline (piece-wise constant)
+  BSPLINE,    ///< Control pulses are parameterized with 2nd order BSpline basis functions with carrier waves
+  BSPLINEAMP, ///< Paramerizes only the amplitudes of the control pulse with 2nd order BSpline basis functions 
+  STEP,       ///< Control parameter is the width of a step function for a given amplitude
+  BSPLINE0    ///< Control pulses are parameterized with Zeroth order Bspline (piece-wise constant)
 };

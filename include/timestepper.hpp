@@ -11,11 +11,11 @@
 #pragma once
 
 /**
- * @brief Base class for time integration schemes in quantum dynamics.
+ * @brief Base class for time integration schemes to evolve the quantum dynamics.
  *
  * This abstract class provides the interface for time-stepping methods used to
- * integrate quantum evolution equations (Lindblad master equation or Schroedinger
- * equation). It supports both forward and adjoint time integration for optimization.
+ * integrate the quantum evolution equations (Lindblad master equation or Schroedinger
+ * equation). It supports both forward and adjoint time integration, handles output of evolution data, and evaluates penalty integral terms.
  */
 class TimeStepper{
   protected:
@@ -32,13 +32,13 @@ class TimeStepper{
     int ntime; ///< Number of time steps
     double total_time; ///< Final evolution time
     double dt; ///< Time step size
-    bool writeDataFiles; ///< Flag to write trajectory data during forward simulation
+    bool writeDataFiles; ///< Flag to write evolution data during forward simulation
 
     Vec redgrad; ///< Reduced gradient vector for optimization
 
-    double penalty_integral; ///< Output: integral penalty term value
-    double energy_penalty_integral; ///< Output: energy penalty integral term
-    double penalty_dpdm; ///< Second-order derivative penalty value
+    double penalty_integral; ///< Sums the integral penalty term 
+    double energy_penalty_integral; ///< Sums the energy penalty term
+    double penalty_dpdm; ///< Sums second-order derivative penalty value
     double penalty_param; ///< Parameter for penalty term (Gaussian variance)
     double gamma_penalty; ///< Weight for integral penalty term
     double gamma_penalty_dpdm; ///< Weight for second-order derivative penalty
@@ -75,6 +75,8 @@ class TimeStepper{
 
     /**
      * @brief Solves the ODE forward in time.
+     * 
+     * This performs the time-stepping to propagate an initial condition to the final time.
      *
      * @param initid Initial condition identifier
      * @param rho_t0 Initial state vector
@@ -84,6 +86,9 @@ class TimeStepper{
 
     /**
      * @brief Solves the adjoint ODE backward in time.
+     * 
+     * This performs backward time-stepping to backpropagate an adjoint initial condition at 
+     * final time (aka a terminal condtion) to time t=0, while accumulating the reduced gradient. 
      *
      * @param rho_t0_bar Terminal condition for adjoint state
      * @param finalstate Final state from forward evolution
@@ -149,9 +154,9 @@ class TimeStepper{
     void energyPenaltyIntegral_diff(double time, double Jbar, Vec redgrad);
 
     /**
-     * @brief Evolves state forward from tstart to tstop.
+     * @brief Evolves state forward by one time-step from tstart to tstop.
      *
-     * Pure virtual function to be implemented by derived classes.
+     * Pure virtual function to be implemented by the derived time-stepping classes.
      *
      * @param tstart Start time
      * @param tstop Stop time
@@ -160,7 +165,9 @@ class TimeStepper{
     virtual void evolveFWD(const double tstart, const double tstop, Vec x) = 0;
 
     /**
-     * @brief Evolves adjoint backward and updates reduced gradient.
+     * @brief Evolves adjoint state backward by one time-step and updates reduced gradient.
+     * 
+     * Abstract base-class implementation is empty. Derived classes that need backward time-stepping should implement this function.
      *
      * @param tstart Start time (backward evolution)
      * @param tstop Stop time (backward evolution)
@@ -175,11 +182,12 @@ class TimeStepper{
 /**
  * @brief Explicit Euler time integration scheme.
  *
- * First-order explicit time stepping method. Simple but requires small time steps
+ * First-order explicit time stepping method. Simple, requires small time steps
  * for stability. Mainly used for testing and comparison purposes.
  */
 class ExplEuler : public TimeStepper {
-  Vec stage; ///< Intermediate stage vector
+  protected:
+  Vec stage; ///< Intermediate vector
   public:
     /**
      * @brief Constructor for explicit Euler scheme.
@@ -219,8 +227,8 @@ class ExplEuler : public TimeStepper {
 /**
  * @brief Implicit midpoint rule time integration scheme.
  *
- * Second-order implicit method with symplectic properties. The default time
- * integration scheme in Quandary due to its stability and conservation properties.
+ * Second-order implicit method with symplectic properties. This is the default and recommended
+ * time integration, due to its stability and energy conservation properties.
  *
  * Runge-Kutta tableau:
  * @code
@@ -230,7 +238,7 @@ class ExplEuler : public TimeStepper {
  * @endcode
  */
 class ImplMidpoint : public TimeStepper {
-
+  protected:
   Vec stage, stage_adj; ///< Intermediate stage vectors for forward and adjoint
   Vec rhs, rhs_adj; ///< Right-hand side vectors for forward and adjoint
   KSP ksp; ///< PETSc's linear solver context for GMRES
@@ -270,7 +278,7 @@ class ImplMidpoint : public TimeStepper {
     virtual void evolveFWD(const double tstart, const double tstop, Vec x);
 
     /**
-     * @brief Evolves adjoint backward using implicit midpoint rule.
+     * @brief Evolves adjoint backward using implicit midpoint rule and adds to reduced gradient.
      *
      * @param tstart Start time (backward evolution)
      * @param tstop Stop time (backward evolution)
@@ -302,6 +310,7 @@ class ImplMidpoint : public TimeStepper {
  * while achieving better accuracy for larger time steps.
  */
 class CompositionalImplMidpoint : public ImplMidpoint {
+  protected:
 
   std::vector<double> gamma; ///< Coefficients for compositional step sizes
   std::vector<Vec> x_stage; ///< Storage for primal states at intermediate stages
@@ -335,7 +344,7 @@ class CompositionalImplMidpoint : public ImplMidpoint {
     void evolveFWD(const double tstart, const double tstop, Vec x);
 
     /**
-     * @brief Evolves adjoint backward using compositional implicit midpoint rule.
+     * @brief Evolves adjoint backward using compositional implicit midpoint rule and accumulates gradient.
      *
      * @param tstart Start time (backward evolution)
      * @param tstop Stop time (backward evolution)

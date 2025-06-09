@@ -4,13 +4,14 @@
 #pragma once
 
 /**
- * @brief Optimization target specification and evaluation for quantum control.
+ * @brief Optimization target specification for quantum control.
  *
  * This class manages the target specification for quantum optimal control problems,
- * including gate optimization and pure state preparation. It handles target state
- * preparation, objective function evaluation, and gradient computation.
+ * including gate optimization and pure state preparation. It handles target and initial state
+ * preparation and the evaluation of the final-time objective function measure.
  */
 class OptimTarget{
+    protected:
 
     int dim; ///< State dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
     int dim_rho; ///< Dimension of Hilbert space = N
@@ -18,15 +19,15 @@ class OptimTarget{
     int noscillators; ///< Number of oscillators in the system
  
     TargetType target_type; ///< Type of optimization target (pure state preparation or gate optimization)
-    ObjectiveType objective_type; ///< Type of objective function (Frobenius, trace, measurement)
+    ObjectiveType objective_type; ///< Type of objective function measure (Frobenius, trace, pure-state measure)
     Gate *targetgate; ///< Pointer to target gate (if gate optimization)
     double purity_rho0; ///< Purity of initial state Tr(rho(0)^2)
-    int purestateID; ///< For pure state preparation: integer m for preparing e_m e_m^dagger
-    std::string target_filename; ///< Filename if target is read from file
-    Vec targetstate; ///< Target state vector (NULL for pure states, VrhoV^dagger for gates, density matrix from file)
+    int purestateID; ///< For pure state preparation: integer m for preparing the target state \f$ e_m e_m^{\dagger}\f$
+    std::string target_filename; ///< Filename if target state is read from file
+    Vec targetstate; ///< Storage for the target state vector (NULL for pure states, \f$V\rho V^\dagger\f$ for gates, density matrix from file)
     InitialConditionType initcond_type; ///< Type of initial conditions
     std::vector<size_t> initcond_IDs; ///< Integer list for pure-state initialization
-    LindbladType lindbladtype; ///< Type of decoherence (Lindblad vs Schroedinger)
+    LindbladType lindbladtype; ///< Type of Lindblad decoherence operators, or NONE for Schroedinger solver
 
     Vec aux; ///< Auxiliary vector for gate optimization objective computation
     bool quietmode; ///< Flag for quiet mode operation
@@ -79,20 +80,22 @@ class OptimTarget{
     /**
      * @brief Prepares the target state for gate optimization.
      *
-     * For gate optimization, computes the rotated target state V*rho*V^dagger
-     * for a given initial state rho. Also stores the purity of rho(0) for
-     * scaling the Hilbert-Schmidt overlap in the trace objective function.
+     * For gate optimization, computes the rotated target state \f$V \rho V^{\dagger}\f$
+     * for a given initial state \f$\rho\f$ and stores it locally as a class member. 
+     * Also stores the purity of \f$rho\f$ needed for scaling the Hilbert-Schmidt 
+     * overlap in the trace objective function.
      *
      * @param rho Initial state vector
      */
     void prepareTargetState(const Vec rho);
 
     /**
-     * @brief Evaluates the objective function J.
+     * @brief Evaluates the final-time objective function measure \f$J(\rho(T))\f$.
      *
      * The target state must be prepared and stored before calling this function.
-     * Returns both real and imaginary parts of the objective. The imaginary part
-     * is generally zero except for Schroedinger solver with trace objective.
+     * Returns both real and imaginary parts of the final-time measure. The imaginary part
+     * is generally zero except for Schroedinger solver with the trace objective 
+     * function measure.
      *
      * @param[in] state Current state vector
      * @param[out] J_re_ptr Pointer to store real part of objective
@@ -101,11 +104,11 @@ class OptimTarget{
     void evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr);
 
     /**
-     * @brief Computes derivative of objective function.
+     * @brief Computes derivative of the final-time objective function measure.
      *
      * Updates the adjoint state vector for gradient computation.
      *
-     * @param state Current state vector
+     * @param state Final-time state vector 
      * @param statebar Adjoint state vector to update
      * @param J_re_bar Adjoint of real part of objective
      * @param J_im_bar Adjoint of imaginary part of objective
@@ -114,7 +117,9 @@ class OptimTarget{
 
     /**
      * @brief Finalizes the objective function computation.
-     *
+     * 
+     * Compute the infidelity (1-fidelity).
+     * 
      * @param obj_cost_re Real part of objective cost
      * @param obj_cost_im Imaginary part of objective cost
      * @return double Final objective function value
@@ -134,7 +139,7 @@ class OptimTarget{
     /**
      * @brief Computes Frobenius distance between target and current state.
      *
-     * Calculates F = 1/2 ||targetstate - state||^2_F
+     * Calculates \f$F = 1/2 || \rho_{target} - \rho||^2_F\f$
      *
      * @param state Current state vector
      * @return double Frobenius distance
@@ -146,14 +151,14 @@ class OptimTarget{
      *
      * @param state Current state vector
      * @param statebar Adjoint state vector to update
-     * @param Jbar Adjoint of Frobenius distance
+     * @param Jbar Adjoint seed 
      */
     void FrobeniusDistance_diff(const Vec state, Vec statebar, const double Jbar);
 
     /**
      * @brief Computes Hilbert-Schmidt overlap between state and target.
      *
-     * Calculates Tr(state * target^dagger), optionally scaled by target purity.
+     * Calculates \f$ Tr(\rho^\dagger \rho_{target})\f$, optionally scaled by the purity of the target state.
      *
      * @param state Current state vector
      * @param scalebypurity Flag to scale by purity of target state

@@ -1,10 +1,10 @@
-#include "pythoninterface.hpp"
+#include "hamiltonianfilereader.hpp"
 
-PythonInterface::PythonInterface(){
+HamiltonianFileReader::HamiltonianFileReader(){
 }
 
 
-PythonInterface::PythonInterface(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_) {
+HamiltonianFileReader::HamiltonianFileReader(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_) {
 
   lindbladtype = lindbladtype_;
   dim_rho = dim_rho_;
@@ -13,10 +13,10 @@ PythonInterface::PythonInterface(std::string hamiltonian_file_, LindbladType lin
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 }
 
-PythonInterface::~PythonInterface(){
+HamiltonianFileReader::~HamiltonianFileReader(){
 }
 
-void PythonInterface::receiveHsys(Mat& Bd){
+void HamiltonianFileReader::receiveHsys(Mat& Bd){
   PetscInt ilow, iupp;
   MatGetOwnershipRange(Bd, &ilow, &iupp);
 
@@ -77,7 +77,7 @@ void PythonInterface::receiveHsys(Mat& Bd){
   }
 }
 
-void PythonInterface::receiveHc(int noscillators, std::vector<std::vector<Mat>>& Ac_vec, std::vector<std::vector<Mat>>& Bc_vec){
+void HamiltonianFileReader::receiveHc(int noscillators, std::vector<std::vector<Mat>>& Ac_vec, std::vector<std::vector<Mat>>& Bc_vec){
   PetscInt ilow, iupp;
   int success;
   std::string testheader;

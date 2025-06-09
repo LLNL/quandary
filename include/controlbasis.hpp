@@ -11,17 +11,20 @@
 /**
  * @brief Abstract base class for control parameterizations.
  *
- * The `ControlBasis` class defines the interface for various control parameterizations
- * used in quantum optimal control. Derived classes implement specific control schemes.
+ * The `ControlBasis` class defines the interface for various parameterizations of 
+ * the control pulses used for optimally driving the quantum dynamics. Derived classes 
+ * implement specific control parameterizations, such as the most standard 
+ * parameterization via 2nd order Bsplines. Specific control basis parameterizations 
+ * are initialized in the constructor of the oscillator. 
  */
 class ControlBasis {
     protected:
-        int nparams; ///< Number of parameters that define the controls.
+        int nparams; ///< Number of parameters that define the control pulse.
         double tstart; ///< Start time of the interval where the control basis is applied.
         double tstop; ///< Stop time of the interval where the control basis is applied.
         int skip; ///< Offset to the starting location for this basis inside the global control vector.
         ControlType controltype; ///< Type of control parameterization.
-        bool enforceZeroBoundary; ///< Flag to enforce zero boundary conditions for controls.
+        bool enforceZeroBoundary; ///< Flag to enforce zero boundary conditions for control pulses.
 
     public: 
         ControlBasis();
@@ -107,21 +110,21 @@ class ControlBasis {
          * @brief Enforces boundary conditions for controls (default implementation does nothing).
          *
          * For some control parameterizations, this can be used to enforce that the controls start and end at zero.
-         * For example, splines will overwrite the parameters of the first and last two splines by zero, ensuring
-         * that the splines start and end at zero.
+         * For example, the 2nd order Bspline parameterization  will overwrite the parameters of the first and last 
+         * two splines by zero, ensuring that the resulting control pulses start and end at zero.
          *
          * Default implementation ignores all input parameters.
          */
         virtual void enforceBoundary(double* /*x*/, int /*carrier_id*/) {};
 
         /**
-         * @brief Evaluates the control basis at a given time using coefficients.
+         * @brief Evaluates the control basis at a given time using the provided coefficients.
          *
          * @param[in] t Time at which to evaluate.
-         * @param[in] coeff Vector of coefficients.
-         * @param[in] carrier_freq_id ID of the carrier frequency.
-         * @param[out] Blt1 Pointer to store the first evaluated control value.
-         * @param[out] Blt2 Pointer to store the second evaluated control value.
+         * @param[in] coeff Vector of parameters (coefficients of the basis parameterization).
+         * @param[in] carrier_freq_id ID of the carrier frequency, provided by the oscillator.
+         * @param[out] Blt1 Pointer to store the real part of the control parameterization.
+         * @param[out] Blt2 Pointer to store the imaginary part of the control parameterization.
          */
         virtual void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1, double*Blt2) = 0;
 
@@ -131,15 +134,15 @@ class ControlBasis {
          * @param t Time at which to evaluate.
          * @param coeff Vector of coefficients.
          * @param coeff_diff Pointer to the derivative coefficients.
-         * @param valbar1 Multiplier for the first derivative term.
-         * @param valbar2 Multiplier for the second derivative term.
+         * @param valbar1 Multiplier for the real derivative term.
+         * @param valbar2 Multiplier for the imaginary derivative term.
          * @param carrier_freq_id ID of the carrier frequency.
          */
         virtual void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id)= 0;
 };
 
 /**
- * @brief Discretization of the Controls using quadratic Bsplines ala Anders Petersson.
+ * @brief Control parameterization using quadratic (2nd order) Bspline basis functions.
  *
  * Bspline basis functions have local support with width = 3*dtknot,
  * where dtknot = T/(nsplines -2) is the time knot vector spacing.
@@ -152,7 +155,7 @@ class BSpline2nd : public ControlBasis {
         double width; ///< Support of each basis function (m*dtknot).
 
         /**
-         * @brief Evaluate the bspline basis functions B_l(tau_l(t)).
+         * @brief Evaluate one basis function B_i(tau_i(t)).
          *
          * @param id Index of the basis function.
          * @param t Time at which to evaluate.
@@ -172,11 +175,12 @@ class BSpline2nd : public ControlBasis {
         BSpline2nd(int nsplines, double tstart, double tstop, bool enforceZeroBoundary);
 
         ~BSpline2nd();
-
+        
         int getNSplines() {return nsplines;};
 
         /**
-         * @brief Sets the first and last two spline coefficients in x to zero, so that the controls start and end at zero.
+         * @brief Sets the first and last two spline coefficients in x to zero for this carrier wave, 
+         * so that the controls start and end at zero.
          *
          * @param x Pointer to the control parameters.
          * @param carrier_id ID of the carrier wave.
@@ -189,9 +193,10 @@ class BSpline2nd : public ControlBasis {
 };
 
 /**
- * @brief Amplitude is parameterized by Bsplines, phase is time-independent.
+ * @brief Control parameterization where only the pulse amplitude is parameterized 
+ * by Bsplines, while the phase is time-independent.
  *
- * Discretization of the controls using quadratic Bsplines ala Anders Petersson.
+ * Discretization of the controls amplitudes using quadratic Bsplines.
  * Bspline basis functions have local support with width = 3 * dtknot, 
  * where dtknot = T / (nsplines - 2) is the time knot vector spacing.
  */
@@ -204,7 +209,7 @@ class BSpline2ndAmplitude : public ControlBasis {
         double scaling; ///< Scaling for the phase.
 
         /**
-         * @brief Evaluate the bspline basis functions B_l(tau_l(t)).
+         * @brief Evaluate one basis function B_i(tau_i(t)).
          *
          * @param id Index of the basis function.
          * @param t Time at which to evaluate.
@@ -214,7 +219,7 @@ class BSpline2ndAmplitude : public ControlBasis {
 
     public:
         /**
-         * @brief Constructor for quadratic Bsplines with amplitude parameterization.
+         * @brief Constructor for quadratic Bsplines for amplitude parameterization.
          *
          * @param nsplines Number of splines.
          * @param scaling Scaling factor for the phase.
@@ -226,11 +231,6 @@ class BSpline2ndAmplitude : public ControlBasis {
 
         ~BSpline2ndAmplitude();
 
-        /**
-         * @brief Retrieves the number of splines.
-         *
-         * @return int Number of splines.
-         */
         int getNSplines() {return nsplines;};
 
         /**
@@ -253,16 +253,16 @@ class BSpline2ndAmplitude : public ControlBasis {
  */
 class Step : public ControlBasis {
     protected:
-        double step_amp1; ///< Amplitude of the first step.
-        double step_amp2; ///< Amplitude of the second step.
+        double step_amp1; ///< Real part of amplitude of the step pulse.
+        double step_amp2; ///< Imaginary part of amplitude of the step pulse.
         double tramp; ///< Ramp time.
 
     public: 
         /**
          * @brief Constructor for the step function.
          *
-         * @param step_amp1_ Amplitude of the first step.
-         * @param step_amp2_ Amplitude of the second step.
+         * @param step_amp1_ Real amplitude of the step pulse.
+         * @param step_amp2_ Imaginary amplitude of the step pulse.
          * @param t0 Start time of the interval.
          * @param t1 Stop time of the interval.
          * @param tramp Ramp time.
@@ -272,26 +272,22 @@ class Step : public ControlBasis {
 
         ~Step();
 
-       /* Evaluate the spline at time t using the coefficients coeff. */
         void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1, double*Blt2);
 
         void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id);
 };
 
 /**
- * @brief Discretization of the Controls using piece-wise constant Bsplines.
+ * @brief Discretization of the Controls using piece-wise constant (0-th order) Bsplines.
  *
- * Bspline basis functions have local support with width = dtknot, 
- * where dtknot = T/nsplines is the time knot vector spacing.
+ * This class parameterizes the control pulse using 0-th order Bspline basis functions 
+ * (hat functions), with local support of width = T/nsplines.
  */
 class BSpline0 : public ControlBasis {
     protected:
-        /* Evaluate the bspline basis functions B_l(tau_l(t)) NOT USED */
         int nsplines; ///< Number of splines.
         double dtknot; ///< Spacing of time knot vector.
         double width; ///< Support of each basis function (m*dtknot).
-
-        // double bspl0(int id, double t);
 
     public:
         BSpline0(int nsplines, double tstart, double tstop, bool enforceZeroBoundary);
@@ -300,7 +296,8 @@ class BSpline0 : public ControlBasis {
         int getNSplines() {return nsplines;};
 
         /**
-         * @brief Sets the first and last parameter to zero for this carrier wave.
+         * @brief Sets the first and last parameter to zero for this carrier wave, 
+         * so that the controls start and end at zero.
          *
          * @param x Pointer to the control parameters array
          * @param carrier_id ID of the carrier wave
@@ -308,7 +305,7 @@ class BSpline0 : public ControlBasis {
         void enforceBoundary(double* x, int carrier_id);
 
         /**
-         * @brief Computes variation of control parameters.
+         * @brief Computes total variation of the control parameters.
          *
          * Computes \f$\frac{1}{n_{splines}} \sum_{splines} (\alpha_i - \alpha_{i-1})^2\f$.
          *
@@ -328,22 +325,22 @@ class BSpline0 : public ControlBasis {
          */
         virtual void computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID);
 
-        /* Evaluate the spline at time t using the coefficients coeff. */
         void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1_ptr, double* Blt2_ptr);
 
-        /* Evaluates the derivative at time t, multiplied with fbar. */
         void derivative(const double t, const std::vector<double>& coeff, double* coeff_diff, const double valbar1, const double valbar2, int carrier_freq_id);
 };
 
 /* 
- * @brief Abstract class to represent transfer functions that act on the controls.
+ * @brief Abstract class to represent transfer functions that act on time-dependent terms in Hamiltonian.
  *
  * This class evaluates `u(p(t))` or `v(q(t))`. By default, `u` and `v` are IdentityTransferFunctions.
  * Alternatively, `u` and `v` can be splineTransferFunctions, read from the Python interface.
+ * 
+ * @note Deprecated. The abstract base and derived classes are currently will be removed soon. Currently, only the derived CosineTransfer and SineTransfer functions are used in the master equation class to modify time-dependent system coefficients, such as time-depending coupling coefficients. 
  */
 class TransferFunction{
     protected: 
-        std::vector<double> onofftimes;  // Stores when transfer functions are active: They return their value only in [t0,t1] U [t2,t3] U ... and they return 0.0 otherwise (i.e., in [t1,t2] and [t3,t4], ...).
+        std::vector<double> onofftimes;  ///< Stores when transfer functions are active: They return their value only in [t0,t1] U [t2,t3] U ... and they return 0.0 otherwise (i.e., in [t1,t2] and [t3,t4], ...).
 
     public:
         TransferFunction();
