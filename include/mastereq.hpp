@@ -22,8 +22,8 @@ typedef struct {
   bool addT1, addT2;
   std::vector<double> control_Re;
   std::vector<double> control_Im;
-  std::vector<double> Hdt_coeff_re;
-  std::vector<double> Hdt_coeff_im;
+  std::vector<double> Bd_coeffs;
+  std::vector<double> Ad_coeffs;
   std::vector<Mat> Ac_vec;
   std::vector<Mat> Bc_vec;
   Mat *Ad, *Bd;

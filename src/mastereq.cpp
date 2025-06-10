@@ -133,8 +133,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     RHSctx.control_Im.push_back(0.0);
   }
 
-  for (int iosc = 0; iosc < noscillators*(noscillators-1)/2; iosc++) RHSctx.Hdt_coeff_re.push_back(0.0);
-  for (int iosc = 0; iosc < noscillators*(noscillators-1)/2; iosc++) RHSctx.Hdt_coeff_im.push_back(0.0);
+  for (int iosc = 0; iosc < noscillators*(noscillators-1)/2; iosc++) RHSctx.Bd_coeffs.push_back(0.0);
+  for (int iosc = 0; iosc < noscillators*(noscillators-1)/2; iosc++) RHSctx.Ad_coeffs.push_back(0.0);
 
   /* Set the MatMult routine for applying the RHS to a vector x */
   if (usematfree) { // matrix-free solver
@@ -697,8 +697,8 @@ int MasterEq::assemble_RHS(const double t){
 
   // Evaluate and store time-dependent system coefficients (Jkl terms)
   for (int k=0; k<noscillators*(noscillators-1)/2; k++){
-    RHSctx.Hdt_coeff_re[k] = cos(eta[k]*t); 
-    RHSctx.Hdt_coeff_im[k] = sin(eta[k]*t); 
+    RHSctx.Bd_coeffs[k] = cos(eta[k]*t); 
+    RHSctx.Ad_coeffs[k] = sin(eta[k]*t); 
   }
 
   return 0;
@@ -1171,11 +1171,10 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
   VecGetSubVector(xbar, isu, &ubar);
   VecGetSubVector(xbar, isv, &vbar);
 
-    /* Gradient wrt controls or learnable transfer functions */
+    /* Set the gradient wrt controls */
+    int col_shift = 0;
     double* grad_ptr;
     VecGetArray(grad, &grad_ptr);
-    // Set the initial skip in gradient elements wrt learnable hamiltonian or Lindblad.
-    int col_shift = 0;
    // Iterate over oscillators 
     for (int iosc= 0; iosc < noscillators; iosc++){
 
@@ -1191,10 +1190,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       double qbar = vAvbar + uAubar;
       double pbar = uBvbar - vBubar;
 
-      // Get the start of the gradient vector for this oscillator 
-      double* grad_for_this_oscillator = grad_ptr + col_shift;
-
-      /* Evaluate the gradient wrt controls (x_is_control) or learnable transfer (!x_is_control) */
+      double* grad_for_this_oscillator = grad_ptr + col_shift; 
       oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, alpha*pbar, alpha*qbar);
 
       // Set the shift in the gradient vector for the next oscillator
@@ -1268,19 +1264,19 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     double p = shellctx->control_Re[iosc];
     double q = shellctx->control_Im[iosc];
 
-      // uout += q^k*Acu
+    // uout += q^k*Acu
     MatMult(shellctx->Ac_vec[iosc], u, *shellctx->aux);
     VecAXPY(uout, q, *shellctx->aux); 
-      // vout += q^kAcv
+    // vout += q^kAcv
     MatMult(shellctx->Ac_vec[iosc], v, *shellctx->aux);
-      VecAXPY(vout, q, *shellctx->aux);
+    VecAXPY(vout, q, *shellctx->aux);
 
-      // uout -= p^kBcv
+    // uout -= p^kBcv
     MatMult(shellctx->Bc_vec[iosc], v, *shellctx->aux);
-      VecAXPY(uout, -1.*p, *shellctx->aux);
-      // vout += p^kBcu
+    VecAXPY(uout, -1.*p, *shellctx->aux);
+    // vout += p^kBcu
     MatMult(shellctx->Bc_vec[iosc], u, *shellctx->aux);
-      VecAXPY(vout, p, *shellctx->aux);
+    VecAXPY(vout, p, *shellctx->aux);
   }
 
   /* --- Apply time-dependent system Hamiltonian (Jaynes-Cumming) --- */
@@ -1288,8 +1284,8 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   int noscillators = shellctx->nlevels.size();
   for (int k= 0; k< noscillators*(noscillators-1)/2; k++) {
     if (fabs(shellctx->Jkl[k]) > 1e-12) { 
-      double coeff_re = shellctx->Hdt_coeff_re[k]; // = cos(etakl*t) 
-      double coeff_im = shellctx->Hdt_coeff_im[k]; // = sin(etakl*t)
+      double coeff_re = shellctx->Bd_coeffs[k]; // = cos(etakl*t) 
+      double coeff_im = shellctx->Ad_coeffs[k]; // = sin(etakl*t)
       if (fabs(coeff_re) > 1e-12) {
         // uout += -Jkl*cos*Bdklv
         MatMult(shellctx->Bd_vec[id_kl], v, *shellctx->aux);
@@ -1381,8 +1377,8 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   int noscillators = shellctx->nlevels.size();
   for (int k= 0; k< noscillators*(noscillators-1)/2; k++) {
     if (fabs(shellctx->Jkl[k]) > 1e-12) { 
-      double coeff_re = shellctx->Hdt_coeff_re[k]; // = cos(etakl*t) 
-      double coeff_im = shellctx->Hdt_coeff_im[k]; // = sin(etakl*t)
+      double coeff_re = shellctx->Bd_coeffs[k]; // = cos(etakl*t) 
+      double coeff_im = shellctx->Ad_coeffs[k]; // = sin(etakl*t)
       if (fabs(coeff_re) > 1e-12) {
         // uout += +Jkl*cos*Bdklv^T
         MatMultTranspose(shellctx->Bd_vec[id_kl], v, *shellctx->aux);

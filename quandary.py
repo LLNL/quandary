@@ -203,6 +203,10 @@ class Quandary:
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
+        if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
+            self.standardmodel=False   
+        else: # Using standard Hamiltonian model. Set it up only if needed for computing dT or the carrier wave frequencies later
+            self.standardmodel=True
         if len(self.targetstate) > 0:
             self.optim_target = "file"
         if len(self.targetgate) > 0:
