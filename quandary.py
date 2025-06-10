@@ -373,7 +373,9 @@ class Quandary:
 
         # Copy original setting and overwrite number of time steps for simulation
         nsteps_org = self.nsteps
+        dT_org = self.dT
         self.nsteps = int(np.floor(self.T * points_per_ns))
+        self.dT = self.T/self.nsteps
     
         datadir = resolve_datadir(datadir)
 
@@ -390,6 +392,7 @@ class Quandary:
     
         # Restore original setting
         self.nsteps = nsteps_org
+        self.dT = dT_org 
 
         return time, pt, qt
 
