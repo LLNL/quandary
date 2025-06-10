@@ -15,7 +15,20 @@
  *
  * This abstract class provides the interface for time-stepping methods used to
  * integrate the quantum evolution equations (Lindblad master equation or Schroedinger
- * equation). It supports both forward and adjoint time integration, handles output of evolution data, and evaluates penalty integral terms.
+ * equation). It supports both forward and adjoint time integration, handles output of evolution data, 
+ * and evaluates penalty integral terms.
+ * 
+ * Main functionality:
+ *    - @ref solveODE propagates an initial state at time t0 to the final time T, while writing evolution data to
+ *      files and adding to integral penalty terms, if needed. 
+ *    - @ref solveAdjointODE propagates a terminal (adjoint) condition through the time domain backwards in time 
+ *      from T to 0, while updating the reduced gradient along the way. 
+ * 
+ * This class contains references to:
+ *    - @ref MasterEq for evaluating and applying the right-hand-side system matrix of the real-valued, vectorized
+ *      differential equation to a state vector at each time-step
+ *    - @ref OptimTarget for evaluating integral penalty terms at each time step
+ *    - @ref Output for writing evolution data to output files at each time step
  */
 class TimeStepper{
   protected:

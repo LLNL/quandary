@@ -9,6 +9,15 @@
  * This class manages the target specification for quantum optimal control problems,
  * including gate optimization and pure state preparation. It handles target and initial state
  * preparation and the evaluation of the final-time objective function measure.
+ * 
+ * Main functionality: 
+ *    - @ref prepareInitialState prepares and returns the states at time t=0, depending on what the optimization 
+ *       target is
+ *    - @ref prepareTargetState prepares and stores the corresponding target state for this initial state
+ *    - @ref evalJ for computing the final-time objective function measure
+ * 
+ * This class contains references to:
+ *    - @ref Gate for evaluating the target state for quantum gate optimization
  */
 class OptimTarget{
     protected:

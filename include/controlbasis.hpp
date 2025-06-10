@@ -12,10 +12,15 @@
  * @brief Abstract base class for control parameterizations.
  *
  * The `ControlBasis` class defines the interface for various parameterizations of 
- * the control pulses used for optimally driving the quantum dynamics. Derived classes 
- * implement specific control parameterizations, such as the most standard 
- * parameterization via 2nd order Bsplines. Specific control basis parameterizations 
- * are initialized in the constructor of the oscillator. 
+ * the control pulse envelopes, which are multiplied by carrier waves
+ * in the Oscillator class. Derived classes implement specific control parameterizations, 
+ * such as the most standard parameterization via 2nd order Bsplines. Specific control 
+ * parameterizations are initialized in the constructor of the oscillator. 
+ * 
+ * Main functionality:
+ *      - @ref evaluate        for computing the outer envelop shape of the pulses at given time t
+ *      - @ref derivative      for updating the local gradient of the @ref evaluate function
+ *      - @ref enforceBoundary for setting pulse shape envelopes to zero at initial and final time
  */
 class ControlBasis {
     protected:

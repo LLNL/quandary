@@ -25,8 +25,24 @@
  * @brief Optimization problem solver for quantum optimal control.
  *
  * This class manages the optimization of quantum control pulses using PETSc's TAO
- * optimization library. It handles objective function evaluation, gradient computation,
- * and the overall optimization process for quantum gates and state preparation.
+ * optimization library. It handles objective function evaluation, by propagating initial states 
+ * forward in time solving the dynamical equation and computing the final-time objective cost function 
+ * and integral penalty terms, as well as the gradient computation by backpropagating the adjoint 
+ * terminal states backwards in time solving the adjoint dynamical equation and collecting gradient
+ * contributions. It further defines the interface functions for PETSc's TAO optimization 
+ * via L-BFGS, including a callback function to monitor optimization progress. 
+ * 
+ * Main functionality:
+ *    - @ref evalF evaluates the objective function by calling @ref TimeStepper::solveODE to evolve initial states 
+ *      to final time T and summing up the objective function measure over each target state
+ *    - @ref evalGradF evaluates the objective function and its gradient with respect to the optimization parameters
+ *       by calling @ref TimeStepper::solveODE and @ref TimeStepper::solveAdjointODE to propagate initial states
+ *       forward and backward through the time domain while accumulating objective and gradient information.
+ * 
+ * This class contains references to:
+ *    - @ref TimeStepper for handling the forward and backward time stepping process
+ *    - @ref OptimTarget for evaluating the final-time cost for each initial condition
+ *    - @ref Output      for writing monitored optimization convergence to file
  */
 class OptimProblem {
   protected:

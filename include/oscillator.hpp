@@ -31,7 +31,19 @@ struct PiPulse {
  * This class represents a single quantum oscillator that is controlled by external 
  * control pulses. It stores the oscillator parameters, such as number of energy levels, 
  * frequency detuning, anharmonicity and Lindblad decay and dephasing times.  
- * It also manages this oscillator's control pulse parameterization.
+ * It also manages this oscillator's control pulse parameterization and carrier wave frequencies.
+ * 
+ * Main functionality:
+ *    - @ref evalControl computes the rotating-frame pulses p(t) & q(t) at a given time t. Those pulses are products
+ *      of fixed-frequency carrier waves multiplied with an outer envelop (spline) whose shape is defined through the
+ *      control parameters (@ref params) and their corresponding basis functions defined in the @ref ControlBasis. 
+ *    - @ref expectedEnergy and @ref population for computing this oscillators expected Energy and level occupations
+ *      given a current state
+ *    - @ref evalControlVariation for evaluating control parameter variations used as penalty term in the optimization
+ * 
+ * This class contains references to:
+ *    - Vector of @ref ControlBasis for evaluating the oscillators control pulse envelop (e.g. Bspline) at a given
+ *      time t
  */
 class Oscillator {
   protected:

@@ -11,7 +11,7 @@
 #pragma once
 
 /**
- * @brief MatShell context containing data needed for applying the right-hand-side system matrix to a vector.
+ * @brief MatShell context containing data needed for applying the right-hand-side (RHS) system matrix to a vector.
  *
  * This structure holds all the necessary data for applying the real-valued 
  * and vectorized system matrix to a state vector.
@@ -64,11 +64,25 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y); ///< Transpose sparse m
  * @brief Implementation of the real-valued right-hand-side (RHS) system matrix of the quantum dynamical equations.
  *
  * This class provides functionality for evaluating and applying the real-valued right-hand-side (RHS) 
- * system matrix of the vectorized Lindblad master equation (open quantum systems, \f$M = \text{vec}(-i(H(t)\rho - \rho H(t)) + \text{Lindblad terms})\f$) 
- * or Schroedinger equation (closed systems\f$M = -iH(t)\f$). 
- * The system matrix (RHS) is stored as a Matrix Shell, and needs to be assembled and applied at each 
- * time step during the forward and backward time evolution of the timestepper. 
- * It supports a matrix-free and a sparse-matrix version for applying the system matrix to a state vector.
+ * system matrix of the vectorized Lindblad master equation (open quantum systems) or Schroedinger equation 
+ * (closed systems). It supports a matrix-free and a sparse-matrix version for applying the RHS to a state vector. 
+ * The system matrix (RHS) is stored as a Matrix Shell, that applies the real and imaginary parts of 
+ * the system matrix to the corresponding parts of the state vector separately. The RHS needs to be assembled 
+ * (evaluated at each time step t) before usage.  
+ * 
+ * Main functionality:
+ *    - @ref assemble_RHS  for preparing the RHS system matrix shell with current control pulse values at given 
+ *      time t. 
+ *    - @ref computedRHSdp for updating the gradient with += x^T*RHS(t)^T*x_bar, where x & x_bar are the primal and 
+ *      adjoint state at time t
+ *    - @ref setControlAmplitudes for passing the global optimization vector to each oscillator
+ *    - @ref expectedEnergy and @ref population for evaluating expected energy level and level occupations of the 
+ *      full composite system.
+ *    - definition of MatMult interface functions to multiply the RHS matrix shell to a state vector (sparse matrix
+ *      multiplication or matrix-free multiplication)
+ * 
+ * This class contains references to:
+ *    - Array of @ref Oscillator for defining the Hamiltonian matrices for each subsystem (oscillator) and for evaluating their time-dependent control pulses at each time step
  */
 class MasterEq{
 
