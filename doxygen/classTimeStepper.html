@@ -113,7 +113,7 @@ Collaboration diagram for TimeStepper:</div>
 <area shape="poly" title=" " alt="" coords="175,304,200,331,241,355,238,360,196,335,171,308"/>
 <area shape="rect" href="classOscillator.html" title="Quantum oscillator (multi&#45;level qubit) with control capabilities." alt="" coords="5,93,89,119"/>
 <area shape="poly" title=" " alt="" coords="40,133,33,169,34,188,40,205,56,226,77,243,123,267,120,272,74,248,53,230,36,208,29,189,28,169,35,132"/>
-<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the right&#45;hand&#45;side system matrix to a vector." alt="" coords="115,181,217,207"/>
+<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the right&#45;hand&#45;side (RHS) system matrix to a vec..." alt="" coords="115,181,217,207"/>
 <area shape="poly" title=" " alt="" coords="76,125,151,179,148,183,73,129"/>
 <area shape="rect" href="structPiPulse.html" title="Structure for storing pi&#45;pulse parameters." alt="" coords="13,5,82,31"/>
 <area shape="poly" title=" " alt="" coords="50,45,50,93,45,93,45,45"/>
@@ -247,7 +247,16 @@ Protected Attributes</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Base class for time integration schemes to evolve the quantum dynamics. </p>
-<p>This abstract class provides the interface for time-stepping methods used to integrate the quantum evolution equations (Lindblad master equation or Schroedinger equation). It supports both forward and adjoint time integration, handles output of evolution data, and evaluates penalty integral terms. </p>
+<p>This abstract class provides the interface for time-stepping methods used to integrate the quantum evolution equations (Lindblad master equation or Schroedinger equation). It supports both forward and adjoint time integration, handles output of evolution data, and evaluates penalty integral terms.</p>
+<p>Main functionality:</p><ul>
+<li><a class="el" href="classTimeStepper.html#ae2be974cc2dd652299ba12a36ffece58">solveODE</a> propagates an initial state at time t0 to the final time T, while writing evolution data to files and adding to integral penalty terms, if needed.</li>
+<li><a class="el" href="classTimeStepper.html#aab958d4087d5b20f0f6f6695560d05c4">solveAdjointODE</a> propagates a terminal (adjoint) condition through the time domain backwards in time from T to 0, while updating the reduced gradient along the way.</li>
+</ul>
+<p>This class contains references to:</p><ul>
+<li><a class="el" href="classMasterEq.html">MasterEq</a> for evaluating and applying the right-hand-side system matrix of the real-valued, vectorized differential equation to a state vector at each time-step</li>
+<li><a class="el" href="classOptimTarget.html">OptimTarget</a> for evaluating integral penalty terms at each time step</li>
+<li><a class="el" href="classOutput.html">Output</a> for writing evolution data to output files at each time step </li>
+</ul>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a88c17d2b22882ca947e83c25e903be1d" name="a88c17d2b22882ca947e83c25e903be1d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a88c17d2b22882ca947e83c25e903be1d">&#9670;&#160;</a></span>TimeStepper() <span class="overload">[1/2]</span></h2>

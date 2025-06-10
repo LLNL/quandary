@@ -109,7 +109,7 @@ Collaboration diagram for OptimProblem:</div>
 <area shape="poly" title=" " alt="" coords="151,309,152,333,153,357,148,357,147,333,146,309"/>
 <area shape="rect" href="classOscillator.html" title="Quantum oscillator (multi&#45;level qubit) with control capabilities." alt="" coords="50,93,134,119"/>
 <area shape="poly" title=" " alt="" coords="86,132,80,168,81,187,85,206,95,224,107,241,134,267,131,271,103,245,90,227,80,208,76,188,75,168,81,132"/>
-<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the right&#45;hand&#45;side system matrix to a vector." alt="" coords="160,181,261,207"/>
+<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the right&#45;hand&#45;side (RHS) system matrix to a vec..." alt="" coords="160,181,261,207"/>
 <area shape="poly" title=" " alt="" coords="121,125,196,179,193,183,118,129"/>
 <area shape="rect" href="structPiPulse.html" title="Structure for storing pi&#45;pulse parameters." alt="" coords="57,5,127,31"/>
 <area shape="poly" title=" " alt="" coords="95,45,95,93,89,93,89,45"/>
@@ -335,7 +335,16 @@ Protected Attributes</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Optimization problem solver for quantum optimal control. </p>
-<p>This class manages the optimization of quantum control pulses using PETSc's TAO optimization library. It handles objective function evaluation, gradient computation, and the overall optimization process for quantum gates and state preparation. </p>
+<p>This class manages the optimization of quantum control pulses using PETSc's TAO optimization library. It handles objective function evaluation, by propagating initial states forward in time solving the dynamical equation and computing the final-time objective cost function and integral penalty terms, as well as the gradient computation by backpropagating the adjoint terminal states backwards in time solving the adjoint dynamical equation and collecting gradient contributions. It further defines the interface functions for PETSc's TAO optimization via L-BFGS, including a callback function to monitor optimization progress.</p>
+<p>Main functionality:</p><ul>
+<li><a class="el" href="classOptimProblem.html#aae59b46a85bc1917c21f45d4fba361e2">evalF</a> evaluates the objective function by calling <a class="el" href="classTimeStepper.html#ae2be974cc2dd652299ba12a36ffece58">TimeStepper::solveODE</a> to evolve initial states to final time T and summing up the objective function measure over each target state</li>
+<li><a class="el" href="classOptimProblem.html#a61f9f0c7dd52a454b8cc5823315bc473">evalGradF</a> evaluates the objective function and its gradient with respect to the optimization parameters by calling <a class="el" href="classTimeStepper.html#ae2be974cc2dd652299ba12a36ffece58">TimeStepper::solveODE</a> and <a class="el" href="classTimeStepper.html#aab958d4087d5b20f0f6f6695560d05c4">TimeStepper::solveAdjointODE</a> to propagate initial states forward and backward through the time domain while accumulating objective and gradient information.</li>
+</ul>
+<p>This class contains references to:</p><ul>
+<li><a class="el" href="classTimeStepper.html">TimeStepper</a> for handling the forward and backward time stepping process</li>
+<li><a class="el" href="classOptimTarget.html">OptimTarget</a> for evaluating the final-time cost for each initial condition</li>
+<li><a class="el" href="classOutput.html">Output</a> for writing monitored optimization convergence to file </li>
+</ul>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="af1945265d6399722dc335ec2fb6b6b66" name="af1945265d6399722dc335ec2fb6b6b66"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#af1945265d6399722dc335ec2fb6b6b66">&#9670;&#160;</a></span>OptimProblem()</h2>

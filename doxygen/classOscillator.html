@@ -242,7 +242,15 @@ Protected Attributes</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Quantum oscillator (multi-level qubit) with control capabilities. </p>
 <p>This class represents a single quantum oscillator that is controlled by external control pulses. It stores the oscillator parameters, such as number of energy levels, frequency detuning, anharmonicity and Lindblad decay and dephasing times. <br  />
- It also manages this oscillator's control pulse parameterization. </p>
+ It also manages this oscillator's control pulse parameterization and carrier wave frequencies.</p>
+<p>Main functionality:</p><ul>
+<li><a class="el" href="classOscillator.html#ac96812d204d02d2965f6c59a7b9d2493">evalControl</a> computes the rotating-frame pulses p(t) &amp; q(t) at a given time t. Those pulses are products of fixed-frequency carrier waves multiplied with an outer envelop (spline) whose shape is defined through the control parameters (<a class="el" href="classOscillator.html#aa0f4328787ff7d8bdc06dac4fbd9abc9">params</a>) and their corresponding basis functions defined in the <a class="el" href="classControlBasis.html">ControlBasis</a>.</li>
+<li><a class="el" href="classOscillator.html#a3382fadf8efb599c9757e6f273084237">expectedEnergy</a> and <a class="el" href="classOscillator.html#a8b2aad8df5555fff65a458ce745f9004">population</a> for computing this oscillators expected Energy and level occupations given a current state</li>
+<li><a class="el" href="classOscillator.html#a38c27fb9e2811b938ec40e2ca9068bc7">evalControlVariation</a> for evaluating control parameter variations used as penalty term in the optimization</li>
+</ul>
+<p>This class contains references to:</p><ul>
+<li>Vector of <a class="el" href="classControlBasis.html">ControlBasis</a> for evaluating the oscillators control pulse envelop (e.g. Bspline) at a given time t </li>
+</ul>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a99fd3a4a9ef26a4f8025ac7a519d900b" name="a99fd3a4a9ef26a4f8025ac7a519d900b"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a99fd3a4a9ef26a4f8025ac7a519d900b">&#9670;&#160;</a></span>Oscillator() <span class="overload">[1/2]</span></h2>
