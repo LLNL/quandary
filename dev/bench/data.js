@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1747927696347,
+  "lastUpdate": 1749583320088,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -395,6 +395,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 5036.84,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Stefanie Guenther",
+            "username": "steffi7574",
+            "email": "guenther5@llnl.gov"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c8f795b07baa5d7e4682ce3c0875d8d96aee0451",
+          "message": "Merge pull request #58 from LLNL/bugfix-evalControls\n\nBugfix evalControls: update timestepsize to match sampling rate.",
+          "timestamp": "2025-06-10T18:46:38Z",
+          "url": "https://github.com/LLNL/quandary/commit/c8f795b07baa5d7e4682ce3c0875d8d96aee0451"
+        },
+        "date": 1749583318790,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 1.1812538718880388,
+            "unit": "seconds",
+            "range": "0.2801760760886532"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 90.61,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 19.572411097981966,
+            "unit": "seconds",
+            "range": "0.0678608321158382"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 5041.7,
             "unit": "MB"
           }
         ]
