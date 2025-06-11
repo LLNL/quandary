@@ -97,7 +97,7 @@ Collaboration diagram for MasterEq:</div>
 <area shape="rect" title="Implementation of the real&#45;valued right&#45;hand&#45;side (RHS) system matrix of the quantum dynamical equati..." alt="" coords="6,269,89,295"/>
 <area shape="rect" href="classOscillator.html" title="Quantum oscillator (multi&#45;level qubit) with control capabilities." alt="" coords="5,93,89,119"/>
 <area shape="poly" title=" " alt="" coords="45,133,41,168,41,207,48,269,43,269,35,207,36,167,40,132"/>
-<area shape="rect" href="structMatShellCtx.html" title="MatShell context containing data needed for applying the right&#45;hand&#45;side (RHS) system matrix to a vec..." alt="" coords="115,181,217,207"/>
+<area shape="rect" href="structMatShellCtx.html" title="Matrix shell context containing data needed for applying the right&#45;hand&#45;side (RHS) system matrix to a..." alt="" coords="115,181,217,207"/>
 <area shape="poly" title=" " alt="" coords="76,125,151,179,148,183,73,129"/>
 <area shape="rect" href="structPiPulse.html" title="Structure for storing pi&#45;pulse parameters." alt="" coords="13,5,82,31"/>
 <area shape="poly" title=" " alt="" coords="50,45,50,93,45,93,45,45"/>
@@ -114,6 +114,9 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a7feb871a226f4ca659cc0b079ed5a3ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af9b8723f0500416cd3d2fcdd14fd9483" id="r_af9b8723f0500416cd3d2fcdd14fd9483"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#af9b8723f0500416cd3d2fcdd14fd9483">~MasterEq</a> ()</td></tr>
 <tr class="separator:af9b8723f0500416cd3d2fcdd14fd9483"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9e3fcf025c5e78f7cd5bed77d48660a7" id="r_a9e3fcf025c5e78f7cd5bed77d48660a7"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a9e3fcf025c5e78f7cd5bed77d48660a7">set_RHS_MatMult_operation</a> ()</td></tr>
+<tr class="memdesc:a9e3fcf025c5e78f7cd5bed77d48660a7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pass MatMult operations for applying the RHS to PETSc.  <br /></td></tr>
+<tr class="separator:a9e3fcf025c5e78f7cd5bed77d48660a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aad34fc836f709483b81b724d8ec9f94c" id="r_aad34fc836f709483b81b724d8ec9f94c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#aad34fc836f709483b81b724d8ec9f94c">initSparseMatSolver</a> ()</td></tr>
 <tr class="memdesc:aad34fc836f709483b81b724d8ec9f94c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes matrices needed for the sparse matrix solver.  <br /></td></tr>
 <tr class="separator:aad34fc836f709483b81b724d8ec9f94c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -136,11 +139,11 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:aadb9c6cdd2162ee2df713e40a72f7d5c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Assembles the real-valued system matrix (RHS) at time t.  <br /></td></tr>
 <tr class="separator:aadb9c6cdd2162ee2df713e40a72f7d5c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a114fff980e3a46ceeb53bbd7167c416f" id="r_a114fff980e3a46ceeb53bbd7167c416f"><td class="memItemLeft" align="right" valign="top">Mat&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#a114fff980e3a46ceeb53bbd7167c416f">getRHS</a> ()</td></tr>
-<tr class="memdesc:a114fff980e3a46ceeb53bbd7167c416f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the right-hand-side matrix.  <br /></td></tr>
+<tr class="memdesc:a114fff980e3a46ceeb53bbd7167c416f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the right-hand-side system matrix.  <br /></td></tr>
 <tr class="separator:a114fff980e3a46ceeb53bbd7167c416f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aefff9fce71e094f6b2d25c70caf6ef22" id="r_aefff9fce71e094f6b2d25c70caf6ef22"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#aefff9fce71e094f6b2d25c70caf6ef22">computedRHSdp</a> (const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad)</td></tr>
-<tr class="memdesc:aefff9fce71e094f6b2d25c70caf6ef22"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes gradient of RHS with respect to control parameters.  <br /></td></tr>
-<tr class="separator:aefff9fce71e094f6b2d25c70caf6ef22"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afd3d3d8301ab8e3d23a59601f1dd0665" id="r_afd3d3d8301ab8e3d23a59601f1dd0665"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#afd3d3d8301ab8e3d23a59601f1dd0665">compute_dRHS_dParams</a> (const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad)</td></tr>
+<tr class="memdesc:afd3d3d8301ab8e3d23a59601f1dd0665"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes gradient of RHS with respect to control parameters.  <br /></td></tr>
+<tr class="separator:afd3d3d8301ab8e3d23a59601f1dd0665"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af747a9c4013860f785cd80fe52e7f457" id="r_af747a9c4013860f785cd80fe52e7f457"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html#af747a9c4013860f785cd80fe52e7f457">setControlAmplitudes</a> (const Vec x)</td></tr>
 <tr class="memdesc:af747a9c4013860f785cd80fe52e7f457"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pass control parameters from global design vector to each oscillator.  <br /></td></tr>
 <tr class="separator:af747a9c4013860f785cd80fe52e7f457"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -242,7 +245,7 @@ Protected Attributes</h2></td></tr>
 </p>
 <p>Main functionality:</p><ul>
 <li><a class="el" href="classMasterEq.html#aadb9c6cdd2162ee2df713e40a72f7d5c">assemble_RHS</a> for preparing the RHS system matrix shell with current control pulse values at given time t.</li>
-<li><a class="el" href="classMasterEq.html#aefff9fce71e094f6b2d25c70caf6ef22">computedRHSdp</a> for updating the gradient with += x^T*RHS(t)^T*x_bar, where x &amp; x_bar are the primal and adjoint state at time t</li>
+<li><a class="el" href="classMasterEq.html#afd3d3d8301ab8e3d23a59601f1dd0665">compute_dRHS_dParams</a> for updating the gradient with += x^T*RHS(t)^T*x_bar, where x &amp; x_bar are the primal and adjoint state at time t</li>
 <li><a class="el" href="classMasterEq.html#af747a9c4013860f785cd80fe52e7f457">setControlAmplitudes</a> for passing the global optimization vector to each oscillator</li>
 <li><a class="el" href="classMasterEq.html#aae5fbd62a0766d20ec823a001da6f570">expectedEnergy</a> and <a class="el" href="classMasterEq.html#a9308372d3f1aa99517dd313d5d2a4cd9">population</a> for evaluating expected energy level and level occupations of the full composite system.</li>
 <li>definition of MatMult interface functions to multiply the RHS matrix shell to a state vector (sparse matrix multiplication or matrix-free multiplication)</li>
@@ -396,7 +399,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Assembles the real-valued system matrix (RHS) at time t. </p>
-<p>Schroedinger solver: Assembles the operator \(M = \text{vec}(-iH(t))\). Lindblad solver: Assembles the operator \(M = \text{vec}(-i(H(t)\rho - \rho H(t)) + \text{Lindblad terms})\). Must be called before applying the RHS matrix.</p>
+<p>Updates the time-dependent parameters in the RHS MatShell context. This must be called before applying the RHS to a state vector.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">t</td><td>Current time </td></tr>
@@ -407,14 +410,14 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="aefff9fce71e094f6b2d25c70caf6ef22" name="aefff9fce71e094f6b2d25c70caf6ef22"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aefff9fce71e094f6b2d25c70caf6ef22">&#9670;&#160;</a></span>computedRHSdp()</h2>
+<a id="afd3d3d8301ab8e3d23a59601f1dd0665" name="afd3d3d8301ab8e3d23a59601f1dd0665"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afd3d3d8301ab8e3d23a59601f1dd0665">&#9670;&#160;</a></span>compute_dRHS_dParams()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void MasterEq::computedRHSdp </td>
+          <td class="memname">void MasterEq::compute_dRHS_dParams </td>
           <td>(</td>
           <td class="paramtype">const double&#160;</td>
           <td class="paramname"><em>t</em>, </td>
@@ -452,7 +455,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Computes gradient of RHS with respect to control parameters. </p>
-<p>Computes grad += alpha * <a class="el" href="classMasterEq.html#ab200ca6b9a16be33b8ee7313c41f20d2" title="MatShell for real-valued, vectorized system matrix (size 2N^2 x 2N^2)">RHS(x)</a>^T * x_bar.</p>
+<p>Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar. Supports both the sparse-matrix and the matrix-free version of the RHS.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">t</td><td>Current time </td></tr>
@@ -498,6 +501,9 @@ Protected Attributes</h2></td></tr>
 
 <div class="memitem">
 <div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname">int MasterEq::getDim </td>
@@ -506,6 +512,11 @@ Protected Attributes</h2></td></tr>
           <td></td>
         </tr>
       </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
 <p>Retrieves the dimension of the vectorized system. </p>
@@ -518,6 +529,9 @@ Protected Attributes</h2></td></tr>
 
 <div class="memitem">
 <div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname">int MasterEq::getDimEss </td>
@@ -526,6 +540,11 @@ Protected Attributes</h2></td></tr>
           <td></td>
         </tr>
       </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
 <p>Retrieves the dimension of the essential level system. </p>
@@ -538,6 +557,9 @@ Protected Attributes</h2></td></tr>
 
 <div class="memitem">
 <div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname">int MasterEq::getDimRho </td>
@@ -546,6 +568,11 @@ Protected Attributes</h2></td></tr>
           <td></td>
         </tr>
       </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
 <p>Retrieves the dimension of the density matrix. </p>
@@ -558,6 +585,9 @@ Protected Attributes</h2></td></tr>
 
 <div class="memitem">
 <div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname">size_t MasterEq::getNOscillators </td>
@@ -566,6 +596,11 @@ Protected Attributes</h2></td></tr>
           <td></td>
         </tr>
       </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
 <p>Retrieves the number of oscillators in the system. </p>
@@ -578,6 +613,9 @@ Protected Attributes</h2></td></tr>
 
 <div class="memitem">
 <div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname"><a class="el" href="classOscillator.html">Oscillator</a> * MasterEq::getOscillator </td>
@@ -587,6 +625,11 @@ Protected Attributes</h2></td></tr>
           <td></td>
         </tr>
       </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
 <p>Retrieves the i-th oscillator. </p>
@@ -615,8 +658,8 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Retrieves the right-hand-side matrix. </p>
-<dl class="section return"><dt>Returns</dt><dd>Mat PETSc matrix object </dd></dl>
+<p>Retrieves the right-hand-side system matrix. </p>
+<dl class="section return"><dt>Returns</dt><dd>Mat PETSc matrix shell object representing the RHS. </dd></dl>
 
 </div>
 </div>
@@ -673,6 +716,26 @@ Protected Attributes</h2></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="a9e3fcf025c5e78f7cd5bed77d48660a7" name="a9e3fcf025c5e78f7cd5bed77d48660a7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9e3fcf025c5e78f7cd5bed77d48660a7">&#9670;&#160;</a></span>set_RHS_MatMult_operation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MasterEq::set_RHS_MatMult_operation </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Pass MatMult operations for applying the RHS to PETSc. </p>
+<p>The RHS is stored as a Matrix Shell. This routine passes the (transpose) Matrix-Multiplication operation for applying the RHS to a state vector to PETSc. </p>
 
 </div>
 </div>

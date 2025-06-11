@@ -228,7 +228,7 @@ This graph shows which files directly or indirectly include this file:</div>
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html">MatShellCtx</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">MatShell context containing data needed for applying the right-hand-side (RHS) system matrix to a vector.  <a href="structMatShellCtx.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix shell context containing data needed for applying the right-hand-side (RHS) system matrix to a vector.  <a href="structMatShellCtx.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMasterEq.html">MasterEq</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Implementation of the real-valued right-hand-side (RHS) system matrix of the quantum dynamical equations.  <a href="classMasterEq.html#details">More...</a><br /></td></tr>
@@ -236,74 +236,80 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a51afc704134d4d253dabccbb0b74ccb0" id="r_a51afc704134d4d253dabccbb0b74ccb0"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a51afc704134d4d253dabccbb0b74ccb0">myMatMult_matfree_1Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:a51afc704134d4d253dabccbb0b74ccb0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Interface for Matrix-vector products to apply the RHS system matrix to a state.  <br /></td></tr>
-<tr class="separator:a51afc704134d4d253dabccbb0b74ccb0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a29911a6f06e34dadc8ca88eedbe433a1" id="r_a29911a6f06e34dadc8ca88eedbe433a1"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a29911a6f06e34dadc8ca88eedbe433a1">myMatMultTranspose_matfree_1Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:a29911a6f06e34dadc8ca88eedbe433a1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose matrix-free solver for 1 oscillator.  <br /></td></tr>
-<tr class="separator:a29911a6f06e34dadc8ca88eedbe433a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acc1f746c70fd004036f87beae614c1cf" id="r_acc1f746c70fd004036f87beae614c1cf"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#acc1f746c70fd004036f87beae614c1cf">myMatMult_matfree_2Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:acc1f746c70fd004036f87beae614c1cf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver for 2 oscillators.  <br /></td></tr>
-<tr class="separator:acc1f746c70fd004036f87beae614c1cf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0fef44cebdfdb5624036cebb4c83e6bb" id="r_a0fef44cebdfdb5624036cebb4c83e6bb"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a0fef44cebdfdb5624036cebb4c83e6bb">myMatMultTranspose_matfree_2Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:a0fef44cebdfdb5624036cebb4c83e6bb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose matrix-free solver for 2 oscillators.  <br /></td></tr>
-<tr class="separator:a0fef44cebdfdb5624036cebb4c83e6bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afd69ebcffc76a1b1d769f38d0869f7d4" id="r_afd69ebcffc76a1b1d769f38d0869f7d4"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#afd69ebcffc76a1b1d769f38d0869f7d4">myMatMult_matfree_3Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:afd69ebcffc76a1b1d769f38d0869f7d4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver for 3 oscillators.  <br /></td></tr>
-<tr class="separator:afd69ebcffc76a1b1d769f38d0869f7d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aadd2b7b46eda1bb4a04e955eeec4d1ea" id="r_aadd2b7b46eda1bb4a04e955eeec4d1ea"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aadd2b7b46eda1bb4a04e955eeec4d1ea">myMatMultTranspose_matfree_3Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:aadd2b7b46eda1bb4a04e955eeec4d1ea"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose matrix-free solver for 3 oscillators.  <br /></td></tr>
-<tr class="separator:aadd2b7b46eda1bb4a04e955eeec4d1ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a81a7c6c361fc7b695ba996cd4275e9cd" id="r_a81a7c6c361fc7b695ba996cd4275e9cd"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a81a7c6c361fc7b695ba996cd4275e9cd">myMatMult_matfree_4Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:a81a7c6c361fc7b695ba996cd4275e9cd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver for 4 oscillators.  <br /></td></tr>
-<tr class="separator:a81a7c6c361fc7b695ba996cd4275e9cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6e6afdba2dbb5fc6b47cc5c7dc9fdfc3" id="r_a6e6afdba2dbb5fc6b47cc5c7dc9fdfc3"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a6e6afdba2dbb5fc6b47cc5c7dc9fdfc3">myMatMultTranspose_matfree_4Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:a6e6afdba2dbb5fc6b47cc5c7dc9fdfc3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose matrix-free solver for 4 oscillators.  <br /></td></tr>
-<tr class="separator:a6e6afdba2dbb5fc6b47cc5c7dc9fdfc3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3c5850f7bd0694b00e3fae67818aae23" id="r_a3c5850f7bd0694b00e3fae67818aae23"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a3c5850f7bd0694b00e3fae67818aae23">myMatMult_matfree_5Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:a3c5850f7bd0694b00e3fae67818aae23"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver for 5 oscillators.  <br /></td></tr>
-<tr class="separator:a3c5850f7bd0694b00e3fae67818aae23"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8b6f983b0177602e78148e8d734eca25" id="r_a8b6f983b0177602e78148e8d734eca25"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a8b6f983b0177602e78148e8d734eca25">myMatMultTranspose_matfree_5Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:a8b6f983b0177602e78148e8d734eca25"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose matrix-free solver for 5 oscillators.  <br /></td></tr>
-<tr class="separator:a8b6f983b0177602e78148e8d734eca25"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a241b317b3155d9b7bdad401893fbc910" id="r_a241b317b3155d9b7bdad401893fbc910"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a241b317b3155d9b7bdad401893fbc910">myMatMult_sparsemat</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:a241b317b3155d9b7bdad401893fbc910"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sparse matrix solver.  <br /></td></tr>
-<tr class="separator:a241b317b3155d9b7bdad401893fbc910"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5f4095237dba306b4e56ad26fb5b5f9d" id="r_a5f4095237dba306b4e56ad26fb5b5f9d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a5f4095237dba306b4e56ad26fb5b5f9d">myMatMultTranspose_sparsemat</a> (Mat RHS, Vec x, Vec y)</td></tr>
-<tr class="memdesc:a5f4095237dba306b4e56ad26fb5b5f9d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose sparse matrix solver.  <br /></td></tr>
-<tr class="separator:a5f4095237dba306b4e56ad26fb5b5f9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4bbcb17d81ad9a2ed8c929a3d474fd76" id="r_a4bbcb17d81ad9a2ed8c929a3d474fd76"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a4bbcb17d81ad9a2ed8c929a3d474fd76">applyRHS_matfree_1Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:a4bbcb17d81ad9a2ed8c929a3d474fd76"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-vector products to apply the RHS system matrix to a state vector.  <br /></td></tr>
+<tr class="separator:a4bbcb17d81ad9a2ed8c929a3d474fd76"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6295a87328fde308b3acf2b9fe7daf0a" id="r_a6295a87328fde308b3acf2b9fe7daf0a"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a6295a87328fde308b3acf2b9fe7daf0a">applyRHS_matfree_transpose_1Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:a6295a87328fde308b3acf2b9fe7daf0a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose matrix-free MatMult for 1 oscillator.  <br /></td></tr>
+<tr class="separator:a6295a87328fde308b3acf2b9fe7daf0a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac83a98a2fee65d4df626da1b3ff338cc" id="r_ac83a98a2fee65d4df626da1b3ff338cc"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ac83a98a2fee65d4df626da1b3ff338cc">applyRHS_matfree_2Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:ac83a98a2fee65d4df626da1b3ff338cc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free MatMult for 2 oscillators.  <br /></td></tr>
+<tr class="separator:ac83a98a2fee65d4df626da1b3ff338cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a730510650263dbab155d7ccc6e80a21b" id="r_a730510650263dbab155d7ccc6e80a21b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a730510650263dbab155d7ccc6e80a21b">applyRHS_matfree_transpose_2Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:a730510650263dbab155d7ccc6e80a21b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose matrix-free MatMult for 2 oscillators.  <br /></td></tr>
+<tr class="separator:a730510650263dbab155d7ccc6e80a21b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8c97c0b4484c2d81908459ef1c71866a" id="r_a8c97c0b4484c2d81908459ef1c71866a"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a8c97c0b4484c2d81908459ef1c71866a">applyRHS_matfree_3Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:a8c97c0b4484c2d81908459ef1c71866a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free MatMult for 3 oscillators.  <br /></td></tr>
+<tr class="separator:a8c97c0b4484c2d81908459ef1c71866a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adeace8b82d4f2828dbc295d65ca6c706" id="r_adeace8b82d4f2828dbc295d65ca6c706"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#adeace8b82d4f2828dbc295d65ca6c706">applyRHS_matfree_transpose_3Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:adeace8b82d4f2828dbc295d65ca6c706"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose matrix-free MatMult for 3 oscillators.  <br /></td></tr>
+<tr class="separator:adeace8b82d4f2828dbc295d65ca6c706"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a867848c4b01555be1ff180700b287d27" id="r_a867848c4b01555be1ff180700b287d27"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a867848c4b01555be1ff180700b287d27">applyRHS_matfree_4Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:a867848c4b01555be1ff180700b287d27"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free MatMult for 4 oscillators.  <br /></td></tr>
+<tr class="separator:a867848c4b01555be1ff180700b287d27"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad134ce24dc5ad6a4d22cf11fe4e18c9c" id="r_ad134ce24dc5ad6a4d22cf11fe4e18c9c"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ad134ce24dc5ad6a4d22cf11fe4e18c9c">applyRHS_matfree_transpose_4Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:ad134ce24dc5ad6a4d22cf11fe4e18c9c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose matrix-free MatMult for 4 oscillators.  <br /></td></tr>
+<tr class="separator:ad134ce24dc5ad6a4d22cf11fe4e18c9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab1fe575667b47c35a1357db8784e1413" id="r_ab1fe575667b47c35a1357db8784e1413"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ab1fe575667b47c35a1357db8784e1413">applyRHS_matfree_5Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:ab1fe575667b47c35a1357db8784e1413"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free MatMult for 5 oscillators.  <br /></td></tr>
+<tr class="separator:ab1fe575667b47c35a1357db8784e1413"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a69102548098e423535747172dcee4e73" id="r_a69102548098e423535747172dcee4e73"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a69102548098e423535747172dcee4e73">applyRHS_matfree_transpose_5Osc</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:a69102548098e423535747172dcee4e73"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose matrix-free MatMult for 5 oscillators.  <br /></td></tr>
+<tr class="separator:a69102548098e423535747172dcee4e73"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a493077d767ad29c5e99c84779f861687" id="r_a493077d767ad29c5e99c84779f861687"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a493077d767ad29c5e99c84779f861687">applyRHS_sparsemat</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:a493077d767ad29c5e99c84779f861687"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sparse matrix MatMult.  <br /></td></tr>
+<tr class="separator:a493077d767ad29c5e99c84779f861687"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aeaaf83cf2c38deabfb4f076b5e013b4d" id="r_aeaaf83cf2c38deabfb4f076b5e013b4d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aeaaf83cf2c38deabfb4f076b5e013b4d">applyRHS_sparsemat_transpose</a> (Mat RHS, Vec x, Vec y)</td></tr>
+<tr class="memdesc:aeaaf83cf2c38deabfb4f076b5e013b4d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose sparse matrix MatMult.  <br /></td></tr>
+<tr class="separator:aeaaf83cf2c38deabfb4f076b5e013b4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa77e13c9a94d0ac25e730935925a0cff" id="r_aa77e13c9a94d0ac25e730935925a0cff"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aa77e13c9a94d0ac25e730935925a0cff">compute_dRHS_dParams_sparsemat</a> (const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad, std::vector&lt; int &gt; &amp;nlevels, IS isu, IS isv, std::vector&lt; Mat &gt; &amp;Ac_vec, std::vector&lt; Mat &gt; &amp;Bc_vec, Vec aux, <a class="el" href="classOscillator.html">Oscillator</a> **oscil_vec)</td></tr>
+<tr class="memdesc:aa77e13c9a94d0ac25e730935925a0cff"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Sparse-matrix version to compute gradient of RHS with respect to parameters  <br /></td></tr>
+<tr class="separator:aa77e13c9a94d0ac25e730935925a0cff"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa983d2208310e7d957c97114ab3fbebd" id="r_aa983d2208310e7d957c97114ab3fbebd"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aa983d2208310e7d957c97114ab3fbebd">compute_dRHS_dParams_matfree</a> (const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad, std::vector&lt; int &gt; &amp;nlevels, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype, <a class="el" href="classOscillator.html">Oscillator</a> **oscil_vec)</td></tr>
+<tr class="memdesc:aa983d2208310e7d957c97114ab3fbebd"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Matrix free version to compute gradient of RHS with respect to parameters  <br /></td></tr>
+<tr class="separator:aa983d2208310e7d957c97114ab3fbebd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aebbda51dfa3b2ccda3c86e83efb422f3" id="r_aebbda51dfa3b2ccda3c86e83efb422f3"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aebbda51dfa3b2ccda3c86e83efb422f3">H_detune</a> (const double detuning0, const int a)</td></tr>
-<tr class="memdesc:aebbda51dfa3b2ccda3c86e83efb422f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes detuning Hamiltonian term for 1 oscillator.  <br /></td></tr>
+<tr class="memdesc:aebbda51dfa3b2ccda3c86e83efb422f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS to Compute detuning for 1 oscillator.  <br /></td></tr>
 <tr class="separator:aebbda51dfa3b2ccda3c86e83efb422f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab249c0823cf573c3c49ace9ead191a77" id="r_ab249c0823cf573c3c49ace9ead191a77"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ab249c0823cf573c3c49ace9ead191a77">H_selfkerr</a> (const double xi0, const int a)</td></tr>
-<tr class="memdesc:ab249c0823cf573c3c49ace9ead191a77"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes self-Kerr nonlinearity term for 1 oscillator.  <br /></td></tr>
+<tr class="memdesc:ab249c0823cf573c3c49ace9ead191a77"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS to Compute self-Kerr coefficient for 1 oscillator.  <br /></td></tr>
 <tr class="separator:ab249c0823cf573c3c49ace9ead191a77"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4c23d2ebe61dae85bc76b66421364302" id="r_a4c23d2ebe61dae85bc76b66421364302"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a4c23d2ebe61dae85bc76b66421364302">L2</a> (const double dephase0, const int i0, const int i0p)</td></tr>
-<tr class="memdesc:a4c23d2ebe61dae85bc76b66421364302"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes L2 dephasing Lindblad operator for 1 oscillator.  <br /></td></tr>
+<tr class="memdesc:a4c23d2ebe61dae85bc76b66421364302"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS to compute L2 dephasing coefficient for 1 oscillator.  <br /></td></tr>
 <tr class="separator:a4c23d2ebe61dae85bc76b66421364302"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad9182550cadb88d6f911338bda0769eb" id="r_ad9182550cadb88d6f911338bda0769eb"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ad9182550cadb88d6f911338bda0769eb">L1diag</a> (const double decay0, const int i0, const int i0p)</td></tr>
-<tr class="memdesc:ad9182550cadb88d6f911338bda0769eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes L1 decay Lindblad operator diagonal term for 1 oscillator.  <br /></td></tr>
+<tr class="memdesc:ad9182550cadb88d6f911338bda0769eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS to compute L1 decay coefficient for 1 oscillator.  <br /></td></tr>
 <tr class="separator:ad9182550cadb88d6f911338bda0769eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aac495876fa4b05189aebdc593e4a402f" id="r_aac495876fa4b05189aebdc593e4a402f"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aac495876fa4b05189aebdc593e4a402f">TensorGetIndex</a> (const int nlevels0, const int i0, const int i0p)</td></tr>
-<tr class="memdesc:aac495876fa4b05189aebdc593e4a402f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes tensor product index for 1 oscillator system.  <br /></td></tr>
+<tr class="memdesc:aac495876fa4b05189aebdc593e4a402f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS to compute tensor product index for 1 oscillator system.  <br /></td></tr>
 <tr class="separator:aac495876fa4b05189aebdc593e4a402f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a157c2e11aec50060bd1bbe1e67294f2e" id="r_a157c2e11aec50060bd1bbe1e67294f2e"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a157c2e11aec50060bd1bbe1e67294f2e">H_detune</a> (const double detuning0, const double detuning1, const int a, const int b)</td></tr>
-<tr class="memdesc:a157c2e11aec50060bd1bbe1e67294f2e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes detuning Hamiltonian term for 2 oscillators.  <br /></td></tr>
+<tr class="memdesc:a157c2e11aec50060bd1bbe1e67294f2e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS, Computes detuning Hamiltonian term for 2 oscillators.  <br /></td></tr>
 <tr class="separator:a157c2e11aec50060bd1bbe1e67294f2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac561c889f846efb29ef1588401371cff" id="r_ac561c889f846efb29ef1588401371cff"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ac561c889f846efb29ef1588401371cff">H_selfkerr</a> (const double xi0, const double xi1, const int a, const int b)</td></tr>
-<tr class="memdesc:ac561c889f846efb29ef1588401371cff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes self-Kerr nonlinearity terms for 2 oscillators.  <br /></td></tr>
+<tr class="memdesc:ac561c889f846efb29ef1588401371cff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS, Computes self-Kerr nonlinearity terms for 2 oscillators.  <br /></td></tr>
 <tr class="separator:ac561c889f846efb29ef1588401371cff"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aabb663bfcd5c2b36d4e46ff483849156" id="r_aabb663bfcd5c2b36d4e46ff483849156"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aabb663bfcd5c2b36d4e46ff483849156">H_crosskerr</a> (const double xi01, const int a, const int b)</td></tr>
-<tr class="memdesc:aabb663bfcd5c2b36d4e46ff483849156"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes cross-Kerr coupling between 2 oscillators.  <br /></td></tr>
+<tr class="memdesc:aabb663bfcd5c2b36d4e46ff483849156"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS, Computes cross-Kerr coupling between 2 oscillators.  <br /></td></tr>
 <tr class="separator:aabb663bfcd5c2b36d4e46ff483849156"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a27a651b0ad18d46dff30d0cb6a820e1c" id="r_a27a651b0ad18d46dff30d0cb6a820e1c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a27a651b0ad18d46dff30d0cb6a820e1c">L2</a> (const double dephase0, const double dephase1, const int i0, const int i1, const int i0p, const int i1p)</td></tr>
-<tr class="memdesc:a27a651b0ad18d46dff30d0cb6a820e1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes L2 dephasing Lindblad operator for 2 oscillators.  <br /></td></tr>
+<tr class="memdesc:a27a651b0ad18d46dff30d0cb6a820e1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS, Computes L2 dephasing Lindblad operator for 2 oscillators.  <br /></td></tr>
 <tr class="separator:a27a651b0ad18d46dff30d0cb6a820e1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a019a4ad308b966a3284dde2cdc019c51" id="r_a019a4ad308b966a3284dde2cdc019c51"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a019a4ad308b966a3284dde2cdc019c51">L1diag</a> (const double decay0, const double decay1, const int i0, const int i1, const int i0p, const int i1p)</td></tr>
-<tr class="memdesc:a019a4ad308b966a3284dde2cdc019c51"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes L1 decay Lindblad operator diagonal term for 2 oscillators.  <br /></td></tr>
+<tr class="memdesc:a019a4ad308b966a3284dde2cdc019c51"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS, Computes L1 decay Lindblad operator diagonal term for 2 oscillators.  <br /></td></tr>
 <tr class="separator:a019a4ad308b966a3284dde2cdc019c51"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa1ea516a7cd11e6c60c621fa304389bb" id="r_aa1ea516a7cd11e6c60c621fa304389bb"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aa1ea516a7cd11e6c60c621fa304389bb">TensorGetIndex</a> (const int nlevels0, const int nlevels1, const int i0, const int i1, const int i0p, const int i1p)</td></tr>
-<tr class="memdesc:aa1ea516a7cd11e6c60c621fa304389bb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes tensor product index for 2 oscillator system.  <br /></td></tr>
+<tr class="memdesc:aa1ea516a7cd11e6c60c621fa304389bb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS, Computes tensor product index for 2 oscillator system.  <br /></td></tr>
 <tr class="separator:aa1ea516a7cd11e6c60c621fa304389bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abbf91cc9a73f3f2e4966ded0c679c985" id="r_abbf91cc9a73f3f2e4966ded0c679c985"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#abbf91cc9a73f3f2e4966ded0c679c985">H_detune</a> (const double detuning0, const double detuning1, const double detuning2, const int i0, const int i1, const int i2)</td></tr>
 <tr class="separator:abbf91cc9a73f3f2e4966ded0c679c985"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -342,7 +348,7 @@ Functions</h2></td></tr>
 <tr class="memitem:a418d121bd4b2619395278c41978fa9eb" id="r_a418d121bd4b2619395278c41978fa9eb"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a418d121bd4b2619395278c41978fa9eb">TensorGetIndex</a> (const int nlevels0, const int nlevels1, const int nlevels2, const int nlevels3, const int nlevels4, const int i0, const int i1, const int i2, const int i3, const int i4, const int i0p, const int i1p, const int i2p, const int i3p, const int i4p)</td></tr>
 <tr class="separator:a418d121bd4b2619395278c41978fa9eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a30e19fc9f17030c99d9f1efb4f76db43" id="r_a30e19fc9f17030c99d9f1efb4f76db43"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a30e19fc9f17030c99d9f1efb4f76db43">dRHSdp_getcoeffs</a> (const int it, const int n, const int np, const int i, const int ip, const int stridei, const int strideip, const double *xptr, double *res_p_re, double *res_p_im, double *res_q_re, double *res_q_im)</td></tr>
-<tr class="memdesc:a30e19fc9f17030c99d9f1efb4f76db43"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver inline for gradient updates for oscillator i.  <br /></td></tr>
+<tr class="memdesc:a30e19fc9f17030c99d9f1efb4f76db43"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS for gradient updates.  <br /></td></tr>
 <tr class="separator:a30e19fc9f17030c99d9f1efb4f76db43"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac5c01379a727f6e4065d00fc81a3d7f8" id="r_ac5c01379a727f6e4065d00fc81a3d7f8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ac5c01379a727f6e4065d00fc81a3d7f8">Jkl_coupling</a> (const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double *xptr, const double Jij, const double cosij, const double sinij, double *yre, double *yim)</td></tr>
 <tr class="memdesc:ac5c01379a727f6e4065d00fc81a3d7f8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver inline for dipole-dipole coupling between oscillators.  <br /></td></tr>
@@ -354,16 +360,635 @@ Functions</h2></td></tr>
 <tr class="memdesc:aaa7f2114c09d97537ef8d2579e98b0bc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver inline for off-diagonal L1 decay term.  <br /></td></tr>
 <tr class="separator:aaa7f2114c09d97537ef8d2579e98b0bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7516a772ec73ed0deead7db33a194319" id="r_a7516a772ec73ed0deead7db33a194319"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a7516a772ec73ed0deead7db33a194319">L1decay_T</a> (const int it, const int i, const int ip, const int stridei, const int strideip, const double *xptr, const double decayi, double *yre, double *yim)</td></tr>
-<tr class="memdesc:a7516a772ec73ed0deead7db33a194319"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose of off-diagonal L1 decay for adjoint computations.  <br /></td></tr>
+<tr class="memdesc:a7516a772ec73ed0deead7db33a194319"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free inline Transpose of off-diagonal L1 decay for adjoint computations.  <br /></td></tr>
 <tr class="separator:a7516a772ec73ed0deead7db33a194319"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a343ecc505aee2c823165b37592945f30" id="r_a343ecc505aee2c823165b37592945f30"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a343ecc505aee2c823165b37592945f30">control</a> (const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double *xptr, const double pt, const double qt, double *yre, double *yim)</td></tr>
 <tr class="memdesc:a343ecc505aee2c823165b37592945f30"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver inline for control terms.  <br /></td></tr>
 <tr class="separator:a343ecc505aee2c823165b37592945f30"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a05441506524e4cfac60bc0ed729e51ba" id="r_a05441506524e4cfac60bc0ed729e51ba"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a05441506524e4cfac60bc0ed729e51ba">control_T</a> (const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double *xptr, const double pt, const double qt, double *yre, double *yim)</td></tr>
-<tr class="memdesc:a05441506524e4cfac60bc0ed729e51ba"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose of control terms for adjoint computations.  <br /></td></tr>
+<tr class="memdesc:a05441506524e4cfac60bc0ed729e51ba"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free Transpose of control terms for adjoint computations.  <br /></td></tr>
 <tr class="separator:a05441506524e4cfac60bc0ed729e51ba"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Function Documentation</h2>
+<a id="a4bbcb17d81ad9a2ed8c929a3d474fd76" name="a4bbcb17d81ad9a2ed8c929a3d474fd76"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4bbcb17d81ad9a2ed8c929a3d474fd76">&#9670;&#160;</a></span>applyRHS_matfree_1Osc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_matfree_1Osc </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Matrix-vector products to apply the RHS system matrix to a state vector. </p>
+<p>Each function returns y = RHS*x. Matrix-free versions as well as sparse-matrix versions are implemented. Those functions will be passed to PETSc's MatMult operations to realize a Matrix-Vector Multiplication of the RHS with a state vector, such that one can call PETSc's MatMult(RHS, x, y) for the RHS. Note: The RHS matrix must be assembled before usage, see assemble_RHS. Matrix-free MatMult for 1 oscillator </p>
+
+</div>
+</div>
+<a id="ac83a98a2fee65d4df626da1b3ff338cc" name="ac83a98a2fee65d4df626da1b3ff338cc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac83a98a2fee65d4df626da1b3ff338cc">&#9670;&#160;</a></span>applyRHS_matfree_2Osc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_matfree_2Osc </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Matrix-free MatMult for 2 oscillators. </p>
+
+</div>
+</div>
+<a id="a8c97c0b4484c2d81908459ef1c71866a" name="a8c97c0b4484c2d81908459ef1c71866a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8c97c0b4484c2d81908459ef1c71866a">&#9670;&#160;</a></span>applyRHS_matfree_3Osc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_matfree_3Osc </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Matrix-free MatMult for 3 oscillators. </p>
+
+</div>
+</div>
+<a id="a867848c4b01555be1ff180700b287d27" name="a867848c4b01555be1ff180700b287d27"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a867848c4b01555be1ff180700b287d27">&#9670;&#160;</a></span>applyRHS_matfree_4Osc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_matfree_4Osc </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Matrix-free MatMult for 4 oscillators. </p>
+
+</div>
+</div>
+<a id="ab1fe575667b47c35a1357db8784e1413" name="ab1fe575667b47c35a1357db8784e1413"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab1fe575667b47c35a1357db8784e1413">&#9670;&#160;</a></span>applyRHS_matfree_5Osc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_matfree_5Osc </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Matrix-free MatMult for 5 oscillators. </p>
+
+</div>
+</div>
+<a id="a6295a87328fde308b3acf2b9fe7daf0a" name="a6295a87328fde308b3acf2b9fe7daf0a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6295a87328fde308b3acf2b9fe7daf0a">&#9670;&#160;</a></span>applyRHS_matfree_transpose_1Osc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_matfree_transpose_1Osc </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Transpose matrix-free MatMult for 1 oscillator. </p>
+
+</div>
+</div>
+<a id="a730510650263dbab155d7ccc6e80a21b" name="a730510650263dbab155d7ccc6e80a21b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a730510650263dbab155d7ccc6e80a21b">&#9670;&#160;</a></span>applyRHS_matfree_transpose_2Osc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_matfree_transpose_2Osc </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Transpose matrix-free MatMult for 2 oscillators. </p>
+
+</div>
+</div>
+<a id="adeace8b82d4f2828dbc295d65ca6c706" name="adeace8b82d4f2828dbc295d65ca6c706"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adeace8b82d4f2828dbc295d65ca6c706">&#9670;&#160;</a></span>applyRHS_matfree_transpose_3Osc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_matfree_transpose_3Osc </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Transpose matrix-free MatMult for 3 oscillators. </p>
+
+</div>
+</div>
+<a id="ad134ce24dc5ad6a4d22cf11fe4e18c9c" name="ad134ce24dc5ad6a4d22cf11fe4e18c9c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad134ce24dc5ad6a4d22cf11fe4e18c9c">&#9670;&#160;</a></span>applyRHS_matfree_transpose_4Osc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_matfree_transpose_4Osc </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Transpose matrix-free MatMult for 4 oscillators. </p>
+
+</div>
+</div>
+<a id="a69102548098e423535747172dcee4e73" name="a69102548098e423535747172dcee4e73"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a69102548098e423535747172dcee4e73">&#9670;&#160;</a></span>applyRHS_matfree_transpose_5Osc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_matfree_transpose_5Osc </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Transpose matrix-free MatMult for 5 oscillators. </p>
+
+</div>
+</div>
+<a id="a493077d767ad29c5e99c84779f861687" name="a493077d767ad29c5e99c84779f861687"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a493077d767ad29c5e99c84779f861687">&#9670;&#160;</a></span>applyRHS_sparsemat()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_sparsemat </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Sparse matrix MatMult. </p>
+
+</div>
+</div>
+<a id="aeaaf83cf2c38deabfb4f076b5e013b4d" name="aeaaf83cf2c38deabfb4f076b5e013b4d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aeaaf83cf2c38deabfb4f076b5e013b4d">&#9670;&#160;</a></span>applyRHS_sparsemat_transpose()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int applyRHS_sparsemat_transpose </td>
+          <td>(</td>
+          <td class="paramtype">Mat&#160;</td>
+          <td class="paramname"><em>RHS</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>y</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Transpose sparse matrix MatMult. </p>
+
+</div>
+</div>
+<a id="aa983d2208310e7d957c97114ab3fbebd" name="aa983d2208310e7d957c97114ab3fbebd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa983d2208310e7d957c97114ab3fbebd">&#9670;&#160;</a></span>compute_dRHS_dParams_matfree()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void compute_dRHS_dParams_matfree </td>
+          <td>(</td>
+          <td class="paramtype">const double&#160;</td>
+          <td class="paramname"><em>t</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const Vec&#160;</td>
+          <td class="paramname"><em>x_bar</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const double&#160;</td>
+          <td class="paramname"><em>alpha</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>grad</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramname"><em>nlevels</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a>&#160;</td>
+          <td class="paramname"><em>lindbladtype</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classOscillator.html">Oscillator</a> **&#160;</td>
+          <td class="paramname"><em>oscil_vec</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>: Matrix free version to compute gradient of RHS with respect to parameters </p>
+<p>Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar in a matrix-free manner. See <a class="el" href="mastereq_8cpp.html#af2f40d837405f8e22f2e1ae3746d5678">compute_dRHS_dParams_sparsemat</a> for the sparse-matrix version of this routine.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">t</td><td>Current time </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">x</td><td>State vector </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">x_bar</td><td>Adjoint state vector </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">alpha</td><td>Scaling factor </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">grad</td><td>Gradient vector to update </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">nlevels</td><td>Number of energy levels per subsystem </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">lindbladtype</td><td>Type of Lindblad decoherence operators, or NONE </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">oscil_vec</td><td>Vector of quantum oscillators </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="aa77e13c9a94d0ac25e730935925a0cff" name="aa77e13c9a94d0ac25e730935925a0cff"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa77e13c9a94d0ac25e730935925a0cff">&#9670;&#160;</a></span>compute_dRHS_dParams_sparsemat()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void compute_dRHS_dParams_sparsemat </td>
+          <td>(</td>
+          <td class="paramtype">const double&#160;</td>
+          <td class="paramname"><em>t</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const Vec&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const Vec&#160;</td>
+          <td class="paramname"><em>x_bar</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const double&#160;</td>
+          <td class="paramname"><em>alpha</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>grad</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramname"><em>nlevels</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">IS&#160;</td>
+          <td class="paramname"><em>isu</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">IS&#160;</td>
+          <td class="paramname"><em>isv</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::vector&lt; Mat &gt; &amp;&#160;</td>
+          <td class="paramname"><em>Ac_vec</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::vector&lt; Mat &gt; &amp;&#160;</td>
+          <td class="paramname"><em>Bc_vec</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec&#160;</td>
+          <td class="paramname"><em>aux</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classOscillator.html">Oscillator</a> **&#160;</td>
+          <td class="paramname"><em>oscil_vec</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>: Sparse-matrix version to compute gradient of RHS with respect to parameters </p>
+<p>Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar with sparse-matrix version of RHS. Compare <a class="el" href="mastereq_8cpp.html#aedacbb7ca7a8e9d3c9de1ce6983f9c15">compute_dRHS_dParams_matfree</a> for the matrix-free version of this routine.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">t</td><td>Current time </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">x</td><td>State vector </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">x_bar</td><td>Adjoint state vector </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">alpha</td><td>Scaling factor </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">grad</td><td>Gradient vector to update </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">nlevels</td><td>Number of energy levels per subsystem </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">isu</td><td>Index stride to access real parts of a state vector </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">isv</td><td>Index stride to access imaginar parts of a state vector </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">aux</td><td>Auxiliary vector for computations </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">oscil_vec</td><td>Vector of quantum oscilators </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <a id="a343ecc505aee2c823165b37592945f30" name="a343ecc505aee2c823165b37592945f30"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a343ecc505aee2c823165b37592945f30">&#9670;&#160;</a></span>control()</h2>
 
@@ -574,7 +1199,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Transpose of control terms for adjoint computations. </p>
+<p>Matrix-free Transpose of control terms for adjoint computations. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">it</td><td>Current tensor index </td></tr>
@@ -689,7 +1314,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Matrix-free solver inline for gradient updates for oscillator i. </p>
+<p>Inline for Matrix-free RHS for gradient updates. </p>
 <p>Computes coefficients for gradient computation with respect to control parameters.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
@@ -1009,7 +1634,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes cross-Kerr coupling between 2 oscillators. </p>
+<p>Inline for Matrix-free RHS, Computes cross-Kerr coupling between 2 oscillators. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">xi01</td><td>Cross-Kerr coefficient between oscillators 0 and 1 </td></tr>
@@ -1284,7 +1909,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes detuning Hamiltonian term for 2 oscillators. </p>
+<p>Inline for Matrix-free RHS, Computes detuning Hamiltonian term for 2 oscillators. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">detuning0</td><td>Detuning frequency for oscillator 0 </td></tr>
@@ -1332,10 +1957,10 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes detuning Hamiltonian term for 1 oscillator. </p>
+<p>Inline for Matrix-free RHS to Compute detuning for 1 oscillator. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">detuning0</td><td>Detuning frequency for oscillator 0 </td></tr>
+    <tr><td class="paramname">detuning0</td><td>Detuning frequency </td></tr>
     <tr><td class="paramname">a</td><td>Occupation number </td></tr>
   </table>
   </dd>
@@ -1606,7 +2231,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes self-Kerr nonlinearity terms for 2 oscillators. </p>
+<p>Inline for Matrix-free RHS, Computes self-Kerr nonlinearity terms for 2 oscillators. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">xi0</td><td>Self-Kerr coefficient for oscillator 0 </td></tr>
@@ -1654,7 +2279,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes self-Kerr nonlinearity term for 1 oscillator. </p>
+<p>Inline for Matrix-free RHS to Compute self-Kerr coefficient for 1 oscillator. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">xi0</td><td>Self-Kerr coefficient for oscillator 0 </td></tr>
@@ -2172,7 +2797,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Transpose of off-diagonal L1 decay for adjoint computations. </p>
+<p>Matrix-free inline Transpose of off-diagonal L1 decay for adjoint computations. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">it</td><td>Current tensor index </td></tr>
@@ -2536,7 +3161,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes L1 decay Lindblad operator diagonal term for 2 oscillators. </p>
+<p>Inline for Matrix-free RHS, Computes L1 decay Lindblad operator diagonal term for 2 oscillators. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">decay0</td><td>Decay rate for oscillator 0 </td></tr>
@@ -2592,7 +3217,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes L1 decay Lindblad operator diagonal term for 1 oscillator. </p>
+<p>Inline for Matrix-free RHS to compute L1 decay coefficient for 1 oscillator. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">decay0</td><td>Decay rate for oscillator 0 </td></tr>
@@ -2951,7 +3576,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes L2 dephasing Lindblad operator for 2 oscillators. </p>
+<p>Inline for Matrix-free RHS, Computes L2 dephasing Lindblad operator for 2 oscillators. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">dephase0</td><td>Dephasing rate for oscillator 0 </td></tr>
@@ -3007,7 +3632,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes L2 dephasing Lindblad operator for 1 oscillator. </p>
+<p>Inline for Matrix-free RHS to compute L2 dephasing coefficient for 1 oscillator. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">dephase0</td><td>Dephasing rate for oscillator 0 </td></tr>
@@ -3017,439 +3642,6 @@ Functions</h2></td></tr>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>double L2 operator contribution </dd></dl>
-
-</div>
-</div>
-<a id="a51afc704134d4d253dabccbb0b74ccb0" name="a51afc704134d4d253dabccbb0b74ccb0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a51afc704134d4d253dabccbb0b74ccb0">&#9670;&#160;</a></span>myMatMult_matfree_1Osc()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMult_matfree_1Osc </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Interface for Matrix-vector products to apply the RHS system matrix to a state. </p>
-<p>These functions implement matrix-free solvers for different numbers of oscillators and the sparse matrix solvers. Matrix-free solver for 1 oscillator </p>
-
-</div>
-</div>
-<a id="acc1f746c70fd004036f87beae614c1cf" name="acc1f746c70fd004036f87beae614c1cf"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acc1f746c70fd004036f87beae614c1cf">&#9670;&#160;</a></span>myMatMult_matfree_2Osc()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMult_matfree_2Osc </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Matrix-free solver for 2 oscillators. </p>
-
-</div>
-</div>
-<a id="afd69ebcffc76a1b1d769f38d0869f7d4" name="afd69ebcffc76a1b1d769f38d0869f7d4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afd69ebcffc76a1b1d769f38d0869f7d4">&#9670;&#160;</a></span>myMatMult_matfree_3Osc()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMult_matfree_3Osc </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Matrix-free solver for 3 oscillators. </p>
-
-</div>
-</div>
-<a id="a81a7c6c361fc7b695ba996cd4275e9cd" name="a81a7c6c361fc7b695ba996cd4275e9cd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a81a7c6c361fc7b695ba996cd4275e9cd">&#9670;&#160;</a></span>myMatMult_matfree_4Osc()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMult_matfree_4Osc </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Matrix-free solver for 4 oscillators. </p>
-
-</div>
-</div>
-<a id="a3c5850f7bd0694b00e3fae67818aae23" name="a3c5850f7bd0694b00e3fae67818aae23"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3c5850f7bd0694b00e3fae67818aae23">&#9670;&#160;</a></span>myMatMult_matfree_5Osc()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMult_matfree_5Osc </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Matrix-free solver for 5 oscillators. </p>
-
-</div>
-</div>
-<a id="a241b317b3155d9b7bdad401893fbc910" name="a241b317b3155d9b7bdad401893fbc910"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a241b317b3155d9b7bdad401893fbc910">&#9670;&#160;</a></span>myMatMult_sparsemat()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMult_sparsemat </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Sparse matrix solver. </p>
-
-</div>
-</div>
-<a id="a29911a6f06e34dadc8ca88eedbe433a1" name="a29911a6f06e34dadc8ca88eedbe433a1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a29911a6f06e34dadc8ca88eedbe433a1">&#9670;&#160;</a></span>myMatMultTranspose_matfree_1Osc()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMultTranspose_matfree_1Osc </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Transpose matrix-free solver for 1 oscillator. </p>
-
-</div>
-</div>
-<a id="a0fef44cebdfdb5624036cebb4c83e6bb" name="a0fef44cebdfdb5624036cebb4c83e6bb"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0fef44cebdfdb5624036cebb4c83e6bb">&#9670;&#160;</a></span>myMatMultTranspose_matfree_2Osc()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMultTranspose_matfree_2Osc </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Transpose matrix-free solver for 2 oscillators. </p>
-
-</div>
-</div>
-<a id="aadd2b7b46eda1bb4a04e955eeec4d1ea" name="aadd2b7b46eda1bb4a04e955eeec4d1ea"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aadd2b7b46eda1bb4a04e955eeec4d1ea">&#9670;&#160;</a></span>myMatMultTranspose_matfree_3Osc()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMultTranspose_matfree_3Osc </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Transpose matrix-free solver for 3 oscillators. </p>
-
-</div>
-</div>
-<a id="a6e6afdba2dbb5fc6b47cc5c7dc9fdfc3" name="a6e6afdba2dbb5fc6b47cc5c7dc9fdfc3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6e6afdba2dbb5fc6b47cc5c7dc9fdfc3">&#9670;&#160;</a></span>myMatMultTranspose_matfree_4Osc()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMultTranspose_matfree_4Osc </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Transpose matrix-free solver for 4 oscillators. </p>
-
-</div>
-</div>
-<a id="a8b6f983b0177602e78148e8d734eca25" name="a8b6f983b0177602e78148e8d734eca25"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8b6f983b0177602e78148e8d734eca25">&#9670;&#160;</a></span>myMatMultTranspose_matfree_5Osc()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMultTranspose_matfree_5Osc </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Transpose matrix-free solver for 5 oscillators. </p>
-
-</div>
-</div>
-<a id="a5f4095237dba306b4e56ad26fb5b5f9d" name="a5f4095237dba306b4e56ad26fb5b5f9d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5f4095237dba306b4e56ad26fb5b5f9d">&#9670;&#160;</a></span>myMatMultTranspose_sparsemat()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int myMatMultTranspose_sparsemat </td>
-          <td>(</td>
-          <td class="paramtype">Mat&#160;</td>
-          <td class="paramname"><em>RHS</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>x</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Vec&#160;</td>
-          <td class="paramname"><em>y</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Transpose sparse matrix solver. </p>
 
 </div>
 </div>
@@ -3493,7 +3685,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes tensor product index for 1 oscillator system. </p>
+<p>Inline for Matrix-free RHS to compute tensor product index for 1 oscillator system. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">nlevels0</td><td>Number of levels for oscillator 0 </td></tr>
@@ -3564,7 +3756,7 @@ Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Computes tensor product index for 2 oscillator system. </p>
+<p>Inline for Matrix-free RHS, Computes tensor product index for 2 oscillator system. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">nlevels0</td><td>Number of levels for oscillator 0 </td></tr>
