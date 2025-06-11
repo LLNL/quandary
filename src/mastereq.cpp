@@ -1245,7 +1245,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     VecRestoreArrayRead(xbar, &xbarptr);
 
     /* Set the gradient values */
-    int shift = 0;
+    PetscInt shift = 0;
     for (int iosc = 0; iosc < noscillators; iosc++){
       // eval control parameters derivatives
       for (int i=0; i<nparams_max; i++){
@@ -1255,7 +1255,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
       oscil_vec[iosc]->evalControl_diff(t, dRedp, dImdp);
 
       PetscInt nparam = getOscillator(iosc)->getNParams();
-      for (int iparam=0; iparam < nparam; iparam++) {
+      for (PetscInt iparam=0; iparam < nparam; iparam++) {
         vals[iparam] = alpha * (coeff_p[iosc] * dRedp[iparam] + coeff_q[iosc] * dImdp[iparam]);
         cols[iparam] = iparam + shift;
       }
@@ -1280,7 +1280,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
   VecGetSubVector(xbar, isv, &vbar);
 
   /* Loop over oscillators */
-  int col_shift = 0;
+  PetscInt col_shift = 0;
   for (int iosc= 0; iosc < noscillators; iosc++){
 
     /* Evaluate the derivative of the control functions wrt control parameters */
@@ -1324,7 +1324,7 @@ void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const 
     int nparams_iosc = getOscillator(iosc)->getNParams();
 
     /* Set gradient terms for each control parameter */
-    for (int iparam=0; iparam < nparams_iosc; iparam++) {
+    for (PetscInt iparam=0; iparam < nparams_iosc; iparam++) {
       vals[iparam] = alpha * ((uAubar + vAvbar) * dImdp[iparam] + ( -vBubar + uBvbar) * dRedp[iparam]);
       cols[iparam] = col_shift + iparam;
     }
@@ -1350,7 +1350,7 @@ void MasterEq::setControlAmplitudes(const Vec x) {
 
   /* Pass design vector x to oscillators */
   // Design storage: x = (params_oscil0, params_oscil2, ... ) 
-  int shift=0;
+  PetscInt shift=0;
   for (size_t ioscil = 0; ioscil < getNOscillators(); ioscil++) {
     /* Copy x into the oscillators parameter array. */
     getOscillator(ioscil)->setParams(ptr + shift);

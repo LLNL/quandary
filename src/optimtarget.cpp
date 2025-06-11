@@ -323,7 +323,7 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
     PetscInt ilo, ihi;
     VecGetOwnershipRange(state, &ilo, &ihi);
 
-    int idm = purestateID;
+    PetscInt idm = purestateID;
     if (lindbladtype != LindbladType::NONE) idm = getVecID(purestateID, purestateID, (PetscInt)sqrt(dim));
     PetscInt idm_re = getIndexReal(idm);
     PetscInt idm_im = getIndexImag(idm);
@@ -352,8 +352,8 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
         PetscInt ia = getIndexReal(i);
         PetscInt ib = getIndexImag(i);
         if (ilo <= ia && ia < ihi) {
-          int idre = ia - ilo;
-          int idim = ib - ilo;
+          PetscInt idre = ia - ilo;
+          PetscInt idim = ib - ilo;
           HS_re +=  target_ptr[idre]*state_ptr[idre] + target_ptr[idim]*state_ptr[idim];
           HS_im += -target_ptr[idim]*state_ptr[idre] + target_ptr[idre]*state_ptr[idim];
         }

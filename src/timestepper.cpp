@@ -503,7 +503,7 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
   PetscInt* cols = new PetscInt[nparams_max];
   PetscScalar* vals = new PetscScalar[nparams_max];
 
-  int shift = 0;
+  PetscInt shift = 0;
   for (size_t iosc = 0; iosc < mastereq->getNOscillators(); iosc++){
 
     /* Reevaluate the controls */
@@ -518,7 +518,7 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
     mastereq->getOscillator(iosc)->evalControl_diff(time, dRedp, dImdp);
 
     PetscInt nparam = mastereq->getOscillator(iosc)->getNParams();
-    for (int iparam=0; iparam < nparam; iparam++) {
+    for (PetscInt iparam=0; iparam < nparam; iparam++) {
       vals[iparam] = penaltybar / ntime * 2.0 * ( p * dRedp[iparam] + q * dImdp[iparam]);
       cols[iparam] = iparam + shift;
     }
