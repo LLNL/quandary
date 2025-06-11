@@ -10,8 +10,9 @@
 
 #pragma once
 
+
 /**
- * @brief MatShell context containing data needed for applying the right-hand-side (RHS) system matrix to a vector.
+ * @brief Matrix shell context containing data needed for applying the right-hand-side (RHS) system matrix to a vector.
  *
  * This structure holds all the necessary data for applying the real-valued 
  * and vectorized system matrix to a state vector.
@@ -41,23 +42,25 @@ typedef struct {
 
 
 /**
- * @brief Interface for Matrix-vector products to apply the RHS system matrix to a state.
- *
- * These functions implement matrix-free solvers for different numbers of oscillators
- * and the sparse matrix solvers.
+ * @brief Matrix-vector products to apply the RHS system matrix to a state vector.
+ * 
+ * Each function returns y = RHS*x. Matrix-free versions as well as sparse-matrix versions are implemented. Those 
+ * functions will be passed to PETSc's MatMult operations to realize a Matrix-Vector Multiplication of the RHS with 
+ * a state vector, such that one can call PETSc's MatMult(RHS, x, y) for the RHS. 
+ * Note: The RHS matrix must be assembled before usage, see @ref assemble_RHS. 
  */
-int applyRHS_matfree_1Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 1 oscillator
-int applyRHS_matfree_transpose_1Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 1 oscillator
-int applyRHS_matfree_2Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 2 oscillators
-int applyRHS_matfree_transpose_2Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 2 oscillators
-int applyRHS_matfree_3Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 3 oscillators
-int applyRHS_matfree_transpose_3Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 3 oscillators
-int applyRHS_matfree_4Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 4 oscillators
-int applyRHS_matfree_transpose_4Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 4 oscillators
-int applyRHS_matfree_5Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 5 oscillators
-int applyRHS_matfree_transpose_5Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 5 oscillators
-int applyRHS_sparsemat(Mat RHS, Vec x, Vec y); ///< Sparse matrix solver
-int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y); ///< Transpose sparse matrix solver
+int applyRHS_matfree_1Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free MatMult for 1 oscillator
+int applyRHS_matfree_transpose_1Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free MatMult for 1 oscillator
+int applyRHS_matfree_2Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free MatMult for 2 oscillators
+int applyRHS_matfree_transpose_2Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free MatMult for 2 oscillators
+int applyRHS_matfree_3Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free MatMult for 3 oscillators
+int applyRHS_matfree_transpose_3Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free MatMult for 3 oscillators
+int applyRHS_matfree_4Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free MatMult for 4 oscillators
+int applyRHS_matfree_transpose_4Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free MatMult for 4 oscillators
+int applyRHS_matfree_5Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free MatMult for 5 oscillators
+int applyRHS_matfree_transpose_5Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free MatMult for 5 oscillators
+int applyRHS_sparsemat(Mat RHS, Vec x, Vec y); ///< Sparse matrix MatMult
+int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y); ///< Transpose sparse matrix MatMult
 
 
 /**
@@ -73,7 +76,7 @@ int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y); ///< Transpose sparse m
  * Main functionality:
  *    - @ref assemble_RHS  for preparing the RHS system matrix shell with current control pulse values at given 
  *      time t. 
- *    - @ref computedRHSdp for updating the gradient with += x^T*RHS(t)^T*x_bar, where x & x_bar are the primal and 
+ *    - @ref compute_dRHS_dParams for updating the gradient with += x^T*RHS(t)^T*x_bar, where x & x_bar are the primal and 
  *      adjoint state at time t
  *    - @ref setControlAmplitudes for passing the global optimization vector to each oscillator
  *    - @ref expectedEnergy and @ref population for evaluating expected energy level and level occupations of the 
@@ -160,42 +163,41 @@ class MasterEq{
      * @param i Index of the oscillator
      * @return Oscillator* Pointer to the oscillator object
      */
-    Oscillator* getOscillator(const size_t i);
+    Oscillator* getOscillator(const size_t i) { return oscil_vec[i]; }
 
     /**
      * @brief Retrieves the number of oscillators in the system.
      *
      * @return size_t Number of oscillators
      */
-    size_t getNOscillators();
+    size_t getNOscillators() { return noscillators; }
 
     /**
      * @brief Retrieves the dimension of the vectorized system.
      *
      * @return int \f$N^2\f$ for Lindblad solver, \f$N\f$ for Schroedinger solver
      */
-    int getDim();
+    int getDim(){ return dim; }
 
     /**
      * @brief Retrieves the dimension of the essential level system.
      *
      * @return int Dimension N_e of essential levels
      */
-    int getDimEss();
+    int getDimEss(){ return dim_ess; }
 
     /**
      * @brief Retrieves the dimension of the density matrix.
      *
      * @return int Dimension N of the Hilbert space
      */
-    int getDimRho();
+    int getDimRho(){ return dim_rho; }
 
     /**
      * @brief Assembles the real-valued system matrix (RHS) at time t.
      *
-     * Schroedinger solver: Assembles the operator \f$M = \text{vec}(-iH(t))\f$.
-     * Lindblad solver: Assembles the operator \f$M = \text{vec}(-i(H(t)\rho - \rho H(t)) + \text{Lindblad terms})\f$.
-     * Must be called before applying the RHS matrix.
+     * Updates the time-dependent parameters in the RHS MatShell context. This must be 
+     * called before applying the RHS to a state vector.
      *
      * @param t Current time
      * @return int Error code
@@ -203,16 +205,17 @@ class MasterEq{
     int assemble_RHS(const double t);
 
     /**
-     * @brief Retrieves the right-hand-side matrix.
+     * @brief Retrieves the right-hand-side system matrix.
      *
-     * @return Mat PETSc matrix object
+     * @return Mat PETSc matrix shell object representing the RHS.
      */
     Mat getRHS();
 
     /**
      * @brief Computes gradient of RHS with respect to control parameters.
      *
-     * Computes grad += alpha * RHS(x)^T * x_bar.
+     * Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar. Supports both 
+     * the sparse-matrix and the matrix-free version of the RHS. 
      *
      * @param t Current time
      * @param x State vector
@@ -220,7 +223,7 @@ class MasterEq{
      * @param alpha Scaling factor
      * @param grad Gradient vector to update
      */
-    void computedRHSdp(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad);
+    void compute_dRHS_dParams(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad);
 
     /**
      * @brief Pass control parameters from global design vector to each oscillator.
@@ -251,12 +254,51 @@ class MasterEq{
     // void createReducedDensity_diff(Vec rhobar, const Vec reducedbar, const std::vector<int>& oscilIDs);
 };
 
-// Matrix-free solver inlines for 1 oscillator
 
 /**
- * @brief Computes detuning Hamiltonian term for 1 oscillator.
+ * @brief: Sparse-matrix version to compute gradient of RHS with respect to parameters 
  *
- * @param detuning0 Detuning frequency for oscillator 0
+ * Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar with sparse-matrix
+ * version of RHS. Compare @ref compute_dRHS_dParams_matfree for the matrix-free version of this routine.
+ *
+ * @param[in] t Current time
+ * @param[in] x State vector
+ * @param[in] x_bar Adjoint state vector
+ * @param[in] alpha Scaling factor
+ * @param[out] grad Gradient vector to update
+ * @param[in] nlevels Number of energy levels per subsystem 
+ * @param[in] isu Index stride to access real parts of a state vector
+ * @param[in] isv Index stride to access imaginar parts of a state vector
+ * @param[in] aux Auxiliary vector for computations 
+ * @param[in] oscil_vec Vector of quantum oscilators
+ */
+void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad, std::vector<int>& nlevels, IS isu, IS isv, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec, Vec aux, Oscillator** oscil_vec);
+
+/**
+ * @brief: Matrix free version to compute gradient of RHS with respect to parameters 
+ *
+ * Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar in a matrix-free 
+ * manner. See @ref compute_dRHS_dParams_sparsemat for the sparse-matrix version of this routine.
+ *
+ * @param[in] t Current time
+ * @param[in] x State vector
+ * @param[in] x_bar Adjoint state vector
+ * @param[in] alpha Scaling factor
+ * @param[out] grad Gradient vector to update
+ * @param[in] nlevels Number of energy levels per subsystem
+ * @param[in] lindbladtype Type of Lindblad decoherence operators, or NONE
+ * @param[in] oscil_vec Vector of quantum oscillators 
+ */
+void compute_dRHS_dParams_matfree(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad, std::vector<int>& nlevels, LindbladType lindbladtype, Oscillator** oscil_vec);
+
+
+
+// Inline functions for the Matrix-free RHS application
+
+/**
+ * @brief Inline for Matrix-free RHS to Compute detuning for 1 oscillator.
+ *
+ * @param detuning0 Detuning frequency 
  * @param a Occupation number
  * @return double Detuning energy contribution
  */
@@ -265,7 +307,7 @@ inline double H_detune(const double detuning0, const int a) {
 };
 
 /**
- * @brief Computes self-Kerr nonlinearity term for 1 oscillator.
+ * @brief Inline for Matrix-free RHS to Compute self-Kerr coefficient for 1 oscillator.
  *
  * @param xi0 Self-Kerr coefficient for oscillator 0
  * @param a Occupation number
@@ -276,7 +318,7 @@ inline double H_selfkerr(const double xi0, const int a) {
 };
 
 /**
- * @brief Computes L2 dephasing Lindblad operator for 1 oscillator.
+ * @brief Inline for Matrix-free RHS to compute L2 dephasing coefficient for 1 oscillator.
  *
  * @param dephase0 Dephasing rate for oscillator 0
  * @param i0 Occupation number (bra)
@@ -288,7 +330,7 @@ inline double L2(const double dephase0, const int i0, const int i0p){
 };
 
 /**
- * @brief Computes L1 decay Lindblad operator diagonal term for 1 oscillator.
+ * @brief Inline for Matrix-free RHS to compute L1 decay coefficient for 1 oscillator.
  *
  * @param decay0 Decay rate for oscillator 0
  * @param i0 Occupation number (bra)
@@ -300,7 +342,7 @@ inline double L1diag(const double decay0, const int i0, const int i0p){
 };
 
 /**
- * @brief Computes tensor product index for 1 oscillator system.
+ * @brief Inline for Matrix-free RHS to compute tensor product index for 1 oscillator system.
  *
  * @param nlevels0 Number of levels for oscillator 0
  * @param i0 Occupation number (bra)
@@ -311,11 +353,8 @@ inline int TensorGetIndex(const int nlevels0, const  int i0, const int i0p){
   return i0 + nlevels0 * i0p;
 };
 
-
-// Matrix-free solver inlines for 2 oscillators
-
 /**
- * @brief Computes detuning Hamiltonian term for 2 oscillators.
+ * @brief Inline for Matrix-free RHS, Computes detuning Hamiltonian term for 2 oscillators.
  *
  * @param detuning0 Detuning frequency for oscillator 0
  * @param detuning1 Detuning frequency for oscillator 1
@@ -328,7 +367,7 @@ inline double H_detune(const double detuning0, const double detuning1, const int
 };
 
 /**
- * @brief Computes self-Kerr nonlinearity terms for 2 oscillators.
+ * @brief Inline for Matrix-free RHS, Computes self-Kerr nonlinearity terms for 2 oscillators.
  *
  * @param xi0 Self-Kerr coefficient for oscillator 0
  * @param xi1 Self-Kerr coefficient for oscillator 1
@@ -341,7 +380,7 @@ inline double H_selfkerr(const double xi0, const double xi1, const int a, const 
 };
 
 /**
- * @brief Computes cross-Kerr coupling between 2 oscillators.
+ * @brief Inline for Matrix-free RHS, Computes cross-Kerr coupling between 2 oscillators.
  *
  * @param xi01 Cross-Kerr coefficient between oscillators 0 and 1
  * @param a Occupation number for oscillator 0
@@ -353,7 +392,7 @@ inline double H_crosskerr(const double xi01, const int a, const int b) {
 };
 
 /**
- * @brief Computes L2 dephasing Lindblad operator for 2 oscillators.
+ * @brief Inline for Matrix-free RHS, Computes L2 dephasing Lindblad operator for 2 oscillators.
  *
  * @param dephase0 Dephasing rate for oscillator 0
  * @param dephase1 Dephasing rate for oscillator 1
@@ -368,7 +407,7 @@ inline double L2(const double dephase0, const double dephase1, const int i0, con
 };
 
 /**
- * @brief Computes L1 decay Lindblad operator diagonal term for 2 oscillators.
+ * @brief Inline for Matrix-free RHS, Computes L1 decay Lindblad operator diagonal term for 2 oscillators.
  *
  * @param decay0 Decay rate for oscillator 0
  * @param decay1 Decay rate for oscillator 1
@@ -383,7 +422,7 @@ inline double L1diag(const double decay0, const double decay1, const int i0, con
 };
 
 /**
- * @brief Computes tensor product index for 2 oscillator system.
+ * @brief Inline for Matrix-free RHS, Computes tensor product index for 2 oscillator system.
  *
  * @param nlevels0 Number of levels for oscillator 0
  * @param nlevels1 Number of levels for oscillator 1
@@ -398,7 +437,7 @@ inline int TensorGetIndex(const int nlevels0, const int nlevels1,const  int i0, 
 };
 
 
-// Matrix-free solver inlines for 3 oscillators
+// Inlines for Matrix-free RHS for 3 oscillators
 // See documentation for 1-2 oscillator functions above for parameter descriptions
 inline double H_detune(const double detuning0, const double detuning1, const double detuning2, const int i0, const int i1, const int i2) {
   return detuning0*i0 + detuning1*i1 + detuning2*i2;
@@ -482,7 +521,7 @@ inline int TensorGetIndex(const int nlevels0, const int nlevels1, const int nlev
 
 
 /**
- * @brief Matrix-free solver inline for gradient updates for oscillator i.
+ * @brief Inline for Matrix-free RHS for gradient updates.
  *
  * Computes coefficients for gradient computation with respect to control parameters.
  *
@@ -716,7 +755,7 @@ inline void L1decay(const int it, const int n, const int i, const int ip, const 
 
 
 /**
- * @brief Transpose of off-diagonal L1 decay for adjoint computations.
+ * @brief Matrix-free inline Transpose of off-diagonal L1 decay for adjoint computations.
  *
  * @param it Current tensor index
  * @param i Occupation number (bra)
@@ -800,7 +839,7 @@ inline void control(const int it, const int n, const int i, const int np, const 
 
 
 /**
- * @brief Transpose of control terms for adjoint computations.
+ * @brief Matrix-free Transpose of control terms for adjoint computations.
  *
  * @param it Current tensor index
  * @param n Number of levels

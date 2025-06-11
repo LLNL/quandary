@@ -647,16 +647,6 @@ void MasterEq::initSparseMatSolver(){
   MatCreateVecs(Bd, &aux, NULL);
 }
 
-int MasterEq::getDim(){ return dim; }
-
-int MasterEq::getDimEss(){ return dim_ess; }
-
-int MasterEq::getDimRho(){ return dim_rho; }
-
-size_t MasterEq::getNOscillators() { return noscillators; }
-
-Oscillator* MasterEq::getOscillator(const size_t i) { return oscil_vec[i]; }
-
 int MasterEq::assemble_RHS(const double t){
   /* Prepare the matrix shell to perform the action of RHS on a vector */
 
@@ -680,363 +670,17 @@ int MasterEq::assemble_RHS(const double t){
   return 0;
 }
 
-
-
 Mat MasterEq::getRHS() { return RHS; }
 
+// Gradient of RHS wrt parameters: grad += alpha * x^T * (d RHS / d params)^T * xbar 
+void MasterEq::compute_dRHS_dParams(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
 
-/* grad += alpha * x^T * RHS(t)^T * xbar  */
-void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
+  if (!usematfree) {  // Sparse-matrix application of RHS 
+    compute_dRHS_dParams_sparsemat(t, x, xbar,  alpha, grad, nlevels, isu, isv, Ac_vec, Bc_vec, aux, oscil_vec);
 
-
-  if (usematfree) {  // Matrix-free solver
-    double res_p_re,  res_p_im, res_q_re, res_q_im;
-
-    const double* xptr, *xbarptr;
-    VecGetArrayRead(x, &xptr);
-    VecGetArrayRead(xbar, &xbarptr);
-
-    double* coeff_p = new double [noscillators];
-    double* coeff_q = new double [noscillators];
-    for (int i=0; i<noscillators; i++){
-      coeff_p[i] = 0.0;
-      coeff_q[i] = 0.0;
-    }
-
-    if (noscillators == 1) {
-    /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
-      int n0 = nlevels[0];
-      int stridei0  = TensorGetIndex(n0, 1,0);
-      int stridei0p = TensorGetIndex(n0, 0,1);
-      /* Switch for Lindblad vs Schroedinger solver */
-      int n0p = n0;
-      if (lindbladtype == LindbladType::NONE) { // Schroedinger
-        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
-      }
-
-      /* --- Collect coefficients for gradient --- */
-      int it = 0;
-      // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0p; i0p++)  {
-          for (int i0 = 0; i0 < n0; i0++)  {
-              /* Get xbar */
-              double xbarre = xbarptr[2*it];
-              double xbarim = xbarptr[2*it+1];
-
-              /* --- Oscillator 0 --- */
-              dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-              coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
-              coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
-
-              it++;
-            }
-        }
-    }
-    else if (noscillators == 2) {
-    /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
-      int n0 = nlevels[0];
-      int n1 = nlevels[1];
-      int stridei0  = TensorGetIndex(n0,n1, 1,0,0,0);
-      int stridei1  = TensorGetIndex(n0,n1, 0,1,0,0);
-      int stridei0p = TensorGetIndex(n0,n1, 0,0,1,0);
-      int stridei1p = TensorGetIndex(n0,n1, 0,0,0,1);
-      /* Switch for Lindblad vs Schroedinger solver */
-      int n0p = n0;
-      int n1p = n1;
-      if (lindbladtype == LindbladType::NONE) { // Schroedinger
-        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
-        n1p = 1;
-      }
-
-      /* --- Collect coefficients for gradient --- */
-      int it = 0;
-      // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0p; i0p++)  {
-        for (int i1p = 0; i1p < n1p; i1p++)  {
-          for (int i0 = 0; i0 < n0; i0++)  {
-            for (int i1 = 0; i1 < n1; i1++)  {
-              /* Get xbar */
-              double xbarre = xbarptr[2*it];
-              double xbarim = xbarptr[2*it+1];
-
-              /* --- Oscillator 0 --- */
-              dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-              coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
-              coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
-              /* --- Oscillator 1 --- */
-              dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-              coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
-              coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
-
-              it++;
-            }
-          }
-        }
-      }
-    } else if (noscillators == 3) {
-      /* compute strides for accessing x */
-      int n0 = nlevels[0];
-      int n1 = nlevels[1];
-      int n2 = nlevels[2];
-      int stridei0  = TensorGetIndex(n0,n1,n2, 1,0,0,0,0,0);
-      int stridei1  = TensorGetIndex(n0,n1,n2, 0,1,0,0,0,0);
-      int stridei2  = TensorGetIndex(n0,n1,n2, 0,0,1,0,0,0);
-      int stridei0p = TensorGetIndex(n0,n1,n2, 0,0,0,1,0,0);
-      int stridei1p = TensorGetIndex(n0,n1,n2, 0,0,0,0,1,0);
-      int stridei2p = TensorGetIndex(n0,n1,n2, 0,0,0,0,0,1);
-      /* Switch for Lindblad vs Schroedinger solver */
-      int n0p = n0;
-      int n1p = n1;
-      int n2p = n2;
-      if (lindbladtype == LindbladType::NONE) { // Schroedinger
-        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
-        n1p = 1;
-        n2p = 1;
-      }
-      /* --- Collect coefficients for gradient --- */
-      int it = 0;
-      // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0p; i0p++)  {
-        for (int i1p = 0; i1p < n1p; i1p++)  {
-          for (int i2p = 0; i2p < n2p; i2p++)  {
-            for (int i0 = 0; i0 < n0; i0++)  {
-              for (int i1 = 0; i1 < n1; i1++)  {
-                for (int i2 = 0; i2 < n2; i2++)  {
-                  /* Get xbar */
-                  double xbarre = xbarptr[2*it];
-                  double xbarim = xbarptr[2*it+1];
-
-                  /* --- Oscillator 0 --- */
-                  dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                  coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
-                  coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
-                  /* --- Oscillator 1 --- */
-                  dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                  coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
-                  coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
-                  /* --- Oscillator 2 --- */
-                  dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                  coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
-                  coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
-
-                  it++;
-                }
-              }
-            }
-          }
-        }
-      }
-    } else if (noscillators == 4) {
-      /* compute strides for accessing x */
-      int n0 = nlevels[0];
-      int n1 = nlevels[1];
-      int n2 = nlevels[2];
-      int n3 = nlevels[3];
-      int stridei0  = TensorGetIndex(n0,n1,n2,n3, 1,0,0,0,0,0,0,0);
-      int stridei1  = TensorGetIndex(n0,n1,n2,n3, 0,1,0,0,0,0,0,0);
-      int stridei2  = TensorGetIndex(n0,n1,n2,n3, 0,0,1,0,0,0,0,0);
-      int stridei3  = TensorGetIndex(n0,n1,n2,n3, 0,0,0,1,0,0,0,0);
-      int stridei0p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,1,0,0,0);
-      int stridei1p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,1,0,0);
-      int stridei2p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,1,0);
-      int stridei3p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,0,1);
-      /* Switch for Lindblad vs Schroedinger solver */
-      int n0p = n0;
-      int n1p = n1;
-      int n2p = n2;
-      int n3p = n3;
-      if (lindbladtype == LindbladType::NONE) { // Schroedinger
-        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
-        n1p = 1;
-        n2p = 1;
-        n3p = 1;
-      }
-      /* --- Collect coefficients for gradient --- */
-      int it = 0;
-      // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0p; i0p++)  {
-        for (int i1p = 0; i1p < n1p; i1p++)  {
-          for (int i2p = 0; i2p < n2p; i2p++)  {
-            for (int i3p = 0; i3p < n3p; i3p++)  {
-              for (int i0 = 0; i0 < n0; i0++)  {
-                for (int i1 = 0; i1 < n1; i1++)  {
-                  for (int i2 = 0; i2 < n2; i2++)  {
-                    for (int i3 = 0; i3 < n3; i3++)  {
-                      /* Get xbar */
-                      double xbarre = xbarptr[2*it];
-                      double xbarim = xbarptr[2*it+1];
-
-                      /* --- Oscillator 0 --- */
-                      dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                      coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
-                      coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
-                      /* --- Oscillator 1 --- */
-                      dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                      coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
-                      coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
-                      /* --- Oscillator 2 --- */
-                      dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                      coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
-                      coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
-                      /* --- Oscillator 3 --- */
-                      dRHSdp_getcoeffs(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                      coeff_p[3] += res_p_re * xbarre + res_p_im * xbarim;
-                      coeff_q[3] += res_q_re * xbarre + res_q_im * xbarim;
-
-                      it++;
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    } else if (noscillators == 5) {
-      /* compute strides for accessing x */
-      int n0 = nlevels[0];
-      int n1 = nlevels[1];
-      int n2 = nlevels[2];
-      int n3 = nlevels[3];
-      int n4 = nlevels[4];
-      int stridei0  = TensorGetIndex(n0,n1,n2,n3,n4, 1,0,0,0,0,0,0,0,0,0);
-      int stridei1  = TensorGetIndex(n0,n1,n2,n3,n4, 0,1,0,0,0,0,0,0,0,0);
-      int stridei2  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,1,0,0,0,0,0,0,0);
-      int stridei3  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,1,0,0,0,0,0,0);
-      int stridei4  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,1,0,0,0,0,0);
-      int stridei0p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,1,0,0,0,0);
-      int stridei1p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,1,0,0,0);
-      int stridei2p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,1,0,0);
-      int stridei3p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,1,0);
-      int stridei4p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,0,1);
-      /* Switch for Lindblad vs Schroedinger solver */
-      int n0p = n0;
-      int n1p = n1;
-      int n2p = n2;
-      int n3p = n3;
-      int n4p = n4;
-      if (lindbladtype == LindbladType::NONE) { // Schroedinger
-        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
-        n1p = 1;
-        n2p = 1;
-        n3p = 1;
-        n4p = 1;
-      }
-      /* --- Collect coefficients for gradient --- */
-      int it = 0;
-      // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0p; i0p++)  {
-        for (int i1p = 0; i1p < n1p; i1p++)  {
-          for (int i2p = 0; i2p < n2p; i2p++)  {
-            for (int i3p = 0; i3p < n3p; i3p++)  {
-              for (int i4p = 0; i4p < n4p; i4p++)  {
-                for (int i0 = 0; i0 < n0; i0++)  {
-                  for (int i1 = 0; i1 < n1; i1++)  {
-                    for (int i2 = 0; i2 < n2; i2++)  {
-                      for (int i3 = 0; i3 < n3; i3++)  {
-                        for (int i4 = 0; i4 < n4; i4++)  {
-                          /* Get xbar */
-                          double xbarre = xbarptr[2*it];
-                          double xbarim = xbarptr[2*it+1];
-
-                          /* --- Oscillator 0 --- */
-                          dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                          coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
-                          coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
-                          /* --- Oscillator 1 --- */
-                          dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                          coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
-                          coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
-                          /* --- Oscillator 2 --- */
-                          dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                          coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
-                          coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
-                          /* --- Oscillator 3 --- */
-                          dRHSdp_getcoeffs(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                          coeff_p[3] += res_p_re * xbarre + res_p_im * xbarim;
-                          coeff_q[3] += res_q_re * xbarre + res_q_im * xbarim;
-                          /* --- Oscillator 4 --- */
-                          dRHSdp_getcoeffs(it, n4, n4p, i4, i4p, stridei4, stridei4p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                          coeff_p[4] += res_p_re * xbarre + res_p_im * xbarim;
-                          coeff_q[4] += res_q_re * xbarre + res_q_im * xbarim;
-
-                          it++;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    } else { 
-      printf("This should never happen!\n"); 
-      exit(1);
-    }
-    VecRestoreArrayRead(x, &xptr);
-    VecRestoreArrayRead(xbar, &xbarptr);
-
-    /* Set the gradient wrt controls */
-    int col_shift = 0;
-    double* grad_ptr;
-    VecGetArray(grad, &grad_ptr);
-    for (int iosc = 0; iosc < noscillators; iosc++){
-
-      double* grad_for_this_oscillator = grad_ptr + col_shift;
-      oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, alpha*coeff_p[iosc], alpha*coeff_q[iosc]);
-
-      col_shift += getOscillator(iosc)->getNParams();
-    }
-    VecRestoreArray(grad, &grad_ptr);
-
-    delete [] coeff_p;
-    delete [] coeff_q;
-
-  } else {  // sparse matrix solver
-
-  /* Get real and imaginary part from x and x_bar */
-  Vec u, v, ubar, vbar;
-  VecGetSubVector(x, isu, &u);
-  VecGetSubVector(x, isv, &v);
-  VecGetSubVector(xbar, isu, &ubar);
-  VecGetSubVector(xbar, isv, &vbar);
-
-    /* Set the gradient wrt controls */
-    int col_shift = 0;
-    double* grad_ptr;
-    VecGetArray(grad, &grad_ptr);
-   // Iterate over oscillators 
-    for (int iosc= 0; iosc < noscillators; iosc++){
-
-      // Compute pbar and qbar from RHS(x)^T xbar
-    double uAubar = 0.0; 
-    double vAvbar = 0.0;
-    double vBubar = 0.0;
-    double uBvbar = 0.0;
-      MatMult(Ac_vec[iosc], u, aux); VecDot(aux, ubar, &uAubar); 
-      MatMult(Ac_vec[iosc], v, aux); VecDot(aux, vbar, &vAvbar); 
-      MatMult(Bc_vec[iosc], u, aux); VecDot(aux, vbar, &uBvbar); 
-      MatMult(Bc_vec[iosc], v, aux); VecDot(aux, ubar, &vBubar); 
-      double qbar = vAvbar + uAubar;
-      double pbar = uBvbar - vBubar;
-
-      double* grad_for_this_oscillator = grad_ptr + col_shift; 
-      oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, alpha*pbar, alpha*qbar);
-
-      // Set the shift in the gradient vector for the next oscillator
-      col_shift += getOscillator(iosc)->getNParams();
-    }
-    VecRestoreArray(grad, &grad_ptr);
-
-  /* Restore x */
-  VecRestoreSubVector(x, isu, &u);
-  VecRestoreSubVector(x, isv, &v);
-  VecRestoreSubVector(xbar, isu, &ubar);
-  VecRestoreSubVector(xbar, isv, &vbar);
+  } else {  // matrix-free application of RHS
+    compute_dRHS_dParams_matfree(t, x, xbar,  alpha, grad, nlevels, lindbladtype, oscil_vec);
   }
-
 }
 
 void MasterEq::setControlAmplitudes(const Vec x) {
@@ -1170,7 +814,6 @@ int applyRHS_sparsemat(Mat RHS, Vec x, Vec y){
     }
   }
 
-
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
   VecRestoreSubVector(x, *shellctx->isv, &v);
@@ -1179,7 +822,6 @@ int applyRHS_sparsemat(Mat RHS, Vec x, Vec y){
 
   return 0;
 }
-
 
 /* Sparse-matrix solver: Define the action of RHS^T on a vector x */
 int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y) {
@@ -1236,7 +878,7 @@ int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y) {
     }
 
 
-  /* --- Gradient of time-dependent system Hamiltonian (Jaynes-Cumming) --- */
+  /* --- Time-dependent system Hamiltonian (Jaynes-Cumming) --- */
   int id_kl = 0;
   int noscillators = shellctx->nlevels.size();
   for (int k= 0; k< noscillators*(noscillators-1)/2; k++) {
@@ -1270,6 +912,360 @@ int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y) {
   VecRestoreSubVector(y, *shellctx->isv, &vout);
 
   return 0;
+}
+
+// Compute gradient of RHS wrt parameters (Sparse matrix version)
+void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec xbar, const double alpha, Vec grad, std::vector<int>& nlevels, IS isu, IS isv, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec, Vec aux, Oscillator** oscil_vec) {
+   int noscillators = nlevels.size();
+
+    /* Get real and imaginary part from x and xbar */
+    Vec u, v, ubar, vbar;
+    VecGetSubVector(x, isu, &u);
+    VecGetSubVector(x, isv, &v);
+    VecGetSubVector(xbar, isu, &ubar);
+    VecGetSubVector(xbar, isv, &vbar);
+
+    /* Set the gradient wrt controls */
+    int col_shift = 0;
+    double* grad_ptr;
+    VecGetArray(grad, &grad_ptr);
+    // Iterate over oscillators 
+    for (int iosc= 0; iosc < noscillators; iosc++){
+
+      // Compute pbar and qbar from RHS(x)^T xbar
+      double uAubar = 0.0; 
+      double vAvbar = 0.0;
+      double vBubar = 0.0;
+      double uBvbar = 0.0;
+      MatMult(Ac_vec[iosc], u, aux); VecDot(aux, ubar, &uAubar); 
+      MatMult(Ac_vec[iosc], v, aux); VecDot(aux, vbar, &vAvbar); 
+      MatMult(Bc_vec[iosc], u, aux); VecDot(aux, vbar, &uBvbar); 
+      MatMult(Bc_vec[iosc], v, aux); VecDot(aux, ubar, &vBubar); 
+      double qbar = vAvbar + uAubar;
+      double pbar = uBvbar - vBubar;
+
+      double* grad_for_this_oscillator = grad_ptr + col_shift; 
+      oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, alpha*pbar, alpha*qbar);
+
+      // Set the shift in the gradient vector for the next oscillator
+      col_shift += oscil_vec[iosc]->getNParams();
+    }
+    VecRestoreArray(grad, &grad_ptr);
+
+    /* Restore x */
+    VecRestoreSubVector(x, isu, &u);
+    VecRestoreSubVector(x, isv, &v);
+    VecRestoreSubVector(xbar, isu, &ubar);
+    VecRestoreSubVector(xbar, isv, &vbar);
+}
+
+// Compute gradient of RHS wrt parameters (Matrix-free version)
+void compute_dRHS_dParams_matfree(const double t,const Vec x,const Vec xbar, const double alpha, Vec grad, std::vector<int>& nlevels, LindbladType lindbladtype, Oscillator** oscil_vec){
+  double res_p_re,  res_p_im, res_q_re, res_q_im;
+
+  int noscillators = nlevels.size();
+
+  const double* xptr, *xbarptr;
+  VecGetArrayRead(x, &xptr);
+  VecGetArrayRead(xbar, &xbarptr);
+
+  double* coeff_p = new double [noscillators];
+  double* coeff_q = new double [noscillators];
+  for (int i=0; i<noscillators; i++){
+    coeff_p[i] = 0.0;
+    coeff_q[i] = 0.0;
+  }
+
+  if (noscillators == 1) {
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+    int n0 = nlevels[0];
+    int stridei0  = TensorGetIndex(n0, 1,0);
+    int stridei0p = TensorGetIndex(n0, 0,1);
+    /* Switch for Lindblad vs Schroedinger solver */
+    int n0p = n0;
+    if (lindbladtype == LindbladType::NONE) { // Schroedinger
+      n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+    }
+
+    /* --- Collect coefficients for gradient --- */
+    int it = 0;
+    // Iterate over indices of xbar
+    for (int i0p = 0; i0p < n0p; i0p++)  {
+        for (int i0 = 0; i0 < n0; i0++)  {
+            /* Get xbar */
+            double xbarre = xbarptr[2*it];
+            double xbarim = xbarptr[2*it+1];
+
+            /* --- Oscillator 0 --- */
+            dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+            coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+            coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+
+            it++;
+          }
+      }
+  }
+  else if (noscillators == 2) {
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+    int n0 = nlevels[0];
+    int n1 = nlevels[1];
+    int stridei0  = TensorGetIndex(n0,n1, 1,0,0,0);
+    int stridei1  = TensorGetIndex(n0,n1, 0,1,0,0);
+    int stridei0p = TensorGetIndex(n0,n1, 0,0,1,0);
+    int stridei1p = TensorGetIndex(n0,n1, 0,0,0,1);
+    /* Switch for Lindblad vs Schroedinger solver */
+    int n0p = n0;
+    int n1p = n1;
+    if (lindbladtype == LindbladType::NONE) { // Schroedinger
+      n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+      n1p = 1;
+    }
+
+    /* --- Collect coefficients for gradient --- */
+    int it = 0;
+    // Iterate over indices of xbar
+    for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i1p = 0; i1p < n1p; i1p++)  {
+        for (int i0 = 0; i0 < n0; i0++)  {
+          for (int i1 = 0; i1 < n1; i1++)  {
+            /* Get xbar */
+            double xbarre = xbarptr[2*it];
+            double xbarim = xbarptr[2*it+1];
+
+            /* --- Oscillator 0 --- */
+            dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+            coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+            coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+            /* --- Oscillator 1 --- */
+            dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+            coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
+            coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
+
+            it++;
+          }
+        }
+      }
+    }
+  } else if (noscillators == 3) {
+    /* compute strides for accessing x */
+    int n0 = nlevels[0];
+    int n1 = nlevels[1];
+    int n2 = nlevels[2];
+    int stridei0  = TensorGetIndex(n0,n1,n2, 1,0,0,0,0,0);
+    int stridei1  = TensorGetIndex(n0,n1,n2, 0,1,0,0,0,0);
+    int stridei2  = TensorGetIndex(n0,n1,n2, 0,0,1,0,0,0);
+    int stridei0p = TensorGetIndex(n0,n1,n2, 0,0,0,1,0,0);
+    int stridei1p = TensorGetIndex(n0,n1,n2, 0,0,0,0,1,0);
+    int stridei2p = TensorGetIndex(n0,n1,n2, 0,0,0,0,0,1);
+    /* Switch for Lindblad vs Schroedinger solver */
+    int n0p = n0;
+    int n1p = n1;
+    int n2p = n2;
+    if (lindbladtype == LindbladType::NONE) { // Schroedinger
+      n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+      n1p = 1;
+      n2p = 1;
+    }
+    /* --- Collect coefficients for gradient --- */
+    int it = 0;
+    // Iterate over indices of xbar
+    for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i1p = 0; i1p < n1p; i1p++)  {
+        for (int i2p = 0; i2p < n2p; i2p++)  {
+          for (int i0 = 0; i0 < n0; i0++)  {
+            for (int i1 = 0; i1 < n1; i1++)  {
+              for (int i2 = 0; i2 < n2; i2++)  {
+                /* Get xbar */
+                double xbarre = xbarptr[2*it];
+                double xbarim = xbarptr[2*it+1];
+
+                /* --- Oscillator 0 --- */
+                dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+                coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+                /* --- Oscillator 1 --- */
+                dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
+                coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
+                /* --- Oscillator 2 --- */
+                dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
+                coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
+
+                it++;
+              }
+            }
+          }
+        }
+      }
+    }
+  } else if (noscillators == 4) {
+    /* compute strides for accessing x */
+    int n0 = nlevels[0];
+    int n1 = nlevels[1];
+    int n2 = nlevels[2];
+    int n3 = nlevels[3];
+    int stridei0  = TensorGetIndex(n0,n1,n2,n3, 1,0,0,0,0,0,0,0);
+    int stridei1  = TensorGetIndex(n0,n1,n2,n3, 0,1,0,0,0,0,0,0);
+    int stridei2  = TensorGetIndex(n0,n1,n2,n3, 0,0,1,0,0,0,0,0);
+    int stridei3  = TensorGetIndex(n0,n1,n2,n3, 0,0,0,1,0,0,0,0);
+    int stridei0p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,1,0,0,0);
+    int stridei1p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,1,0,0);
+    int stridei2p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,1,0);
+    int stridei3p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,0,1);
+    /* Switch for Lindblad vs Schroedinger solver */
+    int n0p = n0;
+    int n1p = n1;
+    int n2p = n2;
+    int n3p = n3;
+    if (lindbladtype == LindbladType::NONE) { // Schroedinger
+      n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+      n1p = 1;
+      n2p = 1;
+      n3p = 1;
+    }
+    /* --- Collect coefficients for gradient --- */
+    int it = 0;
+    // Iterate over indices of xbar
+    for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i1p = 0; i1p < n1p; i1p++)  {
+        for (int i2p = 0; i2p < n2p; i2p++)  {
+          for (int i3p = 0; i3p < n3p; i3p++)  {
+            for (int i0 = 0; i0 < n0; i0++)  {
+              for (int i1 = 0; i1 < n1; i1++)  {
+                for (int i2 = 0; i2 < n2; i2++)  {
+                  for (int i3 = 0; i3 < n3; i3++)  {
+                    /* Get xbar */
+                    double xbarre = xbarptr[2*it];
+                    double xbarim = xbarptr[2*it+1];
+
+                    /* --- Oscillator 0 --- */
+                    dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                    coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+                    coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+                    /* --- Oscillator 1 --- */
+                    dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                    coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
+                    coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
+                    /* --- Oscillator 2 --- */
+                    dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                    coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
+                    coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
+                    /* --- Oscillator 3 --- */
+                    dRHSdp_getcoeffs(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                    coeff_p[3] += res_p_re * xbarre + res_p_im * xbarim;
+                    coeff_q[3] += res_q_re * xbarre + res_q_im * xbarim;
+
+                    it++;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } else if (noscillators == 5) {
+    /* compute strides for accessing x */
+    int n0 = nlevels[0];
+    int n1 = nlevels[1];
+    int n2 = nlevels[2];
+    int n3 = nlevels[3];
+    int n4 = nlevels[4];
+    int stridei0  = TensorGetIndex(n0,n1,n2,n3,n4, 1,0,0,0,0,0,0,0,0,0);
+    int stridei1  = TensorGetIndex(n0,n1,n2,n3,n4, 0,1,0,0,0,0,0,0,0,0);
+    int stridei2  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,1,0,0,0,0,0,0,0);
+    int stridei3  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,1,0,0,0,0,0,0);
+    int stridei4  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,1,0,0,0,0,0);
+    int stridei0p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,1,0,0,0,0);
+    int stridei1p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,1,0,0,0);
+    int stridei2p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,1,0,0);
+    int stridei3p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,1,0);
+    int stridei4p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,0,1);
+    /* Switch for Lindblad vs Schroedinger solver */
+    int n0p = n0;
+    int n1p = n1;
+    int n2p = n2;
+    int n3p = n3;
+    int n4p = n4;
+    if (lindbladtype == LindbladType::NONE) { // Schroedinger
+      n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+      n1p = 1;
+      n2p = 1;
+      n3p = 1;
+      n4p = 1;
+    }
+    /* --- Collect coefficients for gradient --- */
+    int it = 0;
+    // Iterate over indices of xbar
+    for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i1p = 0; i1p < n1p; i1p++)  {
+        for (int i2p = 0; i2p < n2p; i2p++)  {
+          for (int i3p = 0; i3p < n3p; i3p++)  {
+            for (int i4p = 0; i4p < n4p; i4p++)  {
+              for (int i0 = 0; i0 < n0; i0++)  {
+                for (int i1 = 0; i1 < n1; i1++)  {
+                  for (int i2 = 0; i2 < n2; i2++)  {
+                    for (int i3 = 0; i3 < n3; i3++)  {
+                      for (int i4 = 0; i4 < n4; i4++)  {
+                        /* Get xbar */
+                        double xbarre = xbarptr[2*it];
+                        double xbarim = xbarptr[2*it+1];
+
+                        /* --- Oscillator 0 --- */
+                        dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                        coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+                        coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+                        /* --- Oscillator 1 --- */
+                        dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                        coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
+                        coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
+                        /* --- Oscillator 2 --- */
+                        dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                        coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
+                        coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
+                        /* --- Oscillator 3 --- */
+                        dRHSdp_getcoeffs(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                        coeff_p[3] += res_p_re * xbarre + res_p_im * xbarim;
+                        coeff_q[3] += res_q_re * xbarre + res_q_im * xbarim;
+                        /* --- Oscillator 4 --- */
+                        dRHSdp_getcoeffs(it, n4, n4p, i4, i4p, stridei4, stridei4p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                        coeff_p[4] += res_p_re * xbarre + res_p_im * xbarim;
+                        coeff_q[4] += res_q_re * xbarre + res_q_im * xbarim;
+
+                        it++;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } else { 
+    printf("This should never happen!\n"); 
+    exit(1);
+  }
+  VecRestoreArrayRead(x, &xptr);
+  VecRestoreArrayRead(xbar, &xbarptr);
+
+  /* Set the gradient wrt controls */
+  int col_shift = 0;
+  double* grad_ptr;
+  VecGetArray(grad, &grad_ptr);
+  for (int iosc = 0; iosc < noscillators; iosc++){
+
+    double* grad_for_this_oscillator = grad_ptr + col_shift;
+    oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, alpha*coeff_p[iosc], alpha*coeff_q[iosc]);
+
+    col_shift += oscil_vec[iosc]->getNParams();
+  }
+  VecRestoreArray(grad, &grad_ptr);
+
+  delete [] coeff_p;
+  delete [] coeff_q;
 }
 
 /* Matfree-solver for 1 Oscillator: Define the action of RHS on a vector x */
