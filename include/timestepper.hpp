@@ -14,7 +14,7 @@
 /* Base class for time steppers */
 class TimeStepper{
   protected:
-    int dim;             /* State vector dimension */
+    PetscInt dim;             /* State vector dimension */
     Vec x;               // auxiliary vector needed for time stepping
     Vec xprimal;         // auxiliary vector needed for backwards time stepping
     std::vector<Vec> store_states; /* Storage for primal states */

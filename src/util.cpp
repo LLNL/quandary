@@ -358,7 +358,7 @@ PetscErrorCode MatIsAntiSymmetric(Mat A, PetscReal tol, PetscBool *flag) {
 
 PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   int ierr;
-  int i, j;
+  PetscInt i, j;
 
   /* TODO: Either make this work in Petsc-parallel, or add error exit if this runs in parallel. */
   
@@ -369,7 +369,7 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   Vec u, v;
   IS isu, isv;
 
-  int dimis = dim;
+  PetscInt dimis = dim;
   ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 2, &isu); CHKERRQ(ierr);
   ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 1, 2, &isv); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isu, &u); CHKERRQ(ierr);
@@ -384,7 +384,7 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   double u_diff, v_diff;
   ierr = VecGetArrayRead(u, &u_array); CHKERRQ(ierr);
   ierr = VecGetArrayRead(v, &v_array); CHKERRQ(ierr);
-  int N = sqrt(dim);
+  PetscInt N = sqrt(dim);
   for (i=0; i<N; i++) {
     for (j=i; j<N; j++) {
       u_diff = u_array[i*N+j] - u_array[j*N+i];
@@ -411,12 +411,12 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
 PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
 
   int ierr;
-  int i;
+  PetscInt i;
 
   /* Get u and v from x */
   PetscInt dim;
   ierr = VecGetSize(x, &dim); CHKERRQ(ierr);
-  int dimis = dim/2;
+  PetscInt dimis = dim/2;
   Vec u, v;
   IS isu, isv;
   ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 2, &isu); CHKERRQ(ierr);
@@ -436,7 +436,7 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
   double v_sum = 0.0;
   ierr = VecGetArrayRead(u, &u_array); CHKERRQ(ierr);
   ierr = VecGetArrayRead(v, &v_array); CHKERRQ(ierr);
-  int N = sqrt(dimis);
+  PetscInt N = sqrt(dimis);
   for (i=0; i<N; i++) {
     u_sum += u_array[i*N+i];
     v_sum += fabs(v_array[i*N+i]);
