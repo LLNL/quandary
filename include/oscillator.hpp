@@ -153,20 +153,18 @@ class Oscillator {
     size_t getNCarrierfrequencies() {return carrier_freq.size(); };
 
     /**
-     * @brief Retrieves the control type for a given segment.
+     * @brief Retrieves the type of control parameterization.
      *
-     * @param isegment Segment index (default: 0)
      * @return ControlType Type of control parameterization
      */
-    ControlType getControlType(int isegment=0) {return basisfunctions[isegment]->getType(); };
+    ControlType getControlType() {return basisfunctions[0]->getType(); };
 
     /**
-     * @brief Retrieves the number of splines for a given segment.
+     * @brief Retrieves the number of splines used in the control parameterization
      *
-     * @param isegment Segment index (default: 0)
      * @return int Number of splines
      */
-    int getNSplines(int isegment=0) {return basisfunctions[isegment]->getNSplines();};
+    int getNSplines() {return basisfunctions[0]->getNSplines();};
 
     /**
      * @brief Retrieves the rotating frame frequency.
@@ -217,14 +215,15 @@ class Oscillator {
     int evalControl(const double t, double* Re_ptr, double* Im_ptr);
 
     /**
-     * @brief Computes derivatives of control functions with respect to parameters.
+     * @brief Computes derivatives of control functions p(t) and q(t) with respect to the parameters.
      *
      * @param[in] t Time at which to evaluate derivatives
-     * @param[out] dRedp Array to store derivatives of real part
-     * @param[out] dImdp Array to store derivatives of imaginary part
+     * @param[out] grad_for_this_oscillator Array to update the gradient
+     * @param[in] pbar Adjoint scaling factor for the gradient of p (seed) 
+     * @param[in] qbar Adjoint scaling factor for the gradient of q (seed) 
      * @return int Error code
      */
-    int evalControl_diff(const double t, double* dRedp, double* dImdp);
+    int evalControl_diff(const double t, double* grad_for_this_oscillator, const double pbar, const double qbar);
 
     /**
      * @brief Evaluates lab-frame control function.

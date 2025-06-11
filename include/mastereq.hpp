@@ -21,20 +21,20 @@ typedef struct {
   IS *isu, *isv; ///< Vector strides for accessing real and imaginary parts
   Oscillator** oscil_vec; ///< Array of pointers to the oscillators
   std::vector<double> crosskerr; ///< Cross-Kerr coupling coefficients
-  std::vector<double> Jkl; ///< Dipole-dipole coupling coefficients
+  std::vector<double> Jkl; ///< Dipole-dipole coupling strength
   std::vector<double> eta; ///< Frequency differences of the rotating frames
   LindbladType lindbladtype; ///< Type of Lindblad operators to include
   bool addT1, addT2; ///< Flags for T1 decay and T2 dephasing
-  std::vector<std::vector<double>> control_Re; ///< Real parts of control pulse \f$p(t)\f$
-  std::vector<std::vector<double>> control_Im; ///< Imaginary parts of control pulse \f$q(t)\f$
-  std::vector<double> eval_transfer_Hdt_re; ///< Evaluated real transfer functions for time-varying Hamiltonian
-  std::vector<double> eval_transfer_Hdt_im; ///< Evaluated imaginary transfer functions for time-varying Hamiltonian
-  std::vector<std::vector<Mat>> Ac_vec; ///< Vector of Real parts of control matrices per oscillator
-  std::vector<std::vector<Mat>> Bc_vec; ///< Vector of Imaginary parts of control matrices per oscillator
-  Mat *Ad; ///< Real parts of time-independent system matrix \f$Re(-iH_d)\f$, without the coupling terms
-  Mat *Bd; ///< Imaginary parts of time-independent system matrix \f$Im(-iH_d)\f$, without the coupling terms
-  std::vector<Mat> Ad_vec; ///< Real parts of dipole-dipole coupling system matrices
-  std::vector<Mat> Bd_vec; ///< Imaginary parts of dipole-dipole coupling system matrices
+  std::vector<double> control_Re;  ///< Real parts of control pulse \f$p(t)\f$
+  std::vector<double> control_Im;  ///< Imaginary parts of control pulse \f$q(t)\f$
+  std::vector<Mat> Ac_vec; ///< Vector of real parts of control matrices per oscillator
+  std::vector<Mat> Bc_vec; ///< Vector of imaginary parts of control matrices per oscillator
+  Mat *Ad; ///< Real parts of time-independent system matrix 
+  Mat *Bd; ///< Imaginary parts of time-independent system matrix 
+  std::vector<Mat> Ad_vec; ///< Vector of real parts of dipole-dipole coupling system matrices
+  std::vector<Mat> Bd_vec; ///< Vector of imaginary parts of dipole-dipole coupling system matrices
+  std::vector<double> Bd_coeffs;  //< Time-dependent coefficients for dipole-dipole coupling matrices: cos(eta_k*t)
+  std::vector<double> Ad_coeffs;  //< Time-dependent coefficients for dipole-dipole coupling matrices: sin(eta_k*t)
   Vec *aux; ///< Auxiliary vector for computations
   double time; ///< Current time
 } MatShellCtx;
@@ -93,15 +93,14 @@ class MasterEq{
     int noscillators; ///< Number of oscillators in the system
     Oscillator** oscil_vec; ///< Array of pointers to oscillator objects
 
-    Mat RHS; ///< Real-valued, vectorized system matrix (size 2N^2 x 2N^2)
-    MatShellCtx RHSctx; ///< MatShell context containing data for applying the RHS to a state
+    Mat RHS; ///< MatShell for real-valued, vectorized system matrix (size 2N^2 x 2N^2)
+    MatShellCtx RHSctx; ///< Context containing data for applying the RHS to a state
 
-    std::vector<std::vector<Mat>> Ac_vec; ///< Real parts of control matrices for each oscillator
-    std::vector<std::vector<Mat>> Bc_vec; ///< Imaginary parts of control matrices for each oscillator
-    Mat Ad;  ///< Real part of time-independent system matrix without the coupling terms
-    Mat Bd; ///< Imaginary part of time-independent system matrix without coupling terms
-    std::vector<Mat> Ad_vec; ///< Real parts of dipole-dipole coupling matrices in drift Hamiltonian
-    std::vector<Mat> Bd_vec; ///< Imaginary parts of dipole-dipole coupling matrices in drift Hamiltonian
+    std::vector<Mat> Ac_vec;  // Vector of constant mats for time-varying control term (real). One for each oscillators. 
+    std::vector<Mat> Bc_vec;  // Vector of constant mats for time-varying control term (imag). One for each oscillators. 
+    Mat  Ad, Bd;  // Real and imaginary part of constant system matrix
+    std::vector<Mat> Ad_vec;  // Vector of constant mats for Dipole-Dipole coupling term in drift Hamiltonian (real)
+    std::vector<Mat> Bd_vec;  // Vector of constant mats for Dipole-Dipole coupling term in drift Hamiltonian (imag)
 
     std::vector<double> crosskerr; ///< Cross-Kerr coefficients (rad/time) \f$\xi_{kl}\f$ for ZZ-coupling \f$a_k^\dagger a_k a_l^\dagger a_l\f$
     std::vector<double> Jkl; ///< Dipole-dipole coupling coefficients (rad/time), multiplies \f$a_k^\dagger a_l + a_k a_l^\dagger\f$
@@ -110,29 +109,16 @@ class MasterEq{
 
     int mpirank_petsc; ///< Rank of PETSc's communicator
     int mpirank_world; ///< Rank of global MPI communicator
-    int nparams_max; ///< Maximum number of design parameters per oscillator
     IS isu, isv; ///< Vector strides for accessing real and imaginary parts u=Re(x), v=Im(x)
-
-    double *dRedp; ///< Derivative of real part with respect to parameters
-    double *dImdp; ///< Derivative of imaginary part with respect to parameters
     Vec aux; ///< Auxiliary vector for computations
-    PetscInt* cols; ///< Column indices for evaluating dRHS/dp
-    PetscScalar* vals; ///< Values for evaluating dRHS/dp
-
     bool quietmode; ///< Flag for quiet mode operation
+    std::string hamiltonian_file; ///< Filename if a custom Hamiltonian is read from file ('none' if standard Hamiltonian is used)
 
   public:
     std::vector<int> nlevels; ///< Number of levels per oscillator
     std::vector<int> nessential; ///< Number of essential levels per oscillator
     bool usematfree; ///< Flag for using matrix-free solver
     LindbladType lindbladtype; ///< Type of Lindblad operators to include (NONE means Schroedinger equation)
-
-    std::vector<std::vector<TransferFunction*>> transfer_Hc_re; ///< Real transfer functions for control terms per oscillator
-    std::vector<std::vector<TransferFunction*>> transfer_Hc_im; ///< Imaginary transfer functions for control terms per oscillator
-    std::vector<TransferFunction*> transfer_Hdt_re; ///< Real transfer functions for time-varying system Hamiltonian
-    std::vector<TransferFunction*> transfer_Hdt_im; ///< Imaginary transfer functions for time-varying system Hamiltonian
-    std::string hamiltonian_file; ///< Filename if a custom Hamiltonian is read from file ('none' if standard Hamiltonian is used)
-
 
   public:
     MasterEq();
@@ -159,13 +145,6 @@ class MasterEq{
      * @brief Initializes matrices needed for the sparse matrix solver.
      */
     void initSparseMatSolver();
-
-    /**
-     * @brief Sets time points that determine when transfer functions are active.
-     *
-     * @param tlist Vector of time points defining active intervals
-     */
-    void setTransferOnOffTimes(std::vector<double> tlist);
 
     /**
      * @brief Retrieves the i-th oscillator.

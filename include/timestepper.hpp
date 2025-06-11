@@ -33,7 +33,8 @@
 class TimeStepper{
   protected:
     int dim; ///< State vector dimension
-    Vec x; ///< Auxiliary vector for time stepping
+    Vec x; ///< Auxiliary vector for forward time stepping
+    Vec xadj; ///< Auxiliary vector needed for adjoint (backward) time stepping
     Vec xprimal; ///< Auxiliary vector for backward time stepping
     std::vector<Vec> store_states; ///< Storage for primal states during forward evolution
     std::vector<Vec> dpdm_states; ///< Storage for states needed for second-order derivative penalty

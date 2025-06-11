@@ -42,11 +42,10 @@ class HamiltonianFileReader{
   /**
    * @brief Reads the constant system Hamiltonian from file.
    *
-   * Note: The time-independent system Hamiltonian matrix must be real-valued.
-   *
-   * @param Bd Reference to matrix that stores the system Hamiltonian. Must be allocated. 
+   * @param[out] Bd Reference to matrix that stores the imaginary part of the system matrix for (-i*Hsys). Must be allocated. 
+   * @param[out] Ad Reference to matrix that stores the real part of the system matrix for (-i*Hsys). Must be allocated. 
    */
-  void receiveHsys(Mat& Bd);
+  void receiveHsys(Mat& Bd, Mat& Ad);
 
   /**
    * @brief Receives real and imaginary control operators from file.
@@ -55,8 +54,8 @@ class HamiltonianFileReader{
    * Hamiltonian file and stores them in the provided matrix vectors.
    *
    * @param noscillators Number of oscillators in the system
-   * @param Ac_vec Reference to vector of vector of matrices storing real parts of control matrices (could be multiple control operators per oscillator)
-   * @param Bc_vec Reference to vector of vector of matrices storing imaginary parts of control matrices (could be multiple control operators per oscillator)
+   * @param Ac_vec Reference to vector of matrices storing real parts of control system matrices. One per oscillator.
+   * @param Bc_vec Reference to vector of matrices storing imaginary parts of control matrices. One per oscillator.
    */
-  void receiveHc(int noscillators, std::vector<std::vector<Mat>>& Ac_vec, std::vector<std::vector<Mat>>& Bc_vec);
+  void receiveHc(int noscillators, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec);
 };
