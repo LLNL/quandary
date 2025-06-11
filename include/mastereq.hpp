@@ -46,18 +46,18 @@ typedef struct {
  * These functions implement matrix-free solvers for different numbers of oscillators
  * and the sparse matrix solvers.
  */
-int myMatMult_matfree_1Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 1 oscillator
-int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 1 oscillator
-int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 2 oscillators
-int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 2 oscillators
-int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 3 oscillators
-int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 3 oscillators
-int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 4 oscillators
-int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 4 oscillators
-int myMatMult_matfree_5Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 5 oscillators
-int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 5 oscillators
-int myMatMult_sparsemat(Mat RHS, Vec x, Vec y); ///< Sparse matrix solver
-int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y); ///< Transpose sparse matrix solver
+int applyRHS_matfree_1Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 1 oscillator
+int applyRHS_matfree_transpose_1Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 1 oscillator
+int applyRHS_matfree_2Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 2 oscillators
+int applyRHS_matfree_transpose_2Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 2 oscillators
+int applyRHS_matfree_3Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 3 oscillators
+int applyRHS_matfree_transpose_3Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 3 oscillators
+int applyRHS_matfree_4Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 4 oscillators
+int applyRHS_matfree_transpose_4Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 4 oscillators
+int applyRHS_matfree_5Osc(Mat RHS, Vec x, Vec y); ///< Matrix-free solver for 5 oscillators
+int applyRHS_matfree_transpose_5Osc(Mat RHS, Vec x, Vec y); ///< Transpose matrix-free solver for 5 oscillators
+int applyRHS_sparsemat(Mat RHS, Vec x, Vec y); ///< Sparse matrix solver
+int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y); ///< Transpose sparse matrix solver
 
 
 /**
@@ -141,6 +141,14 @@ class MasterEq{
 
     ~MasterEq();
 
+    /** 
+     * @brief Pass MatMult operations for applying the RHS to PETSc.
+     * 
+     * The RHS is stored as a Matrix Shell. This routine passes the (transpose)
+     * Matrix-Multiplication operation for applying the RHS to a state vector to PETSc. 
+     */
+    void set_RHS_MatMult_operation();
+
     /**
      * @brief Initializes matrices needed for the sparse matrix solver.
      */
@@ -214,11 +222,6 @@ class MasterEq{
      */
     void computedRHSdp(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad);
 
-    // /* Compute reduced density operator for a sub-system defined by IDs in the oscilIDs vector */
-    // void createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs);
-    // /* Derivative of reduced density computation */
-    // void createReducedDensity_diff(Vec rhobar, const Vec reducedbar, const std::vector<int>& oscilIDs);
-
     /**
      * @brief Pass control parameters from global design vector to each oscillator.
      *
@@ -241,6 +244,11 @@ class MasterEq{
      * @param population_com Reference to vector to store population values
      */
     void population(const Vec x, std::vector<double> &population_com);
+
+    // /* Compute reduced density operator for a sub-system defined by IDs in the oscilIDs vector */
+    // void createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs);
+    // /* Derivative of reduced density computation */
+    // void createReducedDensity_diff(Vec rhobar, const Vec reducedbar, const std::vector<int>& oscilIDs);
 };
 
 // Matrix-free solver inlines for 1 oscillator

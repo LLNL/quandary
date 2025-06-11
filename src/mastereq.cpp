@@ -137,31 +137,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   for (int iosc = 0; iosc < noscillators*(noscillators-1)/2; iosc++) RHSctx.Ad_coeffs.push_back(0.0);
 
   /* Set the MatMult routine for applying the RHS to a vector x */
-  if (usematfree) { // matrix-free solver
-    if (noscillators == 1) {
-      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_1Osc);
-      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_1Osc);
-    } else if (noscillators == 2) {
-      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_2Osc);
-      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_2Osc);
-    } else if (noscillators == 3) {
-      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_3Osc);
-      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_3Osc);
-    } else if (noscillators == 4) {
-      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_4Osc);
-      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_4Osc);
-    } else if (noscillators == 5) {
-      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_5Osc);
-      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_5Osc);
-    } else {
-      printf("ERROR. Matfree solver only for up to 5 oscillators. This should never happen! %d\n", noscillators);
-      exit(1);
-    }
-  }
-  else { // sparse-matrix solver
-    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_sparsemat);
-    MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_sparsemat);
-  }
+  set_RHS_MatMult_operation();
 }
 
 
@@ -709,151 +685,7 @@ int MasterEq::assemble_RHS(const double t){
 Mat MasterEq::getRHS() { return RHS; }
 
 
-// void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs) {
-
-//   Vec red;
-
-//   /* Get dimensions of preceding and following subsystem */
-//   int dim_pre  = 1; 
-//   int dim_post = 1;
-//   for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
-//     dim_pre  *= getOscillator(iosc)->getNLevels();
-//   for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
-//     dim_post *= getOscillator(iosc)->getNLevels();
-
-//   int dim_reduced = 1;
-//   for (int i = 0; i < oscilIDs.size();i++) {
-//     dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
-//   }
-
-//   /* sanity test */
-//   int dimmat = dim_pre * dim_reduced * dim_post;
-//   assert ( (int) pow(dimmat,2) == dim);
-
-//   /* Get local ownership of incoming full density matrix */
-//   int ilow, iupp;
-//   VecGetOwnershipRange(rho, &ilow, &iupp);
-
-//   /* Create reduced density matrix, sequential */
-//   VecCreateSeq(PETSC_COMM_SELF, 2*dim_reduced*dim_reduced, &red);
-//   VecSetFromOptions(red);
-
-//   /* Iterate over reduced density matrix elements */
-//   for (int i=0; i<dim_reduced; i++) {
-//     for (int j=0; j<dim_reduced; j++) {
-//       double sum_re = 0.0;
-//       double sum_im = 0.0;
-//       /* Iterate over all dim_pre blocks of size n_k * dim_post */
-//       for (int l = 0; l < dim_pre; l++) {
-//         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
-//         /* iterate over elements in this block */
-//         for (int m=0; m<dim_post; m++) {
-//           int rho_row = blockstartID + i * dim_post + m;
-//           int rho_col = blockstartID + j * dim_post + m;
-//           int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
-//           int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
-//           /* Get real and imaginary part from full density matrix */
-//           double re = 0.0;
-//           double im = 0.0;
-//           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
-//             VecGetValues(rho, 1, &rho_vecID_re, &re);
-//             VecGetValues(rho, 1, &rho_vecID_im, &im);
-//           } 
-//           /* add to partial trace */
-//           sum_re += re;
-//           sum_im += im;
-//         }
-//       }
-//       /* Set real and imaginary part of element (i,j) of the reduced density matrix */
-//       int out_vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
-//       int out_vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
-//       VecSetValues( red, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
-//       VecSetValues( red, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
-//     }
-//   }
-//   VecAssemblyBegin(red);
-//   VecAssemblyEnd(red);
-
-//   /* Sum up from all petsc cores. This is not at all a good solution. TODO: Change this! */
-//   double* dataptr;
-//   int size = 2*dim_reduced*dim_reduced;
-//   double* mydata = new double[size];
-//   VecGetArray(red, &dataptr);
-//   for (int i=0; i<size; i++) {
-//     mydata[i] = dataptr[i];
-//   }
-//   MPI_Allreduce(mydata, dataptr, size, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
-//   VecRestoreArray(red, &dataptr);
-//   delete [] mydata;
-
-//   /* Set output */
-//   *reduced = red;
-// }
-
-
-// void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const std::vector<int>& oscilIDs) {
-
-//   /* Get dimensions of preceding and following subsystem */
-//   int dim_pre  = 1; 
-//   int dim_post = 1;
-//   for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
-//     dim_pre  *= getOscillator(iosc)->getNLevels();
-//   for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
-//     dim_post *= getOscillator(iosc)->getNLevels();
-
-//   int dim_reduced = 1;
-//   for (int i = 0; i < oscilIDs.size();i++) {
-//     dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
-//   }
-
-//   /* Get local ownership of full density rhobar */
-//   int ilow, iupp;
-//   VecGetOwnershipRange(rhobar, &ilow, &iupp);
-
-//   /* Get local ownership of reduced density bar*/
-//   int ilow_red, iupp_red;
-//   VecGetOwnershipRange(reducedbar, &ilow_red, &iupp_red);
-
-//   /* sanity test */
-//   int dimmat = dim_pre * dim_reduced * dim_post;
-//   assert ( (int) pow(dimmat,2) == dim);
-
-//  /* Iterate over reduced density matrix elements */
-//   for (int i=0; i<dim_reduced; i++) {
-//     for (int j=0; j<dim_reduced; j++) {
-//       /* Get value from reducedbar */
-//       int vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
-//       int vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
-//       double re = 0.0;
-//       double im = 0.0;
-//       VecGetValues( reducedbar, 1, &vecID_re, &re);
-//       VecGetValues( reducedbar, 1, &vecID_im, &im);
-
-//       /* Iterate over all dim_pre blocks of size n_k * dim_post */
-//       for (int l = 0; l < dim_pre; l++) {
-//         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
-//         /* iterate over elements in this block */
-//         for (int m=0; m<dim_post; m++) {
-//           /* Set values into rhobar */
-//           int rho_row = blockstartID + i * dim_post + m;
-//           int rho_col = blockstartID + j * dim_post + m;
-//           int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
-//           int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
-
-//           /* Set derivative */
-//           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
-//             VecSetValues(rhobar, 1, &rho_vecID_re, &re, ADD_VALUES);
-//             VecSetValues(rhobar, 1, &rho_vecID_im, &im, ADD_VALUES);
-//           }
-//         }
-//       }
-//     }
-//   }
-//   VecAssemblyBegin(rhobar); VecAssemblyEnd(rhobar);
-
-// }
-
-/* grad += alpha * RHS(x)^T * xbar  */
+/* grad += alpha * x^T * RHS(t)^T * xbar  */
 void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
 
 
@@ -1223,9 +1055,41 @@ void MasterEq::setControlAmplitudes(const Vec x) {
   VecRestoreArrayRead(x, &ptr);
 }
 
+/* Pass MatMult operations for the RHS action onto a vector to Petsc */
+void MasterEq::set_RHS_MatMult_operation(){
+
+  // Interface routines for applying the RHS as sparse submatrices matrices
+  if (!usematfree) { 
+    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_sparsemat);
+    MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_sparsemat_transpose);
+
+  // Interface routines for applying RHS in a matrix-free way
+  } else { 
+    if (noscillators == 1) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_matfree_1Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_matfree_transpose_1Osc);
+    } else if (noscillators == 2) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_matfree_2Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_matfree_transpose_2Osc);
+    } else if (noscillators == 3) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_matfree_3Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_matfree_transpose_3Osc);
+    } else if (noscillators == 4) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_matfree_4Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_matfree_transpose_4Osc);
+    } else if (noscillators == 5) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_matfree_5Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_matfree_transpose_5Osc);
+    } else {
+      printf("ERROR. Matfree solver only for up to 5 oscillators. This should never happen! %d\n", noscillators);
+      exit(1);
+    }
+  }
+}
+
 
 /* Sparse matrix solver: Define the action of RHS on a vector x */
-int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
+int applyRHS_sparsemat(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1318,7 +1182,7 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
 
 
 /* Sparse-matrix solver: Define the action of RHS^T on a vector x */
-int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
+int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y) {
   double p,q;
 
   /* Get time from shell context */
@@ -1410,7 +1274,7 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
 
 /* Matfree-solver for 1 Oscillator: Define the action of RHS on a vector x */
 template <int n0>
-int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1502,7 +1366,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matrix-free solver for 1 Oscillators: Define the action of RHS^T on a vector x */
 template <int n0>
-int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1595,7 +1459,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 2 Oscillators: Define the action of RHS on a vector x */
 template <int n0, int n1>
-int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1720,7 +1584,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matrix-free solver for 2 Oscillators: Define the action of RHS^T on a vector x */
 template <int n0, int n1>
-int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1844,7 +1708,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 3 Oscillators: Define the action of RHS on a vector x */
 template <int n0, int n1, int n2>
-int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
    /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1996,7 +1860,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 3 Oscillators: Define the action of RHS^T on a vector x */
 template <int n0, int n1, int n2>
-int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -2153,7 +2017,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 4 Oscillators: Define the action of RHS on a vector x */
 template <int n0, int n1, int n2, int n3>
-int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -2347,7 +2211,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 4 Oscillators: Define the action of RHS^T on a vector x */
 template <int n0, int n1, int n2, int n3>
-int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -2543,7 +2407,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 5 Oscillators: Define the action of RHS on a vector x */
 template <int n0, int n1, int n2, int n3, int n4>
-int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -2785,7 +2649,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 5 Oscillators: Define the action of RHS^T on a vector x */
 template <int n0, int n1, int n2, int n3, int n4>
-int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -3113,49 +2977,49 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
 }
 
 /* --- 1 Oscillator cases --- */
-int myMatMult_matfree_1Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_1Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
-  if      (n0==2)  return myMatMult_matfree<2>(RHS, x, y);
-  else if (n0==3)  return myMatMult_matfree<3>(RHS, x, y);
-  else if (n0==4)  return myMatMult_matfree<4>(RHS, x, y);
-  else if (n0==5)  return myMatMult_matfree<5>(RHS, x, y);
-  else if (n0==6)  return myMatMult_matfree<6>(RHS, x, y);
-  else if (n0==7)  return myMatMult_matfree<7>(RHS, x, y);
-  else if (n0==8)  return myMatMult_matfree<8>(RHS, x, y);
-  else if (n0==9)  return myMatMult_matfree<9>(RHS, x, y);
-  else if (n0==10)  return myMatMult_matfree<10>(RHS, x, y);
+  if      (n0==2)  return applyRHS_matfree<2>(RHS, x, y);
+  else if (n0==3)  return applyRHS_matfree<3>(RHS, x, y);
+  else if (n0==4)  return applyRHS_matfree<4>(RHS, x, y);
+  else if (n0==5)  return applyRHS_matfree<5>(RHS, x, y);
+  else if (n0==6)  return applyRHS_matfree<6>(RHS, x, y);
+  else if (n0==7)  return applyRHS_matfree<7>(RHS, x, y);
+  else if (n0==8)  return applyRHS_matfree<8>(RHS, x, y);
+  else if (n0==9)  return applyRHS_matfree<9>(RHS, x, y);
+  else if (n0==10)  return applyRHS_matfree<10>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     if (mpirank_world==0) {
       printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
       printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
-  -> In function 'int myMatMult_matfree_1Osc(..)':  \n \
-             elseif (n0==%d) return  myMatMult_matfree<%d>(RHS, x, y); \n \
-  -> In function 'int myMatMultTranspose_matfree_1Osc(..)': \n \
-             elseif (n0==%d) return  myMatMultTranspose_matfree<%d>(RHS, x, y);\n\n", n0, n0, n0, n0);
+  -> In function 'int applyRHS_matfree_1Osc(..)':  \n \
+             elseif (n0==%d) return  applyRHS_matfree<%d>(RHS, x, y); \n \
+  -> In function 'int applyRHS_matfree_transpose_1Osc(..)': \n \
+             elseif (n0==%d) return  applyRHS_matfree_transpose<%d>(RHS, x, y);\n\n", n0, n0, n0, n0);
       exit(1);
     } 
     return 0;
   }
 }
-int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose_1Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
-  if      (n0==2)  return myMatMultTranspose_matfree<2>(RHS, x, y);
-  else if (n0==3)  return myMatMultTranspose_matfree<3>(RHS, x, y);
-  else if (n0==4)  return myMatMultTranspose_matfree<4>(RHS, x, y);
-  else if (n0==5)  return myMatMultTranspose_matfree<5>(RHS, x, y);
-  else if (n0==6)  return myMatMultTranspose_matfree<6>(RHS, x, y);
-  else if (n0==7)  return myMatMultTranspose_matfree<7>(RHS, x, y);
-  else if (n0==8)  return myMatMultTranspose_matfree<8>(RHS, x, y);
-  else if (n0==9)  return myMatMultTranspose_matfree<9>(RHS, x, y);
-  else if (n0==10)  return myMatMultTranspose_matfree<10>(RHS, x, y);
+  if      (n0==2)  return applyRHS_matfree_transpose<2>(RHS, x, y);
+  else if (n0==3)  return applyRHS_matfree_transpose<3>(RHS, x, y);
+  else if (n0==4)  return applyRHS_matfree_transpose<4>(RHS, x, y);
+  else if (n0==5)  return applyRHS_matfree_transpose<5>(RHS, x, y);
+  else if (n0==6)  return applyRHS_matfree_transpose<6>(RHS, x, y);
+  else if (n0==7)  return applyRHS_matfree_transpose<7>(RHS, x, y);
+  else if (n0==8)  return applyRHS_matfree_transpose<8>(RHS, x, y);
+  else if (n0==9)  return applyRHS_matfree_transpose<9>(RHS, x, y);
+  else if (n0==10)  return applyRHS_matfree_transpose<10>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -3169,51 +3033,51 @@ int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
 
 
 /* --- 2 Oscillator cases --- */
-int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_2Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
-  if      (n0==3 && n1==20)  return myMatMult_matfree<3,20>(RHS, x, y);
-  else if (n0==3 && n1==10)  return myMatMult_matfree<3,10>(RHS, x, y);
-  else if (n0==1 && n1==1)   return myMatMult_matfree<1,1>(RHS, x, y);
-  else if (n0==2 && n1==2)   return myMatMult_matfree<2,2>(RHS, x, y);
-  else if (n0==3 && n1==3)   return myMatMult_matfree<3,3>(RHS, x, y);
-  else if (n0==4 && n1==4)   return myMatMult_matfree<4,4>(RHS, x, y);
-  else if (n0==5 && n1==5)   return myMatMult_matfree<5,5>(RHS, x, y);
-  else if (n0==10 && n1==10)   return myMatMult_matfree<10,10>(RHS, x, y);
-  else if (n0==20 && n1==20) return myMatMult_matfree<20,20>(RHS, x, y);
+  if      (n0==3 && n1==20)  return applyRHS_matfree<3,20>(RHS, x, y);
+  else if (n0==3 && n1==10)  return applyRHS_matfree<3,10>(RHS, x, y);
+  else if (n0==1 && n1==1)   return applyRHS_matfree<1,1>(RHS, x, y);
+  else if (n0==2 && n1==2)   return applyRHS_matfree<2,2>(RHS, x, y);
+  else if (n0==3 && n1==3)   return applyRHS_matfree<3,3>(RHS, x, y);
+  else if (n0==4 && n1==4)   return applyRHS_matfree<4,4>(RHS, x, y);
+  else if (n0==5 && n1==5)   return applyRHS_matfree<5,5>(RHS, x, y);
+  else if (n0==10 && n1==10)   return applyRHS_matfree<10,10>(RHS, x, y);
+  else if (n0==20 && n1==20) return applyRHS_matfree<20,20>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     if (mpirank_world==0) {
       printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
       printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
-  -> In function 'int myMatMult_matfree_2Osc(..)':  \n \
-             elseif (n0==%d && n1==%d) return  myMatMult_matfree<%d,%d>(RHS, x, y); \n \
-  -> In function 'int myMatMultTranspose_matfree_2Osc(..)': \n \
-             elseif (n0==%d && n1==%d) return  myMatMultTranspose_matfree<%d,%d>(RHS, x, y);\n\n", n0, n1, n0, n1, n0, n1, n0, n1);
+  -> In function 'int applyRHS_matfree_2Osc(..)':  \n \
+             elseif (n0==%d && n1==%d) return  applyRHS_matfree<%d,%d>(RHS, x, y); \n \
+  -> In function 'int applyRHS_matfree_transpose_2Osc(..)': \n \
+             elseif (n0==%d && n1==%d) return  applyRHS_matfree_transpose<%d,%d>(RHS, x, y);\n\n", n0, n1, n0, n1, n0, n1, n0, n1);
       exit(1);
     }
     return 0;
   }
 }
-int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose_2Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
-  if      (n0==3 && n1==20)  return myMatMultTranspose_matfree<3,20>(RHS, x, y);
-  else if (n0==3 && n1==10)  return myMatMultTranspose_matfree<3,10>(RHS, x, y);
-  else if (n0==1 && n1==1)   return myMatMultTranspose_matfree<1,1>(RHS, x, y);
-  else if (n0==2 && n1==2)   return myMatMultTranspose_matfree<2,2>(RHS, x, y);
-  else if (n0==3 && n1==3)   return myMatMultTranspose_matfree<3,3>(RHS, x, y);
-  else if (n0==4 && n1==4)   return myMatMultTranspose_matfree<4,4>(RHS, x, y);
-  else if (n0==5 && n1==5)   return myMatMultTranspose_matfree<5,5>(RHS, x, y);
-  else if (n0==10 && n1==10)   return myMatMultTranspose_matfree<10,10>(RHS, x, y);
-  else if (n0==20 && n1==20) return myMatMultTranspose_matfree<20,20>(RHS, x, y);
+  if      (n0==3 && n1==20)  return applyRHS_matfree_transpose<3,20>(RHS, x, y);
+  else if (n0==3 && n1==10)  return applyRHS_matfree_transpose<3,10>(RHS, x, y);
+  else if (n0==1 && n1==1)   return applyRHS_matfree_transpose<1,1>(RHS, x, y);
+  else if (n0==2 && n1==2)   return applyRHS_matfree_transpose<2,2>(RHS, x, y);
+  else if (n0==3 && n1==3)   return applyRHS_matfree_transpose<3,3>(RHS, x, y);
+  else if (n0==4 && n1==4)   return applyRHS_matfree_transpose<4,4>(RHS, x, y);
+  else if (n0==5 && n1==5)   return applyRHS_matfree_transpose<5,5>(RHS, x, y);
+  else if (n0==10 && n1==10)   return applyRHS_matfree_transpose<10,10>(RHS, x, y);
+  else if (n0==20 && n1==20) return applyRHS_matfree_transpose<20,20>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -3227,43 +3091,43 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
 
 
 /* --- 3 Oscillator cases --- */
-int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_3Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
-  if      (n0==2 && n1==2 && n2==2) return myMatMult_matfree<2,2,2>(RHS, x, y);
-  else if (n0==2 && n1==3 && n2==4) return myMatMult_matfree<2,3,4>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3) return myMatMult_matfree<3,3,3>(RHS, x, y);
-  else if (n0==4 && n1==4 && n2==4) return myMatMult_matfree<4,4,4>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2) return applyRHS_matfree<2,2,2>(RHS, x, y);
+  else if (n0==2 && n1==3 && n2==4) return applyRHS_matfree<2,3,4>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3) return applyRHS_matfree<3,3,3>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4) return applyRHS_matfree<4,4,4>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     if (mpirank_world==0) {
       printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
       printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
-  -> In function 'int myMatMult_matfree_3Osc(..)':  \n \
-             elseif (n0==%d && n1==%d && n2==%d) return  myMatMult_matfree<%d,%d,%d>(RHS, x, y); \n \
-  -> In function 'int myMatMultTranspose_matfree_3Osc(..)': \n \
-             elseif (n0==%d && n1==%d && n2==%d) return  myMatMultTranspose_matfree<%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n0, n1, n2, n0, n1, n2, n0, n1, n2);
+  -> In function 'int applyRHS_matfree_3Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d) return  applyRHS_matfree<%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int applyRHS_matfree_transpose_3Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d) return  applyRHS_matfree_transpose<%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n0, n1, n2, n0, n1, n2, n0, n1, n2);
       exit(1);
     } 
     return 0;
   }
 }
-int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose_3Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
-  if      (n0==2 && n1==2 && n2==2)  return myMatMultTranspose_matfree<2,2,2>(RHS, x, y);
-  else if (n0==2 && n1==3 && n2==4)  return myMatMultTranspose_matfree<2,3,4>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3)  return myMatMultTranspose_matfree<3,3,3>(RHS, x, y);
-  else if (n0==4 && n1==4 && n2==4)  return myMatMultTranspose_matfree<4,4,4>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2)  return applyRHS_matfree_transpose<2,2,2>(RHS, x, y);
+  else if (n0==2 && n1==3 && n2==4)  return applyRHS_matfree_transpose<2,3,4>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3)  return applyRHS_matfree_transpose<3,3,3>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4)  return applyRHS_matfree_transpose<4,4,4>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -3277,7 +3141,7 @@ int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
 
 
 /* --- 4 Oscillator cases --- */
-int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_4Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
@@ -3285,25 +3149,25 @@ int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
-  if      (n0==2 && n1==2 && n2==2 && n3 == 2) return myMatMult_matfree<2,2,2,2>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3 && n3 == 3) return myMatMult_matfree<3,3,3,3>(RHS, x, y);
-  else if (n0==4 && n1==4 && n2==4 && n3 == 4) return myMatMult_matfree<4,4,4,4>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2 && n3 == 2) return applyRHS_matfree<2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3 == 3) return applyRHS_matfree<3,3,3,3>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4 && n3 == 4) return applyRHS_matfree<4,4,4,4>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     if (mpirank_world==0) {
       printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
       printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
-  -> In function 'int myMatMult_matfree_4Osc(..)':  \n \
-             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  myMatMult_matfree<%d,%d,%d,%d>(RHS, x, y); \n \
-  -> In function 'int myMatMultTranspose_matfree_4Osc(..)': \n \
-             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  myMatMultTranspose_matfree<%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3);
+  -> In function 'int applyRHS_matfree_4Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  applyRHS_matfree<%d,%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int applyRHS_matfree_transpose_4Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  applyRHS_matfree_transpose<%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3);
       exit(1);
     }
     return 0;
   }
 }
-int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose_4Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
@@ -3312,9 +3176,9 @@ int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
-  if      (n0==2 && n1==2 && n2==2 && n3==2)  return myMatMultTranspose_matfree<2,2,2,2>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3 && n3==3)  return myMatMultTranspose_matfree<3,3,3,3>(RHS, x, y);
-  else if (n0==4 && n1==4 && n2==4 && n3==4)  return myMatMultTranspose_matfree<4,4,4,4>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2 && n3==2)  return applyRHS_matfree_transpose<2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3==3)  return applyRHS_matfree_transpose<3,3,3,3>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4 && n3==4)  return applyRHS_matfree_transpose<4,4,4,4>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -3328,7 +3192,7 @@ int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
 
 
 /* --- 5 Oscillator cases --- */
-int myMatMult_matfree_5Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_5Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
@@ -3337,24 +3201,24 @@ int myMatMult_matfree_5Osc(Mat RHS, Vec x, Vec y){
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
   int n4 = shellctx->nlevels[4];
-  if      (n0==2 && n1==2 && n2==2 && n3 == 2 && n4 == 2) return myMatMult_matfree<2,2,2,2,2>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3 && n3 == 3 && n4 == 3) return myMatMult_matfree<3,3,3,3,3>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2 && n3 == 2 && n4 == 2) return applyRHS_matfree<2,2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3 == 3 && n4 == 3) return applyRHS_matfree<3,3,3,3,3>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     if (mpirank_world==0) {
       printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
       printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
-  -> In function 'int myMatMult_matfree_5Osc(..)':  \n \
-             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  myMatMult_matfree<%d,%d,%d,%d,%d>(RHS, x, y); \n \
-  -> In function 'int myMatMultTranspose_matfree_5Osc(..)': \n \
-             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  myMatMultTranspose_matfree<%d,%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4);
+  -> In function 'int applyRHS_matfree_5Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  applyRHS_matfree<%d,%d,%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int applyRHS_matfree_transpose_5Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  applyRHS_matfree_transpose<%d,%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4);
       exit(1);
     }
     return 0;
   }
 }
-int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose_5Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
@@ -3364,8 +3228,8 @@ int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
   int n4 = shellctx->nlevels[4];
-  if      (n0==2 && n1==2 && n2==2 && n3==2 && n4==2)  return myMatMultTranspose_matfree<2,2,2,2,2>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3 && n3==3 && n4==3)  return myMatMultTranspose_matfree<3,3,3,3,3>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2 && n3==2 && n4==2)  return applyRHS_matfree_transpose<2,2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3==3 && n4==3)  return applyRHS_matfree_transpose<3,3,3,3,3>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -3376,3 +3240,148 @@ int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
     return 0;
   }
 }
+
+
+// void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs) {
+
+//   Vec red;
+
+//   /* Get dimensions of preceding and following subsystem */
+//   int dim_pre  = 1; 
+//   int dim_post = 1;
+//   for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
+//     dim_pre  *= getOscillator(iosc)->getNLevels();
+//   for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
+//     dim_post *= getOscillator(iosc)->getNLevels();
+
+//   int dim_reduced = 1;
+//   for (int i = 0; i < oscilIDs.size();i++) {
+//     dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
+//   }
+
+//   /* sanity test */
+//   int dimmat = dim_pre * dim_reduced * dim_post;
+//   assert ( (int) pow(dimmat,2) == dim);
+
+//   /* Get local ownership of incoming full density matrix */
+//   int ilow, iupp;
+//   VecGetOwnershipRange(rho, &ilow, &iupp);
+
+//   /* Create reduced density matrix, sequential */
+//   VecCreateSeq(PETSC_COMM_SELF, 2*dim_reduced*dim_reduced, &red);
+//   VecSetFromOptions(red);
+
+//   /* Iterate over reduced density matrix elements */
+//   for (int i=0; i<dim_reduced; i++) {
+//     for (int j=0; j<dim_reduced; j++) {
+//       double sum_re = 0.0;
+//       double sum_im = 0.0;
+//       /* Iterate over all dim_pre blocks of size n_k * dim_post */
+//       for (int l = 0; l < dim_pre; l++) {
+//         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
+//         /* iterate over elements in this block */
+//         for (int m=0; m<dim_post; m++) {
+//           int rho_row = blockstartID + i * dim_post + m;
+//           int rho_col = blockstartID + j * dim_post + m;
+//           int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
+//           int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
+//           /* Get real and imaginary part from full density matrix */
+//           double re = 0.0;
+//           double im = 0.0;
+//           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
+//             VecGetValues(rho, 1, &rho_vecID_re, &re);
+//             VecGetValues(rho, 1, &rho_vecID_im, &im);
+//           } 
+//           /* add to partial trace */
+//           sum_re += re;
+//           sum_im += im;
+//         }
+//       }
+//       /* Set real and imaginary part of element (i,j) of the reduced density matrix */
+//       int out_vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
+//       int out_vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
+//       VecSetValues( red, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
+//       VecSetValues( red, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
+//     }
+//   }
+//   VecAssemblyBegin(red);
+//   VecAssemblyEnd(red);
+
+//   /* Sum up from all petsc cores. This is not at all a good solution. TODO: Change this! */
+//   double* dataptr;
+//   int size = 2*dim_reduced*dim_reduced;
+//   double* mydata = new double[size];
+//   VecGetArray(red, &dataptr);
+//   for (int i=0; i<size; i++) {
+//     mydata[i] = dataptr[i];
+//   }
+//   MPI_Allreduce(mydata, dataptr, size, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+//   VecRestoreArray(red, &dataptr);
+//   delete [] mydata;
+
+//   /* Set output */
+//   *reduced = red;
+// }
+
+
+// void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const std::vector<int>& oscilIDs) {
+
+//   /* Get dimensions of preceding and following subsystem */
+//   int dim_pre  = 1; 
+//   int dim_post = 1;
+//   for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
+//     dim_pre  *= getOscillator(iosc)->getNLevels();
+//   for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
+//     dim_post *= getOscillator(iosc)->getNLevels();
+
+//   int dim_reduced = 1;
+//   for (int i = 0; i < oscilIDs.size();i++) {
+//     dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
+//   }
+
+//   /* Get local ownership of full density rhobar */
+//   int ilow, iupp;
+//   VecGetOwnershipRange(rhobar, &ilow, &iupp);
+
+//   /* Get local ownership of reduced density bar*/
+//   int ilow_red, iupp_red;
+//   VecGetOwnershipRange(reducedbar, &ilow_red, &iupp_red);
+
+//   /* sanity test */
+//   int dimmat = dim_pre * dim_reduced * dim_post;
+//   assert ( (int) pow(dimmat,2) == dim);
+
+//  /* Iterate over reduced density matrix elements */
+//   for (int i=0; i<dim_reduced; i++) {
+//     for (int j=0; j<dim_reduced; j++) {
+//       /* Get value from reducedbar */
+//       int vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
+//       int vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
+//       double re = 0.0;
+//       double im = 0.0;
+//       VecGetValues( reducedbar, 1, &vecID_re, &re);
+//       VecGetValues( reducedbar, 1, &vecID_im, &im);
+
+//       /* Iterate over all dim_pre blocks of size n_k * dim_post */
+//       for (int l = 0; l < dim_pre; l++) {
+//         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
+//         /* iterate over elements in this block */
+//         for (int m=0; m<dim_post; m++) {
+//           /* Set values into rhobar */
+//           int rho_row = blockstartID + i * dim_post + m;
+//           int rho_col = blockstartID + j * dim_post + m;
+//           int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
+//           int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
+
+//           /* Set derivative */
+//           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
+//             VecSetValues(rhobar, 1, &rho_vecID_re, &re, ADD_VALUES);
+//             VecSetValues(rhobar, 1, &rho_vecID_im, &im, ADD_VALUES);
+//           }
+//         }
+//       }
+//     }
+//   }
+//   VecAssemblyBegin(rhobar); VecAssemblyEnd(rhobar);
+
+// }
