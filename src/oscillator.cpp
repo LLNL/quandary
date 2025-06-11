@@ -130,6 +130,7 @@ Oscillator::Oscillator(MapParam config, size_t id, std::vector<int> nlevels_all_
         controlinitializations.push_back("0.0");
     }
     // Check config option for 'constant' or 'random' initialization
+    // Note, the config amplitude is multiplied by 2pi here!!
     double initval = atof(controlinitializations[idini+1].c_str())*2.0*M_PI;
     if (controlinitializations[idini].compare("constant") == 0 ) {
       // If STEP: scale to [0,1]
@@ -278,16 +279,18 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
 
   /* Evaluate p(t) and q(t) using the parameters */
   if (params.size()>0) {
-    // Iterate over basis parameterizations. Only one will be used, see the break-statement. 
+    // Iterate over control segments. Only one will be used, see the break-statement. 
     for (size_t bs = 0; bs < basisfunctions.size(); bs++){
       if (basisfunctions[bs]->getTstart() <= t && 
           basisfunctions[bs]->getTstop() >= t ) {
+
         /* Iterate over carrier frequencies */
         double sum_p = 0.0;
         double sum_q = 0.0;
         for (size_t f=0; f < carrier_freq.size(); f++) {
-          double Blt1 = 0.0; 
-          double Blt2 = 0.0;
+          /* Evaluate the Bspline for this carrier wave */
+          double Blt1 = 0.0; // Sums over alpha^1 * basisfunction(t) (real)
+          double Blt2 = 0.0; // Sums over alpha^2 * basisfunction(t) (imag)
           basisfunctions[bs]->evaluate(t, params, f, &Blt1, &Blt2);
           if (basisfunctions[bs]->getType() == ControlType::BSPLINEAMP) {
             double cos_omt = cos(carrier_freq[f]*t + Blt2);
@@ -320,17 +323,11 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
   return 0;
 }
 
-int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
-
-  // Sanity check 
-  if ( t > Tfinal ){
-    printf("ERROR: accessing spline outside of [0,T] at %f. Should never happen! Bug.\n", t);
-    exit(1);
-  } 
-
+int Oscillator::evalControl_diff(const double t, double* grad, const double pbar, const double qbar) {
 
   if (params.size()>0) {
-    // Iterate over basis parameterizations
+
+    // Iterate over control segments. Only one is active, see break statement.
     for (size_t bs = 0; bs < basisfunctions.size(); bs++){
       if (basisfunctions[bs]->getTstart() <= t && 
           basisfunctions[bs]->getTstop() >= t ) {
@@ -338,13 +335,20 @@ int Oscillator::evalControl_diff(const double t, double* dRedp, double* dImdp) {
         for (size_t f=0; f < carrier_freq.size(); f++) {
 
           if (basisfunctions[bs]->getType() == ControlType::BSPLINEAMP) {
-            basisfunctions[bs]->derivative(t, params, dRedp, carrier_freq[f], 1.0, f);  // +/-1.0 is used as a flag inside Bsline2ndAmplitude->evaluate() to determine whether this is for p (1.0) or for q (-1.0)
-            basisfunctions[bs]->derivative(t, params, dImdp, carrier_freq[f], -1.0, f);
+            // basisfunctions[bs]->derivative(t, params, dpdalpha, carrier_freq[f], 1.0, f);  // +/-1.0 is used as a flag inside Bsline2ndAmplitude->evaluate() to determine whether this is for p (1.0) or for q (-1.0)
+            // basisfunctions[bs]->derivative(t, params, dqdalpha, carrier_freq[f], -1.0, f);
+            // basisfunctions[bs]->derivative(t, params, dpdalpha, carrier_freq[f], 1.0, f);  // +/-1.0 is used as a flag inside Bsline2ndAmplitude->evaluate() to determine whether this is for p (1.0) or for q (-1.0)
+            printf("Gradient for BsplineAmp parameterization is currently not implemented. Reach out to guenther5@llnl.gov if you need this. TODO.\n");
+            exit(1);
           } else {
+
             double cos_omt = cos(carrier_freq[f]*t);
             double sin_omt = sin(carrier_freq[f]*t);
-            basisfunctions[bs]->derivative(t, params, dRedp, cos_omt, -sin_omt, f);
-            basisfunctions[bs]->derivative(t, params, dImdp, sin_omt, cos_omt, f);
+            double Blt1bar = sin_omt*qbar + cos_omt*pbar;
+            double Blt2bar = cos_omt*qbar - sin_omt*pbar;
+
+            /* Derivative wrt control alpha */
+            basisfunctions[bs]->derivative(t, params, grad, Blt1bar, Blt2bar, f); // dp(t) / dalpha
           }
         }
         break;

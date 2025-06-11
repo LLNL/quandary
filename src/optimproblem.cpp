@@ -104,7 +104,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
-    if (mpirank_world == 0) {
+    if (mpirank_world == 0 && !quietmode) {
       printf("Warning: Disabling DpDm penalty term because it is not implemented for the Lindblad solver.\n");
     }
     gamma_penalty_dpdm = 0.0;
