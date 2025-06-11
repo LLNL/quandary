@@ -98,12 +98,12 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a9147b7255ab1fcda86c03d782739169e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1ec6a49b5db37a5201a611238c844ec6" id="r_a1ec6a49b5db37a5201a611238c844ec6"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHamiltonianFileReader.html#a1ec6a49b5db37a5201a611238c844ec6">~HamiltonianFileReader</a> ()</td></tr>
 <tr class="separator:a1ec6a49b5db37a5201a611238c844ec6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6f90f32d48c85a165caa13a7889bde3f" id="r_a6f90f32d48c85a165caa13a7889bde3f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHamiltonianFileReader.html#a6f90f32d48c85a165caa13a7889bde3f">receiveHsys</a> (Mat &amp;Bd)</td></tr>
-<tr class="memdesc:a6f90f32d48c85a165caa13a7889bde3f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reads the constant system Hamiltonian from file.  <br /></td></tr>
-<tr class="separator:a6f90f32d48c85a165caa13a7889bde3f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac91cf818c52f4040f1513a25f2968ca9" id="r_ac91cf818c52f4040f1513a25f2968ca9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHamiltonianFileReader.html#ac91cf818c52f4040f1513a25f2968ca9">receiveHc</a> (int noscillators, std::vector&lt; std::vector&lt; Mat &gt; &gt; &amp;Ac_vec, std::vector&lt; std::vector&lt; Mat &gt; &gt; &amp;Bc_vec)</td></tr>
-<tr class="memdesc:ac91cf818c52f4040f1513a25f2968ca9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Receives real and imaginary control operators from file.  <br /></td></tr>
-<tr class="separator:ac91cf818c52f4040f1513a25f2968ca9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3e6179396421e3bff256c2996e44ae1d" id="r_a3e6179396421e3bff256c2996e44ae1d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHamiltonianFileReader.html#a3e6179396421e3bff256c2996e44ae1d">receiveHsys</a> (Mat &amp;Bd, Mat &amp;Ad)</td></tr>
+<tr class="memdesc:a3e6179396421e3bff256c2996e44ae1d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reads the constant system Hamiltonian from file.  <br /></td></tr>
+<tr class="separator:a3e6179396421e3bff256c2996e44ae1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa89bb7b20217ce23e1d884e02ab4e220" id="r_aa89bb7b20217ce23e1d884e02ab4e220"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHamiltonianFileReader.html#aa89bb7b20217ce23e1d884e02ab4e220">receiveHc</a> (int noscillators, std::vector&lt; Mat &gt; &amp;Ac_vec, std::vector&lt; Mat &gt; &amp;Bc_vec)</td></tr>
+<tr class="memdesc:aa89bb7b20217ce23e1d884e02ab4e220"><td class="mdescLeft">&#160;</td><td class="mdescRight">Receives real and imaginary control operators from file.  <br /></td></tr>
+<tr class="separator:aa89bb7b20217ce23e1d884e02ab4e220"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
@@ -213,8 +213,8 @@ Protected Attributes</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="ac91cf818c52f4040f1513a25f2968ca9" name="ac91cf818c52f4040f1513a25f2968ca9"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac91cf818c52f4040f1513a25f2968ca9">&#9670;&#160;</a></span>receiveHc()</h2>
+<a id="aa89bb7b20217ce23e1d884e02ab4e220" name="aa89bb7b20217ce23e1d884e02ab4e220"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa89bb7b20217ce23e1d884e02ab4e220">&#9670;&#160;</a></span>receiveHc()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -228,13 +228,13 @@ Protected Attributes</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::vector&lt; std::vector&lt; Mat &gt; &gt; &amp;&#160;</td>
+          <td class="paramtype">std::vector&lt; Mat &gt; &amp;&#160;</td>
           <td class="paramname"><em>Ac_vec</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::vector&lt; std::vector&lt; Mat &gt; &gt; &amp;&#160;</td>
+          <td class="paramtype">std::vector&lt; Mat &gt; &amp;&#160;</td>
           <td class="paramname"><em>Bc_vec</em>&#160;</td>
         </tr>
         <tr>
@@ -250,16 +250,16 @@ Protected Attributes</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">noscillators</td><td>Number of oscillators in the system </td></tr>
-    <tr><td class="paramname">Ac_vec</td><td>Reference to vector of vector of matrices storing real parts of control matrices (could be multiple control operators per oscillator) </td></tr>
-    <tr><td class="paramname">Bc_vec</td><td>Reference to vector of vector of matrices storing imaginary parts of control matrices (could be multiple control operators per oscillator) </td></tr>
+    <tr><td class="paramname">Ac_vec</td><td>Reference to vector of matrices storing real parts of control system matrices. One per oscillator. </td></tr>
+    <tr><td class="paramname">Bc_vec</td><td>Reference to vector of matrices storing imaginary parts of control matrices. One per oscillator. </td></tr>
   </table>
   </dd>
 </dl>
 
 </div>
 </div>
-<a id="a6f90f32d48c85a165caa13a7889bde3f" name="a6f90f32d48c85a165caa13a7889bde3f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6f90f32d48c85a165caa13a7889bde3f">&#9670;&#160;</a></span>receiveHsys()</h2>
+<a id="a3e6179396421e3bff256c2996e44ae1d" name="a3e6179396421e3bff256c2996e44ae1d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3e6179396421e3bff256c2996e44ae1d">&#9670;&#160;</a></span>receiveHsys()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -268,17 +268,27 @@ Protected Attributes</h2></td></tr>
           <td class="memname">void HamiltonianFileReader::receiveHsys </td>
           <td>(</td>
           <td class="paramtype">Mat &amp;&#160;</td>
-          <td class="paramname"><em>Bd</em></td><td>)</td>
+          <td class="paramname"><em>Bd</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
           <td></td>
+          <td class="paramtype">Mat &amp;&#160;</td>
+          <td class="paramname"><em>Ad</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 <p>Reads the constant system Hamiltonian from file. </p>
-<p>Note: The time-independent system Hamiltonian matrix must be real-valued.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">Bd</td><td>Reference to matrix that stores the system Hamiltonian. Must be allocated. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Bd</td><td>Reference to matrix that stores the imaginary part of the system matrix for (-i*Hsys). Must be allocated. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">Ad</td><td>Reference to matrix that stores the real part of the system matrix for (-i*Hsys). Must be allocated. </td></tr>
   </table>
   </dd>
 </dl>

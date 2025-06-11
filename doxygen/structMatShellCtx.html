@@ -117,7 +117,7 @@ Public Attributes</h2></td></tr>
 <tr class="memdesc:a6d70c2aeb5c6016d867aab74747d0125"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cross-Kerr coupling coefficients.  <br /></td></tr>
 <tr class="separator:a6d70c2aeb5c6016d867aab74747d0125"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a34c21d5b991c90f4dc49f8007772870a" id="r_a34c21d5b991c90f4dc49f8007772870a"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#a34c21d5b991c90f4dc49f8007772870a">Jkl</a></td></tr>
-<tr class="memdesc:a34c21d5b991c90f4dc49f8007772870a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dipole-dipole coupling coefficients.  <br /></td></tr>
+<tr class="memdesc:a34c21d5b991c90f4dc49f8007772870a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dipole-dipole coupling strength.  <br /></td></tr>
 <tr class="separator:a34c21d5b991c90f4dc49f8007772870a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4163f6fb8f64ba0184f3ebb50bd69a39" id="r_a4163f6fb8f64ba0184f3ebb50bd69a39"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#a4163f6fb8f64ba0184f3ebb50bd69a39">eta</a></td></tr>
 <tr class="memdesc:a4163f6fb8f64ba0184f3ebb50bd69a39"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequency differences of the rotating frames.  <br /></td></tr>
@@ -130,36 +130,34 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a27ee90289fa1207870f90c3caca92692" id="r_a27ee90289fa1207870f90c3caca92692"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#a27ee90289fa1207870f90c3caca92692">addT2</a></td></tr>
 <tr class="memdesc:a27ee90289fa1207870f90c3caca92692"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flags for T1 decay and T2 dephasing.  <br /></td></tr>
 <tr class="separator:a27ee90289fa1207870f90c3caca92692"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aece20973a9e46bf7a6c7359d0433ce59" id="r_aece20973a9e46bf7a6c7359d0433ce59"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::vector&lt; double &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#aece20973a9e46bf7a6c7359d0433ce59">control_Re</a></td></tr>
-<tr class="memdesc:aece20973a9e46bf7a6c7359d0433ce59"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real parts of control pulse \(p(t)\).  <br /></td></tr>
-<tr class="separator:aece20973a9e46bf7a6c7359d0433ce59"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad803d2b68dc35ce7718b0401f81b08c6" id="r_ad803d2b68dc35ce7718b0401f81b08c6"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::vector&lt; double &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#ad803d2b68dc35ce7718b0401f81b08c6">control_Im</a></td></tr>
-<tr class="memdesc:ad803d2b68dc35ce7718b0401f81b08c6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary parts of control pulse \(q(t)\).  <br /></td></tr>
-<tr class="separator:ad803d2b68dc35ce7718b0401f81b08c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a35412254e1443f6067a4426bb8cd8f73" id="r_a35412254e1443f6067a4426bb8cd8f73"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#a35412254e1443f6067a4426bb8cd8f73">eval_transfer_Hdt_re</a></td></tr>
-<tr class="memdesc:a35412254e1443f6067a4426bb8cd8f73"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluated real transfer functions for time-varying Hamiltonian.  <br /></td></tr>
-<tr class="separator:a35412254e1443f6067a4426bb8cd8f73"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae6b69e7f840a9e42ee0021bccc9a96a6" id="r_ae6b69e7f840a9e42ee0021bccc9a96a6"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#ae6b69e7f840a9e42ee0021bccc9a96a6">eval_transfer_Hdt_im</a></td></tr>
-<tr class="memdesc:ae6b69e7f840a9e42ee0021bccc9a96a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluated imaginary transfer functions for time-varying Hamiltonian.  <br /></td></tr>
-<tr class="separator:ae6b69e7f840a9e42ee0021bccc9a96a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a94225b343a1fb5c88a86dee9ae70fb17" id="r_a94225b343a1fb5c88a86dee9ae70fb17"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::vector&lt; Mat &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#a94225b343a1fb5c88a86dee9ae70fb17">Ac_vec</a></td></tr>
-<tr class="memdesc:a94225b343a1fb5c88a86dee9ae70fb17"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vector of Real parts of control matrices per oscillator.  <br /></td></tr>
-<tr class="separator:a94225b343a1fb5c88a86dee9ae70fb17"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a676903557b02ac5450346a60cc241ca1" id="r_a676903557b02ac5450346a60cc241ca1"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::vector&lt; Mat &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#a676903557b02ac5450346a60cc241ca1">Bc_vec</a></td></tr>
-<tr class="memdesc:a676903557b02ac5450346a60cc241ca1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vector of Imaginary parts of control matrices per oscillator.  <br /></td></tr>
-<tr class="separator:a676903557b02ac5450346a60cc241ca1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9ba1788479840f371c24f631cc988f87" id="r_a9ba1788479840f371c24f631cc988f87"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#a9ba1788479840f371c24f631cc988f87">control_Re</a></td></tr>
+<tr class="memdesc:a9ba1788479840f371c24f631cc988f87"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real parts of control pulse \(p(t)\).  <br /></td></tr>
+<tr class="separator:a9ba1788479840f371c24f631cc988f87"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a905421e3d386aeb7dbf2d33f29b4faca" id="r_a905421e3d386aeb7dbf2d33f29b4faca"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#a905421e3d386aeb7dbf2d33f29b4faca">control_Im</a></td></tr>
+<tr class="memdesc:a905421e3d386aeb7dbf2d33f29b4faca"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary parts of control pulse \(q(t)\).  <br /></td></tr>
+<tr class="separator:a905421e3d386aeb7dbf2d33f29b4faca"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab5de01663fc3402b60fde1868073b33d" id="r_ab5de01663fc3402b60fde1868073b33d"><td class="memItemLeft" align="right" valign="top">std::vector&lt; Mat &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#ab5de01663fc3402b60fde1868073b33d">Ac_vec</a></td></tr>
+<tr class="memdesc:ab5de01663fc3402b60fde1868073b33d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vector of real parts of control matrices per oscillator.  <br /></td></tr>
+<tr class="separator:ab5de01663fc3402b60fde1868073b33d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af642a8e235a41ff9e672d784620a05d2" id="r_af642a8e235a41ff9e672d784620a05d2"><td class="memItemLeft" align="right" valign="top">std::vector&lt; Mat &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#af642a8e235a41ff9e672d784620a05d2">Bc_vec</a></td></tr>
+<tr class="memdesc:af642a8e235a41ff9e672d784620a05d2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vector of imaginary parts of control matrices per oscillator.  <br /></td></tr>
+<tr class="separator:af642a8e235a41ff9e672d784620a05d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a877b20ea0213d60200aa2a6c829851f1" id="r_a877b20ea0213d60200aa2a6c829851f1"><td class="memItemLeft" align="right" valign="top">Mat *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#a877b20ea0213d60200aa2a6c829851f1">Ad</a></td></tr>
-<tr class="memdesc:a877b20ea0213d60200aa2a6c829851f1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real parts of time-independent system matrix \(Re(-iH_d)\), without the coupling terms.  <br /></td></tr>
+<tr class="memdesc:a877b20ea0213d60200aa2a6c829851f1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real parts of time-independent system matrix.  <br /></td></tr>
 <tr class="separator:a877b20ea0213d60200aa2a6c829851f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abfb6725d58118545ef1e714c37a76ee0" id="r_abfb6725d58118545ef1e714c37a76ee0"><td class="memItemLeft" align="right" valign="top">Mat *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#abfb6725d58118545ef1e714c37a76ee0">Bd</a></td></tr>
-<tr class="memdesc:abfb6725d58118545ef1e714c37a76ee0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary parts of time-independent system matrix \(Im(-iH_d)\), without the coupling terms.  <br /></td></tr>
+<tr class="memdesc:abfb6725d58118545ef1e714c37a76ee0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary parts of time-independent system matrix.  <br /></td></tr>
 <tr class="separator:abfb6725d58118545ef1e714c37a76ee0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0033984ce7821240a254b2666e0d8ec4" id="r_a0033984ce7821240a254b2666e0d8ec4"><td class="memItemLeft" align="right" valign="top">std::vector&lt; Mat &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#a0033984ce7821240a254b2666e0d8ec4">Ad_vec</a></td></tr>
-<tr class="memdesc:a0033984ce7821240a254b2666e0d8ec4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Real parts of dipole-dipole coupling system matrices.  <br /></td></tr>
+<tr class="memdesc:a0033984ce7821240a254b2666e0d8ec4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vector of real parts of dipole-dipole coupling system matrices.  <br /></td></tr>
 <tr class="separator:a0033984ce7821240a254b2666e0d8ec4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae10aee7fdcd0267229a54dd6d9e7ace1" id="r_ae10aee7fdcd0267229a54dd6d9e7ace1"><td class="memItemLeft" align="right" valign="top">std::vector&lt; Mat &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#ae10aee7fdcd0267229a54dd6d9e7ace1">Bd_vec</a></td></tr>
-<tr class="memdesc:ae10aee7fdcd0267229a54dd6d9e7ace1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Imaginary parts of dipole-dipole coupling system matrices.  <br /></td></tr>
+<tr class="memdesc:ae10aee7fdcd0267229a54dd6d9e7ace1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vector of imaginary parts of dipole-dipole coupling system matrices.  <br /></td></tr>
 <tr class="separator:ae10aee7fdcd0267229a54dd6d9e7ace1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aacf5514257ab43f9b825194f2f43b251" id="r_aacf5514257ab43f9b825194f2f43b251"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#aacf5514257ab43f9b825194f2f43b251">Bd_coeffs</a></td></tr>
+<tr class="separator:aacf5514257ab43f9b825194f2f43b251"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac082372639074f8f52e4587f285e4cd3" id="r_ac082372639074f8f52e4587f285e4cd3"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#ac082372639074f8f52e4587f285e4cd3">Ad_coeffs</a></td></tr>
+<tr class="separator:ac082372639074f8f52e4587f285e4cd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0e414f19d926dfcfbd673069aa0bd60c" id="r_a0e414f19d926dfcfbd673069aa0bd60c"><td class="memItemLeft" align="right" valign="top">Vec *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatShellCtx.html#a0e414f19d926dfcfbd673069aa0bd60c">aux</a></td></tr>
 <tr class="memdesc:a0e414f19d926dfcfbd673069aa0bd60c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Auxiliary vector for computations.  <br /></td></tr>
 <tr class="separator:a0e414f19d926dfcfbd673069aa0bd60c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -171,19 +169,19 @@ Public Attributes</h2></td></tr>
 <div class="textblock"><p>MatShell context containing data needed for applying the right-hand-side (RHS) system matrix to a vector. </p>
 <p>This structure holds all the necessary data for applying the real-valued and vectorized system matrix to a state vector. </p>
 </div><h2 class="groupheader">Member Data Documentation</h2>
-<a id="a94225b343a1fb5c88a86dee9ae70fb17" name="a94225b343a1fb5c88a86dee9ae70fb17"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a94225b343a1fb5c88a86dee9ae70fb17">&#9670;&#160;</a></span>Ac_vec</h2>
+<a id="ab5de01663fc3402b60fde1868073b33d" name="ab5de01663fc3402b60fde1868073b33d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab5de01663fc3402b60fde1868073b33d">&#9670;&#160;</a></span>Ac_vec</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::vector&lt;std::vector&lt;Mat&gt; &gt; MatShellCtx::Ac_vec</td>
+          <td class="memname">std::vector&lt;Mat&gt; MatShellCtx::Ac_vec</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>Vector of Real parts of control matrices per oscillator. </p>
+<p>Vector of real parts of control matrices per oscillator. </p>
 
 </div>
 </div>
@@ -199,7 +197,21 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Real parts of time-independent system matrix \(Re(-iH_d)\), without the coupling terms. </p>
+<p>Real parts of time-independent system matrix. </p>
+
+</div>
+</div>
+<a id="ac082372639074f8f52e4587f285e4cd3" name="ac082372639074f8f52e4587f285e4cd3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac082372639074f8f52e4587f285e4cd3">&#9670;&#160;</a></span>Ad_coeffs</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;double&gt; MatShellCtx::Ad_coeffs</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -215,7 +227,7 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Real parts of dipole-dipole coupling system matrices. </p>
+<p>Vector of real parts of dipole-dipole coupling system matrices. </p>
 
 </div>
 </div>
@@ -265,19 +277,19 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a676903557b02ac5450346a60cc241ca1" name="a676903557b02ac5450346a60cc241ca1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a676903557b02ac5450346a60cc241ca1">&#9670;&#160;</a></span>Bc_vec</h2>
+<a id="af642a8e235a41ff9e672d784620a05d2" name="af642a8e235a41ff9e672d784620a05d2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af642a8e235a41ff9e672d784620a05d2">&#9670;&#160;</a></span>Bc_vec</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::vector&lt;std::vector&lt;Mat&gt; &gt; MatShellCtx::Bc_vec</td>
+          <td class="memname">std::vector&lt;Mat&gt; MatShellCtx::Bc_vec</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>Vector of Imaginary parts of control matrices per oscillator. </p>
+<p>Vector of imaginary parts of control matrices per oscillator. </p>
 
 </div>
 </div>
@@ -293,7 +305,21 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Imaginary parts of time-independent system matrix \(Im(-iH_d)\), without the coupling terms. </p>
+<p>Imaginary parts of time-independent system matrix. </p>
+
+</div>
+</div>
+<a id="aacf5514257ab43f9b825194f2f43b251" name="aacf5514257ab43f9b825194f2f43b251"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aacf5514257ab43f9b825194f2f43b251">&#9670;&#160;</a></span>Bd_coeffs</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;double&gt; MatShellCtx::Bd_coeffs</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -309,18 +335,18 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Imaginary parts of dipole-dipole coupling system matrices. </p>
+<p>Vector of imaginary parts of dipole-dipole coupling system matrices. </p>
 
 </div>
 </div>
-<a id="ad803d2b68dc35ce7718b0401f81b08c6" name="ad803d2b68dc35ce7718b0401f81b08c6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad803d2b68dc35ce7718b0401f81b08c6">&#9670;&#160;</a></span>control_Im</h2>
+<a id="a905421e3d386aeb7dbf2d33f29b4faca" name="a905421e3d386aeb7dbf2d33f29b4faca"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a905421e3d386aeb7dbf2d33f29b4faca">&#9670;&#160;</a></span>control_Im</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::vector&lt;std::vector&lt;double&gt; &gt; MatShellCtx::control_Im</td>
+          <td class="memname">std::vector&lt;double&gt; MatShellCtx::control_Im</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -329,14 +355,14 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="aece20973a9e46bf7a6c7359d0433ce59" name="aece20973a9e46bf7a6c7359d0433ce59"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aece20973a9e46bf7a6c7359d0433ce59">&#9670;&#160;</a></span>control_Re</h2>
+<a id="a9ba1788479840f371c24f631cc988f87" name="a9ba1788479840f371c24f631cc988f87"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9ba1788479840f371c24f631cc988f87">&#9670;&#160;</a></span>control_Re</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::vector&lt;std::vector&lt;double&gt; &gt; MatShellCtx::control_Re</td>
+          <td class="memname">std::vector&lt;double&gt; MatShellCtx::control_Re</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -374,38 +400,6 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Frequency differences of the rotating frames. </p>
-
-</div>
-</div>
-<a id="ae6b69e7f840a9e42ee0021bccc9a96a6" name="ae6b69e7f840a9e42ee0021bccc9a96a6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae6b69e7f840a9e42ee0021bccc9a96a6">&#9670;&#160;</a></span>eval_transfer_Hdt_im</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::vector&lt;double&gt; MatShellCtx::eval_transfer_Hdt_im</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Evaluated imaginary transfer functions for time-varying Hamiltonian. </p>
-
-</div>
-</div>
-<a id="a35412254e1443f6067a4426bb8cd8f73" name="a35412254e1443f6067a4426bb8cd8f73"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a35412254e1443f6067a4426bb8cd8f73">&#9670;&#160;</a></span>eval_transfer_Hdt_re</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::vector&lt;double&gt; MatShellCtx::eval_transfer_Hdt_re</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Evaluated real transfer functions for time-varying Hamiltonian. </p>
 
 </div>
 </div>
@@ -451,7 +445,7 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Dipole-dipole coupling coefficients. </p>
+<p>Dipole-dipole coupling strength. </p>
 
 </div>
 </div>

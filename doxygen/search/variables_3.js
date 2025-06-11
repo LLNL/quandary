@@ -9,9 +9,7 @@ var searchData=
   ['dim_5fpostosc_6',['dim_postOsc',['../classOscillator.html#a8356795f3cf83954c4d372a613c3ab12',1,'Oscillator']]],
   ['dim_5fpreosc_7',['dim_preOsc',['../classOscillator.html#ae67d95d26ab38cd2200c0b8a33f0b4d1',1,'Oscillator']]],
   ['dim_5frho_8',['dim_rho',['../classGate.html#ad4b34a3d3057a63f211c7d5c3fa396e8',1,'Gate::dim_rho'],['../classHamiltonianFileReader.html#aa1f000dde9c48536b637fce20f81ba30',1,'HamiltonianFileReader::dim_rho'],['../classMasterEq.html#a7112f8144791299af573cf9479a370c8',1,'MasterEq::dim_rho'],['../classOptimTarget.html#a5a486b857856394f3afe98a07472feb5',1,'OptimTarget::dim_rho']]],
-  ['dimdp_9',['dImdp',['../classMasterEq.html#aafbc713ebc3d42731dc44d727db530d8',1,'MasterEq']]],
-  ['dpdm_5fstates_10',['dpdm_states',['../classTimeStepper.html#a33769128e30e615ac6527991392554e1',1,'TimeStepper']]],
-  ['dredp_11',['dRedp',['../classMasterEq.html#a3117c4885b24a0d9d88fff234c5593e8',1,'MasterEq']]],
-  ['dt_12',['dt',['../classTimeStepper.html#ad261faaaa2066bfaa7ca7d9af834e61e',1,'TimeStepper']]],
-  ['dtknot_13',['dtknot',['../classBSpline2nd.html#a4521f6f50bc1001b7911d03c5130721d',1,'BSpline2nd::dtknot'],['../classBSpline2ndAmplitude.html#ac076d8f50877b4bd6e6e8ca4e5057500',1,'BSpline2ndAmplitude::dtknot'],['../classBSpline0.html#a98ae1e5b0046d603ca7951ecbab61583',1,'BSpline0::dtknot']]]
+  ['dpdm_5fstates_9',['dpdm_states',['../classTimeStepper.html#a33769128e30e615ac6527991392554e1',1,'TimeStepper']]],
+  ['dt_10',['dt',['../classTimeStepper.html#ad261faaaa2066bfaa7ca7d9af834e61e',1,'TimeStepper']]],
+  ['dtknot_11',['dtknot',['../classBSpline2nd.html#a4521f6f50bc1001b7911d03c5130721d',1,'BSpline2nd::dtknot'],['../classBSpline2ndAmplitude.html#ac076d8f50877b4bd6e6e8ca4e5057500',1,'BSpline2ndAmplitude::dtknot'],['../classBSpline0.html#a98ae1e5b0046d603ca7951ecbab61583',1,'BSpline0::dtknot']]]
 ];
