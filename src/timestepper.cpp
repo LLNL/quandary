@@ -13,8 +13,6 @@ TimeStepper::TimeStepper() {
 }
 
 TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
-  if (mpirank_world == 0) printf("DEBUG: start TimeStepper constructor\n");
-
   mastereq = mastereq_;
   dim = 2*mastereq->getDim(); // will be either N^2 (Lindblad) or N (Schroedinger)
   ntime = ntime_;
@@ -30,8 +28,6 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
 
   /* Set the time-step size */
   dt = total_time / ntime;
-  
-  if (mpirank_world == 0) printf("DEBUG: storeFWD= %s\n", storeFWD_);
 
   /* Allocate storage of primal state */
   if (storeFWD) { 
@@ -45,33 +41,22 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
   }
 
   /* Allocate auxiliary state vector */
-  PetscErrorCode ierr;
-  ierr = VecCreate(PETSC_COMM_WORLD, &x);
-  if (mpirank_world == 0) printf("DEBUG: VecCreate returned ierr=%d\n", ierr);
-  ierr = VecSetSizes(x, PETSC_DECIDE, dim);
-  if (mpirank_world == 0) printf("DEBUG: VecSetSizes returned ierr=%d\n", ierr);
-  ierr = VecSetFromOptions(x);
-  if (mpirank_world == 0) printf("DEBUG: VecSetFromOptions returned ierr=%d\n", ierr);
-  ierr = VecZeroEntries(x);
-  if (mpirank_world == 0) printf("DEBUG: VecZeroEntries returned ierr=%d\n", ierr);
-  ierr = VecDuplicate(x, &xprimal);
-  if (mpirank_world == 0) printf("DEBUG: VecDuplicate returned ierr=%d\n", ierr);
+  VecCreate(PETSC_COMM_WORLD, &x);
+  VecSetSizes(x, PETSC_DECIDE, dim);
+  VecSetFromOptions(x);
+  VecZeroEntries(x);
+  VecDuplicate(x, &xprimal);
 
   /* Allocate the reduced gradient */
   int ndesign = 0;
   for (size_t ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       ndesign += mastereq->getOscillator(ioscil)->getNParams(); 
   }
-  ierr = VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
-  if (mpirank_world == 0) printf("DEBUG: VecCreateSeq returned ierr=%d\n", ierr);
-  ierr = VecSetFromOptions(redgrad);
-  if (mpirank_world == 0) printf("DEBUG: VecSetFromOptions returned ierr=%d\n", ierr);
-  ierr = VecAssemblyBegin(redgrad);
-  if (mpirank_world == 0) printf("DEBUG: VecAssemblyBegin returned ierr=%d\n", ierr);
-  ierr = VecAssemblyEnd(redgrad);
-  if (mpirank_world == 0) printf("DEBUG: VecAssemblyEnd returned ierr=%d\n", ierr);
+  VecCreateSeq(PETSC_COMM_SELF, ndesign, &redgrad);
+  VecSetFromOptions(redgrad);
+  VecAssemblyBegin(redgrad);
+  VecAssemblyEnd(redgrad);
 
-  if (mpirank_world == 0) printf("DEBUG: end TimeStepper constructor\n");
 }
 
 
@@ -575,26 +560,16 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 }
 
 ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_) {
-  if (mpirank_world == 0) printf("DEBUG: start ImplMidpoint constructor\n");
 
   /* Create and reset the intermediate vectors */
-  PetscErrorCode ierr;
-  ierr = MatCreateVecs(mastereq->getRHS(), &stage, NULL);
-  if (mpirank_world == 0) printf("DEBUG: MatCreateVecs returned ierr=%d\n", ierr);
-  ierr = VecDuplicate(stage, &stage_adj);
-  if (mpirank_world == 0) printf("DEBUG: VecDuplicate 1 returned ierr=%d\n", ierr);
-  ierr = VecDuplicate(stage, &rhs);
-  if (mpirank_world == 0) printf("DEBUG: VecDuplicate 2 returned ierr=%d\n", ierr);
-  ierr = VecDuplicate(stage, &rhs_adj);
-  if (mpirank_world == 0) printf("DEBUG: VecDuplicate 3 returned ierr=%d\n", ierr);
-  ierr = VecZeroEntries(stage);
-  if (mpirank_world == 0) printf("DEBUG: VecZeroEntries 1 returned ierr=%d\n", ierr);
-  ierr = VecZeroEntries(stage_adj);
-  if (mpirank_world == 0) printf("DEBUG: VecZeroEntries 2 returned ierr=%d\n", ierr);
-  ierr = VecZeroEntries(rhs);
-  if (mpirank_world == 0) printf("DEBUG: VecZeroEntries 3 returned ierr=%d\n", ierr);
-  ierr = VecZeroEntries(rhs_adj);
-  if (mpirank_world == 0) printf("DEBUG: VecZeroEntries 4 returned ierr=%d\n", ierr);
+  MatCreateVecs(mastereq->getRHS(), &stage, NULL);
+  VecDuplicate(stage, &stage_adj);
+  VecDuplicate(stage, &rhs);
+  VecDuplicate(stage, &rhs_adj);
+  VecZeroEntries(stage);
+  VecZeroEntries(stage_adj);
+  VecZeroEntries(rhs);
+  VecZeroEntries(rhs_adj);
   linsolve_type = linsolve_type_;
   linsolve_maxiter = linsolve_maxiter_;
   linsolve_reltol = 1.e-20;
@@ -605,28 +580,19 @@ ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, 
 
   if (linsolve_type == LinearSolverType::GMRES) {
     /* Create Petsc's linear solver */
-    ierr = KSPCreate(PETSC_COMM_WORLD, &ksp);
-    if (mpirank_world == 0) printf("DEBUG: KSPCreate returned ierr=%d\n", ierr);
-    ierr = KSPGetPC(ksp, &preconditioner);
-    if (mpirank_world == 0) printf("DEBUG: KSPGetPC returned ierr=%d\n", ierr);
-    ierr = PCSetType(preconditioner, PCNONE);
-    if (mpirank_world == 0) printf("DEBUG: PCSetType returned ierr=%d\n", ierr);
-    ierr = KSPSetTolerances(ksp, linsolve_reltol, linsolve_abstol, PETSC_DEFAULT, linsolve_maxiter);
-    if (mpirank_world == 0) printf("DEBUG: KSPSetTolerances returned ierr=%d\n", ierr);
-    ierr = KSPSetType(ksp, KSPGMRES);
-    if (mpirank_world == 0) printf("DEBUG: KSPSetType returned ierr=%d\n", ierr);
-    ierr = KSPSetOperators(ksp, mastereq->getRHS(), mastereq->getRHS());
-    if (mpirank_world == 0) printf("DEBUG: KSPSetOperators returned ierr=%d\n", ierr);
-    ierr = KSPSetFromOptions(ksp);
-    if (mpirank_world == 0) printf("DEBUG: KSPSetFromOptions returned ierr=%d\n", ierr);
+    KSPCreate(PETSC_COMM_WORLD, &ksp);
+    KSPGetPC(ksp, &preconditioner);
+    PCSetType(preconditioner, PCNONE);
+    KSPSetTolerances(ksp, linsolve_reltol, linsolve_abstol, PETSC_DEFAULT, linsolve_maxiter);
+    KSPSetType(ksp, KSPGMRES);
+    KSPSetOperators(ksp, mastereq->getRHS(), mastereq->getRHS());
+    KSPSetFromOptions(ksp);
   }
   else {
     /* For Neumann iterations, allocate a temporary vector */
     MatCreateVecs(mastereq->getRHS(), &tmp, NULL);
     MatCreateVecs(mastereq->getRHS(), &err, NULL);
   }
-
-    if (mpirank_world == 0) printf("DEBUG: finish ImplMidpoint constructor\n");
 }
 
 

@@ -1,6 +1,5 @@
 #include "timestepper.hpp"
 #include "defs.hpp"
-#include <ostream>
 #include <string>
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
@@ -326,12 +325,10 @@ int main(int argc,char **argv)
     usematfree = false;
   }
   // Initialize Master equation
-  if (mpirank_world == 0) std::cout << "Tara debug: " << "create mastereq" << std::endl;
   MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, hamiltonian_file, quietmode);
 
 
   /* Output */
-  if (mpirank_world == 0) std::cout << "Tara debug: " << "create output" << std::endl;
   Output* output = new Output(config, comm_petsc, comm_init, nlevels.size(), quietmode);
 
   // Some screen output 
@@ -354,7 +351,6 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize the time-stepper --- */
-  if (mpirank_world == 0) std::cout << "Tara debug: " << "create LinearSolverType" << std::endl;
   LinearSolverType linsolvetype;
   std::string linsolvestr = config.GetStrParam("linearsolver_type", "gmres");
   int linsolve_maxiter = config.GetIntParam("linearsolver_maxiter", 10);
@@ -366,7 +362,6 @@ int main(int argc,char **argv)
   }
 
   /* My time stepper */
-  if (mpirank_world == 0) std::cout << "Tara debug: " << "create TimeStepper" << std::endl;
   bool storeFWD = false;
   if (mastereq->lindbladtype != LindbladType::NONE &&   
      (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
@@ -383,11 +378,9 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize optimization --- */
-  if (mpirank_world == 0) std::cout << "Tara debug: " << "create OptimProblem" << std::endl;
   OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, output, quietmode);
 
   /* Set upt solution and gradient vector */
-  if (mpirank_world == 0) std::cout << "Tara debug: " << "create solution and grad vec" << std::endl;
   Vec xinit;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xinit);
   VecSetFromOptions(xinit);
