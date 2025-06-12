@@ -156,7 +156,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 }
 
 
-void Output::openDataFiles(std::string prefix, int initid){
+void Output::openTrajectoryDataFiles(std::string prefix, int initid){
   char filename[255];
 
   // On the first petsc rank, open required files and print header information
@@ -200,7 +200,7 @@ void Output::openDataFiles(std::string prefix, int initid){
   }
 }
 
-void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq){
+void Output::writeTrajectoryDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq){
 
   /* Write output only every <num> time-steps */
   if (timestep % output_frequency == 0) {
@@ -272,7 +272,7 @@ void Output::writeDataFiles(int timestep, double time, const Vec state, MasterEq
   }
 }
 
-void Output::closeDataFiles(){
+void Output::closeTrajectoryDataFiles(){
 
   /* Close output data files */
   if (ufile != NULL) {

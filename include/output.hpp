@@ -55,8 +55,8 @@ class Output{
     void writeGradient(Vec grad);
 
     /* Open, write and close files for fullstate and expected energy levels over time */
-    void openDataFiles(std::string prefix, int initid);
-    void writeDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq);
-    void closeDataFiles();
+    void openTrajectoryDataFiles(std::string prefix, int initid);
+    void writeTrajectoryDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq);
+    void closeTrajectoryDataFiles();
 
 };
