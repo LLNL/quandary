@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749665469482,
+  "lastUpdate": 1749763986719,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -483,6 +483,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 5058,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Stefanie Guenther",
+            "username": "steffi7574",
+            "email": "guenther5@llnl.gov"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "75fdcf67b134e97aa574e97c26a59976e78a9e4b",
+          "message": "Merge pull request #49 from LLNL/removeTransferFunctions_readHamFromPython\n\nRemove deprecated transfer functions from master equation.\n\nEnable to read both the real and the imaginary system Hamiltonian matrix from file. \n\nImprove derivative computation of control pulses: Previously, the forward derivative was used, which is inconsistent with the rest of the derivative chains in the code. Instead, the control pulse derivatives are now computed using the backwards AD chain rules, as is done in the rest of the code.",
+          "timestamp": "2025-06-11T17:13:30Z",
+          "url": "https://github.com/LLNL/quandary/commit/75fdcf67b134e97aa574e97c26a59976e78a9e4b"
+        },
+        "date": 1749763985850,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 1.14404978124192,
+            "unit": "seconds",
+            "range": "0.3314085440468515"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 90.59,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 19.516990185785108,
+            "unit": "seconds",
+            "range": "0.028203816540124337"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 5054.71,
             "unit": "MB"
           }
         ]
