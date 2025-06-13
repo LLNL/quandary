@@ -1,11 +1,10 @@
-\title{Quandary: Optimal Control for Open and Closed Quantum Systems}
-\author{Stefanie G{\"u}nther\thanks{Center for Applied Scientific Computing, Lawrence Livermore National Laboratory, Livermore, CA, USA.} \and N. Anders Petersson$^*$}
-% \author{Stefanie G{\"u}nther \and N. Anders Petersson}
-\date{last updated \today}
+# Quandary: Optimal Control for Open and Closed Quantum Systems
 
-\begin{document}
-\maketitle
+**Authors:** Stefanie G&uuml;nther$^*$, N. Anders Petersson$^*$
 
+$^*$ *Center for Applied Scientific Computing, Lawrence Livermore National Laboratory, Livermore, CA, USA.*
+
+*Last updated: [[ now().strftime("%B %d, %Y") ]]*
 
 # Installation
 Read the \texttt{README.md}! In short:
