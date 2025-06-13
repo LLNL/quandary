@@ -131,19 +131,19 @@ Note that the main choice here is which equation should be solved for and which 
 Quandary uses the rotating wave approximation in order to slow down the time scales in the solution of Schroedinger's or Lindblad's master equations. To that end, the user can specify the rotation frequencies $\omega_k^r$ for each oscillator. Under the rotating frame wave approximation, the Hamiltonians are transformed to
 
 \begin{align}
-  \tilde H_d(t) &:= \sum_{k=0}^{Q-1} \left(\omega_k - \omega_k^{r}\right)a_k^{\dagger}a_k- \frac{\xi_k}{2}
+  \tilde{H}_d(t) &:= \sum_{k=0}^{Q-1} \left(\omega_k - \omega_k^{r}\right)a_k^{\dagger}a_k- \frac{\xi_k}{2}
   a_k^{\dagger}a_k^{\dagger}a_k a_k
    - \sum_{l> k} \xi_{kl} a_{k}^{\dagger}a_{k}   a_{l}^{\dagger} a_{l} \notag \\
    & + \sum_{k=0}^{Q-1}\sum_{l>k} J_{kl} \left(\cos(\eta_{kl}t) \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + i\sin(\eta_{kl}t)\left(a_k^\dagger a_l - a_k a_l^\dagger\right) \right) \label{eq:Hd_rotating} \\
    %
-   \tilde H_c(t) &:= \sum_{k=0}^{Q-1} \left( p^k(\vec{\alpha}^k,t) (a_k +
+   \tilde{H}_c(t) &:= \sum_{k=0}^{Q-1} \left( p^k(\vec{\alpha}^k,t) (a_k +
    a_k^{\dagger}) + i q^k(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})
    \right)  \label{eq:Hc_rotating}
 \end{align}
 
 where $\eta_{kl} := \omega_k^{r} - \omega_l^{r}$ are the differences in rotational frequencies between subsystems.
 
-Note that the eigenvalues of the rotating frame Hamiltonian become significantly smaller in magnitude by choosing $\omega_k^r \approx \omega_k$ (so that the first term with $a_k^\dagger a_k$ drops out). This slows down the time variation of the state evolution, hence bigger time-step sizes can be chosen when solving the master equation numerically. We remark that the rotating wave approximation ignores terms in the control Hamiltonian that oscillate with frequencies $\pm 2\omega_k^r$. Below, we drop the tildes on $\tilde H_d$ and $\tilde H_c$ and use the rotating frame definition of the Hamiltonians to model the system evolution in time.
+Note that the eigenvalues of the rotating frame Hamiltonian become significantly smaller in magnitude by choosing $\omega_k^r \approx \omega_k$ (so that the first term with $a_k^\dagger a_k$ drops out). This slows down the time variation of the state evolution, hence bigger time-step sizes can be chosen when solving the master equation numerically. We remark that the rotating wave approximation ignores terms in the control Hamiltonian that oscillate with frequencies $\pm 2\omega_k^r$. Below, we drop the tildes on $\tilde{H}_d$ and $\tilde{H}_c$ and use the rotating frame definition of the Hamiltonians to model the system evolution in time.
 
 Using the rotating wave approximation, the real-valued laboratory frame control functions are written as
 
@@ -390,7 +390,7 @@ Target gates will by default be rotated into the computational frame (see Sectio
 It is often useful, to model the quantum system with more energy levels than the number of levels that the target gate is defined on. For example when optimizing for a SWAP gate on two qubits, with $V_{SWAP}\in\C^{4\times 4}$, one might want to model each qubit with more than two energy levels in order to (a) model the (infinite dimensional) system with more accuracy by including more levels and (b) allow the system to transition through higher energy levels in order to achieve the target at final time $T$. In that case, the *essential* levels denote the levels that the target gate is defined on.
 To this end, Quandary provides the option to specify the number of essential energy levels $n_k^e$ in addition to the number of energy levels $n_k$, where $n_k^e \leq n_k$ for each subsystem $k$. The quantum dynamics are then modelled with (more) energy levels with $N=\prod_k n_k$ and $\rho(t)\in \C^{N\times N}$ (or $\psi\in\C^N$), while the gate is defined in the essential level dimensions only: $V\in \C^{N_e \times N_e}, N_e=\prod_k n_k^e$. In the example above, $n^e_0=n^e_1=2$ and hence $V_{SWAP}\in \C^{4\times 4}$, but one can choose the number of energy levels $n_0$ and $n_1$ to be bigger than $2$ to when modelling the system dynamics.
 
-To compute the objective function at final time T, the essential-dimensional gate is projected upwards to the full dimensions $\tilde V \in \C^{N\times N}$ by inserting identity blocks for rows/columns that correspond to a non-essential level of either of the subsystems. Hence, a realization of the gate $\tilde V$ will not alter the occupation of higher (non-essential) energy level compared to their initial occupation at $t=0$.
+To compute the objective function at final time T, the essential-dimensional gate is projected upwards to the full dimensions $\tilde{V} \in \C^{N\times N}$ by inserting identity blocks for rows/columns that correspond to a non-essential level of either of the subsystems. Hence, a realization of the gate $\tilde{V}$ will not alter the occupation of higher (non-essential) energy level compared to their initial occupation at $t=0$.
 
 <!-- When only the three states as initial conditions are considered (see below), those three initial states will be spanned in the full dimensional system. On the other hand, when the basis of initial states is considered, or their diagonals only, those initial states will be spanned only in the essential level dimensions and zero rows and columns will be inserted for all non-essential levels. Hence, the gate will be realized for any initial state that is spanned in the essential level dimensions, and occupations of non-essential levels at $T=0$ are avoided. -->
 
@@ -665,11 +665,11 @@ The python interface to Quandary automatically computes a time-step size based o
 
 In order to choose a time-step size $\delta t$, an eigenvalue analysis of
 the constant drift Hamiltonian $H_d$ is often useful. Since $H_d$ is Hermitian, there exists a transformation $Y$ such that $Y^{\dagger}H_d Y = \Lambda \qquad  \text{where} \quad Y^{\dagger} = Y$ where $\Lambda$ is a diagonal matrix containing the eigenvalues of $H_d$.
-Transform the state $\tilde q = Y^{\dagger} q$, then the ODE transforms to
+Transform the state $\tilde{q} = Y^{\dagger} q$, then the ODE transforms to
 
 \begin{align*}
-  \dot \tilde q = -i \Lambda \tilde q \quad \Rightarrow \dot \tilde q_i =
-  -i\lambda_i \tilde q_i \quad \Rightarrow \tilde q_i = a
+  \dot \tilde{q} = -i \Lambda \tilde{q} \quad \Rightarrow \dot \tilde{q}_i =
+  -i\lambda_i \tilde{q}_i \quad \Rightarrow \tilde{q}_i = a
   \exp(-i\lambda_i t)
 \end{align*}
 
