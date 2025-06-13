@@ -7,7 +7,6 @@ $^*$ *Center for Applied Scientific Computing, Lawrence Livermore National Labor
 *Last updated: [[ now().strftime("%B %d, %Y") ]]*
 
 # Installation
-
 Read the `README.md`! In short:
 
 1. Install PETSc (https://petsc.org/).
@@ -21,7 +20,6 @@ Read the `README.md`! In short:
 
 
 ## Quick start
-
 The C++ Quandary executable takes a configuration input file. As a quick start, test it with
 
 - `./quandary config_template.cfg`  (serial execution)
@@ -35,8 +33,6 @@ Test the python interface by running one of the examples in `examples/`, e.g.
 - `python3 example_swap02.py`
 The python interpreter will start background processes on the C++ executable using a config file written by the python interpreter, and gathers quandary's output results back into the python shell for plotting.
 
-\tableofcontents
-
 # Introduction
 Quandary numerically simulates and optimizes the time evolution of closed and open quantum systems. The
 underlying dynamics are modelled by either Schroedinger's equation (for closed systems), or Lindblad's master equation (for open systems that interact with the environment). Quandary solves the respective ordinary differential equation (ODE) numerically by applying a time-stepping integration scheme, and applies a gradient-based optimization
@@ -49,7 +45,6 @@ The Python interface allows for greater flexibility where custom Hamiltonian mod
 
 This document outlines the mathematical background and underlying equations, and summarizes their
 implementation and usage in Quandary. We also refer to our publications [@guenther2021quandary; @guenther2021quantum].
-
 
 # Model equation {#sec:model}
 Quandary models composite quantum systems consisting of $Q$ subsystems, with $n_k$ energy levels for the
@@ -85,8 +80,6 @@ $a_k\in \C^{N\times N}$ denotes the lowering operator acting on subsystem $k$, w
 \end{align}
 
 where $I_{n_k} \in \R^{n_k \times n_k}$ is the identity matrix.
-
-
 
 The action of external control fields on the quantum system is modelled through the control Hamiltonian
 
@@ -153,7 +146,6 @@ Using the rotating wave approximation, the real-valued laboratory frame control 
 
 where the rotational frequencies $\omega_k^r$ act as carrier waves to the rotating-frame control functions $d^k(\vec{\alpha}^k, t)$.
 
-
 ## Control pulses {#subsec:controlpulses}
 The time-dependent rotating-frame control functions $d^k(\vec{\alpha}^k,t)$ are parameterized using $N_s^k$ basis functions $B_s(t)$ acting as envelope for $N_f^k$ carrier waves:
 
@@ -188,7 +180,6 @@ Those relate to the Lab-frame control $f^k(\vec{\alpha}^k,t)$ through
 \end{align}
 
 ### Storage of the control parameters
-
 The control parameters $\bs{\alpha}$ are stored in the Quandary code in the following order: List oscillators first $(\vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1})$, then for each $\vec{\alpha}^k \in
 \R^{2 N_s^k N_f^k}$, iterate over all carrierwaves $\vec{\alpha}^k =
 (\alpha^k_1,\dots, \alpha^k_{N_f})$ with $\alpha^k_f \in \R^{2 N_s^k}$, then each
@@ -251,7 +242,6 @@ When optimizing with zeroth order B-spline control functions, strong variations 
 
 Compare Section \ref{sec:penalty}.
 
-
 ## Interfacing to Python environment
 You can use the Python interface for Quandary to simulate and optimize from within a python environment (version $\geq$ 3). It eases the use of Quandary, and adds some additional functionality, such as automatic computation of the required number of time-steps, automatic choice of the carrier frequencies, and it allows for custom Hamiltonian models to be used (system and control Hamiltonian operators $H_d$ and $H_c$). A good place to start is to have a look into the example `example_swap02.py`. This test case optimizes for a 3-level SWAP02 gate that swaps the state of the zero and the second energy level of a 3-level qudit.
 
@@ -282,7 +272,6 @@ where $\rho_i(T)$ denotes one or multiple quantum states evaluated at a final ti
 The remaining terms are regularization and penalty terms that can be added to stabilize convergence, or prevent leakage, compare Section \ref{sec:penalty}
 
 ## Fidelity {#sec:fidelity}
-
 As a measure of optimization success, Quandary reports on the fidelity computed from
 
 \begin{align}\label{eq:fidelity}
@@ -295,7 +284,6 @@ As a measure of optimization success, Quandary reports on the fidelity computed 
 The fidelity is an average of Hilbert-Schmidt overlaps of the target states and the evolved states: for the density matrix, the Hilbert-Schmidt overlap is $\langle \rho^{target}, \rho(t)\rangle = \mbox{Tr}\left(\left(\rho^{target}\right)^\dagger\rho(T)\right)$, which is *real* if both states are density matrices (which is always the case in Quandary, see definition of basis matrices). For the state vector (and the Schroedinger solver), the Hilbert-Schmidt overlap is $\langle \psi^{target}, \psi(T)\rangle = (\psi^{target})^{\dagger}\psi $, which is complex. Note that in the fidelity above (and also in the corresponding objective function $J_{trace}$, the absolute value is taken *outside* of the sum, hence relative phases are taken into account.
 
 Further note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while choosing the three initial condition as in Section \ref{subsec:threeinitcond}, the fidelity that is reported during optimization will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential initial states. It is advised to recompute the average fidelity \textbf{after} optimization has finished by propagating all basis states $B_{kj}$ to final time $T$ using the optimized control parameter, or by propagating only $N+1$ initial states to get an estimate thereof.
-
 
 ## Objective function {#sec:objectivefunctionals}
 The following objective functions can be used for optimization in Quandary (config option `optim_objective`):
@@ -315,11 +303,8 @@ $J_{Frobenius}$ measures (weighted average of) the Frobenius norm between target
 
 The distinction for the Lindblad vs. Schroedinger solver is made explicit for $J_{trace}$ above. The other two measures apply naturally to either the density matrix version solving Lindblad's equation, or the state vector version solving Schroedinger's equation with $ \|\rho^{target} - \rho(T)\| = \|\psi^{target} - \psi(T)\|$ and $\mbox{Tr}\left(N_m\rho(T)\right) = \psi(T)^\dagger N_m \psi(T)$.
 
-
-
 ## Optimization targets {#sec:targets}
 Here we describe the target states $\rho^{target}$ that are realized in Quandary (C++ config option `optim_target`). Two cases are considered: State preparation, where the target state is the same for all initial conditions, and gate optimization, where the target state is a unitary transformation of the initial condition.
-
 
 ### Pure target states {#sec:statepreparation}
 State preparation aims to drive the system from either one specific or from any arbitrary initial state to a common desired (fixed) target state. Quandary can optimize towards *pure* target states of the form
@@ -348,12 +333,10 @@ For $m=0$, the target state represents the ground state of the system under cons
 
 <!-- For example, assume one considers a composite system consisting of a qubit modelled with $n_0=2$ levels coupled to a readout cavity modelled with $n_1=10$ levels, and one wants to drive the qubit to the $|1\rangle$ state and the cavity to the ground state. The target pure state input for Quandary is hence $m_0=1, m_1=0$ (i.e. the $|10\rangle$ state in the composite system), which corresponds $m=1\cdot10+0 = 10$ in the composite system of dimension $N=2\cdot 10 = 20$. -->
 
-
 ### Arbitrary target state
 A specific (non-pure) target state $\rho^{target}$ can also be used as a target. For the C++ code, such a target state is read from file. File format: The vectorized density matrix (column-wise vectorization) in the Lindblad case, or the state vector in the Schroedinger case, one real-valued number per row, first list all real parts, then list all imaginary parts (hence either $2N^2$ lines with one real number each, or $2N$ lines with one real number each). The configuration option should be pointing to the file location. For the Python interface, the target state can be passed as a numpy array.
 
 ### Gate optimization
-
 Quandary can be used to realize logical gate operations. In that case, the target state is not fixed across the initial states, but instead is a unitary transformation of each initial condition. Let $V\in \C^{N\times N}$ be a unitary matrix presenting a logical operation, the goal is to drive any initial state $\rho(0)$ to the unitary transformation $\rho^{target} = V\rho(0)V^{\dagger}$, or, in the Schroedinger case, drive any initial state $\psi(0)$ to the unitary transformation $\psi(T) =  V\psi(0)$.
 In the C++ code, some default target gates that are currently available:
 
@@ -394,8 +377,6 @@ To compute the objective function at final time T, the essential-dimensional gat
 
 <!-- When only the three states as initial conditions are considered (see below), those three initial states will be spanned in the full dimensional system. On the other hand, when the basis of initial states is considered, or their diagonals only, those initial states will be spanned only in the essential level dimensions and zero rows and columns will be inserted for all non-essential levels. Hence, the gate will be realized for any initial state that is spanned in the essential level dimensions, and occupations of non-essential levels at $T=0$ are avoided. -->
 
-
-
 ## Initial conditions {#subsec:initcond}
 The initial states $\rho_i(0)$ which are accounted for during optimization in eq. $\eqref{eq:minproblem}$ can be specified with the configuration option `initialcondition`. Below are the available choices.
 
@@ -411,8 +392,6 @@ One can choose to simulate and optimize for only one specific pure initial state
 Note that, again, in this notation $|m_1\rangle = \boldsymbol{e}_{m_1} \in \R^{n_1}$. The configuration input takes a list of the integers $m_k$ for each subsystem.
 
 ### Basis states
-
-
 To span any possible initial state, an entire basis of states can be used as initial conditions. For open systems using the density matrix representation (Lindblad solver), the $n_{init}=N^2$ basis states as defined in [@guenther2021quantum] are implemented:
 
 \begin{align}\label{eq:basismats}
@@ -440,17 +419,12 @@ unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with
 
 (column-wise vectorization of a matrix of matrices $\left\{B^{kj}\right\}_{kj}$).
 
-
-
 ### Only the diagonal density basis matrices
-
 For density matrices (Lindblad solver), one can choose to propagate only those basis states that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only the $B^{kk}$ in $\eqref{eq:basismats}$ for $k=0,\dots, N-1$, and then $n_{init}=N$. For the Schroedinger solver, this is equivalent to all basis states.
 
 Again, when composite systems of multiple subsystems are considered, the user can provide a consecutive list of integer ID's to determine in which of the subsystems the diagonal states should be spanned. Other subsystems will then be initialized in the ground state.
 
 *Note:* the diagonal states are spanned in the *essential dimensions* of the system, if applicable.
-
-
 
 ### Ensemble state for pure-state optimization {#sec:ensemblestate}
 *Only valid for the density matrix version, solving Lindblad's master equation.*
@@ -491,7 +465,6 @@ Note: The three initial states are spanned in the *full* dimension of the system
 ### $N+1$ initial states for gate optimization
 *Only valid for the density matrix version, solving Lindblad's master equation.*
 
-
 The three initial states from above do not suffice to estimate the fidelity of the realized gate (compare [@goerz2014optimal]). Instead, it is suggested in that same paper to choose $N+1$ initial states to compute the fidelity. Those $N+1$ initial states consist of the $N$ diagonal states $B^{kk}$ in the Hilbert space of dimension $N$, as well as the totally rotated state $\rho(0)_2$ from above. Quandary offers the choice to simulate (or optimize) using those initial states, then $n_{init} = N+1$.
 
 Note: The $N+1$ initial states are spanned in the *full* dimension of the system, including non-essential levels, see above for 3-state initialization.
@@ -501,14 +474,11 @@ A specific initial state can also be read from file ($\Rightarrow n_{init}=1$). 
 
 This option is useful for example if one wants to propagate a specific *non-pure* initial state. In that case, one first has to generate a datafile storing that state (e.g. by simulating a system and storing the output), which can then be read in as initial condition.
 
-
-
 ## Tikhonov regularization, penalty terms, and leakage prevention {#sec:penalty}
-
 In order to regularize the optimization problem (stabilize optimization convergence), a standard Tikhonov regularization term can added to the objective function.
 
 \begin{align}
-\mbox{Tikhonov} = \frac{\gamma_1}{2} \| \bfa \|^2_2
+  \mbox{Tikhonov} = \frac{\gamma_1}{2} \| \bfa \|^2_2
 \end{align}
 
 By adding this term with a small parameter $\gamma_1 > 0$, the optimization problem will favor optimal control vectors that have a small norm. It regularizes the optimization problem since it adds a small but positive identity matrix to the Hessian of the objective function, hence ``convexifying'' the problem.
@@ -543,7 +513,6 @@ The last penalty term, activated by setting $\gamma_5>0$, is used to penalize va
 in terms of the complex-valued control parameters $\alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)}$. Penalizing the variance can significantly reduce the noise level in the optimized control functions.
 
 Note: All regularization and penalty coefficients $\gamma_i$ should be chosen small enough so that they do not dominate the final-time objective function $J$. This might require some fine-tuning. It is recommended to always add $\gamma_1>0$, e.g. $\gamma_1 = 10^{-4}$, and add other penalties only if needed.
-
 
 <!--
 Achieving a target at EARLIER time-steps:
@@ -580,9 +549,9 @@ When solving Lindblad's master equation $\eqref{mastereq}$, Quandary uses a vect
    When solving Schroedinger's equation $\eqref{eq:schroedinger}$, Quandary operates directly on the state $q(t) := \psi(t)\in\C^N$ and solves $\eqref{mastereq_vectorized}$ with $M(T) := -iH(t)$.
 
 ### Real-valued system and state storage
-   Quandary solves the (vectorized) equation $\eqref{mastereq_vectorized}$ in
-   real-valued variables with $q(t) = u(t) + iv(t)$, evolving the real-valued
-   states $u(t), v(t)\in \R^{M}$ for $M=N$ (Schroedinger's eq.) or $M=N^2$ (Lindblad's eq.) with
+Quandary solves the (vectorized) equation $\eqref{mastereq_vectorized}$ in
+real-valued variables with $q(t) = u(t) + iv(t)$, evolving the real-valued
+states $u(t), v(t)\in \R^{M}$ for $M=N$ (Schroedinger's eq.) or $M=N^2$ (Lindblad's eq.) with
 
 \begin{align}
   \dot q(t) = M(t) q(t) \quad \Leftrightarrow \quad \begin{bmatrix} \dot u(t) \\ \dot v(t) \end{bmatrix} =
@@ -610,9 +579,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
   \end{bmatrix}
 \end{align*}
 
-
 ## Sparse-matrix vs. matrix-free solver
-
 In Quandary, two versions to evaluate the right hand side of Lindblad's
 equation, $M(t)q(t)$, of the vectorized real-valued system are available:
 
@@ -625,7 +592,6 @@ For developers, the appendix provides details on each term within $A(t)$ and $B(
 In our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x), no surprise. However the matrix-free solver is currently only implemented for composite systems consisting of **2, 3, 4, or 5** subsystems.
 
 **The matrix-free solver currently does not parallelize across the system dimension $N$**, hence the state vector is **not** distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large while each axis can be very short (e.g. modelling $Q=12$ qubits with $n_k=2$ energy levels per qubit), which yields a very high-dimensional tensor with very short axes. In that case, the standard (?) approach of parallelizing the tensor along its axes will likely lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate!
-
 
 ## Time-stepping
 To solve the (vectorized) master equation $\eqref{mastereq_vectorized}$, $\dot
@@ -697,7 +663,6 @@ parameter amplitudes to remove the time-dependency using their large
 value instead.
 -->
 
-
 ## Gradient computation via discrete adjoint back-propagation
 Quandary computes the gradients of the objective function with respect to the design variables $\boldsymbol{\alpha}$ using the discrete adjoint method. The discrete adjoint approach yields exact and consistent gradients on the algorithmic level, at costs that are independent of the number of design variables.
 To that end, the adjoint approach propagates local sensitivities backwards through the time-domain while concatenating contributions to the gradient using the chain-rule.
@@ -720,10 +685,8 @@ The contribution to the gradient $\nabla J$ for each time-step is
 
 Each evaluation of the gradient $\nabla J$ involves a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation $\eqref{eq:gradient}$ requires the states and adjoint states at each time-step. For the Schroedinger solver, the primal states are recomputed by integrating Schroedinger's equation backwards in time, alongside the adjoint computation. For the Lindblad solver, the states $q^n$ are stored during forward propagation, and taken from storage during adjoint back-propagation (since we can't recompute it in case of Lindblad solver, due to dissipation).
 
-
 ## Optimization algorithm
 Quandary utilized Petsc's `Tao` optimization package to apply gradient-based iterative updates to the control variables. The `Tao` optimization interface takes routines to evaluate the objective function as well as the gradient computation. In the current setting in Quandary, `Tao` applies a nonlinear Quasi-Newton optimization scheme using a preconditioned gradient based on L-BFGS updates to approximate the Hessian of the objective function. A projected line-search is applied to ensure that the objective function yields sufficient decrease per optimization iteration while keeping the control parameters within the prescribed box-constraints.
-
 
 # Parallelization
 Quandary offers two levels of parallelization using MPI.
@@ -842,7 +805,6 @@ and
     B_d^{kl} &:=  - I_N\otimes \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + \left(a_k^\dagger a_l + a_k a_l^\dagger\right)^T\otimes I_N \\
 \end{align}
 
-
 The sparse-matrix solver initializes and stores the constant matrices
 $A_d, A_d^{kl}, A_c^k, B_d, B_d^{kl}, B_c^k$ using Petsc's sparse-matrix format. They are used
 as building blocks to evaluate the blocks in the system matrix $M(t)$ with
@@ -870,4 +832,3 @@ Here is a list of all options available to the python interface, this is the sam
 ```python
 --8<-- "quandary.py:13:100"
 ```
-
