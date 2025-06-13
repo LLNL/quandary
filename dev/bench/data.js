@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749777690830,
+  "lastUpdate": 1749831547648,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -571,6 +571,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 5058.96,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c838fb400970c0e4a8babba6aba4eae5899d38f1",
+          "message": "Merge pull request #60 from LLNL/cmake-build-type\n\nMake it easier to build with debug or int64 flags",
+          "timestamp": "2025-06-13T15:37:15Z",
+          "url": "https://github.com/LLNL/quandary/commit/c838fb400970c0e4a8babba6aba4eae5899d38f1"
+        },
+        "date": 1749831546286,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 1.0397948829922825,
+            "unit": "seconds",
+            "range": "0.2635918532730867"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 89.04,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 15.055802155984566,
+            "unit": "seconds",
+            "range": "0.12977033372803856"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4396.52,
             "unit": "MB"
           }
         ]
