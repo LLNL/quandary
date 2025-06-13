@@ -11,7 +11,7 @@ plugins:
       j2_comment_start_string: '[#'
       j2_comment_end_string: '#]'
   - bibtex:
-      bib_file: "doc/user_guide.bib"
+      bib_file: "docs/mkdocs/user_guide.bib"
       enable_inline_citations: false
 
 markdown_extensions:
@@ -34,7 +34,7 @@ theme:
 
 nav:
   - Home: index.md
-  - User Guide: user-guide.md
+  - User Guide: user_guide.md
 
 use_directory_urls: true
 docs_dir: docs/mkdocs
