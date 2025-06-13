@@ -20,6 +20,9 @@ markdown_extensions:
   - pymdownx.arithmatex:
       generic: true
       block_tag: 'pre'
+  - pymdownx.snippets:
+      base_path: ['.', 'docs']
+      check_paths: true
 
 extra_javascript:
   - javascripts/mathjax.js

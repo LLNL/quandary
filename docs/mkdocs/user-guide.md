@@ -860,10 +860,14 @@ A_c^k, B_c^k$, etc., but instead only evaluates their action on a vector $q(t)$ 
 # Summary of all C++ configuration options
 Here is a list of all options available to the C++ Quandary code, this is the same as in `config_template.cfg`.
 
-\lstinputlisting[breaklines]{../../config_template.cfg}
+```cfg
+--8<-- "config_template.cfg"
+```
 
 # Summary of all python interface options
 Here is a list of all options available to the python interface, this is the same as in `quandary.py`.
 
-\lstinputlisting[breaklines, firstline=17, lastline=91, keepspaces=false, language=mylanguage]{../../quandary.py}
+```python
+--8<-- "quandary.py:13:100"
+```
 
