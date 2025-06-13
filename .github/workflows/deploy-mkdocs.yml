@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - user-guide-docs # TODO remove this later
 
 jobs:
   deploy:
