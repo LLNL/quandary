@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - documentation #TODO
 
 jobs:
   build-and-deploy:
