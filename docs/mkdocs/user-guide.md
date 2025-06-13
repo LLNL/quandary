@@ -811,12 +811,6 @@ necessarily state or reflect those of the United States government or Lawrence L
 National Security, LLC, and shall not be used for advertising or product endorsement purposes.
 -->
 
-
-\bibliographystyle{plain}
-\bibliography{user_guide}
-
-
-\appendix
 # Appendix: Details for the real-valued, vectorized Hamiltonian
    To assemble (evaluate)
    $A(t) = Re(M(t))$ and $B(t) = Im(M(t))$, consider
