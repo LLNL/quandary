@@ -120,7 +120,7 @@ where the collapse operators $\Ell_{lk}$ model decay and dephasing processes in 
 - Decay  ("$T_1$"): $\Ell_{1k} = \frac{1}{\sqrt{T_1^k}} a_k$
 - Dephasing  ("$T_2$"): $\Ell_{2k} = \frac{1}{\sqrt{T_2^k}} a_k^{\dagger}a_k$
 The constants $T_l^k>0$ correspond to the half-life of process $l$ on subsystem $k$. Typical $T_1$ decay time is between $10-100$ microseconds (us). $T_2$ dephasing time is typically about half of T1 decay time.
-% Decay processes typically behave like $\exp(-t/{T_1})$.
+<!-- Decay processes typically behave like $\exp(-t/{T_1})$. -->
 
 All the above constants and system parameters can be specified in the first part of the configuration file that Quandary's executable takes as an input, compare `config_template.cfg`.
 Note that the main choice here is which equation should be solved for and which representation of the quantum state will be used (either Schroedinger with a state vector $\psi \in \C^N$, or Lindblad's equation for a density matrix $\rho \in \C^{N\times N}$). In the configuration file, this choice is determined through the option `collapse_type`, where `none` will result in Schroedinger's equation and any other choice will result in Lindblad's equation being solved for. Further note, that choosing `collapse_type` $\neq$ `none`, together with a collapse time $T_{l}^k = 0.0$ will omit the evaluation of the corresponding term in the Lindblad operator $\eqref{eq:collapseop}$ (but will still solve Lindblad's equation for the density matrix).
@@ -346,7 +346,7 @@ for unit vectors $\boldsymbol{e}_{m_k} \in \R^{n_k}$, and $\rho^{target} = \psi^
 Depending on the choice for the initial conditions, optimization towards a pure target state can be used to realize either a simple state-to-state transfer (choosing one specific initial condition, $n_{init}=1$), or to realize the more complex task of state preparation that drives *any* initial state to a common pure target state.
 For $m=0$, the target state represents the ground state of the system under consideration, which has important applications for quantum reset as well as quantum error correction. Driving *any* initial state to a common target will require to couple to a dissipative bath, which should be accounted for in the model setup. In the latter case, typically a full basis of initial conditions needs to be considered during the optimization ($n_{init}=N^2$ for density matrices). However, it is shown in \cite{guenther2021quantum}, that if one chooses the objective function $J_{measure}$ with corresponding measurement operator $N_m$ (see eq. $\eqref{eq:Jmeasure}$), one can reduce the number of initial conditions to only *one* being an ensemble of all basis states, and hence $n_{init}=1$ independent of the system dimension $N$. Compare \cite{guenther2021quantum} for details, and Section \ref{sec:ensemblestate}.
 
-% For example, assume one considers a composite system consisting of a qubit modelled with $n_0=2$ levels coupled to a readout cavity modelled with $n_1=10$ levels, and one wants to drive the qubit to the $|1\rangle$ state and the cavity to the ground state. The target pure state input for Quandary is hence $m_0=1, m_1=0$ (i.e. the $|10\rangle$ state in the composite system), which corresponds $m=1\cdot10+0 = 10$ in the composite system of dimension $N=2\cdot 10 = 20$.
+<!-- For example, assume one considers a composite system consisting of a qubit modelled with $n_0=2$ levels coupled to a readout cavity modelled with $n_1=10$ levels, and one wants to drive the qubit to the $|1\rangle$ state and the cavity to the ground state. The target pure state input for Quandary is hence $m_0=1, m_1=0$ (i.e. the $|10\rangle$ state in the composite system), which corresponds $m=1\cdot10+0 = 10$ in the composite system of dimension $N=2\cdot 10 = 20$. -->
 
 
 ### Arbitrary target state
@@ -392,7 +392,7 @@ To this end, Quandary provides the option to specify the number of essential ene
 
 To compute the objective function at final time T, the essential-dimensional gate is projected upwards to the full dimensions $\tilde V \in \C^{N\times N}$ by inserting identity blocks for rows/columns that correspond to a non-essential level of either of the subsystems. Hence, a realization of the gate $\tilde V$ will not alter the occupation of higher (non-essential) energy level compared to their initial occupation at $t=0$.
 
-% When only the three states as initial conditions are considered (see below), those three initial states will be spanned in the full dimensional system. On the other hand, when the basis of initial states is considered, or their diagonals only, those initial states will be spanned only in the essential level dimensions and zero rows and columns will be inserted for all non-essential levels. Hence, the gate will be realized for any initial state that is spanned in the essential level dimensions, and occupations of non-essential levels at $T=0$ are avoided.
+<!-- When only the three states as initial conditions are considered (see below), those three initial states will be spanned in the full dimensional system. On the other hand, when the basis of initial states is considered, or their diagonals only, those initial states will be spanned only in the essential level dimensions and zero rows and columns will be inserted for all non-essential levels. Hence, the gate will be realized for any initial state that is spanned in the essential level dimensions, and occupations of non-essential levels at $T=0$ are avoided. -->
 
 
 
@@ -545,12 +545,14 @@ in terms of the complex-valued control parameters $\alpha_{s,f}^k = \alpha_{s,f}
 Note: All regularization and penalty coefficients $\gamma_i$ should be chosen small enough so that they do not dominate the final-time objective function $J$. This might require some fine-tuning. It is recommended to always add $\gamma_1>0$, e.g. $\gamma_1 = 10^{-4}$, and add other penalties only if needed.
 
 
-% Achieving a target at EARLIER time-steps:
-% \begin{align}\label{eq:penaltyterm}
-%   P(\rho(t))  =  w(t) J\left(\rho(t)\right) \quad \text{where} \quad w(t) =
-%   \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2},
-% \end{align}
-% for a penalty parameter $0 \leq a \leq 1$. Note, that as $a\to 0$, the weighting function $w(t)$ converges to the Dirac delta distribution with peak at final time $T$, hence reducing $a$ leads to more emphasis on the final time $T$ while larger $a$ penalize non-zero energy states at earlier times $t\leq T$.
+<!--
+Achieving a target at EARLIER time-steps:
+\begin{align}\label{eq:penaltyterm}
+  P(\rho(t))  =  w(t) J\left(\rho(t)\right) \quad \text{where} \quad w(t) =
+  \frac{1}{a} e^{ -\left(\frac{t-T}{a} \right)^2},
+\end{align}
+for a penalty parameter $0 \leq a \leq 1$. Note, that as $a\to 0$, the weighting function $w(t)$ converges to the Dirac delta distribution with peak at final time $T$, hence reducing $a$ leads to more emphasis on the final time $T$ while larger $a$ penalize non-zero energy states at earlier times $t\leq T$.
+-->
 
 # Implementation
 
@@ -687,10 +689,12 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
 
        where $p$ is the order of the time-stepping scheme (i.e. $p=2$ for the IMR and $p=8$ for the compositional IMR8), and $J^{\Delta t}, J^{\Delta tm}$ denote approximations thereof using the time-stepping sizes $\Delta t$ and $\Delta t m$ for some factor $m$.
 
-      %  If one wants to include the time-varying Hamiltonian part $H = H_d +
-      %  H_c(t)$ in the analysis, one could use the constraints on the control
-      %  parameter amplitudes to remove the time-dependency using their large
-      %  value instead.
+      <!--
+      If one wants to include the time-varying Hamiltonian part $H = H_d +
+      H_c(t)$ in the analysis, one could use the constraints on the control
+      parameter amplitudes to remove the time-dependency using their large
+      value instead.
+      -->
 
 
 ## Gradient computation via discrete adjoint back-propagation
@@ -791,17 +795,19 @@ which plots the first against the second column of the file 'expected0.iinit0000
 This work was performed under the auspices of the U.S. Department of Energy by Lawrence
 Livermore National Laboratory under Contract DE-AC52-07NA27344. LLNL-SM-818073.
 
-% This document was prepared as an account of work sponsored by an agency of the United States
-% government. Neither the United States government nor Lawrence Livermore National Security, LLC,
-% nor any of their employees makes any warranty, expressed or implied, or assumes any legal
-% liability or responsibility for the accuracy, completeness, or usefulness of any information,
-% apparatus, product, or process disclosed, or represents that its use would not infringe
-% privately owned rights. Reference herein to any specific commercial product, process, or service
-% by trade name, trademark, manufacturer, or otherwise does not necessarily constitute or imply
-% its endorsement, recommendation, or favoring by the United States government or Lawrence
-% Livermore National Security, LLC. The views and opinions of authors expressed herein do not
-% necessarily state or reflect those of the United States government or Lawrence Livermore
-% National Security, LLC, and shall not be used for advertising or product endorsement purposes.
+<!--
+This document was prepared as an account of work sponsored by an agency of the United States
+government. Neither the United States government nor Lawrence Livermore National Security, LLC,
+nor any of their employees makes any warranty, expressed or implied, or assumes any legal
+liability or responsibility for the accuracy, completeness, or usefulness of any information,
+apparatus, product, or process disclosed, or represents that its use would not infringe
+privately owned rights. Reference herein to any specific commercial product, process, or service
+by trade name, trademark, manufacturer, or otherwise does not necessarily constitute or imply
+its endorsement, recommendation, or favoring by the United States government or Lawrence
+Livermore National Security, LLC. The views and opinions of authors expressed herein do not
+necessarily state or reflect those of the United States government or Lawrence Livermore
+National Security, LLC, and shall not be used for advertising or product endorsement purposes.
+-->
 
 
 \bibliographystyle{plain}
