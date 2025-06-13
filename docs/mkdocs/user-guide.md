@@ -188,7 +188,7 @@ components: $\alpha^k_f = \alpha^{k(1)}_{1,f}, \dots, \alpha^{k(1)}_{N_s^k,f}, \
 
 \begin{align}
   \boldsymbol{\alpha} &:= \left( \vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1} \right), \in
-  \mathds{R}^{2\sum_k N_s^k N_f^k} \quad \text{where}\\
+  \R^{2\sum_k N_s^k N_f^k} \quad \text{where}\\
   \vec{\alpha}^k = &\left( \alpha_{1,1}^{k(1)},\dots, \alpha_{N_s^k,1}^{k(1)}, \dots, \alpha_{1,N_f^k}^{k(1)}, \dots, \alpha_{N_s^k,N_f^k}^{k(1)} \right.\\
                  &  \left. \alpha_{1,1}^{k(2)},\dots, \alpha_{N_s^k,1}^{k(2)}, \dots, \alpha_{1,N_f^k}^{k(2)}, \dots, \alpha_{N_s^k,N_f^k}^{k(2)} \right)
 \end{align}
