@@ -52,6 +52,7 @@ class OptimProblem {
   double obj_penal_dpdm;           /* Penalty term in objective for second order state */
   double obj_penal_variation;      /* Penalty term for variation of control parameters */
   double obj_penal_energy;         /* Energy Penalty term in objective */
+  double obj_robust;               ///< Objective function term for universally robust control
   double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
   double gnorm;                    /* Holds current norm of gradient */
   double gamma_tik;                /* Parameter for Tikhonov regularization */
@@ -61,6 +62,7 @@ class OptimProblem {
   double gamma_penalty_energy;     /* Parameter multiplying energy penalty */
   double gamma_penalty_variation;  /* Parameter multiplying the un-divided difference squared regularization term */
   double penalty_param;            /* Parameter inside integral penalty term w(t) (Gaussian variance) */
+  double gamma_robust;              ///< Coefficient for adding universally robust term 
   double gatol;                    /* Stopping criterion based on absolute gradient norm */
   double fatol;                    /* Stopping criterion based on objective function value */
   double inftol;                   /* Stopping criterion based on infidelity */
@@ -71,10 +73,7 @@ class OptimProblem {
   double* mygrad;  /* Auxiliary */
     
   Vec xtmp;                        /* Temporary storage */
-
-  // Universally robust optimization
-  bool optim_robust;              ///< Optimize with universally robust objective function
-  
+ 
   public: 
     Output* output;                 /* Store a reference to the output */
     TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
@@ -93,6 +92,7 @@ class OptimProblem {
   double getObjective(){ return objective; };
   double getCostT()    { return obj_cost; };
   double getRegul()    { return obj_regul; };
+  double getObjRobust() { return obj_robust; };
   double getPenalty()  { return obj_penal; };
   double getPenaltyDpDm()  { return obj_penal_dpdm; };
   double getPenaltyVariation()  { return obj_penal_variation; };

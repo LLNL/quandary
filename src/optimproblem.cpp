@@ -101,6 +101,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, true, false);
   gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
   gamma_penalty_variation = config.GetDoubleParam("optim_penalty_variation", 0.01); 
+  gamma_robust = config.GetDoubleParam("gamma_robust", -1.0, false);
   
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
@@ -185,9 +186,6 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
   VecSetFromOptions(xtmp);
   VecZeroEntries(xtmp);
-
-  /* Universally robust stuff */
-  optim_robust = config.GetBoolParam("optim_robust", false, false, false);
 }
 
 
@@ -227,6 +225,7 @@ double OptimProblem::evalF(const Vec x) {
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
   obj_penal_variation = 0.0;
+  obj_robust = 0.0;
   fidelity = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
@@ -270,11 +269,6 @@ double OptimProblem::evalF(const Vec x) {
 
     // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
   }
-
-  /* Evaluate products for universally robust optimization */
-  double cost_robust = computeRobustCost();
-  printf("Robust cost = %1.14e\n", cost_robust);
-  
 
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
@@ -320,12 +314,17 @@ double OptimProblem::evalF(const Vec x) {
   }
   obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
 
+  /* Evaluate universally robust objective term */
+  if (gamma_robust > 0.0) {
+    obj_robust = gamma_robust * computeRobustCost();
+  }
+  
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_penal_variation;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_penal_variation + obj_robust;
 
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << " + " << obj_robust << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
   }
 
@@ -373,6 +372,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_penal_dpdm = 0.0;
   obj_penal_energy = 0.0;
   obj_penal_variation = 0.0;
+  obj_robust = 0.0;
   fidelity = 0.0;
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
@@ -483,8 +483,13 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   }
   obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
 
+  /* Evaluate universally robust objective term */
+  if (gamma_robust > 0.0) {
+    obj_robust = gamma_robust * computeRobustCost();
+  }
+  
   /* Sum, store and return objective value */
-  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_penal_variation;
+  objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_penal_variation + obj_robust;
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -527,7 +532,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Output */
   // if (mpirank_world == 0 && !quietmode) {
-  //   std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << std::endl;
+  //   std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << " + " << obj_robust << std::endl;
   //   std::cout<< "Fidelity = " << fidelity << std::endl;
   // }
 }
@@ -631,6 +636,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Grab some output stuff */
   double obj_cost = ctx->getCostT();
   double obj_regul = ctx->getRegul();
+  double obj_robust = ctx->getObjRobust();
   double obj_penal = ctx->getPenalty();
   double obj_penal_dpdm = ctx->getPenaltyDpDm();
   double obj_penal_energy = ctx->getPenaltyEnergy();
@@ -664,10 +670,10 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   /* Every <optim_monitor_freq> iterations: Output of optimization history */
   if (iter % ctx->output->optim_monitor_freq == 0 ||lastIter) {
     // Add to optimization history file 
-    ctx->output->writeOptimFile(iter, f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, obj_penal_variation);
+    ctx->output->writeOptimFile(iter, f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, obj_penal_variation, obj_robust);
     // Screen output 
     if (ctx->getMPIrank_world() == 0) {
-      std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation;
+      std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << " + " << obj_robust;
       std::cout<< "  Fidelity = " << F_avg;
       std::cout<< "  ||Grad|| = " << gnorm;
       std::cout<< std::endl;

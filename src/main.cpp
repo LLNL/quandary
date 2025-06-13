@@ -368,8 +368,13 @@ int main(int argc,char **argv)
      (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  
 
   // If universally robust optimization, always store the forward solution
-  bool optim_robust = config.GetBoolParam("optim_robust", false, true, false);
-  if (optim_robust) storeFWD = true;
+  double gamma_robust = config.GetDoubleParam("gamma_robust", -1.0, false);
+  if (gamma_robust > 0.0) storeFWD = true;
+  // Stop if lindblad solver and robust optimization, as its not implemented.
+  if (gamma_robust > 0.0 && lindbladtype != LindbladType::NONE) {
+    printf("\n ERROR: Robust optimization with Lindblad solver not working.\n");
+    exit(1);
+  }
 
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
@@ -461,7 +466,7 @@ int main(int argc,char **argv)
 
   /* Output */
   if (runtype != RunType::OPTIMIZATION) {
-    optimctx->output->writeOptimFile(0, optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getPenaltyVariation());
+    optimctx->output->writeOptimFile(0, optimctx->getObjective(), gnorm, 0.0, optimctx->getFidelity(), optimctx->getCostT(), optimctx->getRegul(), optimctx->getPenalty(), optimctx->getPenaltyDpDm(), optimctx->getPenaltyEnergy(), optimctx->getPenaltyVariation(), optimctx->getObjRobust());
   }
 
   /* --- Finalize --- */
