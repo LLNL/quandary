@@ -54,7 +54,7 @@ int main(int argc,char **argv)
     return 0;
   }
   std::stringstream log;
-  MapParam config(MPI_COMM_WORLD, log, quietmode);
+  Config config(MPI_COMM_WORLD, log, quietmode);
   config.ReadFile(argv[1]);
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */

@@ -21,110 +21,283 @@
 #define TaoMonitorSet TaoSetMonitor 
 #endif
 
+/**
+ * @brief Optimization problem solver for quantum optimal control.
+ *
+ * This class manages the optimization of quantum control pulses using PETSc's TAO
+ * optimization library. It handles objective function evaluation, by propagating initial states 
+ * forward in time solving the dynamical equation and computing the final-time objective cost function 
+ * and integral penalty terms, as well as the gradient computation by backpropagating the adjoint 
+ * terminal states backwards in time solving the adjoint dynamical equation and collecting gradient
+ * contributions. It further defines the interface functions for PETSc's TAO optimization 
+ * via L-BFGS, including a callback function to monitor optimization progress. 
+ * 
+ * Main functionality:
+ *    - @ref evalF evaluates the objective function by calling @ref TimeStepper::solveODE to evolve initial states 
+ *      to final time T and summing up the objective function measure over each target state
+ *    - @ref evalGradF evaluates the objective function and its gradient with respect to the optimization parameters
+ *       by calling @ref TimeStepper::solveODE and @ref TimeStepper::solveAdjointODE to propagate initial states
+ *       forward and backward through the time domain while accumulating objective and gradient information.
+ * 
+ * This class contains references to:
+ *    - @ref TimeStepper for handling the forward and backward time stepping process
+ *    - @ref OptimTarget for evaluating the final-time cost for each initial condition
+ *    - @ref Output      for writing monitored optimization convergence to file
+ */
 class OptimProblem {
+  protected:
 
-  /* ODE stuff */
-  size_t ninit;                          /* Number of initial conditions to be considered (N^2, N, or 1) */
-  int ninit_local;                      /* Local number of initial conditions on this processor */
-  Vec rho_t0;                            /* Storage for initial condition of the ODE */
-  Vec rho_t0_bar;                        /* Adjoint of ODE initial condition */
-  std::vector<Vec> store_finalstates;    /* Storage for last time steps for each initial condition */
+  size_t ninit; ///< Number of initial conditions to be considered (N^2, N, or 1)
+  int ninit_local; ///< Local number of initial conditions on this processor
+  Vec rho_t0; ///< Storage for initial condition of the ODE
+  Vec rho_t0_bar; ///< Storage for adjoint initial condition of the adjoint ODE (aka the terminal condition)
+  std::vector<Vec> store_finalstates; ///< Storage for final states for each initial condition
 
-  OptimTarget* optim_target;      /* Storing the optimization goal */
+  OptimTarget* optim_target; ///< Pointer to the optimization target (gate or state)
 
-  /* MPI stuff */
-  MPI_Comm comm_init;
-  MPI_Comm comm_optim;
-  int mpirank_optim, mpisize_optim;
-  int mpirank_space, mpisize_space;
-  int mpirank_world, mpisize_world;
-  int mpirank_init, mpisize_init;
+  MPI_Comm comm_init; ///< MPI communicator for initial condition parallelization
+  MPI_Comm comm_optim; ///< MPI communicator for optimization parallelization, currently not used (size 1)
+  int mpirank_optim, mpisize_optim; ///< MPI rank and size for optimization communicator
+  int mpirank_space, mpisize_space; ///< MPI rank and size for spatial parallelization (PETSc)
+  int mpirank_world, mpisize_world; ///< MPI rank and size for global communicator
+  int mpirank_init, mpisize_init; ///< MPI rank and size for initial condition communicator
 
-  bool quietmode;
+  bool quietmode; ///< Flag for quiet mode operation
 
-  /* Optimization stuff */
-  std::vector<double> obj_weights; /* List of weights for weighting the average objective over initial conditions  */
-  int ndesign;                     /* Number of global design parameters */
-  double objective;                /* Holds current objective function value */
-  double obj_cost;                 /* Final-time term J(T) in objective */
-  double obj_regul;                /* Regularization term in objective */
-  double obj_penal;                /* Penalty term in objective */
-  double obj_penal_dpdm;           /* Penalty term in objective for second order state */
-  double obj_penal_variation;      /* Penalty term for variation of control parameters */
-  double obj_penal_energy;         /* Energy Penalty term in objective */
-  double fidelity;                 /* Final-time fidelity: 1/ninit \sum_iinit Tr(rhotarget^\dag rho(T)) for Lindblad, or |1/ninit \sum_iinit phitarget^dagger phi |^2 for Schroedinger */
-  double gnorm;                    /* Holds current norm of gradient */
-  double gamma_tik;                /* Parameter for Tikhonov regularization */
-  bool gamma_tik_interpolate;      /* Switch to use ||x - x0||^2 for tikhonov regularization instead of ||x||^2 */
-  double gamma_penalty;            /* Parameter multiplying integral penalty term on the infidelity */
-  double gamma_penalty_dpdm;       /* Parameter multiplying integral penalty term for 2nd derivative of state variation */
-  double gamma_penalty_energy;     /* Parameter multiplying energy penalty */
-  double gamma_penalty_variation;  /* Parameter multiplying the un-divided difference squared regularization term */
-  double penalty_param;            /* Parameter inside integral penalty term w(t) (Gaussian variance) */
-  double gatol;                    /* Stopping criterion based on absolute gradient norm */
-  double fatol;                    /* Stopping criterion based on objective function value */
-  double inftol;                   /* Stopping criterion based on infidelity */
-  double grtol;                    /* Stopping criterion based on relative gradient norm */
-  int maxiter;                     /* Stopping criterion based on maximum number of iterations */
-  Tao tao;                         /* Petsc's Optimization solver */
-  std::vector<double> initguess_fromfile;      /* Stores the initial guess, if read from file */
-  double* mygrad;  /* Auxiliary */
+  std::vector<double> obj_weights; ///< Weights for averaging objective over initial conditions
+  int ndesign; ///< Number of global design (optimization) parameters
+  double objective; ///< Current objective function value (sum over final-time cost, regularization terms and penalty terms)
+  double obj_cost; ///< Final-time measure J(T) in objective
+  double obj_regul; ///< Regularization term in objective
+  double obj_penal; ///< Penalty integral term for pure-state preparation in objective 
+  double obj_penal_dpdm; ///< Penalty term second-order state derivatives (penalizes variations of the state evolution)
+  double obj_penal_variation; ///< Penalty term for variation of control parameters
+  double obj_penal_energy; ///< Energy penalty term in objective
+  double fidelity; ///< Final-time fidelity: 1/ninit sum_i Tr(rho_target^dag rho(T)) for Lindblad, |1/ninit sum_i phi_target^dag phi|^2 for Schrodinger
+  double gnorm; ///< Current norm of gradient
+  double gamma_tik; ///< Parameter for Tikhonov regularization
+  bool gamma_tik_interpolate; ///< Switch to use ||x - x0||^2 for Tikhonov regularization instead of ||x||^2
+  double gamma_penalty; ///< Parameter multiplying integral penalty term on infidelity
+  double gamma_penalty_dpdm; ///< Parameter multiplying integral penalty term for 2nd derivative of state variation
+  double gamma_penalty_energy; ///< Parameter multiplying energy penalty
+  double gamma_penalty_variation; ///< Parameter multiplying finite-difference squared regularization term
+  double penalty_param; ///< Parameter inside integral penalty term w(t) (Gaussian variance)
+  double gatol; ///< Stopping criterion based on absolute gradient norm
+  double fatol; ///< Stopping criterion based on objective function value
+  double inftol; ///< Stopping criterion based on infidelity
+  double grtol; ///< Stopping criterion based on relative gradient norm
+  int maxiter; ///< Stopping criterion based on maximum number of iterations
+  Tao tao; ///< PETSc's TAO optimization solver
+  std::vector<double> initguess_fromfile; ///< Initial guess read from file
+  double* mygrad; ///< Auxiliary gradient storage
     
-  Vec xtmp;                        /* Temporary storage */
+  Vec xtmp; ///< Temporary vector storage
   
   public: 
-    Output* output;                 /* Store a reference to the output */
-    TimeStepper* timestepper;       /* Store a reference to the time-stepping scheme */
-    Vec xlower, xupper;              /* Optimization bounds */
-    Vec xprev;                       /* design vector at previous iteration */
-    Vec xinit;                       /* Storing initial design vector */
+    Output* output; ///< Pointer to output handler
+    TimeStepper* timestepper; ///< Pointer to time-stepping scheme
+    Vec xlower, xupper; ///< Lower and upper bounds for optimization variables
+    Vec xprev; ///< Design vector at previous iteration
+    Vec xinit; ///< Initial design vector
 
-  /* Constructor */
-  OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, Output* output_, bool quietmode=false);
+  /**
+   * @brief Constructor for optimization problem.
+   *
+   * @param config Configuration parameters from input file
+   * @param timestepper_ Pointer to time-stepping scheme
+   * @param comm_init_ MPI communicator for initial condition parallelization
+   * @param comm_optim MPI communicator for optimization parallelization
+   * @param ninit_ Number of initial conditions
+   * @param output_ Pointer to output handler
+   * @param quietmode Flag for quiet operation (default: false)
+   */
+  OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, Output* output_, bool quietmode=false);
+
   ~OptimProblem();
 
-  /* Return the number of design variables */
+  /**
+   * @brief Retrieves the number of design variables.
+   *
+   * @return int Number of optimization parameters
+   */
   int getNdesign(){ return ndesign; };
 
-  /* Return the overall objective, final-time costs, regularization and penalty terms */
+  /**
+   * @brief Retrieves the current objective function value.
+   *
+   * @return double Total objective function value
+   */
   double getObjective(){ return objective; };
+
+  /**
+   * @brief Retrieves the final-time cost term.
+   *
+   * @return double Final-time cost J(T)
+   */
   double getCostT()    { return obj_cost; };
+
+  /**
+   * @brief Retrieves the Tikhonov regularization term.
+   *
+   * @return double Tikhonov regularization contribution
+   */
   double getRegul()    { return obj_regul; };
+
+  /**
+   * @brief Retrieves the integral penalty term for pure-state preparation.
+   *
+   * @return double Penalty term contribution
+   */
   double getPenalty()  { return obj_penal; };
+
+  /**
+   * @brief Retrieves the second-order state derivative penalty term.
+   *
+   * @return double Second-order penalty contribution
+   */
   double getPenaltyDpDm()  { return obj_penal_dpdm; };
+
+  /**
+   * @brief Retrieves the control variation penalty term.
+   *
+   * @return double Control variation penalty contribution
+   */
   double getPenaltyVariation()  { return obj_penal_variation; };
+
+  /**
+   * @brief Retrieves the control energy penalty term.
+   *
+   * @return double Energy penalty contribution
+   */
   double getPenaltyEnergy()  { return obj_penal_energy; };
+
+  /**
+   * @brief Retrieves the current fidelity.
+   *
+   * @return double Quantum fidelity measure
+   */
   double getFidelity() { return fidelity; };
+
+  /**
+   * @brief Retrieves the objective function tolerance.
+   *
+   * @return double Absolute tolerance for objective function convergence
+   */
   double getFaTol()    { return fatol; };
+
+  /**
+   * @brief Retrieves the gradient tolerance.
+   *
+   * @return double Absolute tolerance for gradient norm convergence
+   */
   double getGaTol()    { return gatol; };
+
+  /**
+   * @brief Retrieves the infidelity tolerance.
+   *
+   * @return double Tolerance for infidelity convergence
+   */
   double getInfTol()   { return inftol; };
+
+  /**
+   * @brief Retrieves the MPI rank in the world communicator.
+   *
+   * @return int MPI rank
+   */
   int getMPIrank_world() { return mpirank_world;};
+
+  /**
+   * @brief Retrieves the maximum number of iterations.
+   *
+   * @return int Maximum iteration limit
+   */
   int getMaxIter()     { return maxiter; };
 
-  /* Evaluate the objective function F(x) */
+  /**
+   * @brief Evaluates the objective function F(x).
+   * 
+   * Performs forward simulations for each initial conditions and
+   * evaluates the objective function. 
+   *
+   * @param x Design vector
+   * @return double Objective function value
+   */
   double evalF(const Vec x);
 
-  /* Evaluate gradient \nabla F(x) */
+  /**
+   * @brief Evaluates the gradient of the objective function with respect to the control parameters
+   *
+   * @param x Design (optimization) vector
+   * @param G Gradient vector to store result
+   */
   void evalGradF(const Vec x, Vec G);
 
-  /* Run optimization solver, starting from initial guess xinit */
+  /**
+   * @brief Runs the optimization solver.
+   *
+   * @param xinit Initial guess for design variables
+   */
   void solve(Vec xinit);
 
-  /* Compute initial guess for optimization variables */
+  /**
+   * @brief Computes initial guess for optimization variables.
+   *
+   * @param x Vector to store the initial guess
+   */
   void getStartingPoint(Vec x);
 
-  /* Call this after TaoSolve() has finished to print out some information */
+  /**
+   * @brief Retrieves the optimization solution and prints summary information.
+   *
+   * This method should be called after TaoSolve() has finished.
+   *
+   * @param opt Pointer to vector to store the optimal solution
+   */
   void getSolution(Vec* opt);
 };
 
-/* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */
+/**
+ * @brief Monitors optimization progress during TAO optimization iterations.
+ *
+ * This callback function is called at each iteration of TaoSolve() to
+ * track convergence and output progress information.
+ *
+ * @param tao TAO solver object
+ * @param ptr Pointer to user context (OptimProblem instance)
+ * @return PetscErrorCode Error code
+ */
 PetscErrorCode TaoMonitor(Tao tao,void*ptr);
 
-/* Petsc's Tao interface routine for evaluating the objective function f = f(x) */
+/**
+ * @brief PETSc TAO interface routine for objective function evaluation.
+ *
+ * @param tao TAO solver object
+ * @param x Design vector
+ * @param f Pointer to store objective function value
+ * @param ptr Pointer to user context (OptimProblem instance)
+ * @return PetscErrorCode Error code
+ */
 PetscErrorCode TaoEvalObjective(Tao tao, Vec x, PetscReal *f, void*ptr);
 
-/* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
+/**
+ * @brief PETSc TAO interface routine for gradient evaluation.
+ *
+ * @param tao TAO solver object
+ * @param x Design vector
+ * @param G Gradient vector
+ * @param ptr Pointer to user context (OptimProblem instance)
+ * @return PetscErrorCode Error code
+ */
 PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
 
-/* Petsc's Tao interface routine for evaluating the gradient g = \nabla f(x) */
+/**
+ * @brief PETSc TAO interface routine for combined objective and gradient evaluation.
+ *
+ * @param tao TAO solver object
+ * @param x Design vector
+ * @param f Pointer to store objective function value
+ * @param G Gradient vector
+ * @param ptr Pointer to user context (OptimProblem instance)
+ * @return PetscErrorCode Error code
+ */
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);
