@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['opendatafiles_0',['openDataFiles',['../classOutput.html#a53ad70a63b5be91061dd26cd7aabed81',1,'Output']]],
+  ['opentrajectorydatafiles_0',['openTrajectoryDataFiles',['../classOutput.html#a9a9b7c2e998af8d181ffe315f70a56cf',1,'Output']]],
   ['optimproblem_1',['OptimProblem',['../classOptimProblem.html#af1945265d6399722dc335ec2fb6b6b66',1,'OptimProblem']]],
   ['optimtarget_2',['optimtarget',['../classOptimTarget.html#ad4e0df2f3df0dfdf8ef8ecbfd299ca5a',1,'OptimTarget::OptimTarget()'],['../classOptimTarget.html#ab5e3b5e675129ac53213cdb474374515',1,'OptimTarget::OptimTarget(std::vector&lt; std::string &gt; target_str, std::string objective_str, std::vector&lt; std::string &gt; initcond_str, MasterEq *mastereq, double total_time, std::vector&lt; double &gt; read_gate_rot, Vec rho_t0, bool quietmode_)']]],
   ['oscillator_3',['oscillator',['../classOscillator.html#a99fd3a4a9ef26a4f8025ac7a519d900b',1,'Oscillator::Oscillator()'],['../classOscillator.html#a91d2fbadde79c86026a41adfef18eb9a',1,'Oscillator::Oscillator(Config config, size_t id, std::vector&lt; int &gt; nlevels_all_, std::vector&lt; std::string &gt; &amp;controlsegments, std::vector&lt; std::string &gt; &amp;controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector&lt; double &gt; carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine)']]],

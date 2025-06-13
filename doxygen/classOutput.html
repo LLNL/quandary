@@ -103,20 +103,20 @@ Public Member Functions</h2></td></tr>
 <tr class="memdesc:aae1a97757ebb839dd3bb0e2dc33159bf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes optimization progress to history file.  <br /></td></tr>
 <tr class="separator:aae1a97757ebb839dd3bb0e2dc33159bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adb389d2f0d8788d8821441cfaf3ce42d" id="r_adb389d2f0d8788d8821441cfaf3ce42d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#adb389d2f0d8788d8821441cfaf3ce42d">writeControls</a> (Vec params, <a class="el" href="classMasterEq.html">MasterEq</a> *mastereq, int ntime, double dt)</td></tr>
-<tr class="memdesc:adb389d2f0d8788d8821441cfaf3ce42d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes current control pulses and parameters.  <br /></td></tr>
+<tr class="memdesc:adb389d2f0d8788d8821441cfaf3ce42d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes current control pulses per oscillator and control parameters.  <br /></td></tr>
 <tr class="separator:adb389d2f0d8788d8821441cfaf3ce42d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1e6e2376a24daecfea404ed6a156ca16" id="r_a1e6e2376a24daecfea404ed6a156ca16"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a1e6e2376a24daecfea404ed6a156ca16">writeGradient</a> (Vec grad)</td></tr>
 <tr class="memdesc:a1e6e2376a24daecfea404ed6a156ca16"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes gradient vector for debugging adjoint calculations.  <br /></td></tr>
 <tr class="separator:a1e6e2376a24daecfea404ed6a156ca16"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a53ad70a63b5be91061dd26cd7aabed81" id="r_a53ad70a63b5be91061dd26cd7aabed81"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a53ad70a63b5be91061dd26cd7aabed81">openDataFiles</a> (std::string prefix, int initid)</td></tr>
-<tr class="memdesc:a53ad70a63b5be91061dd26cd7aabed81"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opens data files for time evolution output.  <br /></td></tr>
-<tr class="separator:a53ad70a63b5be91061dd26cd7aabed81"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac69f84e7237c74f581e6e919b1180656" id="r_ac69f84e7237c74f581e6e919b1180656"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#ac69f84e7237c74f581e6e919b1180656">writeDataFiles</a> (int timestep, double time, const Vec state, <a class="el" href="classMasterEq.html">MasterEq</a> *mastereq)</td></tr>
-<tr class="memdesc:ac69f84e7237c74f581e6e919b1180656"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes time evolution data to files.  <br /></td></tr>
-<tr class="separator:ac69f84e7237c74f581e6e919b1180656"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad07c7174bdceca917bdfc858ab2a0f5f" id="r_ad07c7174bdceca917bdfc858ab2a0f5f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#ad07c7174bdceca917bdfc858ab2a0f5f">closeDataFiles</a> ()</td></tr>
-<tr class="memdesc:ad07c7174bdceca917bdfc858ab2a0f5f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes open time evolution data files.  <br /></td></tr>
-<tr class="separator:ad07c7174bdceca917bdfc858ab2a0f5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9a9b7c2e998af8d181ffe315f70a56cf" id="r_a9a9b7c2e998af8d181ffe315f70a56cf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a9a9b7c2e998af8d181ffe315f70a56cf">openTrajectoryDataFiles</a> (std::string prefix, int initid)</td></tr>
+<tr class="memdesc:a9a9b7c2e998af8d181ffe315f70a56cf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opens data files for time evolution output.  <br /></td></tr>
+<tr class="separator:a9a9b7c2e998af8d181ffe315f70a56cf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2fdf651edf7abe90a88cf641ba9703c2" id="r_a2fdf651edf7abe90a88cf641ba9703c2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a2fdf651edf7abe90a88cf641ba9703c2">writeTrajectoryDataFiles</a> (int timestep, double time, const Vec state, <a class="el" href="classMasterEq.html">MasterEq</a> *mastereq)</td></tr>
+<tr class="memdesc:a2fdf651edf7abe90a88cf641ba9703c2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes time evolution data to files.  <br /></td></tr>
+<tr class="separator:a2fdf651edf7abe90a88cf641ba9703c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a03cbb7a52a46da5111e36c9bc29487fe" id="r_a03cbb7a52a46da5111e36c9bc29487fe"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a03cbb7a52a46da5111e36c9bc29487fe">closeTrajectoryDataFiles</a> ()</td></tr>
+<tr class="memdesc:a03cbb7a52a46da5111e36c9bc29487fe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes open time evolution data files.  <br /></td></tr>
+<tr class="separator:a03cbb7a52a46da5111e36c9bc29487fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -153,9 +153,21 @@ Protected Attributes</h2></td></tr>
 <tr class="memitem:a33c0d74e93b61d150c34cf380d71d990" id="r_a33c0d74e93b61d150c34cf380d71d990"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::vector&lt; std::string &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a33c0d74e93b61d150c34cf380d71d990">outputstr</a></td></tr>
 <tr class="memdesc:a33c0d74e93b61d150c34cf380d71d990"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of output specifications for each oscillator.  <br /></td></tr>
 <tr class="separator:a33c0d74e93b61d150c34cf380d71d990"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5932161e1ff224ff6bbb5e2e05342b5e" id="r_a5932161e1ff224ff6bbb5e2e05342b5e"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a5932161e1ff224ff6bbb5e2e05342b5e">writefullstate</a></td></tr>
-<tr class="memdesc:a5932161e1ff224ff6bbb5e2e05342b5e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to determine if full state vector should be written to file.  <br /></td></tr>
-<tr class="separator:a5932161e1ff224ff6bbb5e2e05342b5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0941e4ec7fc75b70d6484cb7899cc844" id="r_a0941e4ec7fc75b70d6484cb7899cc844"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a0941e4ec7fc75b70d6484cb7899cc844">writeFullState</a></td></tr>
+<tr class="memdesc:a0941e4ec7fc75b70d6484cb7899cc844"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to determine if evolution of full state vector should be written to file.  <br /></td></tr>
+<tr class="separator:a0941e4ec7fc75b70d6484cb7899cc844"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abc99de3cc1367ea59c5bcb6a9e6f55d5" id="r_abc99de3cc1367ea59c5bcb6a9e6f55d5"><td class="memItemLeft" align="right" valign="top">std::vector&lt; bool &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#abc99de3cc1367ea59c5bcb6a9e6f55d5">writeExpectedEnergy</a></td></tr>
+<tr class="memdesc:abc99de3cc1367ea59c5bcb6a9e6f55d5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to determine if evolution of expected energy per oscillator should be written to files.  <br /></td></tr>
+<tr class="separator:abc99de3cc1367ea59c5bcb6a9e6f55d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2572350869809344b3deb5fd08c451ef" id="r_a2572350869809344b3deb5fd08c451ef"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a2572350869809344b3deb5fd08c451ef">writeExpectedEnergy_comp</a></td></tr>
+<tr class="memdesc:a2572350869809344b3deb5fd08c451ef"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to determine if evolution of expected energy of the full composite system should be written to file.  <br /></td></tr>
+<tr class="separator:a2572350869809344b3deb5fd08c451ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae74f9e6a4c60684790db5b88007e7738" id="r_ae74f9e6a4c60684790db5b88007e7738"><td class="memItemLeft" align="right" valign="top">std::vector&lt; bool &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#ae74f9e6a4c60684790db5b88007e7738">writePopulation</a></td></tr>
+<tr class="memdesc:ae74f9e6a4c60684790db5b88007e7738"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to determine if the evolution of the energy level occupations per oscillator should be written to files.  <br /></td></tr>
+<tr class="separator:ae74f9e6a4c60684790db5b88007e7738"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2c56b0f56e78ffa6f9f39ca1f410f520" id="r_a2c56b0f56e78ffa6f9f39ca1f410f520"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a2c56b0f56e78ffa6f9f39ca1f410f520">writePopulation_comp</a></td></tr>
+<tr class="memdesc:a2c56b0f56e78ffa6f9f39ca1f410f520"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to determine if the evolution of the energy level occupations of the full composite system should be written to file.  <br /></td></tr>
+<tr class="separator:a2c56b0f56e78ffa6f9f39ca1f410f520"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2e421c9b5dbde2d7616f3c0abfedf2ab" id="r_a2e421c9b5dbde2d7616f3c0abfedf2ab"><td class="memItemLeft" align="right" valign="top">FILE *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOutput.html#a2e421c9b5dbde2d7616f3c0abfedf2ab">ufile</a></td></tr>
 <tr class="memdesc:a2e421c9b5dbde2d7616f3c0abfedf2ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">File for writing real part of fullstate evolution.  <br /></td></tr>
 <tr class="separator:a2e421c9b5dbde2d7616f3c0abfedf2ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -272,14 +284,14 @@ Protected Attributes</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="ad07c7174bdceca917bdfc858ab2a0f5f" name="ad07c7174bdceca917bdfc858ab2a0f5f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad07c7174bdceca917bdfc858ab2a0f5f">&#9670;&#160;</a></span>closeDataFiles()</h2>
+<a id="a03cbb7a52a46da5111e36c9bc29487fe" name="a03cbb7a52a46da5111e36c9bc29487fe"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a03cbb7a52a46da5111e36c9bc29487fe">&#9670;&#160;</a></span>closeTrajectoryDataFiles()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void Output::closeDataFiles </td>
+          <td class="memname">void Output::closeTrajectoryDataFiles </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td></td>
@@ -292,14 +304,14 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a53ad70a63b5be91061dd26cd7aabed81" name="a53ad70a63b5be91061dd26cd7aabed81"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a53ad70a63b5be91061dd26cd7aabed81">&#9670;&#160;</a></span>openDataFiles()</h2>
+<a id="a9a9b7c2e998af8d181ffe315f70a56cf" name="a9a9b7c2e998af8d181ffe315f70a56cf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9a9b7c2e998af8d181ffe315f70a56cf">&#9670;&#160;</a></span>openTrajectoryDataFiles()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void Output::openDataFiles </td>
+          <td class="memname">void Output::openTrajectoryDataFiles </td>
           <td>(</td>
           <td class="paramtype">std::string&#160;</td>
           <td class="paramname"><em>prefix</em>, </td>
@@ -319,7 +331,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Opens data files for time evolution output. </p>
-<p>Prepares files for writing full state, expected energy, and population evolution data.</p>
+<p>Prepares files for writing full state, expected energy, and population evolution data. Called before timestepping starts.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">prefix</td><td>Filename prefix for output files </td></tr>
@@ -368,66 +380,14 @@ Protected Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Writes current control pulses and parameters. </p>
-<p>Called every optim_monitor_freq optimization iterations.</p>
+<p>Writes current control pulses per oscillator and control parameters. </p>
+<p>Called every optim_monitor_freq optimization iterations. Control pulses are written to &lt;datadir&gt;/control&lt;ioscillator&gt;.dat Control parameters are written to &lt;datadir&gt;/params.dat</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">params</td><td>Current parameter vector </td></tr>
     <tr><td class="paramname">mastereq</td><td>Pointer to master equation solver </td></tr>
     <tr><td class="paramname">ntime</td><td>Total number of time steps </td></tr>
     <tr><td class="paramname">dt</td><td>Time step size </td></tr>
-  </table>
-  </dd>
-</dl>
-
-</div>
-</div>
-<a id="ac69f84e7237c74f581e6e919b1180656" name="ac69f84e7237c74f581e6e919b1180656"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac69f84e7237c74f581e6e919b1180656">&#9670;&#160;</a></span>writeDataFiles()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">void Output::writeDataFiles </td>
-          <td>(</td>
-          <td class="paramtype">int&#160;</td>
-          <td class="paramname"><em>timestep</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">double&#160;</td>
-          <td class="paramname"><em>time</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const Vec&#160;</td>
-          <td class="paramname"><em>state</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="classMasterEq.html">MasterEq</a> *&#160;</td>
-          <td class="paramname"><em>mastereq</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Writes time evolution data to files. </p>
-<p>Outputs state vector, expected energies, and populations at current time step.</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">timestep</td><td>Current time step number </td></tr>
-    <tr><td class="paramname">time</td><td>Current time value </td></tr>
-    <tr><td class="paramname">state</td><td>Current state vector </td></tr>
-    <tr><td class="paramname">mastereq</td><td>Pointer to master equation solver </td></tr>
   </table>
   </dd>
 </dl>
@@ -451,6 +411,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Writes gradient vector for debugging adjoint calculations. </p>
+<p>Gradient is written to &lt;datadir&gt;/grad.dat</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">grad</td><td>Gradient vector to output </td></tr>
@@ -541,7 +502,7 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Writes optimization progress to history file. </p>
-<p>Called at every optimization iteration to log convergence data.</p>
+<p>Called at every optimization iteration to log convergence data. Optimization history will be written to &lt;datadir&gt;/optim_history.dat.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">optim_iter</td><td>Current optimization iteration </td></tr>
@@ -555,6 +516,58 @@ Protected Attributes</h2></td></tr>
     <tr><td class="paramname">penalty_dpdm</td><td>Second-order derivative penalty </td></tr>
     <tr><td class="paramname">penalty_energy</td><td>Energy penalty term </td></tr>
     <tr><td class="paramname">penalty_variation</td><td>Control variation penalty </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a2fdf651edf7abe90a88cf641ba9703c2" name="a2fdf651edf7abe90a88cf641ba9703c2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2fdf651edf7abe90a88cf641ba9703c2">&#9670;&#160;</a></span>writeTrajectoryDataFiles()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Output::writeTrajectoryDataFiles </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>timestep</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>time</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const Vec&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classMasterEq.html">MasterEq</a> *&#160;</td>
+          <td class="paramname"><em>mastereq</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Writes time evolution data to files. </p>
+<p>Outputs state vector, expected energies, and populations at current time step. Called at each time step</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">timestep</td><td>Current time step number </td></tr>
+    <tr><td class="paramname">time</td><td>Current time value </td></tr>
+    <tr><td class="paramname">state</td><td>Current state vector </td></tr>
+    <tr><td class="paramname">mastereq</td><td>Pointer to master equation solver </td></tr>
   </table>
   </dd>
 </dl>
@@ -930,8 +943,8 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a5932161e1ff224ff6bbb5e2e05342b5e" name="a5932161e1ff224ff6bbb5e2e05342b5e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5932161e1ff224ff6bbb5e2e05342b5e">&#9670;&#160;</a></span>writefullstate</h2>
+<a id="abc99de3cc1367ea59c5bcb6a9e6f55d5" name="abc99de3cc1367ea59c5bcb6a9e6f55d5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abc99de3cc1367ea59c5bcb6a9e6f55d5">&#9670;&#160;</a></span>writeExpectedEnergy</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -940,7 +953,7 @@ Protected Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">bool Output::writefullstate</td>
+          <td class="memname">std::vector&lt;bool&gt; Output::writeExpectedEnergy</td>
         </tr>
       </table>
   </td>
@@ -950,7 +963,103 @@ Protected Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Flag to determine if full state vector should be written to file. </p>
+<p>Flag to determine if evolution of expected energy per oscillator should be written to files. </p>
+
+</div>
+</div>
+<a id="a2572350869809344b3deb5fd08c451ef" name="a2572350869809344b3deb5fd08c451ef"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2572350869809344b3deb5fd08c451ef">&#9670;&#160;</a></span>writeExpectedEnergy_comp</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Output::writeExpectedEnergy_comp</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag to determine if evolution of expected energy of the full composite system should be written to file. </p>
+
+</div>
+</div>
+<a id="a0941e4ec7fc75b70d6484cb7899cc844" name="a0941e4ec7fc75b70d6484cb7899cc844"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0941e4ec7fc75b70d6484cb7899cc844">&#9670;&#160;</a></span>writeFullState</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Output::writeFullState</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag to determine if evolution of full state vector should be written to file. </p>
+
+</div>
+</div>
+<a id="ae74f9e6a4c60684790db5b88007e7738" name="ae74f9e6a4c60684790db5b88007e7738"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae74f9e6a4c60684790db5b88007e7738">&#9670;&#160;</a></span>writePopulation</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;bool&gt; Output::writePopulation</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag to determine if the evolution of the energy level occupations per oscillator should be written to files. </p>
+
+</div>
+</div>
+<a id="a2c56b0f56e78ffa6f9f39ca1f410f520" name="a2c56b0f56e78ffa6f9f39ca1f410f520"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2c56b0f56e78ffa6f9f39ca1f410f520">&#9670;&#160;</a></span>writePopulation_comp</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Output::writePopulation_comp</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Flag to determine if the evolution of the energy level occupations of the full composite system should be written to file. </p>
 
 </div>
 </div>

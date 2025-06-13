@@ -26,7 +26,7 @@ var searchData=
   ['getndesign_23',['getNdesign',['../classOptimProblem.html#a8952c51225c4fd2d0a8bac5b09546ab3',1,'OptimProblem']]],
   ['getnlevels_24',['getNLevels',['../classOscillator.html#a5b47ab00b35ecd5a79b3202dc37fdd8f',1,'Oscillator']]],
   ['getnoscillators_25',['getNOscillators',['../classMasterEq.html#a601f1831ffce18ea5be8fd68e7bd60c2',1,'MasterEq']]],
-  ['getnparams_26',['getnparams',['../classControlBasis.html#a8b33a918ba140a5e79c3ed79adba6c9b',1,'ControlBasis::getNparams()'],['../classOscillator.html#aee2b84d3889ff76408152dae66d8ecd5',1,'Oscillator::getNParams()']]],
+  ['getnparams_26',['getnparams',['../classOscillator.html#aee2b84d3889ff76408152dae66d8ecd5',1,'Oscillator::getNParams()'],['../classControlBasis.html#a8b33a918ba140a5e79c3ed79adba6c9b',1,'ControlBasis::getNparams()']]],
   ['getnsegments_27',['getNSegments',['../classOscillator.html#a4d3a1d5cd3504ff997f9cf8dacf9174c',1,'Oscillator']]],
   ['getnsegparams_28',['getNSegParams',['../classOscillator.html#abafbe67f639ab401a141b41a861a7808',1,'Oscillator']]],
   ['getnsplines_29',['getnsplines',['../classOscillator.html#a7f3e6be83c024d95d3f7d47456f529fc',1,'Oscillator::getNSplines()'],['../classBSpline0.html#a65024112892da5c571843909ed201202',1,'BSpline0::getNSplines()'],['../classBSpline2ndAmplitude.html#abf50ce68cfccee035d2681d6c7f6dfed',1,'BSpline2ndAmplitude::getNSplines()'],['../classBSpline2nd.html#a15d6d09ed4cd7c3f3789882e01a1d8a9',1,'BSpline2nd::getNSplines()'],['../classControlBasis.html#a5c95a686ca2774a926966fd6a261d150',1,'ControlBasis::getNSplines()']]],

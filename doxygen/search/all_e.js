@@ -10,7 +10,7 @@ var searchData=
   ['objective_7',['objective',['../classOptimProblem.html#af4d97849338bb89dbc665abc21e94121',1,'OptimProblem']]],
   ['objective_5ftype_8',['objective_type',['../classOptimTarget.html#a177e47037e091e35c89a61261b5c3a70',1,'OptimTarget']]],
   ['objectivetype_9',['ObjectiveType',['../defs_8hpp.html#a45660f9909187129a953fa05e664576e',1,'defs.hpp']]],
-  ['opendatafiles_10',['openDataFiles',['../classOutput.html#a53ad70a63b5be91061dd26cd7aabed81',1,'Output']]],
+  ['opentrajectorydatafiles_10',['openTrajectoryDataFiles',['../classOutput.html#a9a9b7c2e998af8d181ffe315f70a56cf',1,'Output']]],
   ['optim_5fmonitor_5ffreq_11',['optim_monitor_freq',['../classOutput.html#a4700eb37d9698537e4be0ac6aacd4083',1,'Output']]],
   ['optim_5ftarget_12',['optim_target',['../classTimeStepper.html#a46de3914a9b905cc78a0bc3539e9aca5',1,'TimeStepper::optim_target'],['../classOptimProblem.html#a70589b41c7146c6557ea49b15c6c3e2d',1,'OptimProblem::optim_target']]],
   ['optimfile_13',['optimfile',['../classOutput.html#a28061ff23c5742ceae1c47ea8eb3336e',1,'Output']]],

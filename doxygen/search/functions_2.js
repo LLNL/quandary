@@ -1,7 +1,7 @@
 var searchData=
 [
   ['clearparams_0',['clearParams',['../classOscillator.html#ac11241f9fdaf1ee725e3cca7c66afa10',1,'Oscillator']]],
-  ['closedatafiles_1',['closeDataFiles',['../classOutput.html#ad07c7174bdceca917bdfc858ab2a0f5f',1,'Output']]],
+  ['closetrajectorydatafiles_1',['closeTrajectoryDataFiles',['../classOutput.html#a03cbb7a52a46da5111e36c9bc29487fe',1,'Output']]],
   ['cnot_2',['CNOT',['../classCNOT.html#a68e4213dd4c01384c1e10cd096b64d58',1,'CNOT']]],
   ['compositionalimplmidpoint_3',['CompositionalImplMidpoint',['../classCompositionalImplMidpoint.html#a51affdd79a772d6bf79a95093c3f6754',1,'CompositionalImplMidpoint']]],
   ['compute_5fdrhs_5fdparams_4',['compute_dRHS_dParams',['../classMasterEq.html#afd3d3d8301ab8e3d23a59601f1dd0665',1,'MasterEq']]],

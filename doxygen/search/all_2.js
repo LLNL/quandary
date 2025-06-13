@@ -2,7 +2,7 @@ var searchData=
 [
   ['carrier_5ffreq_0',['carrier_freq',['../classOscillator.html#acf6134e3003b15eba18569f2b29d7834',1,'Oscillator']]],
   ['clearparams_1',['clearParams',['../classOscillator.html#ac11241f9fdaf1ee725e3cca7c66afa10',1,'Oscillator']]],
-  ['closedatafiles_2',['closeDataFiles',['../classOutput.html#ad07c7174bdceca917bdfc858ab2a0f5f',1,'Output']]],
+  ['closetrajectorydatafiles_2',['closeTrajectoryDataFiles',['../classOutput.html#a03cbb7a52a46da5111e36c9bc29487fe',1,'Output']]],
   ['cnot_3',['cnot',['../classCNOT.html#a68e4213dd4c01384c1e10cd096b64d58',1,'CNOT::CNOT()'],['../classCNOT.html',1,'CNOT']]],
   ['comm_4',['comm',['../classConfig.html#a114f9fc48ff32c7ff0a88a33214f5356',1,'Config']]],
   ['comm_5finit_5',['comm_init',['../classOptimProblem.html#a721a317cb5f00ccec5b03ff0608e0ac8',1,'OptimProblem']]],
