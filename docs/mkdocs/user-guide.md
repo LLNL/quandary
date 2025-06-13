@@ -812,62 +812,58 @@ National Security, LLC, and shall not be used for advertising or product endorse
 -->
 
 # Appendix: Details for the real-valued, vectorized Hamiltonian
-   To assemble (evaluate)
-   $A(t) = Re(M(t))$ and $B(t) = Im(M(t))$, consider
+To assemble (evaluate)
+$A(t) = Re(M(t))$ and $B(t) = Im(M(t))$, consider
 
-   \begin{align}
-    iH &= iH_d(t) + iH_c(t) \\
-      &= i\left( \sum_k (\omega_k - \omega_k^{\text{rot}}) a_k^\dagger a_k - \frac{\xi}{2}a_k^\dagger a_k^\dagger a_k a_k  - \sum_{l>k}  \xi_{kl} a_k^\dagger a_k a_l^\dagger a_l +  \sum_{l>k} J_{kl} \cos(\eta_{kl}t)\left(a_k^\dagger a_l + a_ka_l^\dagger \right)
-       \right.\\
-      & \left. \quad \quad + \sum_k p^k(\vec{\alpha}^k,t) \left(a_k + a_k^\dagger\right) \right)\\
-      &+ \left( \sum_k \sum_{kl} - J_{kl} \sin(\eta_{kl}t) \left(a_k^\dagger a_l - a_ka_l^\dagger\right)  - \sum_k q^k(\vec{\alpha}^k, t)\left(a_k - a_k^\dagger\right)\right)
-   \end{align}
+\begin{align}
+iH &= iH_d(t) + iH_c(t) \\
+  &= i\left( \sum_k (\omega_k - \omega_k^{\text{rot}}) a_k^\dagger a_k - \frac{\xi}{2}a_k^\dagger a_k^\dagger a_k a_k  - \sum_{l>k}  \xi_{kl} a_k^\dagger a_k a_l^\dagger a_l +  \sum_{l>k} J_{kl} \cos(\eta_{kl}t)\left(a_k^\dagger a_l + a_ka_l^\dagger \right)
+    \right.\\
+  & \left. \quad \quad + \sum_k p^k(\vec{\alpha}^k,t) \left(a_k + a_k^\dagger\right) \right)\\
+  &+ \left( \sum_k \sum_{kl} - J_{kl} \sin(\eta_{kl}t) \left(a_k^\dagger a_l - a_ka_l^\dagger\right)  - \sum_k q^k(\vec{\alpha}^k, t)\left(a_k - a_k^\dagger\right)\right)
+\end{align}
 
-   Hence $A(t)$ and $B(t)$ are given by
+Hence $A(t)$ and $B(t)$ are given by
 
-   \begin{align}
-    A(t) &= A_d + \sum_k  q^k(\vec{\alpha}^k,t) A_c^k + \sum_{l>k} J_{kl} \sin(\eta_{kl}t)  A_d^{kl} \\
-   \text{with} \quad  A_d &:= \sum_k \sum_{j=1,2} \gamma_{jk} \left( \Ell_{jk}\otimes\Ell_{jk} - \frac 1 2 \left(I_N \otimes \Ell_{jk}^T\Ell_{jk} + \Ell_{jk}^T\Ell_{jk}\otimes I_N\right) \right)\\
-    A_c^k &:=  I_N \otimes \left(a_k - a_k^\dagger\right) - \left(a_k - a_k^\dagger\right)^T\otimes I_N \\
-    A_d^{kl} &:=  I_N\otimes \left(a_k^\dagger a_l - a_k a_l^\dagger\right) - \left(a_k^\dagger a_l - a_k a_l^\dagger\right)^T\otimes I_N
-   \end{align}
+\begin{align}
+A(t) &= A_d + \sum_k  q^k(\vec{\alpha}^k,t) A_c^k + \sum_{l>k} J_{kl} \sin(\eta_{kl}t)  A_d^{kl} \\
+\text{with} \quad  A_d &:= \sum_k \sum_{j=1,2} \gamma_{jk} \left( \Ell_{jk}\otimes\Ell_{jk} - \frac 1 2 \left(I_N \otimes \Ell_{jk}^T\Ell_{jk} + \Ell_{jk}^T\Ell_{jk}\otimes I_N\right) \right)\\
+A_c^k &:=  I_N \otimes \left(a_k - a_k^\dagger\right) - \left(a_k - a_k^\dagger\right)^T\otimes I_N \\
+A_d^{kl} &:=  I_N\otimes \left(a_k^\dagger a_l - a_k a_l^\dagger\right) - \left(a_k^\dagger a_l - a_k a_l^\dagger\right)^T\otimes I_N
+\end{align}
 
-   and
+and
 
-   \begin{align}
-     B(t) &=  B_d + \sum_k p^k(\vec{\alpha}^k,t) B_c^k + \sum_{kl} J_{kl} \cos(\eta_{kl}t)B_d^{kl}\\
-     \text{with} \quad B_d &:= \sum_k (\omega_k - \omega_k^{\text{rot}}) \left(-I_N \otimes a_k^\dagger a_k + (a_k^\dagger a_k)^T \otimes I_N \right) - \frac{\xi_k}{2}\left(- I_N \otimes a_k^\dagger a_k^\dagger a_k a_k + (a_k^\dagger a_k^\dagger a_k a_k )^T\otimes I_N\right)  \\
-       &\quad - \sum_{l>k}  \xi_{kl} \left(-I_N \otimes a_k^\dagger a_k a_l^\dagger a_l + (a_k^\dagger a_k a_l^\dagger a_l)^T \otimes I_N \right)\\
-       B_c^k &:=  - I_N \otimes \left(a_k + a_k^\dagger\right) + \left(a_k + a_k^\dagger\right)^T\otimes I_N \\
-       B_d^{kl} &:=  - I_N\otimes \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + \left(a_k^\dagger a_l + a_k a_l^\dagger\right)^T\otimes I_N \\
-   \end{align}
-
-
-  The sparse-matrix solver initializes and stores the constant matrices
-       $A_d, A_d^{kl}, A_c^k, B_d, B_d^{kl}, B_c^k$ using Petsc's sparse-matrix format. They are used
-       as building blocks to evaluate the blocks in the system matrix $M(t)$ with
-
-     \begin{align}
-       A(t) &= Re(M(t)) = A_d + \sum_k q^k(\alpha^k, t)A_c^k + \sum_{l>k} J_{kl} \sin(\eta_{kl}t) A_d^{kl}\\
-       B(t) &= Im(M(t)) = B_d + \sum_k p^k(\alpha^k, t)B_c^k + \sum_{kl} J_{kl} \cos(\eta_{kl}t) B_d^{kl}
-     \end{align}
-
-   at each time $t$, which are applied to the vectorized, real-valued density matrix using Petsc's sparse MatVec implementation.
-
-  The matrix-free solver does not explicitly store the matrices $A_d,B_d,
-       A_c^k, B_c^k$, etc., but instead only evaluates their action on a vector $q(t)$ using tensor contractions applied to the corresponding dimension of the density matrix tensor.
+\begin{align}
+  B(t) &=  B_d + \sum_k p^k(\vec{\alpha}^k,t) B_c^k + \sum_{kl} J_{kl} \cos(\eta_{kl}t)B_d^{kl}\\
+  \text{with} \quad B_d &:= \sum_k (\omega_k - \omega_k^{\text{rot}}) \left(-I_N \otimes a_k^\dagger a_k + (a_k^\dagger a_k)^T \otimes I_N \right) - \frac{\xi_k}{2}\left(- I_N \otimes a_k^\dagger a_k^\dagger a_k a_k + (a_k^\dagger a_k^\dagger a_k a_k )^T\otimes I_N\right)  \\
+    &\quad - \sum_{l>k}  \xi_{kl} \left(-I_N \otimes a_k^\dagger a_k a_l^\dagger a_l + (a_k^\dagger a_k a_l^\dagger a_l)^T \otimes I_N \right)\\
+    B_c^k &:=  - I_N \otimes \left(a_k + a_k^\dagger\right) + \left(a_k + a_k^\dagger\right)^T\otimes I_N \\
+    B_d^{kl} &:=  - I_N\otimes \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + \left(a_k^\dagger a_l + a_k a_l^\dagger\right)^T\otimes I_N \\
+\end{align}
 
 
+The sparse-matrix solver initializes and stores the constant matrices
+$A_d, A_d^{kl}, A_c^k, B_d, B_d^{kl}, B_c^k$ using Petsc's sparse-matrix format. They are used
+as building blocks to evaluate the blocks in the system matrix $M(t)$ with
 
+\begin{align}
+  A(t) &= Re(M(t)) = A_d + \sum_k q^k(\alpha^k, t)A_c^k + \sum_{l>k} J_{kl} \sin(\eta_{kl}t) A_d^{kl}\\
+  B(t) &= Im(M(t)) = B_d + \sum_k p^k(\alpha^k, t)B_c^k + \sum_{kl} J_{kl} \cos(\eta_{kl}t) B_d^{kl}
+\end{align}
+
+at each time $t$, which are applied to the vectorized, real-valued density matrix using Petsc's sparse MatVec implementation.
+
+The matrix-free solver does not explicitly store the matrices $A_d,B_d,
+A_c^k, B_c^k$, etc., but instead only evaluates their action on a vector $q(t)$ using tensor contractions applied to the corresponding dimension of the density matrix tensor.
 
 # Summary of all C++ configuration options
+Here is a list of all options available to the C++ Quandary code, this is the same as in `config_template.cfg`.
 
-  Here is a list of all options available to the C++ Quandary code, this is the same as in `config_template.cfg`.
-
-  \lstinputlisting[breaklines]{../../config_template.cfg}
-
+\lstinputlisting[breaklines]{../../config_template.cfg}
 
 # Summary of all python interface options
-  Here is a list of all options available to the python interface, this is the same as in `quandary.py`.
+Here is a list of all options available to the python interface, this is the same as in `quandary.py`.
 
-  \lstinputlisting[breaklines, firstline=17, lastline=91, keepspaces=false, language=mylanguage]{../../quandary.py}
+\lstinputlisting[breaklines, firstline=17, lastline=91, keepspaces=false, language=mylanguage]{../../quandary.py}
+
