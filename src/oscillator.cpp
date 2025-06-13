@@ -27,7 +27,7 @@ Oscillator::Oscillator(MapParam config, size_t id, std::vector<int> nlevels_all_
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
   /* Check if boundary conditions for controls should be enfored (default: yes). */
-  control_enforceBC = config.GetBoolParam("control_enforceBC", true);
+  control_enforceBC = config.GetBoolParam("control_enforceBC", true, true, true);
 
   // Parse for control segments
   size_t idstr = 0;

@@ -37,7 +37,7 @@ public:
   double GetDoubleParam(std::string key, double default_val = -1., bool warnme=true) const;
   int GetIntParam(std::string key, int default_val = -1, bool warnme=true, bool exportme = true) const;
   std::string GetStrParam(std::string key, std::string default_val = "", bool exportme = true, bool warnme=true) const;
-  bool GetBoolParam(std::string key, bool default_val = false, bool warnme=true) const;
+  bool GetBoolParam(std::string key, bool default_val = false, bool exportme = true, bool warnme=true) const;
   void GetVecDoubleParam(std::string key, std::vector<double> &fillme, double default_val = 1e20, bool exportme = true, bool warnme = true) const;
   void GetVecIntParam(std::string key, std::vector<int> &fillme, int default_val = -1, bool warnme=true) const;
   void GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val = "none", bool exportme = true, bool warnme=true) const;

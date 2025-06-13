@@ -150,7 +150,7 @@ std::string MapParam::GetStrParam(std::string key, std::string default_val, bool
   return val;
 }
 
-bool MapParam::GetBoolParam(std::string key, bool default_val, bool warnme) const
+bool MapParam::GetBoolParam(std::string key, bool default_val, bool exportme, bool warnme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   bool val;
@@ -170,7 +170,7 @@ bool MapParam::GetBoolParam(std::string key, bool default_val, bool warnme) cons
   else
     { val = false; }
 
-  export_param(mpi_rank, *log, key, val);
+  if (exportme) { export_param(mpi_rank, *log, key, val); }
   return val;
 }
 

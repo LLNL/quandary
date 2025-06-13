@@ -71,6 +71,9 @@ class OptimProblem {
   double* mygrad;  /* Auxiliary */
     
   Vec xtmp;                        /* Temporary storage */
+
+  // Universally robust optimization
+  bool optim_robust;              ///< Optimize with universally robust objective function
   
   public: 
     Output* output;                 /* Store a reference to the output */

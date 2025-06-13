@@ -98,7 +98,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   gamma_penalty = config.GetDoubleParam("optim_penalty", 0.0);
   penalty_param = config.GetDoubleParam("optim_penalty_param", 0.5);
   gamma_penalty_energy = config.GetDoubleParam("optim_penalty_energy", 0.0);
-  gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
+  gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, true, false);
   gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
   gamma_penalty_variation = config.GetDoubleParam("optim_penalty_variation", 0.01); 
   
@@ -185,6 +185,9 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
   VecSetFromOptions(xtmp);
   VecZeroEntries(xtmp);
+
+  /* Universally robust stuff */
+  optim_robust = config.GetBoolParam("optim_robust", false, false, false);
 }
 
 

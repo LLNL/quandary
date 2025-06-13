@@ -300,7 +300,7 @@ int main(int argc,char **argv)
   // for (int i = crosskerr.size(); i < (noscillators-1) * noscillators / 2; i++)  crosskerr.push_back(0.0);
   // for (int i = Jkl.size(); i < (noscillators-1) * noscillators / 2; i++) Jkl.push_back(0.0);
   // Sanity check for matrix free solver
-  bool usematfree = config.GetBoolParam("usematfree", false);
+  bool usematfree = config.GetBoolParam("usematfree", false, true, false);
   if (usematfree && nlevels.size() > 5){
         printf("Warning: Matrix free solver is only implemented for systems with 2, 3, 4, or 5 oscillators. Switching to sparse-matrix solver now.\n");
         usematfree = false;
@@ -363,8 +363,14 @@ int main(int argc,char **argv)
 
   /* My time stepper */
   bool storeFWD = false;
+  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
   if (mastereq->lindbladtype != LindbladType::NONE &&   
-     (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
+     (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  
+
+  // If universally robust optimization, always store the forward solution
+  bool optim_robust = config.GetBoolParam("optim_robust", false, true, false);
+  if (optim_robust) storeFWD = true;
+
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   TimeStepper* mytimestepper;
