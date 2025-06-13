@@ -12,7 +12,7 @@ TimeStepper::TimeStepper() {
   writeTrajectoryDataFiles = false;
 }
 
-TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
+TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_) : TimeStepper() {
   mastereq = mastereq_;
   dim = 2*mastereq->getDim(); // will be either N^2 (Lindblad) or N (Schroedinger)
   ntime = ntime_;
@@ -37,6 +37,23 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
       VecSetSizes(state, PETSC_DECIDE, dim);
       VecSetFromOptions(state);
       store_states.push_back(state);
+    }
+
+    for (int iinit = 0; iinit<ninit_; iinit++) {
+      std::vector<Vec> states_iinit_re, states_iinit_im;
+      for (int n = 0; n <=ntime; n++) {
+        Vec s_re, s_im;
+        VecCreate(PETSC_COMM_WORLD, &s_re);
+        VecCreate(PETSC_COMM_WORLD, &s_im);
+        VecSetSizes(s_re, PETSC_DECIDE, mastereq->getDim());
+        VecSetSizes(s_im, PETSC_DECIDE, mastereq->getDim());
+        VecSetFromOptions(s_re);
+        VecSetFromOptions(s_im);
+        states_iinit_re.push_back(s_re);
+        states_iinit_im.push_back(s_im);
+      }
+      store_states_robust_re.push_back(states_iinit_re);
+      store_states_robust_im.push_back(states_iinit_im);
     }
   }
 
@@ -64,6 +81,14 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
 TimeStepper::~TimeStepper() {
   for (size_t n = 0; n < store_states.size(); n++) {
     VecDestroy(&(store_states[n]));
+  }
+  for (size_t iinit = 0; iinit<store_states_robust_re.size(); iinit++) {
+    for (size_t n = 0; n <store_states_robust_re[iinit].size(); n++) {
+      VecDestroy(&(store_states_robust_re[iinit][n]));
+      VecDestroy(&(store_states_robust_im[iinit][n]));
+    }
+    store_states_robust_re[iinit].clear();
+    store_states_robust_im[iinit].clear();
   }
   VecDestroy(&x);
   VecDestroy(&xadj);
@@ -117,7 +142,20 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
     double tstop  = (n+1) * dt;
 
     /* store and write current state. */
-    if (storeFWD) VecCopy(x, store_states[n]);
+    if (storeFWD) {
+      VecCopy(x, store_states[n]);
+      // For robust optim, store Re and Im separately. TODO.
+      // printf("Timesteppers x at iinit %d time %d: \n", initid, n);
+      // VecView(x, NULL);
+      Vec x_re, x_im;
+      VecGetSubVector(x, mastereq->isu, &x_re);
+      VecGetSubVector(x, mastereq->isv, &x_im);
+      VecCopy(x_re, store_states_robust_re[initid][n]);
+      VecCopy(x_im, store_states_robust_im[initid][n]);
+      VecRestoreSubVector(x, mastereq->isu, &x_re);
+      VecRestoreSubVector(x, mastereq->isv, &x_im);
+    }
+
     if (writeTrajectoryDataFiles) {
       output->writeTrajectoryDataFiles(n, tstart, x, mastereq);
     }
@@ -148,7 +186,18 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   penalty_dpdm = penalty_dpdm/ntime;
 
   /* Store last time step */
-  if (storeFWD) VecCopy(x, store_states[ntime]);
+  if (storeFWD) {
+    VecCopy(x, store_states[ntime]);
+    
+    // For robust optim, store Re and Im separately. TODO.
+    Vec x_re, x_im;
+    VecGetSubVector(x, mastereq->isu, &x_re);
+    VecGetSubVector(x, mastereq->isv, &x_im);
+    VecCopy(x_re, store_states_robust_re[initid][ntime]);
+    VecCopy(x_im, store_states_robust_im[initid][ntime]);
+    VecRestoreSubVector(x, mastereq->isu, &x_re);
+    VecRestoreSubVector(x, mastereq->isv, &x_im);
+  }
 
   /* Clear out dpdm storage */
   if (gamma_penalty_dpdm > 1e-13) {
@@ -169,7 +218,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 }
 
 
-void TimeStepper::solveAdjointODE(Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty) {
+void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_energy_penalty) {
 
   /* Reset gradient */
   VecZeroEntries(redgrad);
@@ -501,7 +550,7 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
 
 void TimeStepper::evolveBWD(const double /*tstart*/, const double /*tstop*/, const Vec /*x_stop*/, Vec /*x_adj*/, Vec /*grad*/, bool /*compute_gradient*/){}
 
-ExplEuler::ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_) {
+ExplEuler::ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_, ninit_) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
 }
@@ -539,7 +588,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
 }
 
-ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_) {
+ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_, ninit_) {
 
   /* Create and reset the intermediate vectors */
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
@@ -748,7 +797,7 @@ int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose
 
 
 
-CompositionalImplMidpoint::CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_): ImplMidpoint(mastereq_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_) {
+CompositionalImplMidpoint::CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_): ImplMidpoint(mastereq_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, ninit_) {
 
   order = order_;
 

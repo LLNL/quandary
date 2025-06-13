@@ -374,10 +374,10 @@ int main(int argc,char **argv)
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   TimeStepper* mytimestepper;
-  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD);
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, ninit);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, ninit);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, ninit);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD, ninit);
   else {
     printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
     exit(1);

@@ -271,6 +271,41 @@ double OptimProblem::evalF(const Vec x) {
     // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
   }
 
+  /* Evaluate products for universally robust optimization */
+  int ntime = timestepper->getNTimeSteps();
+  double cost_robust = 0.0;
+  for (int n=1; n<=ntime; n++){
+    for (int m=n+1; m<=ntime; m++) {
+      double znm_re = 0.0;
+      double znm_im = 0.0;
+      for (int iinit = 0; iinit < ninit; iinit++){
+        Vec xn_re = timestepper->store_states_robust_re[iinit][n];
+        Vec xn_im = timestepper->store_states_robust_im[iinit][n];
+        Vec xm_re = timestepper->store_states_robust_re[iinit][m];
+        Vec xm_im = timestepper->store_states_robust_im[iinit][m];
+
+        // printf("Optimproblem x_re at iinit %d time %d: \n", iinit, n);
+        // VecView(xn_re, NULL);
+        // printf("Optimproblem x_im at iinit %d time %d: \n", iinit, n);
+        // VecView(xn_im, NULL);
+
+        double tmp1, tmp2;
+        VecDot(xn_re, xm_re, &tmp1);
+        VecDot(xn_im, xm_im, &tmp2);
+        znm_re += tmp1 + tmp2;
+        VecDot(xn_re, xm_im, &tmp1);
+        VecDot(xn_im, xm_re, &tmp2);
+        znm_im += tmp1 - tmp2;
+      }
+      double znm = SQR(znm_re) + SQR(znm_im);
+      cost_robust += 2.0*znm;
+    }
+    cost_robust += SQR(mastereq->getDimRho());
+  }
+  cost_robust = cost_robust / SQR(mastereq->getDimRho());
+  printf("Robust cost = %1.14e\n", cost_robust);
+  
+
   /* Sum up from initial conditions processors */
   double mypen = obj_penal;
   double mypen_dpdm = obj_penal_dpdm;
@@ -426,7 +461,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -489,7 +524,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       int iinit_global = mpirank_init * ninit_local + iinit;
 
       /* Recompute the initial state and target */
-      optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+      int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
       optim_target->prepareTargetState(rho_t0);
      
       /* Reset adjoint */
@@ -501,7 +536,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(initid, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);

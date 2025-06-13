@@ -24,6 +24,10 @@ class TimeStepper{
     int mpirank_world;
 
   public:
+    std::vector<std::vector<Vec>> store_states_robust_re; ///< Robust optim: for each initial condition, vector of real states at each time-step
+    std::vector<std::vector<Vec>> store_states_robust_im; ///< Robust optim: for each initial condition, vector of imag states at each time-step
+
+  public:
     MasterEq* mastereq;  // Lindblad master equation
     int ntime;           // number of time steps
     double total_time;   // final time
@@ -51,17 +55,24 @@ class TimeStepper{
     bool storeFWD;       /* Flag that determines if primal states should be stored during forward evaluation */
 
     TimeStepper(); 
-    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_); 
+    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_); 
     virtual ~TimeStepper(); 
+
+    /**
+     * Retrieve the total number of time-steps
+     * 
+     * @return ntime Number of time steps
+     */
+    int getNTimeSteps(){return ntime;};
 
     /* Return the state at a certain time index */
     Vec getState(size_t tindex);
-
+    
     /* Solve the ODE forward in time with initial condition rho_t0. Return state at final time step */
     Vec solveODE(int initid, Vec rho_t0);
 
     /* Solve the adjoint ODE backwards in time from terminal condition rho_t0_bar */
-    void solveAdjointODE(Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy);
+    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy);
 
     /* evaluate the penalty integral term */
     double penaltyIntegral(double time, const Vec x);
@@ -85,7 +96,7 @@ class TimeStepper{
 class ExplEuler : public TimeStepper {
   Vec stage;
   public:
-    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_);
+    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_);
     ~ExplEuler();
 
     /* Evolve state forward from tstart to tstop */
@@ -117,7 +128,7 @@ class ImplMidpoint : public TimeStepper {
   Vec tmp, err;                    /* Auxiliary vector for applying the neuman iterations */
 
   public:
-    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
+    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_);
     ~ImplMidpoint();
 
 
@@ -141,7 +152,7 @@ class CompositionalImplMidpoint : public ImplMidpoint {
   int order;
 
   public:
-    CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
+    CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_);
     ~CompositionalImplMidpoint();
 
     void evolveFWD(const double tstart, const double tstop, Vec x);

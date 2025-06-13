@@ -78,13 +78,13 @@ class MasterEq{
     /* Auxiliary stuff */
     int mpirank_petsc;   // Rank of Petsc's communicator
     int mpirank_world;   // Rank of global communicator
-    IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
 
     Vec aux;              // auxiliary vector 
 
     bool quietmode;
 
   public:
+    IS isu, isv;         // Vector strides for accessing u=Re(x), v=Im(x) 
     std::vector<int> nlevels;  // Number of levels per oscillator
     std::vector<int> nessential; // Number of essential levels per oscillator
     bool usematfree;  // Flag for using matrix free solver
