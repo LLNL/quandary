@@ -613,139 +613,140 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
 
 ## Sparse-matrix vs. matrix-free solver
 
-   In Quandary, two versions to evaluate the right hand side of Lindblad's
-   equation, $M(t)q(t)$, of the vectorized real-valued system are available:
+In Quandary, two versions to evaluate the right hand side of Lindblad's
+equation, $M(t)q(t)$, of the vectorized real-valued system are available:
+
 1. The *sparse-matrix solver* uses PETSc's sparse matrix format (sparse AIJ) to set up (and store) the time-independent building blocks inside $A(t)$ and $B(t)$. Sparse matrix-vector products are then applied at each time-step to evaluate the products $A(t)u(t) - B(t) v(t)$ and $B(t)u(t) + A(t)v(t)$.
 
-   For developers, the appendix provides details on each term within $A(t)$ and $B(t)$ which can be matched to the implementation in the code (class `MasterEq`).
+For developers, the appendix provides details on each term within $A(t)$ and $B(t)$ which can be matched to the implementation in the code (class `MasterEq`).
 
 2. The *matrix-free solver* considers the state density matrix $\rho\in C^{N\times N}$ to be a tensor of rank $2Q$ (one axis for each subsystems for each matrix dimension, hence $2\cdot Q$ axes). Instead of storing the matrices within $M(t)$, the matrix-free solver applies tensor contractions to realize the action of $A(t)$ and $B(t)$ on the state vectors.
 
-   In our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x), no surprise. However the matrix-free solver is currently only implemented for composite systems consisting of **2, 3, 4, or 5** subsystems.
+In our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x), no surprise. However the matrix-free solver is currently only implemented for composite systems consisting of **2, 3, 4, or 5** subsystems.
 
-   **The matrix-free solver currently does not parallelize across the system dimension $N$**, hence the state vector is **not** distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large while each axis can be very short (e.g. modelling $Q=12$ qubits with $n_k=2$ energy levels per qubit), which yields a very high-dimensional tensor with very short axes. In that case, the standard (?) approach of parallelizing the tensor along its axes will likely lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate!
+**The matrix-free solver currently does not parallelize across the system dimension $N$**, hence the state vector is **not** distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large while each axis can be very short (e.g. modelling $Q=12$ qubits with $n_k=2$ energy levels per qubit), which yields a very high-dimensional tensor with very short axes. In that case, the standard (?) approach of parallelizing the tensor along its axes will likely lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate!
 
 
 ## Time-stepping
-    To solve the (vectorized) master equation $\eqref{mastereq_vectorized}$, $\dot
-    q(t) = M(t) q(t)$ for $t\in [0,T]$, Quandary applies a time-stepping integration
-    scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with
-    $t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximates the
-    solution at each discrete time-step $q^{n} \approx q(t_n)$. The time-stepping scheme can be chosen in Quandary through the configuration option `timestepper`.
+To solve the (vectorized) master equation $\eqref{mastereq_vectorized}$, $\dot
+q(t) = M(t) q(t)$ for $t\in [0,T]$, Quandary applies a time-stepping integration
+scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with
+$t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximates the
+solution at each discrete time-step $q^{n} \approx q(t_n)$. The time-stepping scheme can be chosen in Quandary through the configuration option `timestepper`.
 
 ### Implicit Midpoint Rule (`IMR`)
-    The implicit midpoint rule is a second-order accurate, symplectic time-stepping algorithm with Runge-Kutta scheme tableau
+The implicit midpoint rule is a second-order accurate, symplectic time-stepping algorithm with Runge-Kutta scheme tableau
 
-    \begin{tabular}{ c | c }
-      $1/2$ & $ 1/2$ \\
-      \hline
-                &  $1$
-    \end{tabular}.
+\begin{tabular}{ c | c }
+  $1/2$ & $ 1/2$ \\
+  \hline
+            &  $1$
+\end{tabular}.
 
-    Given a state $q^n$ at time $t_n$, the update formula to compute $q^{n+1}$
-    is hence
+Given a state $q^n$ at time $t_n$, the update formula to compute $q^{n+1}$
+is hence
 
-    \begin{align}
-      q^{n+1} = q^n + \delta t k_1 \quad \text{where} \, k_1 \, \text{solves}
-      \quad \left( I-\frac{\delta t}{2} M^{n+1/2} \right) k_1 = M^{n+1/2}  q^n
-    \end{align}
+\begin{align}
+  q^{n+1} = q^n + \delta t k_1 \quad \text{where} \, k_1 \, \text{solves}
+  \quad \left( I-\frac{\delta t}{2} M^{n+1/2} \right) k_1 = M^{n+1/2}  q^n
+\end{align}
 
-    where $M^{n+1/2} := M(t_n + \frac{\delta t}{2})$. In each time-step,
-    a linear equation is solved to get the stage variable $k_1$, which is then used it
-    to update $q^{n+1}$.
+where $M^{n+1/2} := M(t_n + \frac{\delta t}{2})$. In each time-step,
+a linear equation is solved to get the stage variable $k_1$, which is then used it
+to update $q^{n+1}$.
 
 ### Higher-order compositional IMR (`IMR4`, or `IMR8`)
-    A compositional version of the Implicit Midpoint Rule is available that performs multiple IMR steps in each time-step interval, which are composed in such a way that the resulting compositional step is of higher order. Currently, Compared to the standard IMR, the higher-order methods can be very beneficial as it allows for much larger time-steps to be taken to reach a certain accuracy tolerance. Even though more work is done per time-step, the reduction in the number of time-steps needed can be several orders or magnitude and there is hence a tradeoff where the compositional methods outperform the standard IMR scheme.
+A compositional version of the Implicit Midpoint Rule is available that performs multiple IMR steps in each time-step interval, which are composed in such a way that the resulting compositional step is of higher order. Currently, Compared to the standard IMR, the higher-order methods can be very beneficial as it allows for much larger time-steps to be taken to reach a certain accuracy tolerance. Even though more work is done per time-step, the reduction in the number of time-steps needed can be several orders or magnitude and there is hence a tradeoff where the compositional methods outperform the standard IMR scheme.
 
-    Currently available is a compositional method of 4-th order that performs 3 sub-steps per time-step (`IMR4`), and a compositional method of 8-th order performing 15 sub-steps per time-step (`IMR8`).
+Currently available is a compositional method of 4-th order that performs 3 sub-steps per time-step (`IMR4`), and a compositional method of 8-th order performing 15 sub-steps per time-step (`IMR8`).
 
 ### Choice of the time-step size
-  The python interface to Quandary automatically computes a time-step size based on the fastest period of the system Hamiltonian. For the C++ code, it needs to be set by the user.
+The python interface to Quandary automatically computes a time-step size based on the fastest period of the system Hamiltonian. For the C++ code, it needs to be set by the user.
 
-    In order to choose a time-step size $\delta t$, an eigenvalue analysis of
-    the constant drift Hamiltonian $H_d$ is often useful. Since $H_d$ is Hermitian, there exists a transformation $Y$ such that $Y^{\dagger}H_d Y = \Lambda \qquad  \text{where} \quad Y^{\dagger} = Y$ where $\Lambda$ is a diagonal matrix containing the eigenvalues of $H_d$.
-       Transform the state $\tilde q = Y^{\dagger} q$, then the ODE transforms to
+In order to choose a time-step size $\delta t$, an eigenvalue analysis of
+the constant drift Hamiltonian $H_d$ is often useful. Since $H_d$ is Hermitian, there exists a transformation $Y$ such that $Y^{\dagger}H_d Y = \Lambda \qquad  \text{where} \quad Y^{\dagger} = Y$ where $\Lambda$ is a diagonal matrix containing the eigenvalues of $H_d$.
+Transform the state $\tilde q = Y^{\dagger} q$, then the ODE transforms to
 
-       \begin{align*}
-         \dot \tilde q = -i \Lambda \tilde q \quad \Rightarrow \dot \tilde q_i =
-         -i\lambda_i \tilde q_i \quad \Rightarrow \tilde q_i = a
-         \exp(-i\lambda_i t)
-       \end{align*}
+\begin{align*}
+  \dot \tilde q = -i \Lambda \tilde q \quad \Rightarrow \dot \tilde q_i =
+  -i\lambda_i \tilde q_i \quad \Rightarrow \tilde q_i = a
+  \exp(-i\lambda_i t)
+\end{align*}
 
-       Therefore, the period for each mode is $\tau_i =
-       \frac{2\pi}{|\lambda_i|}$, hence the shortest period is $\tau_{min} =
-       \frac{2\pi}{\max_i\{|\lambda_i|\}}$. If we want $p$ discrete time points
-       per period, then $p\delta t = \tau_{min}$, hence
+Therefore, the period for each mode is $\tau_i =
+\frac{2\pi}{|\lambda_i|}$, hence the shortest period is $\tau_{min} =
+\frac{2\pi}{\max_i\{|\lambda_i|\}}$. If we want $p$ discrete time points
+per period, then $p\delta t = \tau_{min}$, hence
 
-       \begin{align} \label{eq:timestepsize}
-         \delta t = \frac{\tau_{min}}{p} = \frac{2\pi}{p\max_i\{|\lambda_i|\}}
-       \end{align}
+\begin{align} \label{eq:timestepsize}
+  \delta t = \frac{\tau_{min}}{p} = \frac{2\pi}{p\max_i\{|\lambda_i|\}}
+\end{align}
 
-       Usually, for the second order scheme we would use something like $p=40$. The above estimate provides a first idea on how big (small) the time-step size should be, and the user is advised to consider this estimate when running a test case. However, the estimate ignores contributions from the control Hamiltonian, where larger control amplitudes will require smaller and smaller time-steps in order to resolve (a) the time-varying controls themselves and (b) the dynamics induced by large control contributions. A standard $\Delta t$ test should be performed in order to verify that the time-step is small enough. For example, one can compute the Richardson error estimator of the current approximation error to some true quantity $J^*$ from
+Usually, for the second order scheme we would use something like $p=40$. The above estimate provides a first idea on how big (small) the time-step size should be, and the user is advised to consider this estimate when running a test case. However, the estimate ignores contributions from the control Hamiltonian, where larger control amplitudes will require smaller and smaller time-steps in order to resolve (a) the time-varying controls themselves and (b) the dynamics induced by large control contributions. A standard $\Delta t$ test should be performed in order to verify that the time-step is small enough. For example, one can compute the Richardson error estimator of the current approximation error to some true quantity $J^*$ from
 
-       \begin{align}
-         J^* - J^{\Delta t} = \frac{J^{\Delta t} - J^{\Delta t m}}{1-m^p} + O(\Delta t^{p+1})
-       \end{align}
+\begin{align}
+  J^* - J^{\Delta t} = \frac{J^{\Delta t} - J^{\Delta t m}}{1-m^p} + O(\Delta t^{p+1})
+\end{align}
 
-       where $p$ is the order of the time-stepping scheme (i.e. $p=2$ for the IMR and $p=8$ for the compositional IMR8), and $J^{\Delta t}, J^{\Delta tm}$ denote approximations thereof using the time-stepping sizes $\Delta t$ and $\Delta t m$ for some factor $m$.
+where $p$ is the order of the time-stepping scheme (i.e. $p=2$ for the IMR and $p=8$ for the compositional IMR8), and $J^{\Delta t}, J^{\Delta tm}$ denote approximations thereof using the time-stepping sizes $\Delta t$ and $\Delta t m$ for some factor $m$.
 
-      <!--
-      If one wants to include the time-varying Hamiltonian part $H = H_d +
-      H_c(t)$ in the analysis, one could use the constraints on the control
-      parameter amplitudes to remove the time-dependency using their large
-      value instead.
-      -->
+<!--
+If one wants to include the time-varying Hamiltonian part $H = H_d +
+H_c(t)$ in the analysis, one could use the constraints on the control
+parameter amplitudes to remove the time-dependency using their large
+value instead.
+-->
 
 
 ## Gradient computation via discrete adjoint back-propagation
-   Quandary computes the gradients of the objective function with respect to the design variables $\boldsymbol{\alpha}$ using the discrete adjoint method. The discrete adjoint approach yields exact and consistent gradients on the algorithmic level, at costs that are independent of the number of design variables.
-   To that end, the adjoint approach propagates local sensitivities backwards through the time-domain while concatenating contributions to the gradient using the chain-rule.
+Quandary computes the gradients of the objective function with respect to the design variables $\boldsymbol{\alpha}$ using the discrete adjoint method. The discrete adjoint approach yields exact and consistent gradients on the algorithmic level, at costs that are independent of the number of design variables.
+To that end, the adjoint approach propagates local sensitivities backwards through the time-domain while concatenating contributions to the gradient using the chain-rule.
 
-  The consistent discrete adjoint time-integration step for
-    adjoint variables denoted by $\bar q^{n}$ is given by
+The consistent discrete adjoint time-integration step for
+adjoint variables denoted by $\bar q^{n}$ is given by
 
-   \begin{align}
-      \bar q^{n} = \bar q^{n+1} + \delta t \left(M^{n+1/2}\right)^T \bar k_1
-      \quad \text{where} \, \bar k_1 \, \text{solves} \quad \left(
-      I-\frac{\delta t}{2} M^{n+1/2}\right)^T  \bar k_1 = \bar q^{n+1}
-    \end{align}
+\begin{align}
+  \bar q^{n} = \bar q^{n+1} + \delta t \left(M^{n+1/2}\right)^T \bar k_1
+  \quad \text{where} \, \bar k_1 \, \text{solves} \quad \left(
+  I-\frac{\delta t}{2} M^{n+1/2}\right)^T  \bar k_1 = \bar q^{n+1}
+\end{align}
 
-  The contribution to the gradient $\nabla J$ for each time-step is
+The contribution to the gradient $\nabla J$ for each time-step is
 
-    \begin{align}\label{eq:gradient}
-      \nabla J += \delta t \left( \frac{\partial M^{n+1/2}}{\partial z}
-      \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
-    \end{align}
+\begin{align}\label{eq:gradient}
+  \nabla J += \delta t \left( \frac{\partial M^{n+1/2}}{\partial z}
+  \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
+\end{align}
 
-    Each evaluation of the gradient $\nabla J$ involves a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation $\eqref{eq:gradient}$ requires the states and adjoint states at each time-step. For the Schroedinger solver, the primal states are recomputed by integrating Schroedinger's equation backwards in time, alongside the adjoint computation. For the Lindblad solver, the states $q^n$ are stored during forward propagation, and taken from storage during adjoint back-propagation (since we can't recompute it in case of Lindblad solver, due to dissipation).
+Each evaluation of the gradient $\nabla J$ involves a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation $\eqref{eq:gradient}$ requires the states and adjoint states at each time-step. For the Schroedinger solver, the primal states are recomputed by integrating Schroedinger's equation backwards in time, alongside the adjoint computation. For the Lindblad solver, the states $q^n$ are stored during forward propagation, and taken from storage during adjoint back-propagation (since we can't recompute it in case of Lindblad solver, due to dissipation).
 
 
 ## Optimization algorithm
-    Quandary utilized Petsc's `Tao` optimization package to apply gradient-based iterative updates to the control variables. The `Tao` optimization interface takes routines to evaluate the objective function as well as the gradient computation. In the current setting in Quandary, `Tao` applies a nonlinear Quasi-Newton optimization scheme using a preconditioned gradient based on L-BFGS updates to approximate the Hessian of the objective function. A projected line-search is applied to ensure that the objective function yields sufficient decrease per optimization iteration while keeping the control parameters within the prescribed box-constraints.
+Quandary utilized Petsc's `Tao` optimization package to apply gradient-based iterative updates to the control variables. The `Tao` optimization interface takes routines to evaluate the objective function as well as the gradient computation. In the current setting in Quandary, `Tao` applies a nonlinear Quasi-Newton optimization scheme using a preconditioned gradient based on L-BFGS updates to approximate the Hessian of the objective function. A projected line-search is applied to ensure that the objective function yields sufficient decrease per optimization iteration while keeping the control parameters within the prescribed box-constraints.
 
 
 # Parallelization
-    Quandary offers two levels of parallelization using MPI.
+Quandary offers two levels of parallelization using MPI.
 1. Parallelization over initial conditions: The $n_{init}$ initial conditions $\rho_i(0)$ can be distributed over `np_init` compute units. Since initial condition are propagated through the time-domain for solving Lindblad's or Schroedinger's equation independently from each other, speedup from distributed initial conditions is ideal.
 2. Parallel linear algebra with Petsc (sparse-matrix solver only): For the sparse-matrix solver, Quandary utilizes Petsc's parallel sparse matrix and vector storage to distribute the state vector onto `np_petsc` compute units (spatial parallelization). To perform scaling results, make sure to disable code output (or reduce the output frequency to print only the last time-step), because writing the data files invokes additional MPI calls to gather data on the master node.
-    Strong and weak scaling studies are presented in [@guenther2021quantum].
+Strong and weak scaling studies are presented in [@guenther2021quantum].
 
-    Since those two levels of parallelism are orthogonal, Quandary splits the global communicator (MPI\_COMM\_WORLD) into
-    two sub-communicator such that the total number of executing MPI
-    processes ($np_{total}$) is split as
+Since those two levels of parallelism are orthogonal, Quandary splits the global communicator (MPI\_COMM\_WORLD) into
+two sub-communicator such that the total number of executing MPI
+processes ($np_{total}$) is split as
 
-    \begin{align*}
-      np_{init} * np_{petsc} = np_{total}.
-    \end{align*}
+\begin{align*}
+  np_{init} * np_{petsc} = np_{total}.
+\end{align*}
 
-    Since parallelization over different initial conditions is perfect, Quandary automatically sets $np_{init} = n_{init}$, i.e. the total number of cores for distributing initial conditions is the total number of initial conditions that are considered in this run, as specified by the configuration option `intialcondition`. The number of cores for distributed linear algebra with Petsc is then computed from the above equation.
+Since parallelization over different initial conditions is perfect, Quandary automatically sets $np_{init} = n_{init}$, i.e. the total number of cores for distributing initial conditions is the total number of initial conditions that are considered in this run, as specified by the configuration option `intialcondition`. The number of cores for distributed linear algebra with Petsc is then computed from the above equation.
 
-    It is currently required that the number of total cores for executing quandary is an integer divisor of multiplier of the number of initial conditions, such that each processor group owns the same number of initial conditions.
+It is currently required that the number of total cores for executing quandary is an integer divisor of multiplier of the number of initial conditions, such that each processor group owns the same number of initial conditions.
 
-    It is further required that the system dimension is an integer multiple of the number of cores used for distributed linear algebra from Petsc, i.e. it is required that $\frac{M}{np_{petsc}} \in \mathds{N}$ where $M=N^2$ in the Lindblad solver case and $M=N$ in the Schroedinger case. This requirement is a little
-      annoying, however the current implementation requires this due to the
-      colocated storage of the real and imaginary parts of the vectorized
-      state.
+It is further required that the system dimension is an integer multiple of the number of cores used for distributed linear algebra from Petsc, i.e. it is required that $\frac{M}{np_{petsc}} \in \mathds{N}$ where $M=N^2$ in the Lindblad solver case and $M=N$ in the Schroedinger case. This requirement is a little
+  annoying, however the current implementation requires this due to the
+  colocated storage of the real and imaginary parts of the vectorized
+  state.
 
 # Output and plotting the results
 Quandary generates various output files for system evolution of the current (optimized) controls as well as the optimization progress. All data files will be dumped into a user-specified folder through the config option `datadir`.
@@ -754,11 +755,11 @@ Quandary generates various output files for system evolution of the current (opt
 For each subsystem $k$, the user can specify the desired state evolution output through the config option `output<k>`:
 - `expectedEnergy`: This option prints the time evolution of the expected energy level of subsystem $k$ into files with naming convention `expected<k>.iinit<m>.dat`, where $m=1,\dots,n_{init}$ denotes the unique identifier for each initial condition $\rho_m(0)$ that was propagated through (see Section \ref{subsec:initcond}). This file contains two columns, the first row being the time values, the second one being the expectation value of the energy level of subsystem $k$ at that time point, computed from
 
-  \begin{align}
-    \langle N^{(n_k)}\rangle = \mbox{Tr}\left(N^{(n_k)} \rho^k(t)\right)
-  \end{align}
+\begin{align}
+  \langle N^{(n_k)}\rangle = \mbox{Tr}\left(N^{(n_k)} \rho^k(t)\right)
+\end{align}
 
-  where $N^{(n_k)} = \left(a^{(n_k)}\right)^\dagger \left(a^{(n_k)}\right)$ denotes the number operator in subsystem $k$ and $\rho^k$ denotes the reduced density matrix for subsystem $k$, each with dimension $n_k\times n_k$. Note that this equivalent to $\mbox{Tr}\left(N_k \rho(t)\right)$ with $N_k = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes N^{(n_k)} \otimes I_{n_{k+1}}\otimes \dots \otimes I_Q$ and the full state $\rho(t)$ in the full dimensions $N\times N$.
+where $N^{(n_k)} = \left(a^{(n_k)}\right)^\dagger \left(a^{(n_k)}\right)$ denotes the number operator in subsystem $k$ and $\rho^k$ denotes the reduced density matrix for subsystem $k$, each with dimension $n_k\times n_k$. Note that this equivalent to $\mbox{Tr}\left(N_k \rho(t)\right)$ with $N_k = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes N^{(n_k)} \otimes I_{n_{k+1}}\otimes \dots \otimes I_Q$ and the full state $\rho(t)$ in the full dimensions $N\times N$.
 - `expectedEnergyComposite` Prints the time evolution of the expected energy level of the entire (full-dimensional) system state into files (one for each initial condition, as above): $mbox{Tr}\left(N \rho(t)\right)$ for the number operator $N$ in the full dimensions.
 - `population`: This option prints the time evolution of the state populations (diagonal of density matrix, state probabilities) of subsystem $k$ into files named `population<k>.iinit<m>.dat` for each initial condition $m=1,\dots, n_{init}$. The files contain $n_k+1$ columns, the first one being the time values, the remaining $n_k$ columns correspond to the population of each level $l=0,\dots,n_k-1$ of the reduced density matrix $\rho^k(t)$ at that time point. For Lindblad's solver, these are the diagonal elements of the reduced density matrix ($\rho_{ll}^k(t), l=0,\dots n_k-1$), for Schroedinger's solver it's the absolute values of the reduced state vector elements $|\psi^k_l(t)|^2, l=0,\dots n_k-1$. Note that the reduction to the subsystem $k$ induces a sum over all oscillators to collect contributions to the reduced state.
 - `populationComposite`: Prints the time evolution of the state populations of the entire (full-dimensional) system into files (one for each initial condition, as above).
@@ -774,22 +775,23 @@ The user can change the frequency of output in time (printing only every $j$-th 
 Quandary always prints the current parameters and control pulses at the beginning of a simulation or optimization, and in addition at every $l$-th optimization iteration determined from the `optim_monitor_frequency` configuration option.
 
 ## Plotting
-The format of all output files are very well suited for plotting with \href{http://www.gnuplot.info}{Gnuplot}, which is a command-line based plotting program that can output directly to screen, or into many other formats such as png, eps, or even tex. As an example, from within a Gnuplot session, you can plot e.g. the expected energy level of subsystem $k=0$ for initial condition $m=0$ by the simple command\newline
+The format of all output files are very well suited for plotting with \href{http://www.gnuplot.info}{Gnuplot}, which is a command-line based plotting program that can output directly to screen, or into many other formats such as png, eps, or even tex. As an example, from within a Gnuplot session, you can plot e.g. the expected energy level of subsystem $k=0$ for initial condition $m=0$ by the simple command
+
 `gnuplot> plot 'expected0.iinit0000.dat' using 1:2 with lines title 'expected energy subsystem 0'`
-\\
+
 which plots the first against the second column of the file 'expected0.iinit0000.dat' to screen, connecting each point with a line. Additional lines (and files) can be added to the same plot by extending the above command with another file separated by comma (only omit the 'plot' keyword for the second command). There are many example scripts for plotting with gnuplot online, and as a starting point I recommend looking into some scripts in the 'quandary/util/' folder.
 
 # Testing
 - Quandary has a set of regression tests. Please take a look at the `tests/regression/README.md` document for instructions on how to run the regression tests.
 - In order to check if the gradient implementation is correct, one can choose to run a Central Finite Difference test. Let the overall objective function be denoted by $F(\boldsymbol{\alpha})$. The Central Finite Difference test compares each element of the gradient $\nabla F(\boldsymbol{\alpha})$ with the following (second-order accurate) estimate:
 
-  \begin{align*}
-     \left(\nabla F(\boldsymbol{\alpha}) \right)_i \approx \frac{F(\bfa + \epsilon\bs{e}_i) - F(\bfa - \epsilon\bs{e}_i)}{2\epsilon} \qquad \qquad \text{(CFD)}
-  \end{align*}
+\begin{align*}
+    \left(\nabla F(\boldsymbol{\alpha}) \right)_i \approx \frac{F(\bfa + \epsilon\bs{e}_i) - F(\bfa - \epsilon\bs{e}_i)}{2\epsilon} \qquad \qquad \text{(CFD)}
+\end{align*}
 
-  for unit vectors $\bs{e}_i\in \R^d$, and $d$ being the dimension of $\bfa$.
+for unit vectors $\bs{e}_i\in \R^d$, and $d$ being the dimension of $\bfa$.
 
-  To enable the test, set the flag for the compiler directive `TEST_FD_GRAD` at the beginning of the `src/main.cpp` file. Quandary will then iterate over all elements in $\alpha$ and report the *relative* error of the implemented gradient with respect to the "true" gradient computed from CFD.
+To enable the test, set the flag for the compiler directive `TEST_FD_GRAD` at the beginning of the `src/main.cpp` file. Quandary will then iterate over all elements in $\alpha$ and report the *relative* error of the implemented gradient with respect to the "true" gradient computed from CFD.
 
 # Acknowledgments
 This work was performed under the auspices of the U.S. Department of Energy by Lawrence
