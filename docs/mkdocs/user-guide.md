@@ -123,7 +123,7 @@ The constants $T_l^k>0$ correspond to the half-life of process $l$ on subsystem 
 % Decay processes typically behave like $\exp(-t/{T_1})$.
 
 All the above constants and system parameters can be specified in the first part of the configuration file that Quandary's executable takes as an input, compare `config_template.cfg`.
-Note that the main choice here is which equation should be solved for and which representation of the quantum state will be used (either Schroedinger with a state vector $\psi \in \C^N$, or Lindblad's equation for a density matrix $\rho \in \C^{N\times N}$). In the configuration file, this choice is determined through the option `collapse_type`, where `none` will result in Schroedinger's equation and any other choice will result in Lindblad's equation being solved for. Further note, that choosing `collapse_type` $\neq$ `none`, together with a collapse time $T_{l}^k = 0.0$ will omit the evaluation of the corresponding term in the Lindblad operator \eqref{eq:collapseop} (but will still solve Lindblad's equation for the density matrix).
+Note that the main choice here is which equation should be solved for and which representation of the quantum state will be used (either Schroedinger with a state vector $\psi \in \C^N$, or Lindblad's equation for a density matrix $\rho \in \C^{N\times N}$). In the configuration file, this choice is determined through the option `collapse_type`, where `none` will result in Schroedinger's equation and any other choice will result in Lindblad's equation being solved for. Further note, that choosing `collapse_type` $\neq$ `none`, together with a collapse time $T_{l}^k = 0.0$ will omit the evaluation of the corresponding term in the Lindblad operator $\eqref{eq:collapseop}$ (but will still solve Lindblad's equation for the density matrix).
 
 *Note:* In the remainder of this document, the quantum state will mostly be denoted by $\rho$, independent of which equation is solved for. Depending on the context, $\rho$ can then either denotes the density matrix $\rho\in \C^{N\times N}$, or the state vector $\psi\in \C^N$. A clear distinction between the two will only be made explicit if necessary.
 
@@ -259,16 +259,16 @@ All interface functions are defined in `quandary.py`. Most importantly, it defin
 
 After setting up the configuration, you can evoke simulations or optimizations with `quandary.simulate/optimize()`. Check out `help(Quandary)` to see all available user functions. Under the hood, those function writes the required Quandary configuration files (`config.cfg`, etc.) to a data directory, then evokes (multiple) subprocesses to execute parallel C++ Quandary on that configuration file through the shell, and then loads the results from Quandary's output files back into the python interpreter. Plotting scripts are also provided, see the example scripts.
 
-In addition to the standard Hamiltonian models as described in Section \ref{sec:model}, the python interface allows for user-defined Hamiltonian operators $H_d$ and $H_c$. Those are provided to Quandary through optional arguments to the python configuration `Quandary`, in which case Quandary replaces the Hamiltonian operators in \eqref{eq:Hd_rotating} (system Hamiltonian) and \eqref{eq:Hc_rotating} (control Hamiltonian operators $a\pm a'$) by the provided matrices.
+In addition to the standard Hamiltonian models as described in Section \ref{sec:model}, the python interface allows for user-defined Hamiltonian operators $H_d$ and $H_c$. Those are provided to Quandary through optional arguments to the python configuration `Quandary`, in which case Quandary replaces the Hamiltonian operators in $\eqref{eq:Hd_rotating}$ (system Hamiltonian) and $\eqref{eq:Hc_rotating}$ (control Hamiltonian operators $a\pm a'$) by the provided matrices.
 - The system Hamiltonian $H_d$ is a time-independent complex hermitian matrix. The units of the system Hamiltonian should be angular frequency (multiply $2\pi$).
-- For each oscillator, one complex-valued control operator can be specified. Those should be provided in terms of their real and imaginary parts separately, e.g. the standard model control operators would be specified as $H_{c,k}^{re} = a_k+a_k^\dagger$ and $H_{c,k}^{im}=a_k-a_k^\dagger$, for each oscillator $k$. The real parts will be multiplied by the control pulses $p_k(t)$, while the imaginary parts will be multiplied by $iq_k(t)$ for each oscillator $k$, similar to the model in \eqref{eq:Hc_rotating}. Control Hamiltonian operators should be 'unit-free', since those units come in through the multiplied control pulses $p$ and $q$.
+- For each oscillator, one complex-valued control operator can be specified. Those should be provided in terms of their real and imaginary parts separately, e.g. the standard model control operators would be specified as $H_{c,k}^{re} = a_k+a_k^\dagger$ and $H_{c,k}^{im}=a_k-a_k^\dagger$, for each oscillator $k$. The real parts will be multiplied by the control pulses $p_k(t)$, while the imaginary parts will be multiplied by $iq_k(t)$ for each oscillator $k$, similar to the model in $\eqref{eq:Hc_rotating}$. Control Hamiltonian operators should be 'unit-free', since those units come in through the multiplied control pulses $p$ and $q$.
 - To enable the use of the custom Hamiltonians, pass the configuration option `standardmodel=False`, in addition to `Hsys=<yourSystemHamiltonian>` and `Hc_real=[<HcReal oscillator1, HcReal oscillator2, ...]`, `Hc_imag=[<HcImag oscillator1, HcImag oscillator2, ...]`.
 - Note: The control Hamiltonian operators are optional, but the system Hamiltonian is always required if `standardmodel=False`.
 - Note: The matrix-free solver can not be used when custom Hamiltonians are provided. The code will therefore be slower.
 
 The python interface is set up such that it automatically computes the time-step size for discretizing the time domain, as well as the carrier wave frequencies that trigger system resonances. Note that the carrier wave frequency analysis are tailored for the standard Hamiltonian model, and those frequencies might need to be adapted when custom Hamiltonian operators are used (read the screen output). You can always check the written configuration file `config.cfg`, and the log to see what frequencies are being used, and potentially modify them.
 
-To switch between the Schroedinger solver and the Lindblad solver, the optional $T_1$ decay and $T_2$ dephasing times can be passed to the python QuandaryConfig. For the Lindblad solver, the same collapse terms as defined in \eqref{eq:collapseop} will be added to the dynamical equation.
+To switch between the Schroedinger solver and the Lindblad solver, the optional $T_1$ decay and $T_2$ dephasing times can be passed to the python QuandaryConfig. For the Lindblad solver, the same collapse terms as defined in $\eqref{eq:collapseop}$ will be added to the dynamical equation.
 
 # The Optimal Control Problem {#sec:optim}
 In the most general form, Quandary can solve the following optimization problem
@@ -278,7 +278,7 @@ In the most general form, Quandary can solve the following optimization problem
   \min_{\boldsymbol{\alpha}} J(\{\rho^{target}_i, \rho_i(T) \}) \quad + \mbox{Regularization} + \mbox{Penalty}
 \end{align}
 
-where $\rho_i(T)$ denotes one or multiple quantum states evaluated at a final time $T>0$, which solve either Lindblad's master equation \eqref{mastereq} or Schroedinger's equation \eqref{eq:schroedinger} in the rotating frame for initial conditions $\rho_i(0)$, as specified in Section \ref{subsec:initcond}, $i=1,\dots, n_{init}$. The first term in \eqref{eq:minproblem} minimizes an objective function $J$ (see Section \ref{sec:objectivefunctionals}) that quantifies the discrepancy between the realized states $\rho_i(T)$ at final time $T$ driven by the current control $\boldsymbol{\alpha}$ and the desired target $\rho^{target}_i$, see Section \ref{sec:targets}.
+where $\rho_i(T)$ denotes one or multiple quantum states evaluated at a final time $T>0$, which solve either Lindblad's master equation $\eqref{mastereq}$ or Schroedinger's equation $\eqref{eq:schroedinger}$ in the rotating frame for initial conditions $\rho_i(0)$, as specified in Section \ref{subsec:initcond}, $i=1,\dots, n_{init}$. The first term in $\eqref{eq:minproblem}$ minimizes an objective function $J$ (see Section \ref{sec:objectivefunctionals}) that quantifies the discrepancy between the realized states $\rho_i(T)$ at final time $T$ driven by the current control $\boldsymbol{\alpha}$ and the desired target $\rho^{target}_i$, see Section \ref{sec:targets}.
 The remaining terms are regularization and penalty terms that can be added to stabilize convergence, or prevent leakage, compare Section \ref{sec:penalty}
 
 ## Fidelity {#sec:fidelity}
@@ -311,7 +311,7 @@ The following objective functions can be used for optimization in Quandary (conf
 \end{align}
 
 Here, $\beta_i$ denote weights with $\sum_{i=1}^{n_{init}} \beta _i = 1$ that can be used to scale the contribution of each initial/target state $i$ (default $\beta_i = 1/n_{init}$).
-$J_{Frobenius}$ measures (weighted average of) the Frobenius norm between target and final states. $J_{Trace}$ measures the (weighted) infidelity in terms of the Hilbert-Schmidt overlap, compare the definition of fidelity in eq. \eqref{eq:fidelity}. Here, $w_i = \mbox{Tr}\left(\rho_i(0)^2\right)$ is the purity of the initial state. Both those measures are common for optimization towards a unitary gate transformation, for example. $J_{measure}$ is (only) useful when considering pure-state optimization, see Section \ref{sec:statepreparation}. Here, $m\in\N$ is a given integer, and $N_m$ is a diagonal matrix with diagonal elements being $|k-m|, k=0,\dots N-1$
+$J_{Frobenius}$ measures (weighted average of) the Frobenius norm between target and final states. $J_{Trace}$ measures the (weighted) infidelity in terms of the Hilbert-Schmidt overlap, compare the definition of fidelity in eq. $\eqref{eq:fidelity}$. Here, $w_i = \mbox{Tr}\left(\rho_i(0)^2\right)$ is the purity of the initial state. Both those measures are common for optimization towards a unitary gate transformation, for example. $J_{measure}$ is (only) useful when considering pure-state optimization, see Section \ref{sec:statepreparation}. Here, $m\in\N$ is a given integer, and $N_m$ is a diagonal matrix with diagonal elements being $|k-m|, k=0,\dots N-1$
 
 The distinction for the Lindblad vs. Schroedinger solver is made explicit for $J_{trace}$ above. The other two measures apply naturally to either the density matrix version solving Lindblad's equation, or the state vector version solving Schroedinger's equation with $ \|\rho^{target} - \rho(T)\| = \|\psi^{target} - \psi(T)\|$ and $\mbox{Tr}\left(N_m\rho(T)\right) = \psi(T)^\dagger N_m \psi(T)$.
 
@@ -344,7 +344,7 @@ for unit vectors $\boldsymbol{e}_{m_k} \in \R^{n_k}$, and $\rho^{target} = \psi^
 \end{align}
 
 Depending on the choice for the initial conditions, optimization towards a pure target state can be used to realize either a simple state-to-state transfer (choosing one specific initial condition, $n_{init}=1$), or to realize the more complex task of state preparation that drives *any* initial state to a common pure target state.
-For $m=0$, the target state represents the ground state of the system under consideration, which has important applications for quantum reset as well as quantum error correction. Driving *any* initial state to a common target will require to couple to a dissipative bath, which should be accounted for in the model setup. In the latter case, typically a full basis of initial conditions needs to be considered during the optimization ($n_{init}=N^2$ for density matrices). However, it is shown in \cite{guenther2021quantum}, that if one chooses the objective function $J_{measure}$ with corresponding measurement operator $N_m$ (see eq. \eqref{eq:Jmeasure}), one can reduce the number of initial conditions to only *one* being an ensemble of all basis states, and hence $n_{init}=1$ independent of the system dimension $N$. Compare \cite{guenther2021quantum} for details, and Section \ref{sec:ensemblestate}.
+For $m=0$, the target state represents the ground state of the system under consideration, which has important applications for quantum reset as well as quantum error correction. Driving *any* initial state to a common target will require to couple to a dissipative bath, which should be accounted for in the model setup. In the latter case, typically a full basis of initial conditions needs to be considered during the optimization ($n_{init}=N^2$ for density matrices). However, it is shown in \cite{guenther2021quantum}, that if one chooses the objective function $J_{measure}$ with corresponding measurement operator $N_m$ (see eq. $\eqref{eq:Jmeasure}$), one can reduce the number of initial conditions to only *one* being an ensemble of all basis states, and hence $n_{init}=1$ independent of the system dimension $N$. Compare \cite{guenther2021quantum} for details, and Section \ref{sec:ensemblestate}.
 
 % For example, assume one considers a composite system consisting of a qubit modelled with $n_0=2$ levels coupled to a readout cavity modelled with $n_1=10$ levels, and one wants to drive the qubit to the $|1\rangle$ state and the cavity to the ground state. The target pure state input for Quandary is hence $m_0=1, m_1=0$ (i.e. the $|10\rangle$ state in the composite system), which corresponds $m=1\cdot10+0 = 10$ in the composite system of dimension $N=2\cdot 10 = 20$.
 
@@ -397,7 +397,7 @@ To compute the objective function at final time T, the essential-dimensional gat
 
 
 ## Initial conditions {#subsec:initcond}
-The initial states $\rho_i(0)$ which are accounted for during optimization in eq. \eqref{eq:minproblem} can be specified with the configuration option `initialcondition`. Below are the available choices.
+The initial states $\rho_i(0)$ which are accounted for during optimization in eq. $\eqref{eq:minproblem}$ can be specified with the configuration option `initialcondition`. Below are the available choices.
 
 ### Pure-state initialization
 One can choose to simulate and optimize for only one specific pure initial state (then $n_{init} = 1$). The initial density matrix is then composed of Kronecker products of pure states for each of the subsystems. E.g. for a bipartite system with $n_1
@@ -444,7 +444,7 @@ unique index $i \in \{0,\dots, N^2-1\}$ is assigned to each basis state with
 
 ### Only the diagonal density basis matrices
 
-For density matrices (Lindblad solver), one can choose to propagate only those basis states that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only the $B^{kk}$ in \eqref{eq:basismats} for $k=0,\dots, N-1$, and then $n_{init}=N$. For the Schroedinger solver, this is equivalent to all basis states.
+For density matrices (Lindblad solver), one can choose to propagate only those basis states that correspond to pure states of the form $\boldsymbol{e}_k\boldsymbol{e}_k^\dagger$, i.e. propagating only the $B^{kk}$ in $\eqref{eq:basismats}$ for $k=0,\dots, N-1$, and then $n_{init}=N$. For the Schroedinger solver, this is equivalent to all basis states.
 
 Again, when composite systems of multiple subsystems are considered, the user can provide a consecutive list of integer ID's to determine in which of the subsystems the diagonal states should be spanned. Other subsystems will then be initialized in the ground state.
 
@@ -455,7 +455,7 @@ Again, when composite systems of multiple subsystems are considered, the user ca
 ### Ensemble state for pure-state optimization {#sec:ensemblestate}
 *Only valid for the density matrix version, solving Lindblad's master equation.*
 
-For pure-state optimization using the objective function $J_{measure}$ \eqref{eq:Jmeasure}, one can use the ensemble state
+For pure-state optimization using the objective function $J_{measure}$ $\eqref{eq:Jmeasure}$, one can use the ensemble state
 
 \begin{align}\label{eq:ensemblestate}
   \rho_s(0) = \frac{1}{N^2}\sum_{i,j=0}^{N-1} B^{kj}
@@ -534,7 +534,7 @@ The second penalty term can be added with parameter $\gamma_3 > 0$ to encourage 
 
 The third penalty term can be added with parameter $\gamma_4 > 0$ to encourage small control pulse amplitudes by penalizing the control pulse energy. This term can be useful if hardware bounds are given for the control pulse amplitudes: Rather than include amplitude bounds on control pulse directly, which often leads to more non-convex optimization problems and convergence deterioration, one can utilize this penalty term to favor short control pulses with small amplitudes. Compare also \cite{gunther2023practical} for its usage to determine minimal gate durations.
 
-The last penalty term, activated by setting $\gamma_5>0$, is used to penalize variation in control strength between consecutive B-spline coefficients. It is currently only implemented for piecewise zeroth order spline functions, see Section \ref{subsec:bspline-0}, where it is useful to prevent noisy control pulses. Referring to the control function representation in \eqref{eq:spline-ctrl}, this penalty function takes the form:
+The last penalty term, activated by setting $\gamma_5>0$, is used to penalize variation in control strength between consecutive B-spline coefficients. It is currently only implemented for piecewise zeroth order spline functions, see Section \ref{subsec:bspline-0}, where it is useful to prevent noisy control pulses. Referring to the control function representation in $\eqref{eq:spline-ctrl}$, this penalty function takes the form:
 
 \begin{align}
   Var(\vec{\alpha}) = \sum_{k=1}^Q Var_k(\vec{\alpha}),\quad Var_k(\vec{\alpha}) = \sum_{f=1}^{N_f^k} \sum_{s=2}^{N_s^k} |\alpha_{s,f}^k - \alpha_{s-1,f}^k|^2,
@@ -555,7 +555,7 @@ Note: All regularization and penalty coefficients $\gamma_i$ should be chosen sm
 # Implementation
 
 ## Vectorization of Lindblad's master equation
-When solving Lindblad's master equation \eqref{mastereq}, Quandary uses a vectorized representation of the density matrix with $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$ (column-wise vectorization). Using the relations
+When solving Lindblad's master equation $\eqref{mastereq}$, Quandary uses a vectorized representation of the density matrix with $q(t) := \text{vec}(\rho(t)) \in \C^{N^2}$ (column-wise vectorization). Using the relations
 
 \begin{align}
   \text{vec}(AB) &= (I_N\otimes A)\text{vec}(B) = (B^T\otimes I_N)\text{vec}(A)
@@ -573,12 +573,12 @@ When solving Lindblad's master equation \eqref{mastereq}, Quandary uses a vector
   \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right)
 \end{align}
 
-   with $M(t) \in \C^{N^2\times N^2}$, and $H(t) = H_d(t) + H_c(t)$ being the rotating frame system and control Hamiltonians as in \eqref{eq:Hd_rotating} and \eqref{eq:Hc_rotating}, respectively.
+   with $M(t) \in \C^{N^2\times N^2}$, and $H(t) = H_d(t) + H_c(t)$ being the rotating frame system and control Hamiltonians as in $\eqref{eq:Hd_rotating}$ and $\eqref{eq:Hc_rotating}$, respectively.
 
-   When solving Schroedinger's equation \eqref{eq:schroedinger}, Quandary operates directly on the state $q(t) := \psi(t)\in\C^N$ and solves \eqref{mastereq_vectorized} with $M(T) := -iH(t)$.
+   When solving Schroedinger's equation $\eqref{eq:schroedinger}$, Quandary operates directly on the state $q(t) := \psi(t)\in\C^N$ and solves $\eqref{mastereq_vectorized}$ with $M(T) := -iH(t)$.
 
 ### Real-valued system and state storage
-   Quandary solves the (vectorized) equation \eqref{mastereq_vectorized} in
+   Quandary solves the (vectorized) equation $\eqref{mastereq_vectorized}$ in
    real-valued variables with $q(t) = u(t) + iv(t)$, evolving the real-valued
    states $u(t), v(t)\in \R^{M}$ for $M=N$ (Schroedinger's eq.) or $M=N^2$ (Lindblad's eq.) with
 
@@ -625,7 +625,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
 
 
 ## Time-stepping
-    To solve the (vectorized) master equation \eqref{mastereq_vectorized}, $\dot
+    To solve the (vectorized) master equation $\eqref{mastereq_vectorized}$, $\dot
     q(t) = M(t) q(t)$ for $t\in [0,T]$, Quandary applies a time-stepping integration
     scheme on a uniform time discretization grid $0=t_0 < \dots t_{N} = T$, with
     $t_n = n \delta t$ and $\delta t = \frac{T}{N}$, and approximates the
@@ -713,7 +713,7 @@ The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
       \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
     \end{align}
 
-    Each evaluation of the gradient $\nabla J$ involves a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation \eqref{eq:gradient} requires the states and adjoint states at each time-step. For the Schroedinger solver, the primal states are recomputed by integrating Schroedinger's equation backwards in time, alongside the adjoint computation. For the Lindblad solver, the states $q^n$ are stored during forward propagation, and taken from storage during adjoint back-propagation (since we can't recompute it in case of Lindblad solver, due to dissipation).
+    Each evaluation of the gradient $\nabla J$ involves a forward solve of $n_{init}$ initial quantum states to evaluate the objective function at final time $T$, as well as $n_{init}$ backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation $\eqref{eq:gradient}$ requires the states and adjoint states at each time-step. For the Schroedinger solver, the primal states are recomputed by integrating Schroedinger's equation backwards in time, alongside the adjoint computation. For the Lindblad solver, the states $q^n$ are stored during forward propagation, and taken from storage during adjoint back-propagation (since we can't recompute it in case of Lindblad solver, due to dissipation).
 
 
 ## Optimization algorithm
