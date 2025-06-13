@@ -413,7 +413,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
-    optimctx->timestepper->writeDataFiles = true;
+    optimctx->timestepper->writeTrajectoryDataFiles = true;
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
@@ -424,7 +424,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
-    optimctx->timestepper->writeDataFiles = true;
+    optimctx->timestepper->writeTrajectoryDataFiles = true;
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
@@ -440,7 +440,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
-    optimctx->timestepper->writeDataFiles = false;
+    optimctx->timestepper->writeTrajectoryDataFiles = false;
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
   }

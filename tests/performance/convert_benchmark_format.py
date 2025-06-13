@@ -21,7 +21,7 @@ def convert_to_custom_format(pytest_data: Dict[str, Any]) -> List[Dict[str, Any]
         name = benchmark.get("name", "")
 
         # Time benchmark entry
-        time_value = benchmark.get("stats", {}).get("mean", 0)
+        time_value = benchmark.get("stats", {}).get("median", 0)
         time_stddev = benchmark.get("stats", {}).get("stddev", 0)
         custom_benchmarks.append({
             "name": f"{name} - Time",

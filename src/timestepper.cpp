@@ -9,7 +9,7 @@ TimeStepper::TimeStepper() {
   dt = 0.0;
   storeFWD = false;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
-  writeDataFiles = false;
+  writeTrajectoryDataFiles = false;
 }
 
 TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
@@ -86,8 +86,8 @@ Vec TimeStepper::getState(size_t tindex){
 Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
   /* Open output files */
-  if (writeDataFiles) {
-    output->openDataFiles("rho", initid);
+  if (writeTrajectoryDataFiles) {
+    output->openTrajectoryDataFiles("rho", initid);
   }
 
   /* Set initial condition  */
@@ -118,8 +118,8 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
     /* store and write current state. */
     if (storeFWD) VecCopy(x, store_states[n]);
-    if (writeDataFiles) {
-      output->writeDataFiles(n, tstart, x, mastereq);
+    if (writeTrajectoryDataFiles) {
+      output->writeTrajectoryDataFiles(n, tstart, x, mastereq);
     }
 
     /* Take one time step */
@@ -159,9 +159,9 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   }
 
   /* Write last time step and close files */
-  if (writeDataFiles) {
-    output->writeDataFiles(ntime, ntime*dt, x, mastereq);
-    output->closeDataFiles();
+  if (writeTrajectoryDataFiles) {
+    output->writeTrajectoryDataFiles(ntime, ntime*dt, x, mastereq);
+    output->closeTrajectoryDataFiles();
   }
   
 

@@ -26,7 +26,11 @@ class Output{
   int output_frequency; ///< Time domain output frequency (write every N time steps)
   std::vector<std::vector<std::string> > outputstr; ///< List of output specifications for each oscillator
 
-  bool writefullstate; ///< Flag to determine if full state vector should be written to file
+  bool writeFullState; ///< Flag to determine if evolution of full state vector should be written to file
+  std::vector<bool> writeExpectedEnergy; ///< Flag to determine if evolution of expected energy per oscillator should be written to files
+  bool writeExpectedEnergy_comp; ///< Flag to determine if evolution of expected energy of the full composite system should be written to file
+  std::vector<bool> writePopulation; ///< Flag to determine if the evolution of the energy level occupations per oscillator should be written to files
+  bool writePopulation_comp; ///< Flag to determine if the evolution of the energy level occupations of the full composite system should be written to file
   FILE *ufile; ///< File for writing real part of fullstate evolution
   FILE *vfile; ///< File for writing imaginary part of fullstate evolution
   std::vector<FILE *>expectedfile; ///< Files for expected energy evolution per oscillator
@@ -60,7 +64,8 @@ class Output{
     /**
      * @brief Writes optimization progress to history file.
      *
-     * Called at every optimization iteration to log convergence data.
+     * Called at every optimization iteration to log convergence data. 
+     * Optimization history will be written to <datadir>/optim_history.dat.
      *
      * @param optim_iter Current optimization iteration
      * @param objective Total objective function value
@@ -77,9 +82,11 @@ class Output{
     void writeOptimFile(int optim_iter, double objective, double gnorm, double stepsize, double Favg, double cost, double tikh_regul,  double penalty, double penalty_dpdm, double penalty_energy, double penalty_variation);
 
     /**
-     * @brief Writes current control pulses and parameters.
+     * @brief Writes current control pulses per oscillator and control parameters.
      *
-     * Called every optim_monitor_freq optimization iterations.
+     * Called every optim_monitor_freq optimization iterations. 
+     * Control pulses are written to <datadir>/control<ioscillator>.dat
+     * Control parameters are written to <datadir>/params.dat
      *
      * @param params Current parameter vector
      * @param mastereq Pointer to master equation solver
@@ -90,6 +97,8 @@ class Output{
 
     /**
      * @brief Writes gradient vector for debugging adjoint calculations.
+     * 
+     * Gradient is written to <datadir>/grad.dat
      *
      * @param grad Gradient vector to output
      */
@@ -98,30 +107,30 @@ class Output{
     /**
      * @brief Opens data files for time evolution output.
      *
-     * Prepares files for writing full state, expected energy, and population evolution data.
+     * Prepares files for writing full state, expected energy, and population evolution data. Called before timestepping starts.
      *
      * @param prefix Filename prefix for output files
      * @param initid Initial condition identifier
      */
-    void openDataFiles(std::string prefix, int initid);
+    void openTrajectoryDataFiles(std::string prefix, int initid);
 
     /**
      * @brief Writes time evolution data to files.
      *
-     * Outputs state vector, expected energies, and populations at current time step.
+     * Outputs state vector, expected energies, and populations at current time step. Called at each time step 
      *
      * @param timestep Current time step number
      * @param time Current time value
      * @param state Current state vector
      * @param mastereq Pointer to master equation solver
      */
-    void writeDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq);
+    void writeTrajectoryDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq);
 
     /**
      * @brief Closes open time evolution data files.
      *
      * Properly closes and flushes all output files after time-stepping completion.
      */
-    void closeDataFiles();
+    void closeTrajectoryDataFiles();
 
 };

@@ -633,7 +633,7 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
 
     // do one last forward evaluation while writing trajectory files
-    ctx->timestepper->writeDataFiles = true;
+    ctx->timestepper->writeTrajectoryDataFiles = true;
     ctx->evalF(params); 
 
     // Print stopping reason to screen
