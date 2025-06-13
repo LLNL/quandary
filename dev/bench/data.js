@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749831547648,
+  "lastUpdate": 1749841385832,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -615,6 +615,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4396.52,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "636fcd4ed0577a7ee569cbec8008fc877a1d810f",
+          "message": "Merge pull request #56 from LLNL/documentation\n\nAdd doxygen documentation",
+          "timestamp": "2025-06-13T18:07:19Z",
+          "url": "https://github.com/LLNL/quandary/commit/636fcd4ed0577a7ee569cbec8008fc877a1d810f"
+        },
+        "date": 1749841384607,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 1.0683745314599946,
+            "unit": "seconds",
+            "range": "0.3358923161584662"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 89.08,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 15.521295112092048,
+            "unit": "seconds",
+            "range": "0.32303665245846863"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4393.97,
             "unit": "MB"
           }
         ]
