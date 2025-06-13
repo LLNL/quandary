@@ -7,20 +7,23 @@ $^*$ *Center for Applied Scientific Computing, Lawrence Livermore National Labor
 *Last updated: [[ now().strftime("%B %d, %Y") ]]*
 
 # Installation
-Read the \texttt{README.md}! In short:
-1. Install Petsc (https://petsc.org/).
-2. Compile the quandary executable and install with
-  - `mkdir build && cd build`
-  - `cmake ..`
-  - `make`
-  - `sudo cmake --install .`
+
+Read the `README.md`! In short:
+
+1. Install PETSc (https://petsc.org/).
+2. Compile the quandary executable and install with:
+    - `mkdir build && cd build`
+    - `cmake ..`
+    - `make`
+    - `sudo cmake --install .`
 3. To use the python interface, create a virtual environment and do:
-  - `pip install -e .`
+    - `pip install -e .`
 
 
 ## Quick start
 
 The C++ Quandary executable takes a configuration input file. As a quick start, test it with
+
 - `./quandary config_template.cfg`  (serial execution)
 - `mpirun -np 4 ./quandary config_template.cfg`  (on 4 cores)
 You can silence Quandary by adding the \texttt{--quiet} command line argument.
