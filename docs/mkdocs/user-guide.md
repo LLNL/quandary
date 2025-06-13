@@ -92,13 +92,13 @@ where $f^k(\vec{\alpha}^k,t)$ are real-valued, time-dependent control functions 
 For a **closed quantum system** (no environmental interactions), the quantum state is described by a complex-valued vector $\psi\in\C^N$, with $\|\psi\| = 1$. For a given initial state $\psi(t=0)$, the evolution of the state vector is modelled through **Schroedinger's equation**
 
 \begin{align} \label{eq:schroedinger}
-  \dot \psi(t)  = -i H(t) \psi(t), \quad \text{with} \quad  H(t) := H_d + H_c(t).
+  \dot{\psi}(t)  = -i H(t) \psi(t), \quad \text{with} \quad  H(t) := H_d + H_c(t).
 \end{align}
 
 **Open quantum systems** take interactions with the environment into account, allowing us to model decoherence and noise in the system. In that case, the state of the quantum system is described by its density matrix $\rho\in \C^{N\times N}$, and the time-evolution is modelled by **Lindblad's master equation**:
 
 \begin{align}\label{mastereq}
-  \dot \rho(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) + \Ell(\rho(t)),
+  \dot{\rho}(t) = &-i(H(t)\rho(t) - \rho(t)H(t)) + \Ell(\rho(t)),
 \end{align}
 
 where again $H(t) = H_d + H_c(t)$, and where $\Ell(\rho(t))$ denotes the Lindbladian collapse operators to model system-environment interactions. The Lindbladian operator $\Ell(\rho(t))$ is assumed to be of the form
@@ -538,7 +538,7 @@ When solving Lindblad's master equation $\eqref{mastereq}$, Quandary uses a vect
   form of the Lindblad master equation is given by:
 
 \begin{align}\label{mastereq_vectorized}
-  &\dot q(t) = M(t) q(t) \quad  \text{where} \\
+  &\dot{q}(t) = M(t) q(t) \quad  \text{where} \\
   &M(t) := -i(I_N\otimes H(t) - H(t)^T \otimes I_N) + \sum_{k=0}^{Q-1}\sum_{l=1}^2 \gamma_{lk}
   \left( \Ell_{lk}\otimes \Ell_{lk} - \frac 1 2 \left( I_N\otimes
   \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right)
@@ -554,7 +554,7 @@ real-valued variables with $q(t) = u(t) + iv(t)$, evolving the real-valued
 states $u(t), v(t)\in \R^{M}$ for $M=N$ (Schroedinger's eq.) or $M=N^2$ (Lindblad's eq.) with
 
 \begin{align}
-  \dot q(t) = M(t) q(t) \quad \Leftrightarrow \quad \begin{bmatrix} \dot u(t) \\ \dot v(t) \end{bmatrix} =
+  \dot{q}(t) = M(t) q(t) \quad \Leftrightarrow \quad \begin{bmatrix} \dot{u}(t) \\ \dot{v}(t) \end{bmatrix} =
 \begin{bmatrix} A(t) & -B(t) \\ B(t) & A(t) \end{bmatrix}
 \begin{pmatrix} u(t) \\ v(t) \end{pmatrix}
 \label{realvaluedODE}
@@ -634,7 +634,7 @@ the constant drift Hamiltonian $H_d$ is often useful. Since $H_d$ is Hermitian, 
 Transform the state $\tilde{q} = Y^{\dagger} q$, then the ODE transforms to
 
 \begin{align*}
-  \dot \tilde{q} = -i \Lambda \tilde{q} \quad \Rightarrow \dot \tilde{q}_i =
+  \dot{\tilde{q}} = -i \Lambda \tilde{q} \quad \Rightarrow \dot{\tilde{q}}_i =
   -i\lambda_i \tilde{q}_i \quad \Rightarrow \tilde{q}_i = a
   \exp(-i\lambda_i t)
 \end{align*}
