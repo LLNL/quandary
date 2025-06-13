@@ -118,6 +118,9 @@ class OptimProblem {
 
   /* Call this after TaoSolve() has finished to print out some information */
   void getSolution(Vec* opt);
+
+  /* Universally robust objective function term */
+  double computeRobustCost();
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */

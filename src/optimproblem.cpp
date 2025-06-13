@@ -272,37 +272,7 @@ double OptimProblem::evalF(const Vec x) {
   }
 
   /* Evaluate products for universally robust optimization */
-  int ntime = timestepper->getNTimeSteps();
-  double cost_robust = 0.0;
-  for (int n=1; n<=ntime; n++){
-    for (int m=n+1; m<=ntime; m++) {
-      double znm_re = 0.0;
-      double znm_im = 0.0;
-      for (int iinit = 0; iinit < ninit; iinit++){
-        Vec xn_re = timestepper->store_states_robust_re[iinit][n];
-        Vec xn_im = timestepper->store_states_robust_im[iinit][n];
-        Vec xm_re = timestepper->store_states_robust_re[iinit][m];
-        Vec xm_im = timestepper->store_states_robust_im[iinit][m];
-
-        // printf("Optimproblem x_re at iinit %d time %d: \n", iinit, n);
-        // VecView(xn_re, NULL);
-        // printf("Optimproblem x_im at iinit %d time %d: \n", iinit, n);
-        // VecView(xn_im, NULL);
-
-        double tmp1, tmp2;
-        VecDot(xn_re, xm_re, &tmp1);
-        VecDot(xn_im, xm_im, &tmp2);
-        znm_re += tmp1 + tmp2;
-        VecDot(xn_re, xm_im, &tmp1);
-        VecDot(xn_im, xm_re, &tmp2);
-        znm_im += tmp1 - tmp2;
-      }
-      double znm = SQR(znm_re) + SQR(znm_im);
-      cost_robust += 2.0*znm;
-    }
-    cost_robust += SQR(mastereq->getDimRho());
-  }
-  cost_robust = cost_robust / SQR(mastereq->getDimRho());
+  double cost_robust = computeRobustCost();
   printf("Robust cost = %1.14e\n", cost_robust);
   
 
@@ -606,6 +576,44 @@ void OptimProblem::getSolution(Vec* param_ptr){
   Vec params;
   TaoGetSolution(tao, &params);
   *param_ptr = params;
+}
+
+
+
+double OptimProblem::computeRobustCost(){
+  int ntime = timestepper->getNTimeSteps();
+  double cost_robust = 0.0;
+  for (int n=1; n<=ntime; n++){
+    for (int m=n+1; m<=ntime; m++) {
+      double znm_re = 0.0;
+      double znm_im = 0.0;
+      for (int iinit = 0; iinit < ninit; iinit++){
+        Vec xn_re = timestepper->store_states_robust_re[iinit][n];
+        Vec xn_im = timestepper->store_states_robust_im[iinit][n];
+        Vec xm_re = timestepper->store_states_robust_re[iinit][m];
+        Vec xm_im = timestepper->store_states_robust_im[iinit][m];
+
+        // printf("Optimproblem x_re at iinit %d time %d: \n", iinit, n);
+        // VecView(xn_re, NULL);
+        // printf("Optimproblem x_im at iinit %d time %d: \n", iinit, n);
+        // VecView(xn_im, NULL);
+
+        double tmp1, tmp2;
+        VecDot(xn_re, xm_re, &tmp1);
+        VecDot(xn_im, xm_im, &tmp2);
+        znm_re += tmp1 + tmp2;
+        VecDot(xn_re, xm_im, &tmp1);
+        VecDot(xn_im, xm_re, &tmp2);
+        znm_im += tmp1 - tmp2;
+      }
+      double znm = SQR(znm_re) + SQR(znm_im);
+      cost_robust += 2.0*znm;
+    }
+    cost_robust += SQR(timestepper->mastereq->getDimRho());
+  }
+  cost_robust = cost_robust / SQR(timestepper->mastereq->getDimRho());
+
+  return cost_robust;
 }
 
 PetscErrorCode TaoMonitor(Tao tao,void*ptr){
