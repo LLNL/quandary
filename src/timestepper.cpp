@@ -31,29 +31,33 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
 
   /* Allocate storage of primal state */
   if (storeFWD) { 
-    for (int n = 0; n <=ntime; n++) {
-      Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, dim);
-      VecSetFromOptions(state);
-      store_states.push_back(state);
-    }
-
     for (int iinit = 0; iinit<ninit_; iinit++) {
       std::vector<Vec> states_iinit_re, states_iinit_im;
+      std::vector<Vec> adj_states_iinit_re, adj_states_iinit_im;
       for (int n = 0; n <=ntime; n++) {
         Vec s_re, s_im;
+        Vec sadj_re, sadj_im;
         VecCreate(PETSC_COMM_WORLD, &s_re);
         VecCreate(PETSC_COMM_WORLD, &s_im);
+        VecCreate(PETSC_COMM_WORLD, &sadj_re);
+        VecCreate(PETSC_COMM_WORLD, &sadj_im);
         VecSetSizes(s_re, PETSC_DECIDE, mastereq->getDim());
         VecSetSizes(s_im, PETSC_DECIDE, mastereq->getDim());
+        VecSetSizes(sadj_re, PETSC_DECIDE, mastereq->getDim());
+        VecSetSizes(sadj_im, PETSC_DECIDE, mastereq->getDim());
         VecSetFromOptions(s_re);
         VecSetFromOptions(s_im);
+        VecSetFromOptions(sadj_re);
+        VecSetFromOptions(sadj_im);
         states_iinit_re.push_back(s_re);
         states_iinit_im.push_back(s_im);
+        adj_states_iinit_re.push_back(sadj_re);
+        adj_states_iinit_im.push_back(sadj_im);
       }
       store_states_robust_re.push_back(states_iinit_re);
       store_states_robust_im.push_back(states_iinit_im);
+      store_adj_states_robust_re.push_back(adj_states_iinit_re);
+      store_adj_states_robust_im.push_back(adj_states_iinit_im);
     }
   }
 
@@ -79,33 +83,22 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
 
 
 TimeStepper::~TimeStepper() {
-  for (size_t n = 0; n < store_states.size(); n++) {
-    VecDestroy(&(store_states[n]));
-  }
   for (size_t iinit = 0; iinit<store_states_robust_re.size(); iinit++) {
     for (size_t n = 0; n <store_states_robust_re[iinit].size(); n++) {
       VecDestroy(&(store_states_robust_re[iinit][n]));
       VecDestroy(&(store_states_robust_im[iinit][n]));
+      VecDestroy(&(store_adj_states_robust_re[iinit][n]));
+      VecDestroy(&(store_adj_states_robust_im[iinit][n]));
     }
     store_states_robust_re[iinit].clear();
     store_states_robust_im[iinit].clear();
+    store_adj_states_robust_re[iinit].clear();
+    store_adj_states_robust_im[iinit].clear();
   }
   VecDestroy(&x);
   VecDestroy(&xadj);
   VecDestroy(&xprimal);
   VecDestroy(&redgrad);
-}
-
-
-
-Vec TimeStepper::getState(size_t tindex){
-  
-  if (tindex >= store_states.size()) {
-    printf("ERROR: Time-stepper requested state at time index %zu, but didn't store it.\n", tindex);
-    exit(1);
-  }
-
-  return store_states[tindex];
 }
 
 Vec TimeStepper::solveODE(int initid, Vec rho_t0){
@@ -143,17 +136,9 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
     /* store and write current state. */
     if (storeFWD) {
-      VecCopy(x, store_states[n]);
-      // For robust optim, store Re and Im separately. TODO.
-      // printf("Timesteppers x at iinit %d time %d: \n", initid, n);
-      // VecView(x, NULL);
-      Vec x_re, x_im;
-      VecGetSubVector(x, mastereq->isu, &x_re);
-      VecGetSubVector(x, mastereq->isv, &x_im);
-      VecCopy(x_re, store_states_robust_re[initid][n]);
-      VecCopy(x_im, store_states_robust_im[initid][n]);
-      VecRestoreSubVector(x, mastereq->isu, &x_re);
-      VecRestoreSubVector(x, mastereq->isv, &x_im);
+      // For robust optim, store Re and Im separately. TODO merge with store_states
+      VecISCopy(x, mastereq->isu, SCATTER_REVERSE, store_states_robust_re[initid][n]);
+      VecISCopy(x, mastereq->isv, SCATTER_REVERSE, store_states_robust_im[initid][n]);
     }
 
     if (writeTrajectoryDataFiles) {
@@ -187,16 +172,9 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
   /* Store last time step */
   if (storeFWD) {
-    VecCopy(x, store_states[ntime]);
-    
-    // For robust optim, store Re and Im separately. TODO.
-    Vec x_re, x_im;
-    VecGetSubVector(x, mastereq->isu, &x_re);
-    VecGetSubVector(x, mastereq->isv, &x_im);
-    VecCopy(x_re, store_states_robust_re[initid][ntime]);
-    VecCopy(x_im, store_states_robust_im[initid][ntime]);
-    VecRestoreSubVector(x, mastereq->isu, &x_re);
-    VecRestoreSubVector(x, mastereq->isv, &x_im);
+    // For robust optim, store Re and Im separately. TODO: merge with store_states
+    VecISCopy(x, mastereq->isu, SCATTER_REVERSE, store_states_robust_re[initid][ntime]);
+    VecISCopy(x, mastereq->isv, SCATTER_REVERSE, store_states_robust_im[initid][ntime]);
   }
 
   /* Clear out dpdm storage */
@@ -225,6 +203,12 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
 
   /* Set terminal adjoint condition */
   VecCopy(rho_t0_bar, xadj);
+
+  // add robust adjoint contribution at final time
+  if (storeFWD){
+    VecISAXPY(xadj, mastereq->isu, 1.0, store_adj_states_robust_re[initid][ntime]);
+    VecISAXPY(xadj, mastereq->isv, 1.0, store_adj_states_robust_im[initid][ntime]);
+  }
 
   /* Set terminal primal state */
   VecCopy(finalstate, xprimal);
@@ -262,11 +246,20 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
     if (gamma_penalty > 1e-13) penaltyIntegral_diff(tstop, xprimal, xadj, Jbar_penalty);
 
     /* Get the state at n-1. If Schroedinger solver, recompute it by taking a step backwards with the forward solver, otherwise get it from storage. */
-    if (storeFWD) VecCopy(getState(n-1), xprimal);
+    if (storeFWD){
+      VecISCopy(xprimal, mastereq->isu, SCATTER_FORWARD, store_states_robust_re[initid][n-1]);
+      VecISCopy(xprimal, mastereq->isv, SCATTER_FORWARD, store_states_robust_im[initid][n-1]);
+    } 
     else evolveFWD(tstop, tstart, xprimal);
 
     /* Take one time step backwards for the adjoint */
     evolveBWD(tstop, tstart, xprimal, xadj, redgrad, true);
+
+    /* Add robust adjoint contribution */
+    if (storeFWD){
+      VecISAXPY(xadj, mastereq->isu, 1.0, store_adj_states_robust_re[initid][n-1]);
+      VecISAXPY(xadj, mastereq->isv, 1.0, store_adj_states_robust_im[initid][n-1]);
+    }
 
     /* Update dpdm storage */
     if (gamma_penalty_dpdm > 1e-13 ) {

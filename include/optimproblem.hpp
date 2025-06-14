@@ -121,6 +121,7 @@ class OptimProblem {
 
   /* Universally robust objective function term */
   double computeRobustCost();
+  void computeRobustCost_diff(double Jbar);
 };
 
 /* Monitor the optimization progress. This routine is called in each iteration of TaoSolve() */

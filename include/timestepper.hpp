@@ -18,7 +18,6 @@ class TimeStepper{
     Vec x;               // auxiliary vector needed for time stepping
     Vec xadj;            // auxiliary vector needed for adjoint time stepping
     Vec xprimal;         // auxiliary vector needed for backwards time stepping
-    std::vector<Vec> store_states; /* Storage for primal states */
     std::vector<Vec> dpdm_states;  /* storage of primal states needed for DpDm penalty term */
     bool addLeakagePrevent;   /* flag to determine if Leakage preventing term is added to penalty.  */
     int mpirank_world;
@@ -26,6 +25,8 @@ class TimeStepper{
   public:
     std::vector<std::vector<Vec>> store_states_robust_re; ///< Robust optim: for each initial condition, vector of real states at each time-step
     std::vector<std::vector<Vec>> store_states_robust_im; ///< Robust optim: for each initial condition, vector of imag states at each time-step
+    std::vector<std::vector<Vec>> store_adj_states_robust_re; ///< Robust optim: for each initial condition, vector of real states at each time-step
+    std::vector<std::vector<Vec>> store_adj_states_robust_im; ///< Robust optim: for each initial condition, vector of imag states at each time-step
 
   public:
     MasterEq* mastereq;  // Lindblad master equation

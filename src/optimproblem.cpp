@@ -388,7 +388,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     optim_target->prepareTargetState(rho_t0);
 
     /* --- Solve primal --- */
-    // if (mpirank_optim == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+    // if (mpirank_optim == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
 
     /* Run forward with initial condition rho_t0 */
     Vec finalstate = timestepper->solveODE(initid, rho_t0);
@@ -491,6 +491,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Sum, store and return objective value */
   objective = obj_cost + obj_regul + obj_penal + obj_penal_dpdm + obj_penal_energy + obj_penal_variation + obj_robust;
 
+  /* Derivative of regularization term */
+  if (gamma_robust > 0.0) {
+    double Jbar = gamma_robust;
+    computeRobustCost_diff(Jbar);
+  }
+
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
 
@@ -501,6 +507,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       /* Recompute the initial state and target */
       int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
       optim_target->prepareTargetState(rho_t0);
+      // if (mpirank_optim == 0) printf("%d: %d BWD. \n", mpirank_init, initid);
      
       /* Reset adjoint */
       VecZeroEntries(rho_t0_bar);
@@ -588,6 +595,7 @@ void OptimProblem::getSolution(Vec* param_ptr){
 double OptimProblem::computeRobustCost(){
   int ntime = timestepper->getNTimeSteps();
   double cost_robust = 0.0;
+
   for (int n=1; n<=ntime; n++){
     for (int m=n+1; m<=ntime; m++) {
       double znm_re = 0.0;
@@ -597,12 +605,6 @@ double OptimProblem::computeRobustCost(){
         Vec xn_im = timestepper->store_states_robust_im[iinit][n];
         Vec xm_re = timestepper->store_states_robust_re[iinit][m];
         Vec xm_im = timestepper->store_states_robust_im[iinit][m];
-
-        // printf("Optimproblem x_re at iinit %d time %d: \n", iinit, n);
-        // VecView(xn_re, NULL);
-        // printf("Optimproblem x_im at iinit %d time %d: \n", iinit, n);
-        // VecView(xn_im, NULL);
-
         double tmp1, tmp2;
         VecDot(xn_re, xm_re, &tmp1);
         VecDot(xn_im, xm_im, &tmp2);
@@ -619,6 +621,61 @@ double OptimProblem::computeRobustCost(){
   cost_robust = cost_robust / SQR(timestepper->mastereq->getDimRho());
 
   return cost_robust;
+}
+
+void OptimProblem::computeRobustCost_diff(double Jbar){
+  int ntime = timestepper->getNTimeSteps();
+  // Reset the adjoints first, they might have values from previous optimization iterations
+  for (size_t i=0; i<timestepper->store_states_robust_re.size(); i++){
+    for (size_t j=0; j<timestepper->store_states_robust_re[i].size(); j++){
+      VecZeroEntries(timestepper->store_adj_states_robust_re[i][j]);
+      VecZeroEntries(timestepper->store_adj_states_robust_im[i][j]);
+    }
+  }
+
+  // Iterate over double timestep loop
+  double cost_robust_bar = Jbar / SQR(timestepper->mastereq->getDimRho());
+  for (int n=1; n<=ntime; n++){
+    for (int m=n+1; m<=ntime; m++) {
+      // Need to recompute znm_re, znm_im first:
+      double znm_re = 0.0;
+      double znm_im = 0.0;
+      for (int iinit = 0; iinit < ninit; iinit++){
+        Vec xn_re = timestepper->store_states_robust_re[iinit][n];
+        Vec xn_im = timestepper->store_states_robust_im[iinit][n];
+        Vec xm_re = timestepper->store_states_robust_re[iinit][m];
+        Vec xm_im = timestepper->store_states_robust_im[iinit][m];
+        double tmp1, tmp2;
+        VecDot(xn_re, xm_re, &tmp1);
+        VecDot(xn_im, xm_im, &tmp2);
+        znm_re += tmp1 + tmp2;
+        VecDot(xn_re, xm_im, &tmp1);
+        VecDot(xn_im, xm_re, &tmp2);
+        znm_im += tmp1 - tmp2;
+      }
+      // Now use them for the adjoint updates
+      double znm_bar_re = 4.0*znm_re*cost_robust_bar;
+      double znm_bar_im = 4.0*znm_im*cost_robust_bar;
+      for (int iinit = 0; iinit < ninit; iinit++){
+        Vec xn_re = timestepper->store_states_robust_re[iinit][n];
+        Vec xn_im = timestepper->store_states_robust_im[iinit][n];
+        Vec xm_re = timestepper->store_states_robust_re[iinit][m];
+        Vec xm_im = timestepper->store_states_robust_im[iinit][m];
+        Vec xn_bar_re = timestepper->store_adj_states_robust_re[iinit][n];
+        Vec xn_bar_im = timestepper->store_adj_states_robust_im[iinit][n];
+        Vec xm_bar_re = timestepper->store_adj_states_robust_re[iinit][m];
+        Vec xm_bar_im = timestepper->store_adj_states_robust_im[iinit][m];
+        // xn_bar_re += xm_re*znm_bar_re + xm_im*znm_bar_im
+        VecAXPBYPCZ(xn_bar_re, znm_bar_re,      znm_bar_im, 1.0, xm_re, xm_im);
+        // xn_bar_im += xm_im*znm_bar_re - xm_re*znm_bar_im
+        VecAXPBYPCZ(xn_bar_im, znm_bar_re, -1.0*znm_bar_im, 1.0, xm_im, xm_re);
+        // xm_bar_re += xn_re*znm_bar_re - xn_im*znm_bar_im
+        VecAXPBYPCZ(xm_bar_re, znm_bar_re, -1.0*znm_bar_im, 1.0, xn_re, xn_im);
+        // xm_bar_im += xn_im*znm_bar_re + xm_re*znm_bar_im
+        VecAXPBYPCZ(xm_bar_im, znm_bar_re,      znm_bar_im, 1.0, xn_im, xn_re);
+      }
+    }
+  }
 }
 
 PetscErrorCode TaoMonitor(Tao tao,void*ptr){
