@@ -1,8 +1,6 @@
 window.MathJax = {
   tex: {
     tags: 'ams',  // Enable automatic equation numbering
-    inlineMath: [["\\(", "\\)"]],
-    displayMath: [["\\[", "\\]"], ["$$", "$$"]],
     processEscapes: true,
     processEnvironments: true,
     macros: {
