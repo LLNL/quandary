@@ -66,9 +66,6 @@ class TimeStepper{
      */
     int getNTimeSteps(){return ntime;};
 
-    /* Return the state at a certain time index */
-    Vec getState(size_t tindex);
-    
     /* Solve the ODE forward in time with initial condition rho_t0. Return state at final time step */
     Vec solveODE(int initid, Vec rho_t0);
 
