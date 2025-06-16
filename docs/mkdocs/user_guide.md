@@ -616,12 +616,11 @@ solution at each discrete time-step $q^{n} \approx q(t_n)$. The time-stepping sc
 
 ### Implicit Midpoint Rule (`IMR`)
 The implicit midpoint rule is a second-order accurate, symplectic time-stepping algorithm with Runge-Kutta scheme tableau
-
-\begin{tabular}{ c | c }
-  $1/2$ & $ 1/2$ \\
-  \hline
-            &  $1$
-\end{tabular}.
+$\begin{array}{c|c}
+1/2 & 1/2 \\
+\hline
+& 1
+\end{array}$
 
 Given a state $q^n$ at time $t_n$, the update formula to compute $q^{n+1}$
 is hence
