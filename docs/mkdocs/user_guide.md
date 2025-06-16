@@ -65,7 +65,7 @@ The default system Hamiltonian model for the composite system is
   H_d &:= \sum_{k=0}^{Q-1} \left(\omega_k a_k^{\dagger}a_k- \frac{\xi_k}{2} a_k^{\dagger}a_k^{\dagger}a_k a_k  + \sum_{l> k} \left(  J_{kl} \left( a_k^\dagger a_l + a_k a_l^\dagger \right) -\xi_{kl} a_{k}^{\dagger}a_{k}   a_{l}^{\dagger} a_{l} \right)\right)
 \end{align}
 
-where $\omega_k\geq 0$ denotes the $0 \rightarrow 1$ transition frequency and $\xi_k\geq 0$ is the self-Kerr coefficient of subsystem $k$, and the cross resonance coefficients are $J_{kl}\geq 0$ (``dipole-dipole interaction'') and $\xi_{kl}\geq 0$ (``zz-coupling''). Here,
+where $\omega_k\geq 0$ denotes the $0 \rightarrow 1$ transition frequency and $\xi_k\geq 0$ is the self-Kerr coefficient of subsystem $k$, and the cross resonance coefficients are $J_{kl}\geq 0$ ("dipole-dipole interaction") and $\xi_{kl}\geq 0$ ("zz-coupling"). Here,
 $a_k\in \C^{N\times N}$ denotes the lowering operator acting on subsystem $k$, which is defined as
 
 \begin{align}
@@ -490,7 +490,7 @@ In order to regularize the optimization problem (stabilize optimization converge
   \mbox{Tikhonov} = \frac{\gamma_1}{2} \| \bfa \|^2_2
 \end{align}
 
-By adding this term with a small parameter $\gamma_1 > 0$, the optimization problem will favor optimal control vectors that have a small norm. It regularizes the optimization problem since it adds a small but positive identity matrix to the Hessian of the objective function, hence ``convexifying'' the problem.
+By adding this term with a small parameter $\gamma_1 > 0$, the optimization problem will favor optimal control vectors that have a small norm. It regularizes the optimization problem since it adds a small but positive identity matrix to the Hessian of the objective function, hence "convexifying" the problem.
 
 In addition to the Tikhonov regularization term, four additional penalty terms can optionally be added to the objective function if desired:
 
