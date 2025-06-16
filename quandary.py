@@ -67,6 +67,8 @@ class Quandary:
     maxiter             # Maximum number of optimization iterations. Default 200
     tol_infidelity      # Optimization stopping criterion based on the infidelity. Default 1e-5
     tol_costfunc        # Optimization stopping criterion based on the objective function value. Default 1e-4
+    tol_gnorm_abs       # Optimization stopping criterion based on absolute gradient norm drop. Default 1e-4
+    tol_gnorm_rel       # Optimization stopping criterion based on relative gradient norm drop. Default 1e-4
     costfunction        # Cost function measure: "Jtrace" or "Jfrobenius". Default: "Jtrace"
     optim_target        # Optional: Set other optimization target string, if not specified through the targetgate or targetstate. 
     gamma_tik0          # Parameter for Tikhonov regularization ||alpha||^2. Default 1e-4
@@ -75,6 +77,7 @@ class Quandary:
     gamma_energy        # Parameter for integral penality term on the control pulse energy. Default: 0.1
     gamma_dpdm          # Parameter for integral penality term on second state derivative. Default: 0.01
     gamma_variation     # Parameter for penality term on variations in the control parameters: Default: 0.01
+    gamma_robust        # Parameter for universally robust optimization term: Default: 0.0
 
     # General options
     rand_seed            # Set a fixed random number generator seed. Default: None (non-reproducable)
@@ -143,6 +146,8 @@ class Quandary:
     maxiter                : int   = 200         
     tol_infidelity         : float = 1e-5        
     tol_costfunc           : float = 1e-4        
+    tol_gnorm_abs          : float = 1e-4
+    tol_gnorm_rel          : float = 1e-4
     costfunction           : str   = "Jtrace"                      
     optim_target           : str   = "gate, none"
     gamma_tik0             : float = 1e-4 
@@ -151,6 +156,7 @@ class Quandary:
     gamma_energy           : float = 0.1
     gamma_dpdm             : float = 0.01        
     gamma_variation        : float = 0.01        
+    gamma_robust           : float = 0.0
     # General options
     rand_seed              : int  = None
     print_frequency_iter   : int  = 1
@@ -683,8 +689,8 @@ class Quandary:
             mystring += str(val) + ", " 
         mystring += "\n"
         mystring += "optim_weights= 1.0\n"
-        mystring += "optim_atol= 1e-4\n"
-        mystring += "optim_rtol= 1e-4\n"
+        mystring += "optim_atol= " + str(self.tol_gnorm_abs) + "\n"
+        mystring += "optim_rtol= " + str(self.tol_gnorm_rel) + "\n"
         mystring += "optim_ftol= " + str(self.tol_costfunc) + "\n"
         mystring += "optim_inftol= " + str(self.tol_infidelity) + "\n"
         mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
@@ -699,6 +705,7 @@ class Quandary:
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
         mystring += "optim_penalty_variation= " + str(self.gamma_variation) + "\n"
         mystring += "optim_penalty_energy= " + str(self.gamma_energy) + "\n"
+        mystring += "gamma_robust= " + str(self.gamma_robust) + "\n"
         mystring += "datadir= ./\n"
         for iosc in range(len(self.Ne)):
             mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
