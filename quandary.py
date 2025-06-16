@@ -1478,7 +1478,7 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
         # with open(os.path.join(datadir, "out.log"), "w") as stdout_file, \
         #      open(os.path.join(datadir, "err.log"), "w") as stderr_file:
         #         exec = run(runcommand, shell=True, stdout=stdout_file, stderr=stderr_file)
-        print("Executing '", runcommand, ". Runtype: ", runtype, "...")
+        # print("Executing '", runcommand, ". Runtype: ", runtype, "...")
         exec = run(runcommand, shell=True)
         # Check return code
         err = exec.check_returncode()
