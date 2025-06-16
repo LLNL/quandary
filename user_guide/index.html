@@ -41,7 +41,7 @@
                                 <a href="./" class="nav-link active" aria-current="page">User Guide</a>
                             </li>
                             <li class="nav-item">
-                                <a href="https://software.llnl.gov/quandary/doxygen/" class="nav-link">API Reference</a>
+                                <a href="https://software.llnl.gov/quandary/doxygen/" class="nav-link">Developer Reference</a>
                             </li>
                         </ul>
 
@@ -224,29 +224,30 @@
 <p>Read the <code>README.md</code>! In short:</p>
 <ol>
 <li>Install PETSc (https://petsc.org/).</li>
-<li>Compile the quandary executable and install with:<ul>
-<li><code>mkdir build &amp;&amp; cd build</code></li>
-<li><code>cmake ..</code></li>
-<li><code>make</code></li>
-<li><code>sudo cmake --install .</code></li>
-</ul>
-</li>
-<li>To use the python interface, create a virtual environment and do:<ul>
-<li><code>pip install -e .</code></li>
-</ul>
-</li>
+<li>Compile the quandary executable and install with:</li>
 </ol>
+<pre><code class="language-console">  &gt; mkdir build &amp;&amp; cd build
+  &gt; cmake ..
+  &gt; make
+  &gt; sudo cmake --install .
+</code></pre>
+<ol>
+<li>To use the python interface, create a virtual environment and do:</li>
+</ol>
+<pre><code class="language-console">  &gt; pip install -e .
+</code></pre>
 <h2 id="quick-start">Quick start</h2>
 <p>The C++ Quandary executable takes a configuration input file. As a quick start, test it with</p>
-<ul>
-<li><code>./quandary config_template.cfg</code>  (serial execution)</li>
-<li><code>mpirun -np 4 ./quandary config_template.cfg</code>  (on 4 cores)</li>
-</ul>
+<pre><code class="language-console">&gt; ./quandary config_template.cfg  # (serial execution)
+</code></pre>
+<pre><code class="language-console">&gt; mpirun -np 4 ./quandary config_template.cfg  # (on 4 cores)
+</code></pre>
 <p>You can silence Quandary by adding the <code>--quiet</code> command line argument.</p>
 <p>Results are written as column-based text files in the output directory. Gnuplot is an excellent plotting tool to visualize the written output files, see below. The <code>config_template.cfg</code> is currently set to run a CNOT optimization test case. It lists all available options and configurations, and is filled with comments that should help users to set up new simulation and optimization runs, and match the input options to the equations found in this document.</p>
-<p>Test the python interface by running one of the examples in <code>examples/</code>, e.g.
-- <code>python3 example_swap02.py</code>
-The python interpreter will start background processes on the C++ executable using a config file written by the python interpreter, and gathers quandary's output results back into the python shell for plotting.</p>
+<p>Test the python interface by running one of the examples in <code>examples/</code>, e.g.</p>
+<pre><code class="language-console">&gt; python3 example_swap02.py
+</code></pre>
+<p>The python interpreter will start background processes on the C++ executable using a config file written by the python interpreter, and gathers quandary's output results back into the python shell for plotting.</p>
 <h1 id="introduction">Introduction</h1>
 <p>Quandary numerically simulates and optimizes the time evolution of closed and open quantum systems. The
 underlying dynamics are modelled by either Schroedinger's equation (for closed systems), or Lindblad's master equation (for open systems that interact with the environment). Quandary solves the respective ordinary differential equation (ODE) numerically by applying a time-stepping integration scheme, and applies a gradient-based optimization
