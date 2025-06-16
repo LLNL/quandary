@@ -375,6 +375,11 @@ int main(int argc,char **argv)
     printf("\n ERROR: Robust optimization with Lindblad solver not working.\n");
     exit(1);
   }
+  // Also stop if running in parallel. TODO.
+  if (gamma_robust > 0.0 && mpirank_world > 1){
+    printf("\n ERROR: Robust optim can only run on one core. TODO.\n");
+    exit(1);
+  }
 
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
