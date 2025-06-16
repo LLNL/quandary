@@ -5,6 +5,7 @@ site_url: https://software.llnl.gov/quandary/
 
 plugins:
   - search
+  - mkdocs-jupyter
   - macros:
       j2_variable_start_string: '[['
       j2_variable_end_string: ']]'
@@ -36,6 +37,7 @@ nav:
   - Home: index.md
   - Basics:
     - Getting Started: getting_started.md
+    - Tutorial: QuandaryWithPython_HowTo.ipynb
   - User Guide: user_guide.md
   - Reference:
     - Python API: python_api.md

@@ -21,7 +21,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install mkdocs pymdown-extensions mkdocs-bibtex mkdocs-macros-plugin
+          pip install mkdocs pymdown-extensions mkdocs-bibtex mkdocs-macros-plugin mkdocs-jupyter
 
       - name: Build MkDocs site
         run: mkdocs build

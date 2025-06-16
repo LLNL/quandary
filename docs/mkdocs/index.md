@@ -5,6 +5,7 @@ Quandary numerically simulates and optimizes the time evolution of closed and op
 ## Basics
 
 - [Getting Started](getting_started.md)
+- [Jupyter Notebook Tutorial](QuandaryWithPython_HowTo.ipynb)
 
 ## User Guide
 For more information on the mathematical background and underlying equations read the full [User Guide](user_guide.md).
