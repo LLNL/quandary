@@ -119,8 +119,10 @@ where again $H(t) = H_d + H_c(t)$, and where $\Ell(\rho(t))$ denotes the Lindbla
 \end{align}
 
 where the collapse operators $\Ell_{lk}$ model decay and dephasing processes in the subsystem $k$ with
+
 - Decay  ("$T_1$"): $\Ell_{1k} = \frac{1}{\sqrt{T_1^k}} a_k$
 - Dephasing  ("$T_2$"): $\Ell_{2k} = \frac{1}{\sqrt{T_2^k}} a_k^{\dagger}a_k$
+
 The constants $T_l^k>0$ correspond to the half-life of process $l$ on subsystem $k$. Typical $T_1$ decay time is between $10-100$ microseconds (us). $T_2$ dephasing time is typically about half of T1 decay time.
 <!-- Decay processes typically behave like $\exp(-t/{T_1})$. -->
 
