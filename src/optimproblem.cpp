@@ -704,13 +704,13 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   bool lastIter = false;
   std::string finalReason_str = "";
   if (1.0 - F_avg <= ctx->getInfTol()) {
-    finalReason_str = "Optimization converged with small infidelity.";
-    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+    // finalReason_str = "Optimization converged with small infidelity.";
+    // TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
     lastIter = true;
   } else if (obj_cost <= ctx->getFaTol()) {
-    finalReason_str = "Optimization converged with small final time cost.";
-    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-    lastIter = true;
+    // finalReason_str = "Optimization converged with small final time cost.";
+    // TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+    // lastIter = true;
   } else if (iter == ctx->getMaxIter()) {
     finalReason_str = "Optimization stopped at maximum number of iterations.";
     lastIter = true;
