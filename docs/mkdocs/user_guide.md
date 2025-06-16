@@ -53,7 +53,7 @@ Quandary is designed to solve optimal control problems in larger (potentially op
 The Python interface allows for greater flexibility where custom Hamiltonian models can be used.
 
 This document outlines the mathematical background and underlying equations, and summarizes their
-implementation and usage in Quandary. We also refer to our publications [@guenther2021quandary; @guenther2021quantum].
+implementation and usage in Quandary. We also refer to our publications [@guenther2021quandary] [@guenther2021quantum].
 
 # Model equation {#sec:model}
 Quandary models composite quantum systems consisting of $Q$ subsystems, with $n_k$ energy levels for the
