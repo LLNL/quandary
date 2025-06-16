@@ -755,7 +755,7 @@ The user can change the frequency of output in time (printing only every $j$-th 
 Quandary always prints the current parameters and control pulses at the beginning of a simulation or optimization, and in addition at every $l$-th optimization iteration determined from the `optim_monitor_frequency` configuration option.
 
 ## Plotting
-The format of all output files are very well suited for plotting with \href{http://www.gnuplot.info}{Gnuplot}, which is a command-line based plotting program that can output directly to screen, or into many other formats such as png, eps, or even tex. As an example, from within a Gnuplot session, you can plot e.g. the expected energy level of subsystem $k=0$ for initial condition $m=0$ by the simple command
+The format of all output files are very well suited for plotting with [Gnuplot](http://www.gnuplot.info), which is a command-line based plotting program that can output directly to screen, or into many other formats such as png, eps, or even tex. As an example, from within a Gnuplot session, you can plot e.g. the expected energy level of subsystem $k=0$ for initial condition $m=0$ by the simple command
 
 ``` console
 gnuplot> plot 'expected0.iinit0000.dat' using 1:2 with lines title 'expected energy subsystem 0'
