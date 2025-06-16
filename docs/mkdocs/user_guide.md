@@ -1,11 +1,5 @@
 # Quandary: Optimal Control for Open and Closed Quantum Systems
 
-**Authors:** Stefanie G&uuml;nther$^*$, N. Anders Petersson$^*$
-
-$^*$ *Center for Applied Scientific Computing, Lawrence Livermore National Laboratory, Livermore, CA, USA.*
-
-*Last updated: [[ now().strftime("%B %d, %Y") ]]*
-
 # Installation
 Read the `README.md`! In short:
 
