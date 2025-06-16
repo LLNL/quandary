@@ -325,8 +325,10 @@ State preparation aims to drive the system from either one specific or from any 
  \psi^{target} = \boldsymbol{e}_m \quad \text{or} \quad \rho^{target} = \boldsymbol{e}_m \boldsymbol{e}_m^\dagger, \quad \text{for}\quad m\in \N_0\quad \text{with}\quad 0\leq m < N
 \end{align}
 
-where $\boldsymbol{e}_m$ denotes the $m$-th unit vector in $\R^N$.
-\footnote{We note that considering pure states of that specific form ($\boldsymbol{e}_m$ or $\boldsymbol{e}_m\boldsymbol{e}_m^\dagger$) is not a restriction, because any other pure target state can be transformed to this representation using a unitary change of coordinates (compare the Appendix in [@guenther2021quantum] for a more detailed description).}
+where $\boldsymbol{e}_m$ denotes the $m$-th unit vector in $\R^N$.[^footnote_purestates]
+
+[^footnote_purestates]: We note that considering pure states of that specific form ($\boldsymbol{e}_m$ or $\boldsymbol{e}_m\boldsymbol{e}_m^\dagger$) is not a restriction, because any other pure target state can be transformed to this representation using a unitary change of coordinates (compare the Appendix in [@guenther2021quantum] for a more detailed description).
+
 The integer $m$ refers to the $|m\rangle$-th state of the entire system under consideration with dimension $N$, which can be a composite of $Q$ subsystems.
 In the configuration file however, the pure target state is specified by defining the desired pure target for *each* of the subsystems individually. For a composite system of $Q$ subsystems with $n_k$ levels each, a composite target pure state is specified by a list of integers $m_k$ with $0\leq m_k < n_k$ representing the pure target state in each subsystem $k$. The composite pure target state is then
 
