@@ -35,6 +35,7 @@ theme:
 nav:
   - Home: index.md
   - User Guide: user_guide.md
+  - Developer Reference: "https://software.llnl.gov/quandary/doxygen/"
 
 use_directory_urls: true
 docs_dir: docs/mkdocs
