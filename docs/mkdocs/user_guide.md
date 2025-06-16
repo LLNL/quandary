@@ -1,41 +1,5 @@
 # Quandary: Optimal Control for Open and Closed Quantum Systems
 
-# Installation
-Read the `README.md`! In short:
-
-1. Install PETSc (https://petsc.org/).
-2. Compile the quandary executable and install with:
-``` console
-  > mkdir build && cd build
-  > cmake ..
-  > make
-  > sudo cmake --install .
-```
-3. To use the python interface, create a virtual environment and do:
-``` console
-  > pip install -e .
-```
-
-
-## Quick start
-The C++ Quandary executable takes a configuration input file. As a quick start, test it with
-``` console
-> ./quandary config_template.cfg  # (serial execution)
-```
-``` console
-> mpirun -np 4 ./quandary config_template.cfg  # (on 4 cores)
-```
-
-You can silence Quandary by adding the `--quiet` command line argument.
-
-Results are written as column-based text files in the output directory. Gnuplot is an excellent plotting tool to visualize the written output files, see below. The `config_template.cfg` is currently set to run a CNOT optimization test case. It lists all available options and configurations, and is filled with comments that should help users to set up new simulation and optimization runs, and match the input options to the equations found in this document.
-
-Test the python interface by running one of the examples in `examples/`, e.g.
-``` console
-> python3 example_swap02.py
-```
-The python interpreter will start background processes on the C++ executable using a config file written by the python interpreter, and gathers quandary's output results back into the python shell for plotting.
-
 # Introduction
 Quandary numerically simulates and optimizes the time evolution of closed and open quantum systems. The
 underlying dynamics are modelled by either Schroedinger's equation (for closed systems), or Lindblad's master equation (for open systems that interact with the environment). Quandary solves the respective ordinary differential equation (ODE) numerically by applying a time-stepping integration scheme, and applies a gradient-based optimization
@@ -832,16 +796,3 @@ at each time $t$, which are applied to the vectorized, real-valued density matri
 The matrix-free solver does not explicitly store the matrices $A_d,B_d,
 A_c^k, B_c^k$, etc., but instead only evaluates their action on a vector $q(t)$ using tensor contractions applied to the corresponding dimension of the density matrix tensor.
 
-# Summary of all C++ configuration options
-Here is a list of all options available to the C++ Quandary code, this is the same as in `config_template.cfg`.
-
-```cfg
---8<-- "config_template.cfg"
-```
-
-# Summary of all python interface options
-Here is a list of all options available to the python interface, this is the same as in `quandary.py`.
-
-```python
---8<-- "quandary.py:13:100"
-```
