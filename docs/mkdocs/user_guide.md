@@ -224,10 +224,10 @@ In order to guarantee that the optimizer yields control pulses that are bounded 
 ### Alternative control parameterization based on B-spline amplitudes and time-constant phases
 As an alternative to the above parameterization, we can parameterize only the *amplitudes* of the control pulse with B-splines, and add a time-constant phase per carrierwave:
 
-  \begin{align}
-    d(t) = \sum_f e^{i\Omega_f t} a_f(t)e^{ib_f} \quad \text{where} \quad a_f(t) = \sum_s \alpha_{f,s} B_s(t) \\
-    \Rightarrow d(t)= \sum_f\sum_s \alpha_{f,s}B_s(t)e^{i\Omega_ft + b_f}
-  \end{align}
+\begin{align}
+  d(t) = \sum_f e^{i\Omega_f t} a_f(t)e^{ib_f} \quad \text{where} \quad a_f(t) = \sum_s \alpha_{f,s} B_s(t) \\
+  \Rightarrow d(t)= \sum_f\sum_s \alpha_{f,s}B_s(t)e^{i\Omega_ft + b_f}
+\end{align}
 
 where the control parameters are $b_f\in [-\pi, \pi]$ (phases for each carrier wave) and the amplitudes $\alpha_{f,s}\in \R$ for $s=1,\dots, N_s$, $f=1,\dots, N_f$. Hence for $Q$ oscillators, we have a total of $\sum_q (N_s^q + 1) N_f^q$ control parameters.
 
@@ -261,6 +261,7 @@ All interface functions are defined in `quandary.py`. Most importantly, it defin
 After setting up the configuration, you can evoke simulations or optimizations with `quandary.simulate/optimize()`. Check out `help(Quandary)` to see all available user functions. Under the hood, those function writes the required Quandary configuration files (`config.cfg`, etc.) to a data directory, then evokes (multiple) subprocesses to execute parallel C++ Quandary on that configuration file through the shell, and then loads the results from Quandary's output files back into the python interpreter. Plotting scripts are also provided, see the example scripts.
 
 In addition to the standard Hamiltonian models as described in Section [Model equation](#sec:model), the python interface allows for user-defined Hamiltonian operators $H_d$ and $H_c$. Those are provided to Quandary through optional arguments to the python configuration `Quandary`, in which case Quandary replaces the Hamiltonian operators in $\eqref{eq:Hd_rotating}$ (system Hamiltonian) and $\eqref{eq:Hc_rotating}$ (control Hamiltonian operators $a\pm a'$) by the provided matrices.
+
 - The system Hamiltonian $H_d$ is a time-independent complex hermitian matrix. The units of the system Hamiltonian should be angular frequency (multiply $2\pi$).
 - For each oscillator, one complex-valued control operator can be specified. Those should be provided in terms of their real and imaginary parts separately, e.g. the standard model control operators would be specified as $H_{c,k}^{re} = a_k+a_k^\dagger$ and $H_{c,k}^{im}=a_k-a_k^\dagger$, for each oscillator $k$. The real parts will be multiplied by the control pulses $p_k(t)$, while the imaginary parts will be multiplied by $iq_k(t)$ for each oscillator $k$, similar to the model in $\eqref{eq:Hc_rotating}$. Control Hamiltonian operators should be 'unit-free', since those units come in through the multiplied control pulses $p$ and $q$.
 - To enable the use of the custom Hamiltonians, pass the configuration option `standardmodel=False`, in addition to `Hsys=<yourSystemHamiltonian>` and `Hc_real=[<HcReal oscillator1, HcReal oscillator2, ...]`, `Hc_imag=[<HcImag oscillator1, HcImag oscillator2, ...]`.
@@ -292,7 +293,7 @@ As a measure of optimization success, Quandary reports on the fidelity computed 
   \end{cases}
 \end{align}
 
-The fidelity is an average of Hilbert-Schmidt overlaps of the target states and the evolved states: for the density matrix, the Hilbert-Schmidt overlap is $\langle \rho^{target}, \rho(t)\rangle = \mbox{Tr}\left(\left(\rho^{target}\right)^\dagger\rho(T)\right)$, which is *real* if both states are density matrices (which is always the case in Quandary, see definition of basis matrices). For the state vector (and the Schroedinger solver), the Hilbert-Schmidt overlap is $\langle \psi^{target}, \psi(T)\rangle = (\psi^{target})^{\dagger}\psi $, which is complex. Note that in the fidelity above (and also in the corresponding objective function $J_{trace}$, the absolute value is taken *outside* of the sum, hence relative phases are taken into account.
+The fidelity is an average of Hilbert-Schmidt overlaps of the target states and the evolved states: for the density matrix, the Hilbert-Schmidt overlap is $\langle \rho^{target}, \rho(t)\rangle = \mbox{Tr}\left(\left(\rho^{target}\right)^\dagger\rho(T)\right)$, which is *real* if both states are density matrices (which is always the case in Quandary, see definition of basis matrices). For the state vector (and the Schroedinger solver), the Hilbert-Schmidt overlap is $\langle \psi^{target}, \psi(T)\rangle = (\psi^{target})^{\dagger}\psi$, which is complex. Note that in the fidelity above (and also in the corresponding objective function $J_{trace}$, the absolute value is taken *outside* of the sum, hence relative phases are taken into account.
 
 Further note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while choosing the three initial condition as in Section [Three initial states for gate optimization](#subsec:threeinitcond), the fidelity that is reported during optimization will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential initial states. It is advised to recompute the average fidelity \textbf{after} optimization has finished by propagating all basis states $B_{kj}$ to final time $T$ using the optimized control parameter, or by propagating only $N+1$ initial states to get an estimate thereof.
 
@@ -312,7 +313,7 @@ The following objective functions can be used for optimization in Quandary (conf
 Here, $\beta_i$ denote weights with $\sum_{i=1}^{n_{init}} \beta _i = 1$ that can be used to scale the contribution of each initial/target state $i$ (default $\beta_i = 1/n_{init}$).
 $J_{Frobenius}$ measures (weighted average of) the Frobenius norm between target and final states. $J_{Trace}$ measures the (weighted) infidelity in terms of the Hilbert-Schmidt overlap, compare the definition of fidelity in eq. $\eqref{eq:fidelity}$. Here, $w_i = \mbox{Tr}\left(\rho_i(0)^2\right)$ is the purity of the initial state. Both those measures are common for optimization towards a unitary gate transformation, for example. $J_{measure}$ is (only) useful when considering pure-state optimization, see Section [Pure target states](#sec:statepreparation). Here, $m\in\N$ is a given integer, and $N_m$ is a diagonal matrix with diagonal elements being $|k-m|, k=0,\dots N-1$
 
-The distinction for the Lindblad vs. Schroedinger solver is made explicit for $J_{trace}$ above. The other two measures apply naturally to either the density matrix version solving Lindblad's equation, or the state vector version solving Schroedinger's equation with $ \|\rho^{target} - \rho(T)\| = \|\psi^{target} - \psi(T)\|$ and $\mbox{Tr}\left(N_m\rho(T)\right) = \psi(T)^\dagger N_m \psi(T)$.
+The distinction for the Lindblad vs. Schroedinger solver is made explicit for $J_{trace}$ above. The other two measures apply naturally to either the density matrix version solving Lindblad's equation, or the state vector version solving Schroedinger's equation with $\|\rho^{target} - \rho(T)\| = \|\psi^{target} - \psi(T)\|$ and $\mbox{Tr}\left(N_m\rho(T)\right) = \psi(T)^\dagger N_m \psi(T)$.
 
 ## Optimization targets {#sec:targets}
 Here we describe the target states $\rho^{target}$ that are realized in Quandary (C++ config option `optim_target`). Two cases are considered: State preparation, where the target state is the same for all initial conditions, and gate optimization, where the target state is a unitary transformation of the initial condition.
@@ -701,8 +702,10 @@ Quandary utilized Petsc's `Tao` optimization package to apply gradient-based ite
 
 # Parallelization
 Quandary offers two levels of parallelization using MPI.
+
 1. Parallelization over initial conditions: The $n_{init}$ initial conditions $\rho_i(0)$ can be distributed over `np_init` compute units. Since initial condition are propagated through the time-domain for solving Lindblad's or Schroedinger's equation independently from each other, speedup from distributed initial conditions is ideal.
 2. Parallel linear algebra with Petsc (sparse-matrix solver only): For the sparse-matrix solver, Quandary utilizes Petsc's parallel sparse matrix and vector storage to distribute the state vector onto `np_petsc` compute units (spatial parallelization). To perform scaling results, make sure to disable code output (or reduce the output frequency to print only the last time-step), because writing the data files invokes additional MPI calls to gather data on the master node.
+
 Strong and weak scaling studies are presented in [@guenther2021quantum].
 
 Since those two levels of parallelism are orthogonal, Quandary splits the global communicator (MPI\_COMM\_WORLD) into
@@ -727,13 +730,15 @@ Quandary generates various output files for system evolution of the current (opt
 
 ## Output options with regard to state evolution
 For each subsystem $k$, the user can specify the desired state evolution output through the config option `output<k>`:
+
 - `expectedEnergy`: This option prints the time evolution of the expected energy level of subsystem $k$ into files with naming convention `expected<k>.iinit<m>.dat`, where $m=1,\dots,n_{init}$ denotes the unique identifier for each initial condition $\rho_m(0)$ that was propagated through (see Section [Initial conditions](#subsec:initcond)). This file contains two columns, the first row being the time values, the second one being the expectation value of the energy level of subsystem $k$ at that time point, computed from
 
-\begin{align}
-  \langle N^{(n_k)}\rangle = \mbox{Tr}\left(N^{(n_k)} \rho^k(t)\right)
-\end{align}
+    \begin{align}
+      \langle N^{(n_k)}\rangle = \mbox{Tr}\left(N^{(n_k)} \rho^k(t)\right)
+    \end{align}
 
-where $N^{(n_k)} = \left(a^{(n_k)}\right)^\dagger \left(a^{(n_k)}\right)$ denotes the number operator in subsystem $k$ and $\rho^k$ denotes the reduced density matrix for subsystem $k$, each with dimension $n_k\times n_k$. Note that this equivalent to $\mbox{Tr}\left(N_k \rho(t)\right)$ with $N_k = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes N^{(n_k)} \otimes I_{n_{k+1}}\otimes \dots \otimes I_Q$ and the full state $\rho(t)$ in the full dimensions $N\times N$.
+    where $N^{(n_k)} = \left(a^{(n_k)}\right)^\dagger \left(a^{(n_k)}\right)$ denotes the number operator in subsystem $k$ and $\rho^k$ denotes the reduced density matrix for subsystem $k$, each with dimension $n_k\times n_k$. Note that this equivalent to $\mbox{Tr}\left(N_k \rho(t)\right)$ with $N_k = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes N^{(n_k)} \otimes I_{n_{k+1}}\otimes \dots \otimes I_Q$ and the full state $\rho(t)$ in the full dimensions $N\times N$.
+
 - `expectedEnergyComposite` Prints the time evolution of the expected energy level of the entire (full-dimensional) system state into files (one for each initial condition, as above): $mbox{Tr}\left(N \rho(t)\right)$ for the number operator $N$ in the full dimensions.
 - `population`: This option prints the time evolution of the state populations (diagonal of density matrix, state probabilities) of subsystem $k$ into files named `population<k>.iinit<m>.dat` for each initial condition $m=1,\dots, n_{init}$. The files contain $n_k+1$ columns, the first one being the time values, the remaining $n_k$ columns correspond to the population of each level $l=0,\dots,n_k-1$ of the reduced density matrix $\rho^k(t)$ at that time point. For Lindblad's solver, these are the diagonal elements of the reduced density matrix ($\rho_{ll}^k(t), l=0,\dots n_k-1$), for Schroedinger's solver it's the absolute values of the reduced state vector elements $|\psi^k_l(t)|^2, l=0,\dots n_k-1$. Note that the reduction to the subsystem $k$ induces a sum over all oscillators to collect contributions to the reduced state.
 - `populationComposite`: Prints the time evolution of the state populations of the entire (full-dimensional) system into files (one for each initial condition, as above).
@@ -751,7 +756,9 @@ Quandary always prints the current parameters and control pulses at the beginnin
 ## Plotting
 The format of all output files are very well suited for plotting with \href{http://www.gnuplot.info}{Gnuplot}, which is a command-line based plotting program that can output directly to screen, or into many other formats such as png, eps, or even tex. As an example, from within a Gnuplot session, you can plot e.g. the expected energy level of subsystem $k=0$ for initial condition $m=0$ by the simple command
 
-`gnuplot> plot 'expected0.iinit0000.dat' using 1:2 with lines title 'expected energy subsystem 0'`
+``` console
+gnuplot> plot 'expected0.iinit0000.dat' using 1:2 with lines title 'expected energy subsystem 0'
+```
 
 which plots the first against the second column of the file 'expected0.iinit0000.dat' to screen, connecting each point with a line. Additional lines (and files) can be added to the same plot by extending the above command with another file separated by comma (only omit the 'plot' keyword for the second command). There are many example scripts for plotting with gnuplot online, and as a starting point I recommend looking into some scripts in the 'quandary/util/' folder.
 
