@@ -200,9 +200,9 @@ class Quandary:
         if len(self.selfkerr) != len(self.Ne):
             self.selfkerr= np.zeros(len(self.Ne))
         if len(self.rotfreq) == 0:
-            self.rotfreq = self.freq01
+            self.rotfreq = self.freq01[:]
         if len(self.gate_rot_freq) == 0:
-            self.gate_rot_freq = np.zeros(len(self.rotfreq))
+            self.gate_rot_freq = self.rotfreq[:]
         
         if isinstance(self.initctrl_MHz, float) or isinstance(self.initctrl_MHz, int):
             max_alloscillators = self.initctrl_MHz
@@ -562,6 +562,8 @@ class Quandary:
 
         # If not standard Hamiltonian model, write provided Hamiltonians to a file
         if not self.standardmodel:
+            # Turn of matrix-free solver
+            self.usematfree = False 
             # Write non-standard Hamiltonians to file  
             self._hamiltonian_filename= "hamiltonian.dat"
             with open(os.path.join(datadir, self._hamiltonian_filename), "w", newline='\n') as f:
