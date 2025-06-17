@@ -616,9 +616,10 @@ double OptimProblem::computeRobustCost(){
       double znm = SQR(znm_re) + SQR(znm_im);
       cost_robust += 2.0*znm;
     }
-    cost_robust += SQR(timestepper->mastereq->getDimRho());
+    // Diagonal shift
+    // cost_robust += (double) SQR(timestepper->getNTimeSteps());
   }
-  cost_robust = cost_robust / SQR(timestepper->mastereq->getDimRho());
+  cost_robust = cost_robust / ((double)SQR(timestepper->getNTimeSteps()));
 
   return cost_robust;
 }
@@ -634,7 +635,7 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
   }
 
   // Iterate over double timestep loop
-  double cost_robust_bar = Jbar / SQR(timestepper->mastereq->getDimRho());
+  double cost_robust_bar = Jbar / ((double) SQR(timestepper->getNTimeSteps()));
   for (int n=1; n<=ntime; n++){
     for (int m=n+1; m<=ntime; m++) {
       // Need to recompute znm_re, znm_im first:
