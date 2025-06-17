@@ -205,6 +205,8 @@ int main(int argc,char **argv)
   ierr = SlepcInitialize(&argc, &argv, (char*)0, NULL);if (ierr) return ierr;
 #else
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
+  // Enable PETSc memory tracking
+  PetscMemorySetGetMaximumUsage();
 #endif
   PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
   CALI_MARK_END("initialization.petsc");
@@ -514,6 +516,11 @@ int main(int argc,char **argv)
     printf(" Processors used:  %d\n", mpisize_world);
     printf(" Global Memory:    %.2f MB    [~ %.2f MB per proc]\n", globalMB, globalMB / mpisize_world);
     printf("\n");
+
+    PetscLogDouble mem, maxmem;
+    PetscMemoryGetCurrentUsage(&mem);
+    PetscMemoryGetMaximumUsage(&maxmem);
+    PetscPrintf(PETSC_COMM_WORLD, "PETSc memory: current=%.1fMB, max=%.1fMB\n", mem/1024/1024, maxmem/1024/1024);
   }
   // printf("Rank %d: %.2fMB\n", mpirank_world, myMB );
 
