@@ -53,7 +53,7 @@ class Gate {
      * @param lindbladtype_ Type of Lindblad operators for open system dynamics.
      * @param quietmode Flag to suppress output messages (default: false).
      */
-    Gate(std::vector<int> nlevels_, std::vector<int> nessential_, double time_, std::vector<double> gate_rot_freq, LindbladType lindbladtype_, bool quietmode=false);
+    Gate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time_, const std::vector<double>& gate_rot_freq, LindbladType lindbladtype_, bool quietmode=false);
 
     virtual ~Gate();
 
@@ -95,7 +95,7 @@ class Gate {
  */
 class XGate : public Gate {
   public:
-    XGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
+    XGate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time, const std::vector<double>& rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~XGate();
 };
 
@@ -110,7 +110,7 @@ class XGate : public Gate {
  */
 class YGate : public Gate {
   public:
-    YGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
+    YGate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time, const std::vector<double>& rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~YGate();
 };
 
@@ -125,7 +125,7 @@ class YGate : public Gate {
  */
 class ZGate : public Gate {
   public:
-    ZGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
+    ZGate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time, const std::vector<double>& rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~ZGate();
 };
 
@@ -140,7 +140,7 @@ class ZGate : public Gate {
  */
 class HadamardGate : public Gate {
   public:
-    HadamardGate(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
+    HadamardGate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time, const std::vector<double>& rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~HadamardGate();
 };
 
@@ -157,7 +157,7 @@ class HadamardGate : public Gate {
  */
 class CNOT : public Gate {
     public:
-    CNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
+    CNOT(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time, const std::vector<double>& rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~CNOT();
 };
 
@@ -174,7 +174,7 @@ class CNOT : public Gate {
  */
 class SWAP: public Gate {
     public:
-    SWAP(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
+    SWAP(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time, const std::vector<double>& rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~SWAP();
 };
 
@@ -187,7 +187,7 @@ class SWAP: public Gate {
  */
 class SWAP_0Q: public Gate {
     public:
-    SWAP_0Q(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
+    SWAP_0Q(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time, const std::vector<double>& rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~SWAP_0Q();
 };
 
@@ -199,7 +199,7 @@ class SWAP_0Q: public Gate {
  */
 class CQNOT: public Gate {
     public:
-    CQNOT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
+    CQNOT(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time, const std::vector<double>& rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~CQNOT();
 };
 
@@ -210,7 +210,7 @@ class CQNOT: public Gate {
  */
 class QFT: public Gate {
   public:
-    QFT(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
+    QFT(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time, const std::vector<double>& rotation_frequencies_, LindbladType lindbladtype_, bool quietmode=false);
     ~QFT();
 };
 
@@ -232,7 +232,7 @@ class FromFile: public Gate {
      * @param filename Path to file containing gate matrix data.
      * @param quietmode Flag to suppress output messages (default: false).
      */
-    FromFile(std::vector<int> nlevels_, std::vector<int> nessential_, double time, std::vector<double> rotation_frequencies_, LindbladType lindbladtype_, std::string filename, bool quietmode=false);
+    FromFile(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time, const std::vector<double>& rotation_frequencies_, LindbladType lindbladtype_, const std::string& filename, bool quietmode=false);
     ~FromFile();
 };
 
@@ -252,4 +252,4 @@ class FromFile: public Gate {
  * @param quietmode Flag to suppress output messages.
  * @return Gate* Pointer to the initialized gate object.
  */
-Gate* initTargetGate(std::vector<std::string> target_str, std::vector<int>nlevels, std::vector<int>nessential, double total_time, LindbladType lindbladtype, std::vector<double> gate_rot_freq, bool quietmode);
+Gate* initTargetGate(const std::vector<std::string>& target_str, const std::vector<int>& nlevels, const std::vector<int>& nessential, double total_time, LindbladType lindbladtype, const std::vector<double>& gate_rot_freq, bool quietmode);
