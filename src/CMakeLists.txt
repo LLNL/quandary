@@ -25,6 +25,10 @@ find_package(PkgConfig REQUIRED)
 pkg_search_module(PETSC REQUIRED IMPORTED_TARGET PETSc)
 target_link_libraries(quandary_lib PUBLIC PkgConfig::PETSC)
 
+# Caliper (required for performance profiling)
+find_package(caliper REQUIRED)
+target_link_libraries(quandary_lib PUBLIC caliper)
+
 # Put executable in root directory
 set_target_properties(
     quandary

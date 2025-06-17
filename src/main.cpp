@@ -11,6 +11,8 @@
 #include "output.hpp"
 #include "petsc.h"
 #include <random>
+#include <caliper/cali.h>
+#include <caliper/cali-manager.h>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
@@ -26,10 +28,17 @@ int main(int argc,char **argv)
   PetscErrorCode ierr;
 
   /* Initialize MPI */
+  CALI_MARK_BEGIN("initialization.mpi");
   int mpisize_world, mpirank_world;
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
+  CALI_MARK_END("initialization.mpi");
+
+  /* Initialize Caliper configuration manager */
+  cali::ConfigManager mgr;
+  mgr.add("runtime-report");
+  mgr.start();
 
   /* Parse argument line for "--quiet" to enable reduced output mode */
   bool quietmode = false;
@@ -190,18 +199,22 @@ int main(int argc,char **argv)
 
   if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
 
+  /* Initialize PETSc/SLEPc */
+  CALI_MARK_BEGIN("initialization.petsc");
 #ifdef WITH_SLEPC
   ierr = SlepcInitialize(&argc, &argv, (char*)0, NULL);if (ierr) return ierr;
 #else
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
 #endif
   PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
+  CALI_MARK_END("initialization.petsc");
 
 
 
   double total_time = ntime * dt;
 
   /* --- Initialize the Oscillators --- */
+  CALI_MARK_BEGIN("initialization.oscillators");
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
   // Get fundamental and rotation frequencies from config file 
   std::vector<double> trans_freq, rot_freq;
@@ -289,7 +302,10 @@ int main(int argc,char **argv)
     }
   }
 
+  CALI_MARK_END("initialization.oscillators");
+
   /* --- Initialize the Master Equation  --- */
+  CALI_MARK_BEGIN("initialization.mastereq");
   // Get self and cross kers and coupling terms 
   std::vector<double> crosskerr, Jkl;
   config.GetVecDoubleParam("crosskerr", crosskerr, 0.0);   // cross ker \xi_{kl}, zz-coupling
@@ -326,7 +342,7 @@ int main(int argc,char **argv)
   }
   // Initialize Master equation
   MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, hamiltonian_file, quietmode);
-
+  CALI_MARK_END("initialization.mastereq");
 
   /* Output */
   Output* output = new Output(config, comm_petsc, comm_init, nlevels.size(), quietmode);
@@ -351,6 +367,7 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize the time-stepper --- */
+  CALI_MARK_BEGIN("initialization.timestepper");
   LinearSolverType linsolvetype;
   std::string linsolvestr = config.GetStrParam("linearsolver_type", "gmres");
   int linsolve_maxiter = config.GetIntParam("linearsolver_maxiter", 10);
@@ -377,8 +394,12 @@ int main(int argc,char **argv)
     exit(1);
   }
 
+  CALI_MARK_END("initialization.timestepper");
+
   /* --- Initialize optimization --- */
+  CALI_MARK_BEGIN("initialization.optimization");
   OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, output, quietmode);
+  CALI_MARK_END("initialization.optimization");
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -408,6 +429,10 @@ int main(int argc,char **argv)
   double StartTime = MPI_Wtime();
   double objective;
   double gnorm = 0.0;
+
+  /* --- Main Computation Phase --- */
+  CALI_MARK_BEGIN("computation.main");
+
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
     optimctx->getStartingPoint(xinit);
@@ -452,6 +477,8 @@ int main(int argc,char **argv)
     if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
     output->writeControls(xinit, mastereq, ntime, dt);
   }
+
+  CALI_MARK_END("computation.main");
 
   /* Output */
   if (runtype != RunType::OPTIMIZATION) {
@@ -735,6 +762,7 @@ int main(int argc,char **argv)
 #endif
 
   /* Clean up */
+  CALI_MARK_BEGIN("cleanup");
   for (size_t i=0; i<nlevels.size(); i++){
     delete oscil_vec[i];
   }
@@ -746,17 +774,23 @@ int main(int argc,char **argv)
 
   VecDestroy(&xinit);
   VecDestroy(&grad);
+  CALI_MARK_END("cleanup");
 
-
-  /* Finallize Petsc */
+  /* Finalize Petsc */
+  CALI_MARK_BEGIN("finalization.petsc");
 #ifdef WITH_SLEPC
   ierr = SlepcFinalize();
 #else
   PetscOptionsSetValue(NULL, "-options_left", "no"); // Remove warning about unused options.
   ierr = PetscFinalize();
 #endif
+  CALI_MARK_END("finalization.petsc");
 
-
+  /* Finalize Caliper and MPI */
+  CALI_MARK_BEGIN("finalization.mpi");
+  mgr.stop();
+  mgr.flush();
   MPI_Finalize();
+  CALI_MARK_END("finalization.mpi");
   return ierr;
 }
