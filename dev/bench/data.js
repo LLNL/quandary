@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749841385832,
+  "lastUpdate": 1750199760043,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -659,6 +659,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4393.97,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "e30c240a45f1ce53748656e4e19d33a1ec553be8",
+          "message": "Merge pull request #63 from LLNL/use-references\n\nMinor improvement: use const references for vectors",
+          "timestamp": "2025-06-17T19:14:29Z",
+          "url": "https://github.com/LLNL/quandary/commit/e30c240a45f1ce53748656e4e19d33a1ec553be8"
+        },
+        "date": 1750199759117,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 1.0444687475683168,
+            "unit": "seconds",
+            "range": "0.27100138612120195"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 89.01,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 15.292023426154628,
+            "unit": "seconds",
+            "range": "0.13981222284260053"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4393.5,
             "unit": "MB"
           }
         ]
