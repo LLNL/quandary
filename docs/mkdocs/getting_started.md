@@ -43,7 +43,9 @@ Test your installation with the provided template:
 mpirun -np 4 ./quandary config_template.cfg  # Parallel execution
 ```
 
-This runs a CNOT gate optimization example. Results are written to the `data_out/` directory as text files.
+Results are written as column-based text files in the output directory `data_out/`. The `config_template.cfg` is currently set to run a CNOT optimization test case. It lists all available options and configurations, and is filled with comments that should help users to set up new simulation and optimization runs, and match the input options to the equations found in this document.
+
+You can silence Quandary by adding the `--quiet` command line argument.
 
 ### Python Interface
 
