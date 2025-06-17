@@ -79,9 +79,9 @@ class TimeStepper{
      * @param total_time_ Final evolution time
      * @param output_ Pointer to output handler
      * @param storeFWD_ Flag to store forward states
-     * @param ninit_ Number of initial conditions
+     * @param ninit_local Number of initial conditions on this processor
      */
-    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_); 
+    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local); 
 
     virtual ~TimeStepper(); 
 
@@ -217,9 +217,9 @@ class ExplEuler : public TimeStepper {
      * @param total_time_ Final evolution time
      * @param output_ Pointer to output handler
      * @param storeFWD_ Flag to store forward states
-     * @param ninit_ Number of initial conditions
+     * @param ninit_local Number of initial conditions on this processor
      */
-    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_);
+    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local);
 
     ~ExplEuler();
 
@@ -284,9 +284,9 @@ class ImplMidpoint : public TimeStepper {
      * @param linsolve_maxiter_ Maximum linear solver iterations
      * @param output_ Pointer to output handler
      * @param storeFWD_ Flag to store forward states
-     * @param ninit_ Number of initial conditions
+     * @param ninit_local Number of initial conditions on this processor
      */
-    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_);
+    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local);
 
     ~ImplMidpoint();
 
@@ -351,9 +351,9 @@ class CompositionalImplMidpoint : public ImplMidpoint {
      * @param linsolve_maxiter_ Maximum linear solver iterations
      * @param output_ Pointer to output handler
      * @param storeFWD_ Flag to store forward states
-     * @param ninit_ Number of initial conditions
+     * @param ninit_local Number of initial conditions on this processor
      */
-    CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_);
+    CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local);
 
     ~CompositionalImplMidpoint();
 
