@@ -1,35 +1,76 @@
-# Installation
-Read the `README.md`! In short:
+# Getting Started
 
-1. Install PETSc (https://petsc.org/).
-2. Compile the quandary executable and install with:
-``` console
-  > mkdir build && cd build
-  > cmake ..
-  > make
-  > sudo cmake --install .
-```
-3. To use the python interface, create a virtual environment and do:
-``` console
-  > pip install -e .
+## Installation
+
+You have two options to install the Quandary binary:
+
+### Option 1: Install via Spack (Recommended)
+
+If you have [Spack](https://spack.readthedocs.io/en/latest/getting_started.html#installation) installed:
+```console
+spack install quandary
 ```
 
+This automatically handles all dependencies including PETSc and MPI.
 
-## Quick start
-The C++ Quandary executable takes a configuration input file. As a quick start, test it with
-``` console
-> ./quandary config_template.cfg  # (serial execution)
+### Option 2: Build from Source
+
+**Prerequisites for building from source:**
+
+- **PETSc** (Portable, Extensible Toolkit for Scientific Computation)
+- **MPI** implementation for parallel execution
+- **CMake** 3.23 or later
+- **C++ compiler** with C++14 support
+
+**Steps:**
+
+- Clone the repository:
+
+```console
+git clone https://github.com/LLNL/quandary.git
+cd quandary
 ```
-``` console
-> mpirun -np 4 ./quandary config_template.cfg  # (on 4 cores)
+
+- Follow the detailed build instructions in the [README.md](https://github.com/LLNL/quandary/blob/main/README.md)
+
+## Running
+
+### C++ Interface
+
+Test your installation with the provided template:
+```console
+./quandary config_template.cfg  # Serial execution
+mpirun -np 4 ./quandary config_template.cfg  # Parallel execution
 ```
 
-You can silence Quandary by adding the `--quiet` command line argument.
+This runs a CNOT gate optimization example. Results are written to the `data_out/` directory as text files.
 
-Results are written as column-based text files in the output directory. Gnuplot is an excellent plotting tool to visualize the written output files, see below. The `config_template.cfg` is currently set to run a CNOT optimization test case. It lists all available options and configurations, and is filled with comments that should help users to set up new simulation and optimization runs, and match the input options to the equations found in this document.
+### Python Interface
 
-Test the python interface by running one of the examples in `examples/`, e.g.
-``` console
-> python3 example_swap02.py
+For Python interface, after cloning quandary:
+```console
+pip install -e .
 ```
-The python interpreter will start background processes on the C++ executable using a config file written by the python interpreter, and gathers quandary's output results back into the python shell for plotting.
+
+Test the Python interface with a working example:
+```console
+cd examples
+python example_cnot.py
+```
+
+This example demonstrates:
+
+- Setting up a 2-qubit system
+- Defining a CNOT gate target
+- Running optimization
+- Plotting results
+
+The output will show optimization progress and generate control pulse plots.
+
+## Next Steps
+
+- **[Examples](https://github.com/LLNL/quandary-examples/)**: Check out the quandary-examples repo
+- **[Jupyter Example](QuandaryWithPython_HowTo.ipynb)**: Check out the Jupyter Notebook Tutorial in these docs or in the above repo
+- **[User Guide](user_guide.md)**: Comprehensive documentation of Quandary's capabilities and details
+- **[C++ Config Reference](config.md)**: Reference listing configuration files in detail
+- **[Python API Reference](python_api.md)**: Reference listing the Python interface in detail
