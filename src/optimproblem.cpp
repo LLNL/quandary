@@ -1,6 +1,6 @@
 #include "optimproblem.hpp"
 
-OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, Output* output_, bool quietmode_){
+OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, Output* output_, bool quietmode_){
 
   timestepper = timestepper_;
   ninit = ninit_;
@@ -104,7 +104,7 @@ OptimProblem::OptimProblem(MapParam config, TimeStepper* timestepper_, MPI_Comm 
   
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
-    if (mpirank_world == 0) {
+    if (mpirank_world == 0 && !quietmode) {
       printf("Warning: Disabling DpDm penalty term because it is not implemented for the Lindblad solver.\n");
     }
     gamma_penalty_dpdm = 0.0;
@@ -626,7 +626,7 @@ bool OptimProblem::monitor(int iter, double deltax, Vec params){
     output->writeControls(params, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 
     // do one last forward evaluation while writing trajectory files
-    timestepper->writeDataFiles = true;
+    timestepper->writeTrajectoryDataFiles = true;
     evalF(params); 
 
     // Print stopping reason to screen

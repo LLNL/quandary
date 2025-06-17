@@ -29,6 +29,11 @@ jobs:
         spack -e .spack_env mirror set binary_mirror --unsigned
         spack mirror add --type binary --unsigned --oci-username GITHUB_USER --oci-password-variable GITHUB_TOKEN local-buildcache oci://ghcr.io/LLNL/quandary-spack-buildcache
 
+    - name: Add only use GCC on macOS
+      if: runner.os == 'macOS'
+      run: |
+        spack compiler find /opt/homebrew/bin
+
     - name: Install
       # explicitly use openmpi, since mpich causes rpath problems in binary
       run: |
@@ -41,7 +46,7 @@ jobs:
       run: |
         spack env activate .spack_env
         python -m pip install -e . --prefer-binary
-        pytest -v -s regression_tests --mpi-opt="--oversubscribe"
+        pytest -v -s tests/regression --mpi-opt="--oversubscribe"
 
     - name: Push packages and update index
       env:

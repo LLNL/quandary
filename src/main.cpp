@@ -62,7 +62,7 @@ int main(int argc,char **argv)
     return 0;
   }
   std::stringstream log;
-  MapParam config(MPI_COMM_WORLD, log, quietmode);
+  Config config(MPI_COMM_WORLD, log, quietmode);
   config.ReadFile(argv[1]);
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
@@ -432,7 +432,7 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (runtype == RunType::SIMULATION) {
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
-    optimctx->timestepper->writeDataFiles = true;
+    optimctx->timestepper->writeTrajectoryDataFiles = true;
     if (optimsolvertype==OptimSolverType::TAO) {
       objective = optimctx->evalF(xinit);
     } else {
@@ -445,7 +445,7 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (runtype == RunType::GRADIENT) {
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
-    optimctx->timestepper->writeDataFiles = true;
+    optimctx->timestepper->writeTrajectoryDataFiles = true;
     if (optimsolvertype==OptimSolverType::TAO) {
       optimctx->evalGradF(xinit, grad);
       VecNorm(grad, NORM_2, &gnorm);
@@ -465,7 +465,7 @@ int main(int argc,char **argv)
   if (runtype == RunType::OPTIMIZATION) {
     /* Set initial starting point */
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
-    optimctx->timestepper->writeDataFiles = false;
+    optimctx->timestepper->writeTrajectoryDataFiles = false;
 
     if (optimsolvertype==OptimSolverType::TAO) {
       if (mpirank_world==0) printf("Optimizing with TAO...\n");
@@ -526,7 +526,14 @@ int main(int argc,char **argv)
   /* Get memory usage */
   struct rusage r_usage;
   getrusage(RUSAGE_SELF, &r_usage);
-  double myMB = (double)r_usage.ru_maxrss / 1024.0;
+  double myMB;
+  #ifdef __APPLE__
+      // On macOS, ru_maxrss is in bytes
+      myMB = (double)r_usage.ru_maxrss / (1024.0 * 1024.0);
+  #else
+      // On Linux, ru_maxrss is in kilobytes
+      myMB = (double)r_usage.ru_maxrss / 1024.0;
+  #endif
   double globalMB = myMB;
   MPI_Allreduce(&myMB, &globalMB, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
@@ -536,7 +543,6 @@ int main(int argc,char **argv)
     printf(" Used Time:        %.2f seconds\n", UsedTime);
     printf(" Processors used:  %d\n", mpisize_world);
     printf(" Global Memory:    %.2f MB    [~ %.2f MB per proc]\n", globalMB, globalMB / mpisize_world);
-    printf(" [NOTE: The memory unit is platform dependent. If you run on MacOS, the unit will likely be KB instead of MB.]\n");
     printf("\n");
   }
   // printf("Rank %d: %.2fMB\n", mpirank_world, myMB );
