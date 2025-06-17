@@ -17,7 +17,7 @@ OptimTarget::OptimTarget(){
 }
 
 
-OptimTarget::OptimTarget(std::vector<std::string> target_str, std::string objective_str, std::vector<std::string> initcond_str, MasterEq* mastereq, double total_time, std::vector<double> read_gate_rot, Vec rho_t0, bool quietmode_) : OptimTarget() {
+OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string& objective_str, std::vector<std::string> initcond_str, MasterEq* mastereq, double total_time, std::vector<double> read_gate_rot, Vec rho_t0, bool quietmode_) : OptimTarget() {
 
   // initialize
   dim = mastereq->getDim();
@@ -424,7 +424,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
 }
 
 
-int OptimTarget::prepareInitialState(const int iinit, const int ninit, std::vector<int> nlevels, std::vector<int> nessential, Vec rho0){
+int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std::vector<int>& nlevels, const std::vector<int>& nessential, Vec rho0){
 
   PetscInt ilow, iupp; 
   PetscInt elemID;

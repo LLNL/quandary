@@ -140,7 +140,7 @@ class MasterEq{
      * @param hamiltonian_file Filename for Hamiltonian data
      * @param quietmode Flag for quiet operation (default: false)
      */
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string hamiltonian_file, bool quietmode=false);
+    MasterEq(const std::vector<int>& nlevels, const std::vector<int>& nessential, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file, bool quietmode=false);
 
     ~MasterEq();
 
