@@ -14,6 +14,6 @@ var searchData=
   ['stateishermitian_11',['stateishermitian',['../util_8cpp.html#a6bd4be55b2c06de010e63e1d5b8a3077',1,'StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag):&#160;util.cpp'],['../util_8hpp.html#a6bd4be55b2c06de010e63e1d5b8a3077',1,'StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag):&#160;util.cpp']]],
   ['step_12',['Step',['../classStep.html#a57602386460f018e9c712880556b1c15',1,'Step']]],
   ['stringtrim_13',['StringTrim',['../config_8cpp.html#a415263e1b50197687f0ba572a59fa66f',1,'config.cpp']]],
-  ['swap_14',['SWAP',['../classSWAP.html#ad17bf33ddf20dc890aa5c455eee4c2b0',1,'SWAP']]],
-  ['swap_5f0q_15',['SWAP_0Q',['../classSWAP__0Q.html#aab439722024ac3e5a8f43af1bd259744',1,'SWAP_0Q']]]
+  ['swap_14',['SWAP',['../classSWAP.html#a0f069ebee08726282ca0de29a7759ccd',1,'SWAP']]],
+  ['swap_5f0q_15',['SWAP_0Q',['../classSWAP__0Q.html#a9054d89bc42335d2a7d99e40791a83a3',1,'SWAP_0Q']]]
 ];

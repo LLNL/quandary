@@ -104,9 +104,9 @@ Collaboration diagram for Oscillator:</div>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a99fd3a4a9ef26a4f8025ac7a519d900b" id="r_a99fd3a4a9ef26a4f8025ac7a519d900b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a99fd3a4a9ef26a4f8025ac7a519d900b">Oscillator</a> ()</td></tr>
 <tr class="separator:a99fd3a4a9ef26a4f8025ac7a519d900b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a91d2fbadde79c86026a41adfef18eb9a" id="r_a91d2fbadde79c86026a41adfef18eb9a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a91d2fbadde79c86026a41adfef18eb9a">Oscillator</a> (<a class="el" href="classConfig.html">Config</a> config, size_t id, std::vector&lt; int &gt; nlevels_all_, std::vector&lt; std::string &gt; &amp;controlsegments, std::vector&lt; std::string &gt; &amp;controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector&lt; double &gt; carrier_freq_, double Tfinal_, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype_, std::default_random_engine rand_engine)</td></tr>
-<tr class="memdesc:a91d2fbadde79c86026a41adfef18eb9a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with full oscillator specification.  <br /></td></tr>
-<tr class="separator:a91d2fbadde79c86026a41adfef18eb9a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3e59cef4deb529213e72bae17827932e" id="r_a3e59cef4deb529213e72bae17827932e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a3e59cef4deb529213e72bae17827932e">Oscillator</a> (<a class="el" href="classConfig.html">Config</a> config, size_t id, const std::vector&lt; int &gt; &amp;nlevels_all_, std::vector&lt; std::string &gt; &amp;controlsegments, std::vector&lt; std::string &gt; &amp;controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector&lt; double &gt; &amp;carrier_freq_, double Tfinal_, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype_, std::default_random_engine rand_engine)</td></tr>
+<tr class="memdesc:a3e59cef4deb529213e72bae17827932e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructor with full oscillator specification.  <br /></td></tr>
+<tr class="separator:a3e59cef4deb529213e72bae17827932e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2ad7e67cb42d0a44d430675ffc084c5b" id="r_a2ad7e67cb42d0a44d430675ffc084c5b"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a2ad7e67cb42d0a44d430675ffc084c5b">~Oscillator</a> ()</td></tr>
 <tr class="separator:a2ad7e67cb42d0a44d430675ffc084c5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aee2b84d3889ff76408152dae66d8ecd5" id="r_aee2b84d3889ff76408152dae66d8ecd5"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#aee2b84d3889ff76408152dae66d8ecd5">getNParams</a> ()</td></tr>
@@ -269,8 +269,8 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a91d2fbadde79c86026a41adfef18eb9a" name="a91d2fbadde79c86026a41adfef18eb9a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a91d2fbadde79c86026a41adfef18eb9a">&#9670;&#160;</a></span>Oscillator() <span class="overload">[2/2]</span></h2>
+<a id="a3e59cef4deb529213e72bae17827932e" name="a3e59cef4deb529213e72bae17827932e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3e59cef4deb529213e72bae17827932e">&#9670;&#160;</a></span>Oscillator() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -290,7 +290,7 @@ Protected Attributes</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::vector&lt; int &gt;&#160;</td>
+          <td class="paramtype">const std::vector&lt; int &gt; &amp;&#160;</td>
           <td class="paramname"><em>nlevels_all_</em>, </td>
         </tr>
         <tr>
@@ -338,7 +338,7 @@ Protected Attributes</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::vector&lt; double &gt;&#160;</td>
+          <td class="paramtype">const std::vector&lt; double &gt; &amp;&#160;</td>
           <td class="paramname"><em>carrier_freq_</em>, </td>
         </tr>
         <tr>

@@ -7,7 +7,7 @@ var searchData=
   ['gamma_5fpenalty_5fvariation_4',['gamma_penalty_variation',['../classOptimProblem.html#a12c8870f7d283dbbb972a1d931651053',1,'OptimProblem']]],
   ['gamma_5ftik_5',['gamma_tik',['../classOptimProblem.html#afed5d75b033372f75ed04fca102e5f8a',1,'OptimProblem']]],
   ['gamma_5ftik_5finterpolate_6',['gamma_tik_interpolate',['../classOptimProblem.html#ae28a5779c6ea7a6bfdfac89268df4474',1,'OptimProblem']]],
-  ['gate_7',['gate',['../defs_8hpp.html#a0d59972970c855496cb4c877501e668fa1818cedf1c2bed8c63664cc8313b443c',1,'GATE:&#160;defs.hpp'],['../classGate.html#a4fc24ecebc0ca8252bf7ab96a705e58a',1,'Gate::Gate()'],['../classGate.html#adf66e54c2271a8c93f53fd76f1364b47',1,'Gate::Gate(std::vector&lt; int &gt; nlevels_, std::vector&lt; int &gt; nessential_, double time_, std::vector&lt; double &gt; gate_rot_freq, LindbladType lindbladtype_, bool quietmode=false)'],['../classGate.html',1,'Gate']]],
+  ['gate_7',['gate',['../defs_8hpp.html#a0d59972970c855496cb4c877501e668fa1818cedf1c2bed8c63664cc8313b443c',1,'GATE:&#160;defs.hpp'],['../classGate.html#a4fc24ecebc0ca8252bf7ab96a705e58a',1,'Gate::Gate()'],['../classGate.html#a5cf7e8b1eb541064760541f6d18fc382',1,'Gate::Gate(const std::vector&lt; int &gt; &amp;nlevels_, const std::vector&lt; int &gt; &amp;nessential_, double time_, const std::vector&lt; double &gt; &amp;gate_rot_freq, LindbladType lindbladtype_, bool quietmode=false)'],['../classGate.html',1,'Gate']]],
   ['gate_2ecpp_8',['gate.cpp',['../gate_8cpp.html',1,'']]],
   ['gate_2ehpp_9',['gate.hpp',['../gate_8hpp.html',1,'']]],
   ['gate_5frot_5ffreq_10',['gate_rot_freq',['../classGate.html#a3e01ad590ce8ffa37e497f46b5152010',1,'Gate']]],

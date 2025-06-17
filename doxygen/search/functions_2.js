@@ -2,7 +2,7 @@ var searchData=
 [
   ['clearparams_0',['clearParams',['../classOscillator.html#ac11241f9fdaf1ee725e3cca7c66afa10',1,'Oscillator']]],
   ['closetrajectorydatafiles_1',['closeTrajectoryDataFiles',['../classOutput.html#a03cbb7a52a46da5111e36c9bc29487fe',1,'Output']]],
-  ['cnot_2',['CNOT',['../classCNOT.html#a68e4213dd4c01384c1e10cd096b64d58',1,'CNOT']]],
+  ['cnot_2',['CNOT',['../classCNOT.html#a26646626301e207a9dacbbea127e2cad',1,'CNOT']]],
   ['compositionalimplmidpoint_3',['CompositionalImplMidpoint',['../classCompositionalImplMidpoint.html#a51affdd79a772d6bf79a95093c3f6754',1,'CompositionalImplMidpoint']]],
   ['compute_5fdrhs_5fdparams_4',['compute_dRHS_dParams',['../classMasterEq.html#afd3d3d8301ab8e3d23a59601f1dd0665',1,'MasterEq']]],
   ['compute_5fdrhs_5fdparams_5fmatfree_5',['compute_drhs_dparams_matfree',['../mastereq_8hpp.html#aa983d2208310e7d957c97114ab3fbebd',1,'compute_dRHS_dParams_matfree(const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad, std::vector&lt; int &gt; &amp;nlevels, LindbladType lindbladtype, Oscillator **oscil_vec):&#160;mastereq.cpp'],['../mastereq_8cpp.html#aedacbb7ca7a8e9d3c9de1ce6983f9c15',1,'compute_dRHS_dParams_matfree(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad, std::vector&lt; int &gt; &amp;nlevels, LindbladType lindbladtype, Oscillator **oscil_vec):&#160;mastereq.cpp']]],
@@ -14,5 +14,5 @@ var searchData=
   ['control_5ft_11',['control_T',['../mastereq_8hpp.html#a05441506524e4cfac60bc0ed729e51ba',1,'mastereq.hpp']]],
   ['controlbasis_12',['controlbasis',['../classControlBasis.html#a3942889265eab2353dcef37c63ce856b',1,'ControlBasis::ControlBasis(int nparams_, double tstart, double tstop, bool enforceZeroBoundary)'],['../classControlBasis.html#a716baae5e56466c8edba3f646c900efd',1,'ControlBasis::ControlBasis()']]],
   ['copylast_13',['copyLast',['../util_8hpp.html#aea85cbc77837b8aeed1d76125a319831',1,'util.hpp']]],
-  ['cqnot_14',['CQNOT',['../classCQNOT.html#a621784adadda055fc442d947c35a0733',1,'CQNOT']]]
+  ['cqnot_14',['CQNOT',['../classCQNOT.html#aec05b90b60d501e10614d4e121f0d0f0',1,'CQNOT']]]
 ];

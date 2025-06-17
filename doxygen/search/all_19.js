@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['zgate_0',['zgate',['../classZGate.html',1,'ZGate'],['../classZGate.html#a37832357e83f61e62634af39f7d49f06',1,'ZGate::ZGate()']]]
+  ['zgate_0',['zgate',['../classZGate.html',1,'ZGate'],['../classZGate.html#a3a6134d7e23d12217c3c102f23cdafa4',1,'ZGate::ZGate()']]]
 ];
