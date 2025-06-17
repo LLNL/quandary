@@ -207,6 +207,9 @@ int main(int argc,char **argv)
   ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
   // Enable PETSc memory tracking
   PetscMemorySetGetMaximumUsage();
+  PetscLogDouble mem_after_init;
+  PetscMemoryGetCurrentUsage(&mem_after_init);
+  if (mpirank_world == 0) PetscPrintf(PETSC_COMM_WORLD, "PETSc memory after init: %.1fMB\n", mem_after_init/1024/1024);
 #endif
   PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
   CALI_MARK_END("initialization.petsc");
