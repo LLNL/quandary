@@ -404,6 +404,7 @@ int main(int argc,char **argv)
   CALI_MARK_END("initialization.optimization");
 
   /* Set upt solution and gradient vector */
+  CALI_MARK_BEGIN("initialization.solution");
   Vec xinit;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xinit);
   VecSetFromOptions(xinit);
@@ -412,6 +413,7 @@ int main(int argc,char **argv)
   VecSetUp(grad);
   VecZeroEntries(grad);
   Vec opt;
+  CALI_MARK_END("initialization.solution");
 
   /* Some output */
   if (mpirank_world == 0)
