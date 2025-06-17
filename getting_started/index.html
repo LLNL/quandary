@@ -106,9 +106,17 @@
     <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
         <ul class="nav flex-column">
             
-            <li class="nav-item" data-bs-level="1"><a href="#installation" class="nav-link">Installation</a>
+            <li class="nav-item" data-bs-level="1"><a href="#getting-started" class="nav-link">Getting Started</a>
               <ul class="nav flex-column">
-            <li class="nav-item" data-bs-level="2"><a href="#quick-start" class="nav-link">Quick start</a>
+            <li class="nav-item" data-bs-level="2"><a href="#installation" class="nav-link">Installation</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#running" class="nav-link">Running</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#next-steps" class="nav-link">Next Steps</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -119,34 +127,63 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<h1 id="installation">Installation</h1>
-<p>Read the <code>README.md</code>! In short:</p>
-<ol>
-<li>Install PETSc (https://petsc.org/).</li>
-<li>Compile the quandary executable and install with:</li>
-</ol>
-<pre><code class="language-console">  &gt; mkdir build &amp;&amp; cd build
-  &gt; cmake ..
-  &gt; make
-  &gt; sudo cmake --install .
+<h1 id="getting-started">Getting Started</h1>
+<h2 id="installation">Installation</h2>
+<p>You have two options to install the Quandary binary:</p>
+<h3 id="option-1-install-via-spack-recommended">Option 1: Install via Spack (Recommended)</h3>
+<p>If you have <a href="https://spack.readthedocs.io/en/latest/getting_started.html#installation">Spack</a> installed:</p>
+<pre><code class="language-console">spack install quandary
 </code></pre>
-<ol>
-<li>To use the python interface, create a virtual environment and do:</li>
-</ol>
-<pre><code class="language-console">  &gt; pip install -e .
+<p>This automatically handles all dependencies including PETSc and MPI.</p>
+<h3 id="option-2-build-from-source">Option 2: Build from Source</h3>
+<p><strong>Prerequisites for building from source:</strong></p>
+<ul>
+<li><strong>PETSc</strong> (Portable, Extensible Toolkit for Scientific Computation)</li>
+<li><strong>MPI</strong> implementation for parallel execution</li>
+<li><strong>CMake</strong> 3.23 or later</li>
+<li><strong>C++ compiler</strong> with C++14 support</li>
+</ul>
+<p><strong>Steps:</strong></p>
+<ul>
+<li>Clone the repository:</li>
+</ul>
+<pre><code class="language-console">git clone https://github.com/LLNL/quandary.git
+cd quandary
 </code></pre>
-<h2 id="quick-start">Quick start</h2>
-<p>The C++ Quandary executable takes a configuration input file. As a quick start, test it with</p>
-<pre><code class="language-console">&gt; ./quandary config_template.cfg  # (serial execution)
+<ul>
+<li>Follow the detailed build instructions in the <a href="https://github.com/LLNL/quandary/blob/main/README.md">README.md</a></li>
+</ul>
+<h2 id="running">Running</h2>
+<h3 id="c-interface">C++ Interface</h3>
+<p>Test your installation with the provided template:</p>
+<pre><code class="language-console">./quandary config_template.cfg  # Serial execution
+mpirun -np 4 ./quandary config_template.cfg  # Parallel execution
 </code></pre>
-<pre><code class="language-console">&gt; mpirun -np 4 ./quandary config_template.cfg  # (on 4 cores)
+<p>This runs a CNOT gate optimization example. Results are written to the <code>data_out/</code> directory as text files.</p>
+<h3 id="python-interface">Python Interface</h3>
+<p>For Python interface, after cloning quandary:</p>
+<pre><code class="language-console">pip install -e .
 </code></pre>
-<p>You can silence Quandary by adding the <code>--quiet</code> command line argument.</p>
-<p>Results are written as column-based text files in the output directory. Gnuplot is an excellent plotting tool to visualize the written output files, see below. The <code>config_template.cfg</code> is currently set to run a CNOT optimization test case. It lists all available options and configurations, and is filled with comments that should help users to set up new simulation and optimization runs, and match the input options to the equations found in this document.</p>
-<p>Test the python interface by running one of the examples in <code>examples/</code>, e.g.</p>
-<pre><code class="language-console">&gt; python3 example_swap02.py
+<p>Test the Python interface with a working example:</p>
+<pre><code class="language-console">cd examples
+python example_cnot.py
 </code></pre>
-<p>The python interpreter will start background processes on the C++ executable using a config file written by the python interpreter, and gathers quandary's output results back into the python shell for plotting.</p></div>
+<p>This example demonstrates:</p>
+<ul>
+<li>Setting up a 2-qubit system</li>
+<li>Defining a CNOT gate target</li>
+<li>Running optimization</li>
+<li>Plotting results</li>
+</ul>
+<p>The output will show optimization progress and generate control pulse plots.</p>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li><strong><a href="https://github.com/LLNL/quandary-examples/">Examples</a></strong>: Check out the quandary-examples repo</li>
+<li><strong><a href="../QuandaryWithPython_HowTo/">Jupyter Example</a></strong>: Check out the Jupyter Notebook Tutorial in these docs or in the above repo</li>
+<li><strong><a href="../user_guide/">User Guide</a></strong>: Comprehensive documentation of Quandary's capabilities and details</li>
+<li><strong><a href="../config/">C++ Config Reference</a></strong>: Reference listing configuration files in detail</li>
+<li><strong><a href="../python_api/">Python API Reference</a></strong>: Reference listing the Python interface in detail</li>
+</ul></div>
             </div>
         </div>
 
