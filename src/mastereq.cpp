@@ -137,31 +137,7 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   for (int iosc = 0; iosc < noscillators*(noscillators-1)/2; iosc++) RHSctx.Ad_coeffs.push_back(0.0);
 
   /* Set the MatMult routine for applying the RHS to a vector x */
-  if (usematfree) { // matrix-free solver
-    if (noscillators == 1) {
-      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_1Osc);
-      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_1Osc);
-    } else if (noscillators == 2) {
-      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_2Osc);
-      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_2Osc);
-    } else if (noscillators == 3) {
-      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_3Osc);
-      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_3Osc);
-    } else if (noscillators == 4) {
-      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_4Osc);
-      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_4Osc);
-    } else if (noscillators == 5) {
-      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_matfree_5Osc);
-      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_matfree_5Osc);
-    } else {
-      printf("ERROR. Matfree solver only for up to 5 oscillators. This should never happen! %d\n", noscillators);
-      exit(1);
-    }
-  }
-  else { // sparse-matrix solver
-    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) myMatMult_sparsemat);
-    MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) myMatMultTranspose_sparsemat);
-  }
+  set_RHS_MatMult_operation();
 }
 
 
@@ -282,7 +258,7 @@ void MasterEq::initSparseMatSolver(){
     if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from file %s.\n\n", hamiltonian_file.c_str());
 
     /* Read Hamiltonians from file */
-    PythonInterface* py = new PythonInterface(hamiltonian_file, lindbladtype, dim_rho, quietmode);
+    HamiltonianFileReader* py = new HamiltonianFileReader(hamiltonian_file, lindbladtype, dim_rho, quietmode);
     py->receiveHsys(Bd, Ad);
     py->receiveHc(noscillators, Ac_vec, Bc_vec); 
 
@@ -671,16 +647,6 @@ void MasterEq::initSparseMatSolver(){
   MatCreateVecs(Bd, &aux, NULL);
 }
 
-int MasterEq::getDim(){ return dim; }
-
-int MasterEq::getDimEss(){ return dim_ess; }
-
-int MasterEq::getDimRho(){ return dim_rho; }
-
-size_t MasterEq::getNOscillators() { return noscillators; }
-
-Oscillator* MasterEq::getOscillator(const size_t i) { return oscil_vec[i]; }
-
 int MasterEq::assemble_RHS(const double t){
   /* Prepare the matrix shell to perform the action of RHS on a vector */
 
@@ -704,507 +670,17 @@ int MasterEq::assemble_RHS(const double t){
   return 0;
 }
 
-
-
 Mat MasterEq::getRHS() { return RHS; }
 
+// Gradient of RHS wrt parameters: grad += alpha * x^T * (d RHS / d params)^T * xbar 
+void MasterEq::compute_dRHS_dParams(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
 
-// void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs) {
+  if (!usematfree) {  // Sparse-matrix application of RHS 
+    compute_dRHS_dParams_sparsemat(t, x, xbar,  alpha, grad, nlevels, isu, isv, Ac_vec, Bc_vec, aux, oscil_vec);
 
-//   Vec red;
-
-//   /* Get dimensions of preceding and following subsystem */
-//   int dim_pre  = 1; 
-//   int dim_post = 1;
-//   for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
-//     dim_pre  *= getOscillator(iosc)->getNLevels();
-//   for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
-//     dim_post *= getOscillator(iosc)->getNLevels();
-
-//   int dim_reduced = 1;
-//   for (int i = 0; i < oscilIDs.size();i++) {
-//     dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
-//   }
-
-//   /* sanity test */
-//   int dimmat = dim_pre * dim_reduced * dim_post;
-//   assert ( (int) pow(dimmat,2) == dim);
-
-//   /* Get local ownership of incoming full density matrix */
-//   int ilow, iupp;
-//   VecGetOwnershipRange(rho, &ilow, &iupp);
-
-//   /* Create reduced density matrix, sequential */
-//   VecCreateSeq(PETSC_COMM_SELF, 2*dim_reduced*dim_reduced, &red);
-//   VecSetFromOptions(red);
-
-//   /* Iterate over reduced density matrix elements */
-//   for (int i=0; i<dim_reduced; i++) {
-//     for (int j=0; j<dim_reduced; j++) {
-//       double sum_re = 0.0;
-//       double sum_im = 0.0;
-//       /* Iterate over all dim_pre blocks of size n_k * dim_post */
-//       for (int l = 0; l < dim_pre; l++) {
-//         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
-//         /* iterate over elements in this block */
-//         for (int m=0; m<dim_post; m++) {
-//           int rho_row = blockstartID + i * dim_post + m;
-//           int rho_col = blockstartID + j * dim_post + m;
-//           int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
-//           int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
-//           /* Get real and imaginary part from full density matrix */
-//           double re = 0.0;
-//           double im = 0.0;
-//           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
-//             VecGetValues(rho, 1, &rho_vecID_re, &re);
-//             VecGetValues(rho, 1, &rho_vecID_im, &im);
-//           } 
-//           /* add to partial trace */
-//           sum_re += re;
-//           sum_im += im;
-//         }
-//       }
-//       /* Set real and imaginary part of element (i,j) of the reduced density matrix */
-//       int out_vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
-//       int out_vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
-//       VecSetValues( red, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
-//       VecSetValues( red, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
-//     }
-//   }
-//   VecAssemblyBegin(red);
-//   VecAssemblyEnd(red);
-
-//   /* Sum up from all petsc cores. This is not at all a good solution. TODO: Change this! */
-//   double* dataptr;
-//   int size = 2*dim_reduced*dim_reduced;
-//   double* mydata = new double[size];
-//   VecGetArray(red, &dataptr);
-//   for (int i=0; i<size; i++) {
-//     mydata[i] = dataptr[i];
-//   }
-//   MPI_Allreduce(mydata, dataptr, size, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
-//   VecRestoreArray(red, &dataptr);
-//   delete [] mydata;
-
-//   /* Set output */
-//   *reduced = red;
-// }
-
-
-// void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const std::vector<int>& oscilIDs) {
-
-//   /* Get dimensions of preceding and following subsystem */
-//   int dim_pre  = 1; 
-//   int dim_post = 1;
-//   for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
-//     dim_pre  *= getOscillator(iosc)->getNLevels();
-//   for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
-//     dim_post *= getOscillator(iosc)->getNLevels();
-
-//   int dim_reduced = 1;
-//   for (int i = 0; i < oscilIDs.size();i++) {
-//     dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
-//   }
-
-//   /* Get local ownership of full density rhobar */
-//   int ilow, iupp;
-//   VecGetOwnershipRange(rhobar, &ilow, &iupp);
-
-//   /* Get local ownership of reduced density bar*/
-//   int ilow_red, iupp_red;
-//   VecGetOwnershipRange(reducedbar, &ilow_red, &iupp_red);
-
-//   /* sanity test */
-//   int dimmat = dim_pre * dim_reduced * dim_post;
-//   assert ( (int) pow(dimmat,2) == dim);
-
-//  /* Iterate over reduced density matrix elements */
-//   for (int i=0; i<dim_reduced; i++) {
-//     for (int j=0; j<dim_reduced; j++) {
-//       /* Get value from reducedbar */
-//       int vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
-//       int vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
-//       double re = 0.0;
-//       double im = 0.0;
-//       VecGetValues( reducedbar, 1, &vecID_re, &re);
-//       VecGetValues( reducedbar, 1, &vecID_im, &im);
-
-//       /* Iterate over all dim_pre blocks of size n_k * dim_post */
-//       for (int l = 0; l < dim_pre; l++) {
-//         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
-//         /* iterate over elements in this block */
-//         for (int m=0; m<dim_post; m++) {
-//           /* Set values into rhobar */
-//           int rho_row = blockstartID + i * dim_post + m;
-//           int rho_col = blockstartID + j * dim_post + m;
-//           int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
-//           int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
-
-//           /* Set derivative */
-//           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
-//             VecSetValues(rhobar, 1, &rho_vecID_re, &re, ADD_VALUES);
-//             VecSetValues(rhobar, 1, &rho_vecID_im, &im, ADD_VALUES);
-//           }
-//         }
-//       }
-//     }
-//   }
-//   VecAssemblyBegin(rhobar); VecAssemblyEnd(rhobar);
-
-// }
-
-/* grad += alpha * RHS(x)^T * xbar  */
-void MasterEq::computedRHSdp(const double t, const Vec x, const Vec xbar, const double alpha, Vec grad) {
-
-
-  if (usematfree) {  // Matrix-free solver
-    double res_p_re,  res_p_im, res_q_re, res_q_im;
-
-    const double* xptr, *xbarptr;
-    VecGetArrayRead(x, &xptr);
-    VecGetArrayRead(xbar, &xbarptr);
-
-    double* coeff_p = new double [noscillators];
-    double* coeff_q = new double [noscillators];
-    for (int i=0; i<noscillators; i++){
-      coeff_p[i] = 0.0;
-      coeff_q[i] = 0.0;
-    }
-
-    if (noscillators == 1) {
-    /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
-      int n0 = nlevels[0];
-      int stridei0  = TensorGetIndex(n0, 1,0);
-      int stridei0p = TensorGetIndex(n0, 0,1);
-      /* Switch for Lindblad vs Schroedinger solver */
-      int n0p = n0;
-      if (lindbladtype == LindbladType::NONE) { // Schroedinger
-        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
-      }
-
-      /* --- Collect coefficients for gradient --- */
-      int it = 0;
-      // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0p; i0p++)  {
-          for (int i0 = 0; i0 < n0; i0++)  {
-              /* Get xbar */
-              double xbarre = xbarptr[2*it];
-              double xbarim = xbarptr[2*it+1];
-
-              /* --- Oscillator 0 --- */
-              dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-              coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
-              coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
-
-              it++;
-            }
-        }
-    }
-    else if (noscillators == 2) {
-    /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
-      int n0 = nlevels[0];
-      int n1 = nlevels[1];
-      int stridei0  = TensorGetIndex(n0,n1, 1,0,0,0);
-      int stridei1  = TensorGetIndex(n0,n1, 0,1,0,0);
-      int stridei0p = TensorGetIndex(n0,n1, 0,0,1,0);
-      int stridei1p = TensorGetIndex(n0,n1, 0,0,0,1);
-      /* Switch for Lindblad vs Schroedinger solver */
-      int n0p = n0;
-      int n1p = n1;
-      if (lindbladtype == LindbladType::NONE) { // Schroedinger
-        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
-        n1p = 1;
-      }
-
-      /* --- Collect coefficients for gradient --- */
-      int it = 0;
-      // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0p; i0p++)  {
-        for (int i1p = 0; i1p < n1p; i1p++)  {
-          for (int i0 = 0; i0 < n0; i0++)  {
-            for (int i1 = 0; i1 < n1; i1++)  {
-              /* Get xbar */
-              double xbarre = xbarptr[2*it];
-              double xbarim = xbarptr[2*it+1];
-
-              /* --- Oscillator 0 --- */
-              dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-              coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
-              coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
-              /* --- Oscillator 1 --- */
-              dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-              coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
-              coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
-
-              it++;
-            }
-          }
-        }
-      }
-    } else if (noscillators == 3) {
-      /* compute strides for accessing x */
-      int n0 = nlevels[0];
-      int n1 = nlevels[1];
-      int n2 = nlevels[2];
-      int stridei0  = TensorGetIndex(n0,n1,n2, 1,0,0,0,0,0);
-      int stridei1  = TensorGetIndex(n0,n1,n2, 0,1,0,0,0,0);
-      int stridei2  = TensorGetIndex(n0,n1,n2, 0,0,1,0,0,0);
-      int stridei0p = TensorGetIndex(n0,n1,n2, 0,0,0,1,0,0);
-      int stridei1p = TensorGetIndex(n0,n1,n2, 0,0,0,0,1,0);
-      int stridei2p = TensorGetIndex(n0,n1,n2, 0,0,0,0,0,1);
-      /* Switch for Lindblad vs Schroedinger solver */
-      int n0p = n0;
-      int n1p = n1;
-      int n2p = n2;
-      if (lindbladtype == LindbladType::NONE) { // Schroedinger
-        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
-        n1p = 1;
-        n2p = 1;
-      }
-      /* --- Collect coefficients for gradient --- */
-      int it = 0;
-      // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0p; i0p++)  {
-        for (int i1p = 0; i1p < n1p; i1p++)  {
-          for (int i2p = 0; i2p < n2p; i2p++)  {
-            for (int i0 = 0; i0 < n0; i0++)  {
-              for (int i1 = 0; i1 < n1; i1++)  {
-                for (int i2 = 0; i2 < n2; i2++)  {
-                  /* Get xbar */
-                  double xbarre = xbarptr[2*it];
-                  double xbarim = xbarptr[2*it+1];
-
-                  /* --- Oscillator 0 --- */
-                  dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                  coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
-                  coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
-                  /* --- Oscillator 1 --- */
-                  dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                  coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
-                  coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
-                  /* --- Oscillator 2 --- */
-                  dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                  coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
-                  coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
-
-                  it++;
-                }
-              }
-            }
-          }
-        }
-      }
-    } else if (noscillators == 4) {
-      /* compute strides for accessing x */
-      int n0 = nlevels[0];
-      int n1 = nlevels[1];
-      int n2 = nlevels[2];
-      int n3 = nlevels[3];
-      int stridei0  = TensorGetIndex(n0,n1,n2,n3, 1,0,0,0,0,0,0,0);
-      int stridei1  = TensorGetIndex(n0,n1,n2,n3, 0,1,0,0,0,0,0,0);
-      int stridei2  = TensorGetIndex(n0,n1,n2,n3, 0,0,1,0,0,0,0,0);
-      int stridei3  = TensorGetIndex(n0,n1,n2,n3, 0,0,0,1,0,0,0,0);
-      int stridei0p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,1,0,0,0);
-      int stridei1p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,1,0,0);
-      int stridei2p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,1,0);
-      int stridei3p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,0,1);
-      /* Switch for Lindblad vs Schroedinger solver */
-      int n0p = n0;
-      int n1p = n1;
-      int n2p = n2;
-      int n3p = n3;
-      if (lindbladtype == LindbladType::NONE) { // Schroedinger
-        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
-        n1p = 1;
-        n2p = 1;
-        n3p = 1;
-      }
-      /* --- Collect coefficients for gradient --- */
-      int it = 0;
-      // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0p; i0p++)  {
-        for (int i1p = 0; i1p < n1p; i1p++)  {
-          for (int i2p = 0; i2p < n2p; i2p++)  {
-            for (int i3p = 0; i3p < n3p; i3p++)  {
-              for (int i0 = 0; i0 < n0; i0++)  {
-                for (int i1 = 0; i1 < n1; i1++)  {
-                  for (int i2 = 0; i2 < n2; i2++)  {
-                    for (int i3 = 0; i3 < n3; i3++)  {
-                      /* Get xbar */
-                      double xbarre = xbarptr[2*it];
-                      double xbarim = xbarptr[2*it+1];
-
-                      /* --- Oscillator 0 --- */
-                      dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                      coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
-                      coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
-                      /* --- Oscillator 1 --- */
-                      dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                      coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
-                      coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
-                      /* --- Oscillator 2 --- */
-                      dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                      coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
-                      coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
-                      /* --- Oscillator 3 --- */
-                      dRHSdp_getcoeffs(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                      coeff_p[3] += res_p_re * xbarre + res_p_im * xbarim;
-                      coeff_q[3] += res_q_re * xbarre + res_q_im * xbarim;
-
-                      it++;
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    } else if (noscillators == 5) {
-      /* compute strides for accessing x */
-      int n0 = nlevels[0];
-      int n1 = nlevels[1];
-      int n2 = nlevels[2];
-      int n3 = nlevels[3];
-      int n4 = nlevels[4];
-      int stridei0  = TensorGetIndex(n0,n1,n2,n3,n4, 1,0,0,0,0,0,0,0,0,0);
-      int stridei1  = TensorGetIndex(n0,n1,n2,n3,n4, 0,1,0,0,0,0,0,0,0,0);
-      int stridei2  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,1,0,0,0,0,0,0,0);
-      int stridei3  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,1,0,0,0,0,0,0);
-      int stridei4  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,1,0,0,0,0,0);
-      int stridei0p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,1,0,0,0,0);
-      int stridei1p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,1,0,0,0);
-      int stridei2p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,1,0,0);
-      int stridei3p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,1,0);
-      int stridei4p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,0,1);
-      /* Switch for Lindblad vs Schroedinger solver */
-      int n0p = n0;
-      int n1p = n1;
-      int n2p = n2;
-      int n3p = n3;
-      int n4p = n4;
-      if (lindbladtype == LindbladType::NONE) { // Schroedinger
-        n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
-        n1p = 1;
-        n2p = 1;
-        n3p = 1;
-        n4p = 1;
-      }
-      /* --- Collect coefficients for gradient --- */
-      int it = 0;
-      // Iterate over indices of xbar
-      for (int i0p = 0; i0p < n0p; i0p++)  {
-        for (int i1p = 0; i1p < n1p; i1p++)  {
-          for (int i2p = 0; i2p < n2p; i2p++)  {
-            for (int i3p = 0; i3p < n3p; i3p++)  {
-              for (int i4p = 0; i4p < n4p; i4p++)  {
-                for (int i0 = 0; i0 < n0; i0++)  {
-                  for (int i1 = 0; i1 < n1; i1++)  {
-                    for (int i2 = 0; i2 < n2; i2++)  {
-                      for (int i3 = 0; i3 < n3; i3++)  {
-                        for (int i4 = 0; i4 < n4; i4++)  {
-                          /* Get xbar */
-                          double xbarre = xbarptr[2*it];
-                          double xbarim = xbarptr[2*it+1];
-
-                          /* --- Oscillator 0 --- */
-                          dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                          coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
-                          coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
-                          /* --- Oscillator 1 --- */
-                          dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                          coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
-                          coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
-                          /* --- Oscillator 2 --- */
-                          dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                          coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
-                          coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
-                          /* --- Oscillator 3 --- */
-                          dRHSdp_getcoeffs(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                          coeff_p[3] += res_p_re * xbarre + res_p_im * xbarim;
-                          coeff_q[3] += res_q_re * xbarre + res_q_im * xbarim;
-                          /* --- Oscillator 4 --- */
-                          dRHSdp_getcoeffs(it, n4, n4p, i4, i4p, stridei4, stridei4p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
-                          coeff_p[4] += res_p_re * xbarre + res_p_im * xbarim;
-                          coeff_q[4] += res_q_re * xbarre + res_q_im * xbarim;
-
-                          it++;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    } else { 
-      printf("This should never happen!\n"); 
-      exit(1);
-    }
-    VecRestoreArrayRead(x, &xptr);
-    VecRestoreArrayRead(xbar, &xbarptr);
-
-    /* Set the gradient wrt controls */
-    int col_shift = 0;
-    double* grad_ptr;
-    VecGetArray(grad, &grad_ptr);
-    for (int iosc = 0; iosc < noscillators; iosc++){
-
-      double* grad_for_this_oscillator = grad_ptr + col_shift;
-      oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, alpha*coeff_p[iosc], alpha*coeff_q[iosc]);
-
-      col_shift += getOscillator(iosc)->getNParams();
-    }
-    VecRestoreArray(grad, &grad_ptr);
-
-    delete [] coeff_p;
-    delete [] coeff_q;
-
-  } else {  // sparse matrix solver
-
-  /* Get real and imaginary part from x and x_bar */
-  Vec u, v, ubar, vbar;
-  VecGetSubVector(x, isu, &u);
-  VecGetSubVector(x, isv, &v);
-  VecGetSubVector(xbar, isu, &ubar);
-  VecGetSubVector(xbar, isv, &vbar);
-
-    /* Set the gradient wrt controls */
-    int col_shift = 0;
-    double* grad_ptr;
-    VecGetArray(grad, &grad_ptr);
-   // Iterate over oscillators 
-    for (int iosc= 0; iosc < noscillators; iosc++){
-
-      // Compute pbar and qbar from RHS(x)^T xbar
-    double uAubar = 0.0; 
-    double vAvbar = 0.0;
-    double vBubar = 0.0;
-    double uBvbar = 0.0;
-      MatMult(Ac_vec[iosc], u, aux); VecDot(aux, ubar, &uAubar); 
-      MatMult(Ac_vec[iosc], v, aux); VecDot(aux, vbar, &vAvbar); 
-      MatMult(Bc_vec[iosc], u, aux); VecDot(aux, vbar, &uBvbar); 
-      MatMult(Bc_vec[iosc], v, aux); VecDot(aux, ubar, &vBubar); 
-      double qbar = vAvbar + uAubar;
-      double pbar = uBvbar - vBubar;
-
-      double* grad_for_this_oscillator = grad_ptr + col_shift; 
-      oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, alpha*pbar, alpha*qbar);
-
-      // Set the shift in the gradient vector for the next oscillator
-      col_shift += getOscillator(iosc)->getNParams();
-    }
-    VecRestoreArray(grad, &grad_ptr);
-
-  /* Restore x */
-  VecRestoreSubVector(x, isu, &u);
-  VecRestoreSubVector(x, isv, &v);
-  VecRestoreSubVector(xbar, isu, &ubar);
-  VecRestoreSubVector(xbar, isv, &vbar);
+  } else {  // matrix-free application of RHS
+    compute_dRHS_dParams_matfree(t, x, xbar,  alpha, grad, nlevels, lindbladtype, oscil_vec);
   }
-
 }
 
 void MasterEq::setControlAmplitudes(const Vec x) {
@@ -1223,9 +699,41 @@ void MasterEq::setControlAmplitudes(const Vec x) {
   VecRestoreArrayRead(x, &ptr);
 }
 
+/* Pass MatMult operations for the RHS action onto a vector to Petsc */
+void MasterEq::set_RHS_MatMult_operation(){
+
+  // Interface routines for applying the RHS as sparse submatrices matrices
+  if (!usematfree) { 
+    MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_sparsemat);
+    MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_sparsemat_transpose);
+
+  // Interface routines for applying RHS in a matrix-free way
+  } else { 
+    if (noscillators == 1) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_matfree_1Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_matfree_transpose_1Osc);
+    } else if (noscillators == 2) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_matfree_2Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_matfree_transpose_2Osc);
+    } else if (noscillators == 3) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_matfree_3Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_matfree_transpose_3Osc);
+    } else if (noscillators == 4) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_matfree_4Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_matfree_transpose_4Osc);
+    } else if (noscillators == 5) {
+      MatShellSetOperation(RHS, MATOP_MULT, (void(*)(void)) applyRHS_matfree_5Osc);
+      MatShellSetOperation(RHS, MATOP_MULT_TRANSPOSE, (void(*)(void)) applyRHS_matfree_transpose_5Osc);
+    } else {
+      printf("ERROR. Matfree solver only for up to 5 oscillators. This should never happen! %d\n", noscillators);
+      exit(1);
+    }
+  }
+}
+
 
 /* Sparse matrix solver: Define the action of RHS on a vector x */
-int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
+int applyRHS_sparsemat(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1306,7 +814,6 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
     }
   }
 
-
   /* Restore */
   VecRestoreSubVector(x, *shellctx->isu, &u);
   VecRestoreSubVector(x, *shellctx->isv, &v);
@@ -1316,9 +823,8 @@ int myMatMult_sparsemat(Mat RHS, Vec x, Vec y){
   return 0;
 }
 
-
 /* Sparse-matrix solver: Define the action of RHS^T on a vector x */
-int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
+int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y) {
   double p,q;
 
   /* Get time from shell context */
@@ -1372,7 +878,7 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
     }
 
 
-  /* --- Gradient of time-dependent system Hamiltonian (Jaynes-Cumming) --- */
+  /* --- Time-dependent system Hamiltonian (Jaynes-Cumming) --- */
   int id_kl = 0;
   int noscillators = shellctx->nlevels.size();
   for (int k= 0; k< noscillators*(noscillators-1)/2; k++) {
@@ -1408,9 +914,363 @@ int myMatMultTranspose_sparsemat(Mat RHS, Vec x, Vec y) {
   return 0;
 }
 
+// Compute gradient of RHS wrt parameters (Sparse matrix version)
+void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec xbar, const double alpha, Vec grad, std::vector<int>& nlevels, IS isu, IS isv, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec, Vec aux, Oscillator** oscil_vec) {
+   int noscillators = nlevels.size();
+
+    /* Get real and imaginary part from x and xbar */
+    Vec u, v, ubar, vbar;
+    VecGetSubVector(x, isu, &u);
+    VecGetSubVector(x, isv, &v);
+    VecGetSubVector(xbar, isu, &ubar);
+    VecGetSubVector(xbar, isv, &vbar);
+
+    /* Set the gradient wrt controls */
+    int col_shift = 0;
+    double* grad_ptr;
+    VecGetArray(grad, &grad_ptr);
+    // Iterate over oscillators 
+    for (int iosc= 0; iosc < noscillators; iosc++){
+
+      // Compute pbar and qbar from RHS(x)^T xbar
+      double uAubar = 0.0; 
+      double vAvbar = 0.0;
+      double vBubar = 0.0;
+      double uBvbar = 0.0;
+      MatMult(Ac_vec[iosc], u, aux); VecDot(aux, ubar, &uAubar); 
+      MatMult(Ac_vec[iosc], v, aux); VecDot(aux, vbar, &vAvbar); 
+      MatMult(Bc_vec[iosc], u, aux); VecDot(aux, vbar, &uBvbar); 
+      MatMult(Bc_vec[iosc], v, aux); VecDot(aux, ubar, &vBubar); 
+      double qbar = vAvbar + uAubar;
+      double pbar = uBvbar - vBubar;
+
+      double* grad_for_this_oscillator = grad_ptr + col_shift; 
+      oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, alpha*pbar, alpha*qbar);
+
+      // Set the shift in the gradient vector for the next oscillator
+      col_shift += oscil_vec[iosc]->getNParams();
+    }
+    VecRestoreArray(grad, &grad_ptr);
+
+    /* Restore x */
+    VecRestoreSubVector(x, isu, &u);
+    VecRestoreSubVector(x, isv, &v);
+    VecRestoreSubVector(xbar, isu, &ubar);
+    VecRestoreSubVector(xbar, isv, &vbar);
+}
+
+// Compute gradient of RHS wrt parameters (Matrix-free version)
+void compute_dRHS_dParams_matfree(const double t,const Vec x,const Vec xbar, const double alpha, Vec grad, std::vector<int>& nlevels, LindbladType lindbladtype, Oscillator** oscil_vec){
+  double res_p_re,  res_p_im, res_q_re, res_q_im;
+
+  int noscillators = nlevels.size();
+
+  const double* xptr, *xbarptr;
+  VecGetArrayRead(x, &xptr);
+  VecGetArrayRead(xbar, &xbarptr);
+
+  double* coeff_p = new double [noscillators];
+  double* coeff_q = new double [noscillators];
+  for (int i=0; i<noscillators; i++){
+    coeff_p[i] = 0.0;
+    coeff_q[i] = 0.0;
+  }
+
+  if (noscillators == 1) {
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+    int n0 = nlevels[0];
+    int stridei0  = TensorGetIndex(n0, 1,0);
+    int stridei0p = TensorGetIndex(n0, 0,1);
+    /* Switch for Lindblad vs Schroedinger solver */
+    int n0p = n0;
+    if (lindbladtype == LindbladType::NONE) { // Schroedinger
+      n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+    }
+
+    /* --- Collect coefficients for gradient --- */
+    int it = 0;
+    // Iterate over indices of xbar
+    for (int i0p = 0; i0p < n0p; i0p++)  {
+        for (int i0 = 0; i0 < n0; i0++)  {
+            /* Get xbar */
+            double xbarre = xbarptr[2*it];
+            double xbarim = xbarptr[2*it+1];
+
+            /* --- Oscillator 0 --- */
+            dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+            coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+            coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+
+            it++;
+          }
+      }
+  }
+  else if (noscillators == 2) {
+  /* compute strides for accessing x at i0+1, i0-1, i0p+1, i0p-1, i1+1, i1-1, i1p+1, i1p-1: */
+    int n0 = nlevels[0];
+    int n1 = nlevels[1];
+    int stridei0  = TensorGetIndex(n0,n1, 1,0,0,0);
+    int stridei1  = TensorGetIndex(n0,n1, 0,1,0,0);
+    int stridei0p = TensorGetIndex(n0,n1, 0,0,1,0);
+    int stridei1p = TensorGetIndex(n0,n1, 0,0,0,1);
+    /* Switch for Lindblad vs Schroedinger solver */
+    int n0p = n0;
+    int n1p = n1;
+    if (lindbladtype == LindbladType::NONE) { // Schroedinger
+      n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+      n1p = 1;
+    }
+
+    /* --- Collect coefficients for gradient --- */
+    int it = 0;
+    // Iterate over indices of xbar
+    for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i1p = 0; i1p < n1p; i1p++)  {
+        for (int i0 = 0; i0 < n0; i0++)  {
+          for (int i1 = 0; i1 < n1; i1++)  {
+            /* Get xbar */
+            double xbarre = xbarptr[2*it];
+            double xbarim = xbarptr[2*it+1];
+
+            /* --- Oscillator 0 --- */
+            dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+            coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+            coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+            /* --- Oscillator 1 --- */
+            dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+            coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
+            coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
+
+            it++;
+          }
+        }
+      }
+    }
+  } else if (noscillators == 3) {
+    /* compute strides for accessing x */
+    int n0 = nlevels[0];
+    int n1 = nlevels[1];
+    int n2 = nlevels[2];
+    int stridei0  = TensorGetIndex(n0,n1,n2, 1,0,0,0,0,0);
+    int stridei1  = TensorGetIndex(n0,n1,n2, 0,1,0,0,0,0);
+    int stridei2  = TensorGetIndex(n0,n1,n2, 0,0,1,0,0,0);
+    int stridei0p = TensorGetIndex(n0,n1,n2, 0,0,0,1,0,0);
+    int stridei1p = TensorGetIndex(n0,n1,n2, 0,0,0,0,1,0);
+    int stridei2p = TensorGetIndex(n0,n1,n2, 0,0,0,0,0,1);
+    /* Switch for Lindblad vs Schroedinger solver */
+    int n0p = n0;
+    int n1p = n1;
+    int n2p = n2;
+    if (lindbladtype == LindbladType::NONE) { // Schroedinger
+      n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+      n1p = 1;
+      n2p = 1;
+    }
+    /* --- Collect coefficients for gradient --- */
+    int it = 0;
+    // Iterate over indices of xbar
+    for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i1p = 0; i1p < n1p; i1p++)  {
+        for (int i2p = 0; i2p < n2p; i2p++)  {
+          for (int i0 = 0; i0 < n0; i0++)  {
+            for (int i1 = 0; i1 < n1; i1++)  {
+              for (int i2 = 0; i2 < n2; i2++)  {
+                /* Get xbar */
+                double xbarre = xbarptr[2*it];
+                double xbarim = xbarptr[2*it+1];
+
+                /* --- Oscillator 0 --- */
+                dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+                coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+                /* --- Oscillator 1 --- */
+                dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
+                coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
+                /* --- Oscillator 2 --- */
+                dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
+                coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
+
+                it++;
+              }
+            }
+          }
+        }
+      }
+    }
+  } else if (noscillators == 4) {
+    /* compute strides for accessing x */
+    int n0 = nlevels[0];
+    int n1 = nlevels[1];
+    int n2 = nlevels[2];
+    int n3 = nlevels[3];
+    int stridei0  = TensorGetIndex(n0,n1,n2,n3, 1,0,0,0,0,0,0,0);
+    int stridei1  = TensorGetIndex(n0,n1,n2,n3, 0,1,0,0,0,0,0,0);
+    int stridei2  = TensorGetIndex(n0,n1,n2,n3, 0,0,1,0,0,0,0,0);
+    int stridei3  = TensorGetIndex(n0,n1,n2,n3, 0,0,0,1,0,0,0,0);
+    int stridei0p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,1,0,0,0);
+    int stridei1p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,1,0,0);
+    int stridei2p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,1,0);
+    int stridei3p = TensorGetIndex(n0,n1,n2,n3, 0,0,0,0,0,0,0,1);
+    /* Switch for Lindblad vs Schroedinger solver */
+    int n0p = n0;
+    int n1p = n1;
+    int n2p = n2;
+    int n3p = n3;
+    if (lindbladtype == LindbladType::NONE) { // Schroedinger
+      n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+      n1p = 1;
+      n2p = 1;
+      n3p = 1;
+    }
+    /* --- Collect coefficients for gradient --- */
+    int it = 0;
+    // Iterate over indices of xbar
+    for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i1p = 0; i1p < n1p; i1p++)  {
+        for (int i2p = 0; i2p < n2p; i2p++)  {
+          for (int i3p = 0; i3p < n3p; i3p++)  {
+            for (int i0 = 0; i0 < n0; i0++)  {
+              for (int i1 = 0; i1 < n1; i1++)  {
+                for (int i2 = 0; i2 < n2; i2++)  {
+                  for (int i3 = 0; i3 < n3; i3++)  {
+                    /* Get xbar */
+                    double xbarre = xbarptr[2*it];
+                    double xbarim = xbarptr[2*it+1];
+
+                    /* --- Oscillator 0 --- */
+                    dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                    coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+                    coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+                    /* --- Oscillator 1 --- */
+                    dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                    coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
+                    coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
+                    /* --- Oscillator 2 --- */
+                    dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                    coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
+                    coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
+                    /* --- Oscillator 3 --- */
+                    dRHSdp_getcoeffs(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                    coeff_p[3] += res_p_re * xbarre + res_p_im * xbarim;
+                    coeff_q[3] += res_q_re * xbarre + res_q_im * xbarim;
+
+                    it++;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } else if (noscillators == 5) {
+    /* compute strides for accessing x */
+    int n0 = nlevels[0];
+    int n1 = nlevels[1];
+    int n2 = nlevels[2];
+    int n3 = nlevels[3];
+    int n4 = nlevels[4];
+    int stridei0  = TensorGetIndex(n0,n1,n2,n3,n4, 1,0,0,0,0,0,0,0,0,0);
+    int stridei1  = TensorGetIndex(n0,n1,n2,n3,n4, 0,1,0,0,0,0,0,0,0,0);
+    int stridei2  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,1,0,0,0,0,0,0,0);
+    int stridei3  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,1,0,0,0,0,0,0);
+    int stridei4  = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,1,0,0,0,0,0);
+    int stridei0p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,1,0,0,0,0);
+    int stridei1p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,1,0,0,0);
+    int stridei2p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,1,0,0);
+    int stridei3p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,1,0);
+    int stridei4p = TensorGetIndex(n0,n1,n2,n3,n4, 0,0,0,0,0,0,0,0,0,1);
+    /* Switch for Lindblad vs Schroedinger solver */
+    int n0p = n0;
+    int n1p = n1;
+    int n2p = n2;
+    int n3p = n3;
+    int n4p = n4;
+    if (lindbladtype == LindbladType::NONE) { // Schroedinger
+      n0p = 1; // Cut down so that below loop has i0p=0 and i1p=0/
+      n1p = 1;
+      n2p = 1;
+      n3p = 1;
+      n4p = 1;
+    }
+    /* --- Collect coefficients for gradient --- */
+    int it = 0;
+    // Iterate over indices of xbar
+    for (int i0p = 0; i0p < n0p; i0p++)  {
+      for (int i1p = 0; i1p < n1p; i1p++)  {
+        for (int i2p = 0; i2p < n2p; i2p++)  {
+          for (int i3p = 0; i3p < n3p; i3p++)  {
+            for (int i4p = 0; i4p < n4p; i4p++)  {
+              for (int i0 = 0; i0 < n0; i0++)  {
+                for (int i1 = 0; i1 < n1; i1++)  {
+                  for (int i2 = 0; i2 < n2; i2++)  {
+                    for (int i3 = 0; i3 < n3; i3++)  {
+                      for (int i4 = 0; i4 < n4; i4++)  {
+                        /* Get xbar */
+                        double xbarre = xbarptr[2*it];
+                        double xbarim = xbarptr[2*it+1];
+
+                        /* --- Oscillator 0 --- */
+                        dRHSdp_getcoeffs(it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                        coeff_p[0] += res_p_re * xbarre + res_p_im * xbarim;
+                        coeff_q[0] += res_q_re * xbarre + res_q_im * xbarim;
+                        /* --- Oscillator 1 --- */
+                        dRHSdp_getcoeffs(it, n1, n1p, i1, i1p, stridei1, stridei1p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                        coeff_p[1] += res_p_re * xbarre + res_p_im * xbarim;
+                        coeff_q[1] += res_q_re * xbarre + res_q_im * xbarim;
+                        /* --- Oscillator 2 --- */
+                        dRHSdp_getcoeffs(it, n2, n2p, i2, i2p, stridei2, stridei2p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                        coeff_p[2] += res_p_re * xbarre + res_p_im * xbarim;
+                        coeff_q[2] += res_q_re * xbarre + res_q_im * xbarim;
+                        /* --- Oscillator 3 --- */
+                        dRHSdp_getcoeffs(it, n3, n3p, i3, i3p, stridei3, stridei3p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                        coeff_p[3] += res_p_re * xbarre + res_p_im * xbarim;
+                        coeff_q[3] += res_q_re * xbarre + res_q_im * xbarim;
+                        /* --- Oscillator 4 --- */
+                        dRHSdp_getcoeffs(it, n4, n4p, i4, i4p, stridei4, stridei4p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
+                        coeff_p[4] += res_p_re * xbarre + res_p_im * xbarim;
+                        coeff_q[4] += res_q_re * xbarre + res_q_im * xbarim;
+
+                        it++;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } else { 
+    printf("This should never happen!\n"); 
+    exit(1);
+  }
+  VecRestoreArrayRead(x, &xptr);
+  VecRestoreArrayRead(xbar, &xbarptr);
+
+  /* Set the gradient wrt controls */
+  int col_shift = 0;
+  double* grad_ptr;
+  VecGetArray(grad, &grad_ptr);
+  for (int iosc = 0; iosc < noscillators; iosc++){
+
+    double* grad_for_this_oscillator = grad_ptr + col_shift;
+    oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, alpha*coeff_p[iosc], alpha*coeff_q[iosc]);
+
+    col_shift += oscil_vec[iosc]->getNParams();
+  }
+  VecRestoreArray(grad, &grad_ptr);
+
+  delete [] coeff_p;
+  delete [] coeff_q;
+}
+
 /* Matfree-solver for 1 Oscillator: Define the action of RHS on a vector x */
 template <int n0>
-int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1502,7 +1362,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matrix-free solver for 1 Oscillators: Define the action of RHS^T on a vector x */
 template <int n0>
-int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1595,7 +1455,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 2 Oscillators: Define the action of RHS on a vector x */
 template <int n0, int n1>
-int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1720,7 +1580,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matrix-free solver for 2 Oscillators: Define the action of RHS^T on a vector x */
 template <int n0, int n1>
-int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1844,7 +1704,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 3 Oscillators: Define the action of RHS on a vector x */
 template <int n0, int n1, int n2>
-int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
    /* Get the shell context */
   MatShellCtx *shellctx;
@@ -1996,7 +1856,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 3 Oscillators: Define the action of RHS^T on a vector x */
 template <int n0, int n1, int n2>
-int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -2153,7 +2013,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 4 Oscillators: Define the action of RHS on a vector x */
 template <int n0, int n1, int n2, int n3>
-int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -2347,7 +2207,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 4 Oscillators: Define the action of RHS^T on a vector x */
 template <int n0, int n1, int n2, int n3>
-int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -2543,7 +2403,7 @@ int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 5 Oscillators: Define the action of RHS on a vector x */
 template <int n0, int n1, int n2, int n3, int n4>
-int myMatMult_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -2785,7 +2645,7 @@ int myMatMult_matfree(Mat RHS, Vec x, Vec y){
 
 /* Matfree-solver for 5 Oscillators: Define the action of RHS^T on a vector x */
 template <int n0, int n1, int n2, int n3, int n4>
-int myMatMultTranspose_matfree(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
   /* Get the shell context */
   MatShellCtx *shellctx;
@@ -3113,49 +2973,49 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
 }
 
 /* --- 1 Oscillator cases --- */
-int myMatMult_matfree_1Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_1Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
-  if      (n0==2)  return myMatMult_matfree<2>(RHS, x, y);
-  else if (n0==3)  return myMatMult_matfree<3>(RHS, x, y);
-  else if (n0==4)  return myMatMult_matfree<4>(RHS, x, y);
-  else if (n0==5)  return myMatMult_matfree<5>(RHS, x, y);
-  else if (n0==6)  return myMatMult_matfree<6>(RHS, x, y);
-  else if (n0==7)  return myMatMult_matfree<7>(RHS, x, y);
-  else if (n0==8)  return myMatMult_matfree<8>(RHS, x, y);
-  else if (n0==9)  return myMatMult_matfree<9>(RHS, x, y);
-  else if (n0==10)  return myMatMult_matfree<10>(RHS, x, y);
+  if      (n0==2)  return applyRHS_matfree<2>(RHS, x, y);
+  else if (n0==3)  return applyRHS_matfree<3>(RHS, x, y);
+  else if (n0==4)  return applyRHS_matfree<4>(RHS, x, y);
+  else if (n0==5)  return applyRHS_matfree<5>(RHS, x, y);
+  else if (n0==6)  return applyRHS_matfree<6>(RHS, x, y);
+  else if (n0==7)  return applyRHS_matfree<7>(RHS, x, y);
+  else if (n0==8)  return applyRHS_matfree<8>(RHS, x, y);
+  else if (n0==9)  return applyRHS_matfree<9>(RHS, x, y);
+  else if (n0==10)  return applyRHS_matfree<10>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     if (mpirank_world==0) {
       printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
       printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
-  -> In function 'int myMatMult_matfree_1Osc(..)':  \n \
-             elseif (n0==%d) return  myMatMult_matfree<%d>(RHS, x, y); \n \
-  -> In function 'int myMatMultTranspose_matfree_1Osc(..)': \n \
-             elseif (n0==%d) return  myMatMultTranspose_matfree<%d>(RHS, x, y);\n\n", n0, n0, n0, n0);
+  -> In function 'int applyRHS_matfree_1Osc(..)':  \n \
+             elseif (n0==%d) return  applyRHS_matfree<%d>(RHS, x, y); \n \
+  -> In function 'int applyRHS_matfree_transpose_1Osc(..)': \n \
+             elseif (n0==%d) return  applyRHS_matfree_transpose<%d>(RHS, x, y);\n\n", n0, n0, n0, n0);
       exit(1);
     } 
     return 0;
   }
 }
-int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose_1Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
-  if      (n0==2)  return myMatMultTranspose_matfree<2>(RHS, x, y);
-  else if (n0==3)  return myMatMultTranspose_matfree<3>(RHS, x, y);
-  else if (n0==4)  return myMatMultTranspose_matfree<4>(RHS, x, y);
-  else if (n0==5)  return myMatMultTranspose_matfree<5>(RHS, x, y);
-  else if (n0==6)  return myMatMultTranspose_matfree<6>(RHS, x, y);
-  else if (n0==7)  return myMatMultTranspose_matfree<7>(RHS, x, y);
-  else if (n0==8)  return myMatMultTranspose_matfree<8>(RHS, x, y);
-  else if (n0==9)  return myMatMultTranspose_matfree<9>(RHS, x, y);
-  else if (n0==10)  return myMatMultTranspose_matfree<10>(RHS, x, y);
+  if      (n0==2)  return applyRHS_matfree_transpose<2>(RHS, x, y);
+  else if (n0==3)  return applyRHS_matfree_transpose<3>(RHS, x, y);
+  else if (n0==4)  return applyRHS_matfree_transpose<4>(RHS, x, y);
+  else if (n0==5)  return applyRHS_matfree_transpose<5>(RHS, x, y);
+  else if (n0==6)  return applyRHS_matfree_transpose<6>(RHS, x, y);
+  else if (n0==7)  return applyRHS_matfree_transpose<7>(RHS, x, y);
+  else if (n0==8)  return applyRHS_matfree_transpose<8>(RHS, x, y);
+  else if (n0==9)  return applyRHS_matfree_transpose<9>(RHS, x, y);
+  else if (n0==10)  return applyRHS_matfree_transpose<10>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -3169,51 +3029,51 @@ int myMatMultTranspose_matfree_1Osc(Mat RHS, Vec x, Vec y){
 
 
 /* --- 2 Oscillator cases --- */
-int myMatMult_matfree_2Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_2Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
-  if      (n0==3 && n1==20)  return myMatMult_matfree<3,20>(RHS, x, y);
-  else if (n0==3 && n1==10)  return myMatMult_matfree<3,10>(RHS, x, y);
-  else if (n0==1 && n1==1)   return myMatMult_matfree<1,1>(RHS, x, y);
-  else if (n0==2 && n1==2)   return myMatMult_matfree<2,2>(RHS, x, y);
-  else if (n0==3 && n1==3)   return myMatMult_matfree<3,3>(RHS, x, y);
-  else if (n0==4 && n1==4)   return myMatMult_matfree<4,4>(RHS, x, y);
-  else if (n0==5 && n1==5)   return myMatMult_matfree<5,5>(RHS, x, y);
-  else if (n0==10 && n1==10)   return myMatMult_matfree<10,10>(RHS, x, y);
-  else if (n0==20 && n1==20) return myMatMult_matfree<20,20>(RHS, x, y);
+  if      (n0==3 && n1==20)  return applyRHS_matfree<3,20>(RHS, x, y);
+  else if (n0==3 && n1==10)  return applyRHS_matfree<3,10>(RHS, x, y);
+  else if (n0==1 && n1==1)   return applyRHS_matfree<1,1>(RHS, x, y);
+  else if (n0==2 && n1==2)   return applyRHS_matfree<2,2>(RHS, x, y);
+  else if (n0==3 && n1==3)   return applyRHS_matfree<3,3>(RHS, x, y);
+  else if (n0==4 && n1==4)   return applyRHS_matfree<4,4>(RHS, x, y);
+  else if (n0==5 && n1==5)   return applyRHS_matfree<5,5>(RHS, x, y);
+  else if (n0==10 && n1==10)   return applyRHS_matfree<10,10>(RHS, x, y);
+  else if (n0==20 && n1==20) return applyRHS_matfree<20,20>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     if (mpirank_world==0) {
       printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
       printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
-  -> In function 'int myMatMult_matfree_2Osc(..)':  \n \
-             elseif (n0==%d && n1==%d) return  myMatMult_matfree<%d,%d>(RHS, x, y); \n \
-  -> In function 'int myMatMultTranspose_matfree_2Osc(..)': \n \
-             elseif (n0==%d && n1==%d) return  myMatMultTranspose_matfree<%d,%d>(RHS, x, y);\n\n", n0, n1, n0, n1, n0, n1, n0, n1);
+  -> In function 'int applyRHS_matfree_2Osc(..)':  \n \
+             elseif (n0==%d && n1==%d) return  applyRHS_matfree<%d,%d>(RHS, x, y); \n \
+  -> In function 'int applyRHS_matfree_transpose_2Osc(..)': \n \
+             elseif (n0==%d && n1==%d) return  applyRHS_matfree_transpose<%d,%d>(RHS, x, y);\n\n", n0, n1, n0, n1, n0, n1, n0, n1);
       exit(1);
     }
     return 0;
   }
 }
-int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose_2Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
-  if      (n0==3 && n1==20)  return myMatMultTranspose_matfree<3,20>(RHS, x, y);
-  else if (n0==3 && n1==10)  return myMatMultTranspose_matfree<3,10>(RHS, x, y);
-  else if (n0==1 && n1==1)   return myMatMultTranspose_matfree<1,1>(RHS, x, y);
-  else if (n0==2 && n1==2)   return myMatMultTranspose_matfree<2,2>(RHS, x, y);
-  else if (n0==3 && n1==3)   return myMatMultTranspose_matfree<3,3>(RHS, x, y);
-  else if (n0==4 && n1==4)   return myMatMultTranspose_matfree<4,4>(RHS, x, y);
-  else if (n0==5 && n1==5)   return myMatMultTranspose_matfree<5,5>(RHS, x, y);
-  else if (n0==10 && n1==10)   return myMatMultTranspose_matfree<10,10>(RHS, x, y);
-  else if (n0==20 && n1==20) return myMatMultTranspose_matfree<20,20>(RHS, x, y);
+  if      (n0==3 && n1==20)  return applyRHS_matfree_transpose<3,20>(RHS, x, y);
+  else if (n0==3 && n1==10)  return applyRHS_matfree_transpose<3,10>(RHS, x, y);
+  else if (n0==1 && n1==1)   return applyRHS_matfree_transpose<1,1>(RHS, x, y);
+  else if (n0==2 && n1==2)   return applyRHS_matfree_transpose<2,2>(RHS, x, y);
+  else if (n0==3 && n1==3)   return applyRHS_matfree_transpose<3,3>(RHS, x, y);
+  else if (n0==4 && n1==4)   return applyRHS_matfree_transpose<4,4>(RHS, x, y);
+  else if (n0==5 && n1==5)   return applyRHS_matfree_transpose<5,5>(RHS, x, y);
+  else if (n0==10 && n1==10)   return applyRHS_matfree_transpose<10,10>(RHS, x, y);
+  else if (n0==20 && n1==20) return applyRHS_matfree_transpose<20,20>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -3227,43 +3087,43 @@ int myMatMultTranspose_matfree_2Osc(Mat RHS, Vec x, Vec y){
 
 
 /* --- 3 Oscillator cases --- */
-int myMatMult_matfree_3Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_3Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
-  if      (n0==2 && n1==2 && n2==2) return myMatMult_matfree<2,2,2>(RHS, x, y);
-  else if (n0==2 && n1==3 && n2==4) return myMatMult_matfree<2,3,4>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3) return myMatMult_matfree<3,3,3>(RHS, x, y);
-  else if (n0==4 && n1==4 && n2==4) return myMatMult_matfree<4,4,4>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2) return applyRHS_matfree<2,2,2>(RHS, x, y);
+  else if (n0==2 && n1==3 && n2==4) return applyRHS_matfree<2,3,4>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3) return applyRHS_matfree<3,3,3>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4) return applyRHS_matfree<4,4,4>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     if (mpirank_world==0) {
       printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
       printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
-  -> In function 'int myMatMult_matfree_3Osc(..)':  \n \
-             elseif (n0==%d && n1==%d && n2==%d) return  myMatMult_matfree<%d,%d,%d>(RHS, x, y); \n \
-  -> In function 'int myMatMultTranspose_matfree_3Osc(..)': \n \
-             elseif (n0==%d && n1==%d && n2==%d) return  myMatMultTranspose_matfree<%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n0, n1, n2, n0, n1, n2, n0, n1, n2);
+  -> In function 'int applyRHS_matfree_3Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d) return  applyRHS_matfree<%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int applyRHS_matfree_transpose_3Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d) return  applyRHS_matfree_transpose<%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n0, n1, n2, n0, n1, n2, n0, n1, n2);
       exit(1);
     } 
     return 0;
   }
 }
-int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose_3Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
   int n0 = shellctx->nlevels[0];
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
-  if      (n0==2 && n1==2 && n2==2)  return myMatMultTranspose_matfree<2,2,2>(RHS, x, y);
-  else if (n0==2 && n1==3 && n2==4)  return myMatMultTranspose_matfree<2,3,4>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3)  return myMatMultTranspose_matfree<3,3,3>(RHS, x, y);
-  else if (n0==4 && n1==4 && n2==4)  return myMatMultTranspose_matfree<4,4,4>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2)  return applyRHS_matfree_transpose<2,2,2>(RHS, x, y);
+  else if (n0==2 && n1==3 && n2==4)  return applyRHS_matfree_transpose<2,3,4>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3)  return applyRHS_matfree_transpose<3,3,3>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4)  return applyRHS_matfree_transpose<4,4,4>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -3277,7 +3137,7 @@ int myMatMultTranspose_matfree_3Osc(Mat RHS, Vec x, Vec y){
 
 
 /* --- 4 Oscillator cases --- */
-int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_4Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
@@ -3285,25 +3145,25 @@ int myMatMult_matfree_4Osc(Mat RHS, Vec x, Vec y){
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
-  if      (n0==2 && n1==2 && n2==2 && n3 == 2) return myMatMult_matfree<2,2,2,2>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3 && n3 == 3) return myMatMult_matfree<3,3,3,3>(RHS, x, y);
-  else if (n0==4 && n1==4 && n2==4 && n3 == 4) return myMatMult_matfree<4,4,4,4>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2 && n3 == 2) return applyRHS_matfree<2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3 == 3) return applyRHS_matfree<3,3,3,3>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4 && n3 == 4) return applyRHS_matfree<4,4,4,4>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     if (mpirank_world==0) {
       printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
       printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
-  -> In function 'int myMatMult_matfree_4Osc(..)':  \n \
-             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  myMatMult_matfree<%d,%d,%d,%d>(RHS, x, y); \n \
-  -> In function 'int myMatMultTranspose_matfree_4Osc(..)': \n \
-             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  myMatMultTranspose_matfree<%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3);
+  -> In function 'int applyRHS_matfree_4Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  applyRHS_matfree<%d,%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int applyRHS_matfree_transpose_4Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d) return  applyRHS_matfree_transpose<%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3, n0, n1, n2, n3);
       exit(1);
     }
     return 0;
   }
 }
-int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose_4Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
@@ -3312,9 +3172,9 @@ int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
   int n1 = shellctx->nlevels[1];
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
-  if      (n0==2 && n1==2 && n2==2 && n3==2)  return myMatMultTranspose_matfree<2,2,2,2>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3 && n3==3)  return myMatMultTranspose_matfree<3,3,3,3>(RHS, x, y);
-  else if (n0==4 && n1==4 && n2==4 && n3==4)  return myMatMultTranspose_matfree<4,4,4,4>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2 && n3==2)  return applyRHS_matfree_transpose<2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3==3)  return applyRHS_matfree_transpose<3,3,3,3>(RHS, x, y);
+  else if (n0==4 && n1==4 && n2==4 && n3==4)  return applyRHS_matfree_transpose<4,4,4,4>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -3328,7 +3188,7 @@ int myMatMultTranspose_matfree_4Osc(Mat RHS, Vec x, Vec y){
 
 
 /* --- 5 Oscillator cases --- */
-int myMatMult_matfree_5Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_5Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
@@ -3337,24 +3197,24 @@ int myMatMult_matfree_5Osc(Mat RHS, Vec x, Vec y){
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
   int n4 = shellctx->nlevels[4];
-  if      (n0==2 && n1==2 && n2==2 && n3 == 2 && n4 == 2) return myMatMult_matfree<2,2,2,2,2>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3 && n3 == 3 && n4 == 3) return myMatMult_matfree<3,3,3,3,3>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2 && n3 == 2 && n4 == 2) return applyRHS_matfree<2,2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3 == 3 && n4 == 3) return applyRHS_matfree<3,3,3,3,3>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
     if (mpirank_world==0) {
       printf("\nERROR: Matrix-free solver for this number of qubit levels needs a simple modification:\n");
       printf("  Add the following lines to the end of src/mastereq.cpp and recompile Quandary:\n \
-  -> In function 'int myMatMult_matfree_5Osc(..)':  \n \
-             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  myMatMult_matfree<%d,%d,%d,%d,%d>(RHS, x, y); \n \
-  -> In function 'int myMatMultTranspose_matfree_5Osc(..)': \n \
-             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  myMatMultTranspose_matfree<%d,%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4);
+  -> In function 'int applyRHS_matfree_5Osc(..)':  \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  applyRHS_matfree<%d,%d,%d,%d,%d>(RHS, x, y); \n \
+  -> In function 'int applyRHS_matfree_transpose_5Osc(..)': \n \
+             elseif (n0==%d && n1==%d && n2==%d && n3==%d && n4==%d) return  applyRHS_matfree_transpose<%d,%d,%d,%d,%d>(RHS, x, y);\n\n", n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4, n0, n1, n2, n3, n4);
       exit(1);
     }
     return 0;
   }
 }
-int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
+int applyRHS_matfree_transpose_5Osc(Mat RHS, Vec x, Vec y){
  /* Get the shell context */
   MatShellCtx *shellctx;
   MatShellGetContext(RHS, (void**) &shellctx);
@@ -3364,8 +3224,8 @@ int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
   int n2 = shellctx->nlevels[2];
   int n3 = shellctx->nlevels[3];
   int n4 = shellctx->nlevels[4];
-  if      (n0==2 && n1==2 && n2==2 && n3==2 && n4==2)  return myMatMultTranspose_matfree<2,2,2,2,2>(RHS, x, y);
-  else if (n0==3 && n1==3 && n2==3 && n3==3 && n4==3)  return myMatMultTranspose_matfree<3,3,3,3,3>(RHS, x, y);
+  if      (n0==2 && n1==2 && n2==2 && n3==2 && n4==2)  return applyRHS_matfree_transpose<2,2,2,2,2>(RHS, x, y);
+  else if (n0==3 && n1==3 && n2==3 && n3==3 && n4==3)  return applyRHS_matfree_transpose<3,3,3,3,3>(RHS, x, y);
   else {
     int mpirank_world = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -3376,3 +3236,148 @@ int myMatMultTranspose_matfree_5Osc(Mat RHS, Vec x, Vec y){
     return 0;
   }
 }
+
+
+// void MasterEq::createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs) {
+
+//   Vec red;
+
+//   /* Get dimensions of preceding and following subsystem */
+//   int dim_pre  = 1; 
+//   int dim_post = 1;
+//   for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
+//     dim_pre  *= getOscillator(iosc)->getNLevels();
+//   for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
+//     dim_post *= getOscillator(iosc)->getNLevels();
+
+//   int dim_reduced = 1;
+//   for (int i = 0; i < oscilIDs.size();i++) {
+//     dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
+//   }
+
+//   /* sanity test */
+//   int dimmat = dim_pre * dim_reduced * dim_post;
+//   assert ( (int) pow(dimmat,2) == dim);
+
+//   /* Get local ownership of incoming full density matrix */
+//   int ilow, iupp;
+//   VecGetOwnershipRange(rho, &ilow, &iupp);
+
+//   /* Create reduced density matrix, sequential */
+//   VecCreateSeq(PETSC_COMM_SELF, 2*dim_reduced*dim_reduced, &red);
+//   VecSetFromOptions(red);
+
+//   /* Iterate over reduced density matrix elements */
+//   for (int i=0; i<dim_reduced; i++) {
+//     for (int j=0; j<dim_reduced; j++) {
+//       double sum_re = 0.0;
+//       double sum_im = 0.0;
+//       /* Iterate over all dim_pre blocks of size n_k * dim_post */
+//       for (int l = 0; l < dim_pre; l++) {
+//         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
+//         /* iterate over elements in this block */
+//         for (int m=0; m<dim_post; m++) {
+//           int rho_row = blockstartID + i * dim_post + m;
+//           int rho_col = blockstartID + j * dim_post + m;
+//           int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
+//           int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
+//           /* Get real and imaginary part from full density matrix */
+//           double re = 0.0;
+//           double im = 0.0;
+//           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
+//             VecGetValues(rho, 1, &rho_vecID_re, &re);
+//             VecGetValues(rho, 1, &rho_vecID_im, &im);
+//           } 
+//           /* add to partial trace */
+//           sum_re += re;
+//           sum_im += im;
+//         }
+//       }
+//       /* Set real and imaginary part of element (i,j) of the reduced density matrix */
+//       int out_vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
+//       int out_vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
+//       VecSetValues( red, 1, &out_vecID_re, &sum_re, INSERT_VALUES);
+//       VecSetValues( red, 1, &out_vecID_im, &sum_im, INSERT_VALUES);
+//     }
+//   }
+//   VecAssemblyBegin(red);
+//   VecAssemblyEnd(red);
+
+//   /* Sum up from all petsc cores. This is not at all a good solution. TODO: Change this! */
+//   double* dataptr;
+//   int size = 2*dim_reduced*dim_reduced;
+//   double* mydata = new double[size];
+//   VecGetArray(red, &dataptr);
+//   for (int i=0; i<size; i++) {
+//     mydata[i] = dataptr[i];
+//   }
+//   MPI_Allreduce(mydata, dataptr, size, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+//   VecRestoreArray(red, &dataptr);
+//   delete [] mydata;
+
+//   /* Set output */
+//   *reduced = red;
+// }
+
+
+// void MasterEq::createReducedDensity_diff(Vec rhobar, const Vec reducedbar,const std::vector<int>& oscilIDs) {
+
+//   /* Get dimensions of preceding and following subsystem */
+//   int dim_pre  = 1; 
+//   int dim_post = 1;
+//   for (int iosc = 0; iosc < oscilIDs[0]; iosc++) 
+//     dim_pre  *= getOscillator(iosc)->getNLevels();
+//   for (int iosc = oscilIDs[oscilIDs.size()-1]+1; iosc < getNOscillators(); iosc++) 
+//     dim_post *= getOscillator(iosc)->getNLevels();
+
+//   int dim_reduced = 1;
+//   for (int i = 0; i < oscilIDs.size();i++) {
+//     dim_reduced *= getOscillator(oscilIDs[i])->getNLevels();
+//   }
+
+//   /* Get local ownership of full density rhobar */
+//   int ilow, iupp;
+//   VecGetOwnershipRange(rhobar, &ilow, &iupp);
+
+//   /* Get local ownership of reduced density bar*/
+//   int ilow_red, iupp_red;
+//   VecGetOwnershipRange(reducedbar, &ilow_red, &iupp_red);
+
+//   /* sanity test */
+//   int dimmat = dim_pre * dim_reduced * dim_post;
+//   assert ( (int) pow(dimmat,2) == dim);
+
+//  /* Iterate over reduced density matrix elements */
+//   for (int i=0; i<dim_reduced; i++) {
+//     for (int j=0; j<dim_reduced; j++) {
+//       /* Get value from reducedbar */
+//       int vecID_re = getIndexReal(getVecID(i, j, dim_reduced));
+//       int vecID_im = getIndexImag(getVecID(i, j, dim_reduced));
+//       double re = 0.0;
+//       double im = 0.0;
+//       VecGetValues( reducedbar, 1, &vecID_re, &re);
+//       VecGetValues( reducedbar, 1, &vecID_im, &im);
+
+//       /* Iterate over all dim_pre blocks of size n_k * dim_post */
+//       for (int l = 0; l < dim_pre; l++) {
+//         int blockstartID = l * dim_reduced * dim_post; // Go to beginning of block 
+//         /* iterate over elements in this block */
+//         for (int m=0; m<dim_post; m++) {
+//           /* Set values into rhobar */
+//           int rho_row = blockstartID + i * dim_post + m;
+//           int rho_col = blockstartID + j * dim_post + m;
+//           int rho_vecID_re = getIndexReal(getVecID(rho_row, rho_col, dimmat));
+//           int rho_vecID_im = getIndexImag(getVecID(rho_row, rho_col, dimmat));
+
+//           /* Set derivative */
+//           if (ilow <= rho_vecID_re && rho_vecID_re < iupp) {
+//             VecSetValues(rhobar, 1, &rho_vecID_re, &re, ADD_VALUES);
+//             VecSetValues(rhobar, 1, &rho_vecID_im, &im, ADD_VALUES);
+//           }
+//         }
+//       }
+//     }
+//   }
+//   VecAssemblyBegin(rhobar); VecAssemblyEnd(rhobar);
+
+// }

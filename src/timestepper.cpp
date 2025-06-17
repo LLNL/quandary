@@ -570,7 +570,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
   /* Add to reduced gradient */
   if (compute_gradient) {
-    mastereq->computedRHSdp(tstop, x, x_adj, dt, grad);
+    mastereq->compute_dRHS_dParams(tstop, x, x_adj, dt, grad);
   }
 
   /* update x_adj = x_adj + hA^Tx_adj */
@@ -740,7 +740,7 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
         break;
     }
     VecAYPX(stage, dt / 2.0, x);
-    mastereq->computedRHSdp(thalf, stage, stage_adj, 1.0, grad);
+    mastereq->compute_dRHS_dParams(thalf, stage, stage_adj, 1.0, grad);
   }
 
   /* Revert changes to RHS from above, if gmres solver */
