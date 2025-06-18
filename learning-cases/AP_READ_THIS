@@ -1,0 +1,3 @@
+To get the python interface to work, issue the following command from the main Quandary folder:
+source .venv/bin/activate
+
