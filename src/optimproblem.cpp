@@ -465,9 +465,13 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     }
   }
 
+  double obj_cost_re = 0.0;
+  double obj_cost_im = 0.0;
+  
   /* Iterate over control pulses */
   int npulseiters = 1;
   if (!x_is_control) npulseiters = mastereq->learning->data->getNPulses_local();
+
   for (int ipulse_local = 0; ipulse_local < npulseiters; ipulse_local++){
 
     /* Get global id if the pulse */
@@ -485,8 +489,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     }
 
     /*  Iterate over initial condition */
-    double obj_cost_re = 0.0;
-    double obj_cost_im = 0.0;
+    obj_cost_re = 0.0;
+    obj_cost_im = 0.0;
     double fidelity_re = 0.0;
     double fidelity_im = 0.0;
     for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -624,8 +628,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
-    printf("ERROR, THIS NEEDS CHANGE! !\n");
-    exit(1);
+    //printf("ERROR, THIS NEEDS CHANGE! !\n");
+    // exit(1);
 
     // Iterate over all initial conditions 
     for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -642,15 +646,19 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       if (x_is_control) {
         /* Terminal condition for adjoint variable: Derivative of final time objective J */
         double obj_cost_re_bar, obj_cost_im_bar;
-        // optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-        // optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+        optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+        optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
       } else {
         Jbar_loss = obj_weights[iinit];
       }
 
       /* Derivative of time-stepping */
-      printf("TODO. PUlsenum.\n");
-      exit(1);
+
+      if (!x_is_control){
+        printf("ERROR: obj_cost_re/im are set from the LAST ipulse iterations. TODO: Fix it. Also, pass the pulse number to solveAdjointODE.\n");
+        exit(1);
+      }
+
       timestepper->solveAdjointODE(0, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss, 0);
 
       /* Add to optimizers's gradient */
