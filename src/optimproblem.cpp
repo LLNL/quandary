@@ -233,14 +233,14 @@ double OptimProblem::evalF(const Vec x) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
-    if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
+    optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+    // if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepareTargetState(rho_t0);
 
     /* Run forward with initial condition initid */
-    Vec finalstate = timestepper->solveODE(initid, rho_t0);
+    Vec finalstate = timestepper->solveODE(iinit, rho_t0);
 
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -265,7 +265,7 @@ double OptimProblem::evalF(const Vec x) {
     fidelity_re += 1./ ninit * fidelity_iinit_re;
     fidelity_im += 1./ ninit * fidelity_iinit_im;
 
-    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
+    printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
   }
 
   /* Sum up from initial conditions processors */
@@ -330,7 +330,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   MasterEq* mastereq = timestepper->mastereq;
 
-  if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
+  // if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
 
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
@@ -374,16 +374,16 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* Prepare the initial condition */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+    optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepareTargetState(rho_t0);
 
     /* --- Solve primal --- */
-    // if (mpirank_optim == 0) printf("%d: %d FWD. ", mpirank_init, initid);
+    // if (mpirank_optim == 0) printf("%d: %d FWD. ", mpirank_init, iinit_global);
 
     /* Run forward with initial condition rho_t0 */
-    Vec finalstate = timestepper->solveODE(initid, rho_t0);
+    Vec finalstate = timestepper->solveODE(iinit, rho_t0);
 
     /* Store the final state for the Schroedinger solver */
     if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
@@ -402,6 +402,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
     obj_cost_re += obj_weights[iinit] * obj_iinit_re;
     obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+    // printf("evalGradF: iinit %d: objcost = %f * (%1.8e + i %1.8e)\n", iinit, obj_weights[iinit], obj_iinit_re, obj_iinit_im);
 
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
@@ -423,7 +424,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(iinit, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -498,7 +499,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(iinit, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -522,6 +523,72 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   //   std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << std::endl;
   //   std::cout<< "Fidelity = " << fidelity << std::endl;
   // }
+}
+
+
+void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec y, const int itest){
+
+  /* First evaluate the gradient of F(x) */
+  Vec G;
+  VecDuplicate(x, &G);
+  VecZeroEntries(G);
+  // Run forward and backward while storing the state and adjoint states at each timestep and at each initial condition
+  // printf("-> Forward and backward solve\n");
+  timestepper->storeFWD = true;
+  evalGradF(x, G);
+
+  /* Solve linearized ODE */
+  // printf("-> Linearized forward solve\n");
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
+    timestepper->solveLinearizedODE(iinit, v);
+  }
+
+  // Verify w(t) = sum_i dx(t)/dalpha * v_i using the gradient. 
+  // printf("Verify linearized solution. \n\n");
+  // Get dJdalpha from w(T)
+  double obj_re = 0.0;
+  double obj_im = 0.0;
+  double obj_lin_re = 0.0;
+  double obj_lin_im = 0.0;
+  for (int iinit=0; iinit<ninit_local; iinit++){
+
+    // First compute the target state (which needs the initial state)
+    int iinit_global = mpirank_init * ninit_local + iinit;
+    optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+    optim_target->prepareTargetState(rho_t0);
+
+    // Now evaluate evaluate the gradient using w(T) and the objective function
+    double obj_iinit_re = 0.0;
+    double obj_iinit_im = 0.0;
+    double obj_lin_iinit_re = 0.0;
+    double obj_lin_iinit_im = 0.0;
+    Vec xT = timestepper->getState(iinit, timestepper->getNTimeSteps());
+    Vec wT = timestepper->getLinearizedState(iinit, timestepper->getNTimeSteps());
+    optim_target->evalJ(xT,  &obj_iinit_re, &obj_iinit_im);
+    optim_target->evalJ(wT,  &obj_lin_iinit_re, &obj_lin_iinit_im);
+    obj_re     += obj_weights[iinit] * obj_iinit_re;
+    obj_im     += obj_weights[iinit] * obj_iinit_im;
+    obj_lin_re += obj_weights[iinit] * obj_lin_iinit_re;
+    obj_lin_im += obj_weights[iinit] * obj_lin_iinit_im;
+  }
+  double my_re = obj_re;
+  double my_im = obj_im;
+  double my_lin_re = obj_lin_re;
+  double my_lin_im = obj_lin_im;
+  MPI_Allreduce(&my_re, &obj_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&my_im, &obj_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&my_lin_re, &obj_lin_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&my_lin_im, &obj_lin_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  double dJdu_test = -2*(obj_re*obj_lin_re + obj_im*obj_lin_im);
+
+  // Get the gradient element from the gradient and compare
+  double Jgrad;
+  VecGetValues(G, 1, &itest, &Jgrad);
+
+  double rel_err = 0.0;
+  if (fabs(Jgrad) > 1e-18) rel_err = (dJdu_test - Jgrad) / Jgrad;
+  if (mpirank_world==0) printf("itest %d: gradient= %1.14e  dJ_test= %1.14e rel.error %1.4e\n", itest, Jgrad, dJdu_test, rel_err);
+
 }
 
 void OptimProblem::solve(Vec xinit) {

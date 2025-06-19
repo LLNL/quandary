@@ -85,6 +85,7 @@ int main(int argc,char **argv)
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
   if      (runtypestr.compare("simulation")      == 0) runtype = RunType::SIMULATION;
   else if (runtypestr.compare("gradient")     == 0)    runtype = RunType::GRADIENT;
+  else if (runtypestr.compare("hessian")     == 0)    runtype = RunType::HESSIAN;
   else if (runtypestr.compare("optimization")== 0)     runtype = RunType::OPTIMIZATION;
   else if (runtypestr.compare("evalcontrols")== 0)     runtype = RunType::EVALCONTROLS;
   else {
@@ -370,16 +371,17 @@ int main(int argc,char **argv)
   }
 
   /* My time stepper */
-  bool storeFWD = false;
+  bool storeFWD = true; // TODO: dont store always.
   if (mastereq->lindbladtype != LindbladType::NONE &&   
-     (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
+     (runtype == RunType::GRADIENT || runtype == RunType::HESSIAN || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
+
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
   TimeStepper* mytimestepper;
-  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
-  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD);
+  if (timesteppertypestr.compare("IMR")==0) mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, ninit/mpisize_init, comm_init);
+  else if (timesteppertypestr.compare("IMR4")==0) mytimestepper = new CompositionalImplMidpoint(4, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, ninit/mpisize_init, comm_init);
+  else if (timesteppertypestr.compare("IMR8")==0) mytimestepper = new CompositionalImplMidpoint(8, mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD, ninit/mpisize_init, comm_init);
+  else if (timesteppertypestr.compare("EE")==0) mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD, ninit/mpisize_init, comm_init);
   else {
     printf("\n\n ERROR: Unknow timestepping type: %s.\n\n", timesteppertypestr.c_str());
     exit(1);
@@ -458,6 +460,30 @@ int main(int argc,char **argv)
     }
     if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
+    }
+  }
+
+  /* --- TEST HESSIAN --- */
+  if (runtype == RunType::HESSIAN) {
+    if (mpirank_world == 0) printf("\n TESTING Hessian vector product...\n");
+    optimctx->timestepper->writeTrajectoryDataFiles = true;
+    Vec v, hessv;
+    // Set up a direction vector v
+    VecDuplicate(xinit, &v);
+
+    for (int itest=0; itest < optimctx->getNdesign(); itest++){
+    // for (int itest=0; itest < 1; itest++){
+
+      VecZeroEntries(v);
+      const int i = itest;
+      VecSetValue(v, i, 1.0, INSERT_ALL_VALUES);
+      // Set up a output Hessian*v
+      VecDuplicate(xinit, &hessv);
+      VecZeroEntries(hessv);
+      // Evaluate HessianVector product
+      optimctx->evalHessVec(xinit, v, hessv, i);
+      // printf("Hessian vector product: \n");
+      // VecView(hessv, NULL);
     }
   }
 

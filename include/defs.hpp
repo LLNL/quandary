@@ -89,6 +89,7 @@ enum class LinearSolverType{
 enum class RunType {
   SIMULATION,   ///< Runs one simulation to compute the objective function (forward)
   GRADIENT,     ///< Runs a simulation followed by the adjoint for gradient computation (forward & backward)
+  HESSIAN,      ///< Tests the Hessian vector product
   OPTIMIZATION, ///< Runs optimization iterations
   EVALCONTROLS, ///< Only evaluates the current control pulses (no simulation)
   NONE          ///< Don't run anything

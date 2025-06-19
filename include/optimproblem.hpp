@@ -236,6 +236,17 @@ class OptimProblem {
   void evalGradF(const Vec x, Vec G);
 
   /**
+   * @brief Evaluate Hessian vector product
+   * 
+   * Applies the Hessian of F(x) to a directional vector v
+   * 
+   * @param[in] x Point of Hessian evaluation
+   * @param[in] v Vector to which the Hessian matrix is applied to.
+   * @param[out] y Vector to store the Hessian-vector product
+   */
+  void evalHessVec(const Vec x, const Vec v, Vec y, const int itest);
+
+  /**
    * @brief Runs the optimization solver.
    *
    * @param xinit Initial guess for design variables

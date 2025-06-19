@@ -35,11 +35,17 @@ class TimeStepper{
     int dim; ///< State vector dimension
     Vec x; ///< Auxiliary vector for forward time stepping
     Vec xadj; ///< Auxiliary vector needed for adjoint (backward) time stepping
+    Vec xhalf; ///< Auxiliary vector holding x_n+1/2
     Vec xprimal; ///< Auxiliary vector for backward time stepping
-    std::vector<Vec> store_states; ///< Storage for primal states during forward evolution
     std::vector<Vec> dpdm_states; ///< Storage for states needed for second-order derivative penalty
     bool addLeakagePrevent; ///< Flag to include leakage prevention penalty term
     int mpirank_world; ///< MPI rank in global communicator
+    int mpirank_init;
+    int ninit_local;
+    std::vector<std::vector<Vec>> store_states; ///< For each initial condition, vector of states at each time-step
+    std::vector<std::vector<Vec>> store_lin_states; ///< For each initial condition, vector of linearized states at each time-step
+    std::vector<std::vector<Vec>> store_adj_states; ///< For each initial condition, vector of real states at each time-step
+
 
   public:
     MasterEq* mastereq; ///< Pointer to master equation solver
@@ -74,29 +80,44 @@ class TimeStepper{
      * @param total_time_ Final evolution time
      * @param output_ Pointer to output handler
      * @param storeFWD_ Flag to store forward states
+     * @param ninit_local Number of initial conditions on this processor
      */
-    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_); 
+    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local_, MPI_Comm comm_init); 
 
     virtual ~TimeStepper(); 
 
+    Vec getState(int iinit, int itimestep) {return store_states[iinit][itimestep];}
+    Vec getLinearizedState(int iinit, int itimestep) {return store_lin_states[iinit][itimestep];}   
+    Vec getAdjointState(int iinit, int itimestep){return store_adj_states[iinit][itimestep];}
+
     /**
-     * @brief Retrieves stored state at a specific time index.
+     * Retrieve the total number of time-steps
      *
-     * @param tindex Time step index
-     * @return Vec State vector at the specified time
+     * @return ntime Number of time steps
      */
-    Vec getState(size_t tindex);
+    int getNTimeSteps(){return ntime;};
 
     /**
      * @brief Solves the ODE forward in time.
      * 
      * This performs the time-stepping to propagate an initial condition to the final time.
      *
-     * @param initid Initial condition identifier
+     * @param initid Initial condition number (local to this processor)
      * @param rho_t0 Initial state vector
      * @return Vec Final state vector at time T
      */
-    Vec solveODE(int initid, Vec rho_t0);
+    Vec solveODE(int iinit, Vec rho_t0);
+
+    /**
+     * @brief Solves the linearized ODE forward in time.
+     * 
+     * @param initid Initial condition number (local to this processor)
+     * @param v Vector of directions
+     * @return Vec Final state vector at time T
+     */
+    Vec solveLinearizedODE(int initid, const Vec v);
+
+
 
     /**
      * @brief Solves the adjoint ODE backward in time.
@@ -104,13 +125,14 @@ class TimeStepper{
      * This performs backward time-stepping to backpropagate an adjoint initial condition at 
      * final time (aka a terminal condtion) to time t=0, while accumulating the reduced gradient. 
      *
+     * @param initid Initial condition identifier
      * @param rho_t0_bar Terminal condition for adjoint state
      * @param finalstate Final state from forward evolution
      * @param Jbar_penalty Adjoint of penalty integral term
      * @param Jbar_penalty_dpdm Adjoint of second-order derivative penalty
      * @param Jbar_penalty_energy Adjoint of energy penalty term
      */
-    void solveAdjointODE(Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy);
+    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy);
 
     /**
      * @brief Evaluates the penalty integral term.
@@ -179,6 +201,18 @@ class TimeStepper{
     virtual void evolveFWD(const double tstart, const double tstop, Vec x) = 0;
 
     /**
+     * @brief Evolves the linearized state equation (in direction v) forward by one time-step from tstart to tstop
+     * 
+     * @param iinit (Local) Number of initial condition
+     * @param tstart Start time
+     * @param tstop Stop time
+     * @param xhalf (Primal) state at t_n+1/2
+     * @param v Direction of linearization
+     * @param x Linearized State vector to evolve
+     */
+    virtual void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec xhalf, const Vec v, Vec x) = 0;
+
+    /**
      * @brief Evolves adjoint state backward by one time-step and updates reduced gradient.
      * 
      * Abstract base-class implementation is empty. Derived classes that need backward time-stepping should implement this function.
@@ -211,8 +245,9 @@ class ExplEuler : public TimeStepper {
      * @param total_time_ Final evolution time
      * @param output_ Pointer to output handler
      * @param storeFWD_ Flag to store forward states
+     * @param ninit_local Number of initial conditions on this processor
      */
-    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_);
+    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local, MPI_Comm comm_init);
 
     ~ExplEuler();
 
@@ -224,6 +259,7 @@ class ExplEuler : public TimeStepper {
      * @param x State vector to evolve
      */
     void evolveFWD(const double tstart, const double tstop, Vec x);
+    void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec xhalf, const Vec v, Vec x) {printf("NOT AVAIL.\n"); exit(1);}
 
     /**
      * @brief Evolves adjoint backward using explicit Euler method.
@@ -277,8 +313,9 @@ class ImplMidpoint : public TimeStepper {
      * @param linsolve_maxiter_ Maximum linear solver iterations
      * @param output_ Pointer to output handler
      * @param storeFWD_ Flag to store forward states
+     * @param ninit_local Number of initial conditions on this processor
      */
-    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
+    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local, MPI_Comm comm_init);
 
     ~ImplMidpoint();
 
@@ -290,6 +327,7 @@ class ImplMidpoint : public TimeStepper {
      * @param x State vector to evolve
      */
     virtual void evolveFWD(const double tstart, const double tstop, Vec x);
+    virtual void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec xhalf, const Vec v, Vec x);
 
     /**
      * @brief Evolves adjoint backward using implicit midpoint rule and adds to reduced gradient.
@@ -343,8 +381,9 @@ class CompositionalImplMidpoint : public ImplMidpoint {
      * @param linsolve_maxiter_ Maximum linear solver iterations
      * @param output_ Pointer to output handler
      * @param storeFWD_ Flag to store forward states
+     * @param ninit_local Number of initial conditions on this processor
      */
-    CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_);
+    CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local, MPI_Comm comm_init);
 
     ~CompositionalImplMidpoint();
 
@@ -356,6 +395,7 @@ class CompositionalImplMidpoint : public ImplMidpoint {
      * @param x State vector to evolve
      */
     void evolveFWD(const double tstart, const double tstop, Vec x);
+    void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec xhalf, const Vec v, Vec x) {printf("NOT AVAIL.\n"); exit(1);}
 
     /**
      * @brief Evolves adjoint backward using compositional implicit midpoint rule and accumulates gradient.

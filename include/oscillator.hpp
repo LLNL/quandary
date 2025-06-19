@@ -215,7 +215,7 @@ class Oscillator {
     int evalControl(const double t, double* Re_ptr, double* Im_ptr);
 
     /**
-     * @brief Computes derivatives of control functions p(t) and q(t) with respect to the parameters.
+     * @brief Computes gradients of control functions p(t) and q(t) with respect to the parameters. Backward derivatives.
      *
      * @param[in] t Time at which to evaluate derivatives
      * @param[out] grad_for_this_oscillator Array to update the gradient
@@ -224,6 +224,16 @@ class Oscillator {
      * @return int Error code
      */
     int evalControl_diff(const double t, double* grad_for_this_oscillator, const double pbar, const double qbar);
+
+    /**
+     * @brief Linearized (forward, directional) derivative of evalControl
+     * 
+     * @param t Time at which to evaluate derivative
+     * @param v Direction of derivative
+     * @param[out] dpv Derivative of p wrt parameters multiplied with v
+     * @param[out] dqv Derivative of p wrt parameters multiplied with v
+     */
+    void evalControl_linearized(const double t, const std::vector<double>& vdir, double* dpv, double* dqv);
 
     /**
      * @brief Evaluates lab-frame control function.

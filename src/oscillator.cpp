@@ -367,6 +367,48 @@ int Oscillator::evalControl_diff(const double t, double* grad, const double pbar
   return 0;
 }
 
+
+void Oscillator::evalControl_linearized(const double t, const std::vector<double>& vdir, double* dpv_ptr, double* dqv_ptr){
+
+  if (params.size()==0) return;
+
+  *dpv_ptr = 0.0;
+  *dqv_ptr = 0.0;
+
+  // Iterate over control segments. Only one will be used, see the break-statement. 
+  for (size_t bs = 0; bs < basisfunctions.size(); bs++){
+    if (basisfunctions[bs]->getTstart() <= t && 
+        basisfunctions[bs]->getTstop() >= t ) {
+        
+      // Iterate over carrier frequencies
+      double sum_p = 0.0;
+      double sum_q = 0.0;
+      for (size_t f=0; f < carrier_freq.size(); f++) {
+        /* Evaluate the Bspline on v for this carrier wave */
+        double Blt1 = 0.0; // Sums over vdir^1 * basisfunction(t) (real)
+        double Blt2 = 0.0; // Sums over vdir^2 * basisfunction(t) (imag)
+        basisfunctions[bs]->evaluate(t, vdir, f, &Blt1, &Blt2);
+
+        // Sum up
+        if (basisfunctions[bs]->getType() == ControlType::BSPLINEAMP) {
+          printf("Not implemented. TODO.\n");
+          exit(1);
+        } else {
+          double cos_omt = cos(carrier_freq[f]*t);
+          double sin_omt = sin(carrier_freq[f]*t);
+          sum_p += cos_omt * Blt1 - sin_omt * Blt2;
+          sum_q += sin_omt * Blt1 + cos_omt * Blt2;
+        }
+      }
+      *dpv_ptr = sum_p;
+      *dqv_ptr = sum_q;
+
+      break;
+    }
+  }
+}
+
+
 int Oscillator::evalControl_Labframe(const double t, double* f){
 
   // Sanity check 
