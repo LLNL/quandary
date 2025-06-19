@@ -479,8 +479,8 @@ class Quandary:
                     break
         # Set remaining number of cores for petsc
         ncores_petsc = 1
-        if maxcores > ncores_init and maxcores % ncores_init == 0:
-            ncores_petsc = int(maxcores / ncores_init)
+        # if maxcores > ncores_init and maxcores % ncores_init == 0:
+            # ncores_petsc = int(maxcores / ncores_init)
         ncores = ncores_init * ncores_petsc
 
         # Execute subprocess to run Quandary
