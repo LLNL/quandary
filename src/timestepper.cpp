@@ -200,7 +200,7 @@ Vec TimeStepper::solveLinearizedODE(int iinit, const Vec v){
     if (storeFWD) VecCopy(x, store_lin_states[iinit][n]);
 
     /* Take one time step */
-    evolveLinearizedFWD(iinit, tstart, tstop, xhalf, v, x);
+    evolveLinearizedFWD(iinit, tstart, tstop, v, x);
   }
 
   /* Store last time step */
@@ -279,6 +279,23 @@ void TimeStepper::solveAdjointODE(int iinit, Vec rho_t0_bar, Vec finalstate, dou
   }
 }
 
+Vec TimeStepper::solveLinearizedAdjointODE(int iinit, const Vec v){
+
+  /* Set terminal condition */
+  VecCopy(store_lin_states[iinit][ntime], xadj); // w(T)
+  // TODO: adj = -2 \tilde V * w(T)
+  printf("Need terminal linearized adjoint condition.\n");
+  exit(1);
+
+  /* Loop over time interval */
+  for (int n = ntime; n > 0; n--){
+    double tstop  = n * dt;
+    double tstart = (n-1) * dt;
+
+    /* Take one step backwards for linearized adjoint */
+    evolveLinearizedBWD(iinit, tstop, tstart, v, xadj);
+  }
+}
 
 double TimeStepper::penaltyIntegral(double time, const Vec x){
   double penalty = 0.0;
@@ -689,7 +706,7 @@ void ImplMidpoint::evolveFWD(const double tstart,const  double tstop, Vec x) {
   VecAXPY(x, dt, stage);
 }
 
-void ImplMidpoint::evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec xhalf, const Vec v, Vec x) {
+void ImplMidpoint::evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) {
 
   // Prepare the RHS at this time-step
   mastereq->assemble_RHS( (tstart + tstop) / 2.0);
@@ -700,7 +717,8 @@ void ImplMidpoint::evolveLinearizedFWD(const int iinit, const double tstart, con
   VecCopy(store_states[iinit][n], xhalf);
   VecAXPY(xhalf, 1.0, store_states[iinit][n+1]);
   VecScale(xhalf, 0.5);
-  mastereq->apply_linearized_RHS((tstart+tstop)/2.0, v,x, xhalf, rhs);
+  mastereq->apply_linearized_RHS((tstart+tstop)/2.0, v, xhalf, rhs); // rhs = sum dRHS/dalpha_i v_i * xhalf
+  MatMultAdd(mastereq->getRHS(), x, rhs, rhs); // rhs = rhs + RHS*x
 
   double dt = tstop - tstart;  
   Mat A = mastereq->getRHS(); 
@@ -799,6 +817,45 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
 
 }
 
+void ImplMidpoint::evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x){
+
+  // Prepare the RHS at this time-step
+  mastereq->assemble_RHS( (tstart + tstop) / 2.0);
+
+  // Compute rhs = A x - sum_i dRHS(t_n+1/2)/dparam_i * vi * adjoint_state(t_n+1/2)
+  int n = std::round(tstart / dt);
+  VecCopy(store_adj_states[iinit][n], xhalf);
+  VecAXPY(xhalf, 1.0, store_adj_states[iinit][n+1]);
+  VecScale(xhalf, 0.5);
+  mastereq->apply_linearized_RHS((tstart+tstop)/2.0, v, xhalf, rhs); // rhs = sum dRHS/dalpha_i v_i * xhalf
+  MatMultTransposeAdd(mastereq->getRHS(), x, rhs, rhs); // rhs = rhs + RHS*x
+
+  double dt = tstop - tstart;
+  Mat A = mastereq->getRHS();
+
+  /* Solve for adjoint stage variable */
+  switch (linsolve_type) {
+    case LinearSolverType::GMRES:
+      MatScale(A, - dt/2.0);
+      MatShift(A, 1.0);  // WARNING: this can be very slow if some diagonal elements are missing.
+      KSPSolveTranspose(ksp, rhs, stage_adj);
+      double rnorm;
+      KSPGetResidualNorm(ksp, &rnorm);
+      if (rnorm > 1e-3)  {
+        printf("WARNING: Linear solver residual norm: %1.5e\n", rnorm);
+      }
+      /* Revert the scaling and shifting if gmres solver */
+      MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+      break;
+    case LinearSolverType::NEUMANN: 
+      NeumannSolve(A, x, stage_adj, dt/2.0, true);
+      break;
+  }
+
+  /* --- Update state x += dt * stage --- */
+  VecAXPY(x, dt, stage);
+}
 
 int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose){
 

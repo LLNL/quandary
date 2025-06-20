@@ -589,6 +589,12 @@ void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec y, const int itest)
   if (fabs(Jgrad) > 1e-18) rel_err = (dJdu_test - Jgrad) / Jgrad;
   if (mpirank_world==0) printf("itest %d: gradient= %1.14e  dJ_test= %1.14e rel.error %1.4e\n", itest, Jgrad, dJdu_test, rel_err);
 
+  /* Solve linearized adjoint ODE */
+  // printf("-> Linearized backward solve\n");
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
+    timestepper->solveLinearizedAdjointODE(iinit, v);
+  }
+
 }
 
 void OptimProblem::solve(Vec xinit) {

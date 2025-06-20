@@ -226,16 +226,16 @@ class MasterEq{
     void compute_dRHS_dParams(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad);
 
     /**
-     * @brief Applies the lienarized RHS with direction v 
+     * @brief Applies directional derivative of RHS in direction v to a vector xhalf
      * 
-     * Updates uout = RHS(t)x + sum_i dRHS/dalpha_i * vi * xhalf for a direction v
+     * Updates uout = sum_i dRHS/dalpha_i * vi * xhalf for a direction v
      * 
      * @param t Time of evaluation (t_n+1/2)
      * @param v Linearized state at time step t_n
-     * @param xhalf State at t_n+1/2
+     * @param xhalf State to which the RHS is applied
      * @param[out] xout Holds the linearized RHS
      */
-    void apply_linearized_RHS(const double t,const Vec v, const Vec x, const Vec xhalf, Vec xout);
+    void apply_linearized_RHS(const double t,const Vec v,  const Vec xhalf, Vec xout);
 
     /**
      * @brief Pass control parameters from global design vector to each oscillator.

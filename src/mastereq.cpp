@@ -685,9 +685,7 @@ void MasterEq::compute_dRHS_dParams(const double t, const Vec x, const Vec xbar,
 
 
 /* Directional derivative of RHS wrt parameters: y = sum_i dRHS/dalpha_i *v_i * xhalf */
-void MasterEq::apply_linearized_RHS(const double t,const Vec v, const Vec x, const Vec xhalf, Vec xout){
-
-  MatMult(getRHS(), x, xout); // xout = RHS*x
+void MasterEq::apply_linearized_RHS(const double t,const Vec v, const Vec xhalf, Vec xout){
 
   if (!usematfree) {  // Sparse-matrix application of RHS 
     // Get real and imaginary part from xhalf and xout
