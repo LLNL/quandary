@@ -20,8 +20,10 @@ class HamiltonianFileReader{
 
     LindbladType lindbladtype; ///< Type of solver (Lindblad vs Schroedinger)
     int dim_rho; ///< Dimension of the Hilbert space (N)
-    std::string hamiltonian_file; ///< Filename for Hamiltonian data ('none' if not used)
+    std::string hamiltonian_file_Hsys; ///< Filename for system Hamiltonian data ('none' if not used)
+    std::string hamiltonian_file_Hc; ///< Filename for control Hamiltonian data ('none' if not used)
     int mpirank_world; ///< Rank of global MPI communicator
+    int mpisize_world; ///< Rank of global MPI communicator
     bool quietmode; ///< Flag for quiet mode operation
 
 	public:
@@ -30,12 +32,13 @@ class HamiltonianFileReader{
     /**
      * @brief Constructor with Hamiltonian file specification.
      *
-     * @param hamiltonian_file_ Path to file containing Hamiltonian data
+     * @param hamiltonian_file_Hsys Path to file containing system Hamiltonian data
+     * @param hamiltonian_file_Hc Path to file containing control Hamiltonian data
      * @param lindbladtype_ Type of solver (Lindblad or Schroedinger)
      * @param dim_rho_ Dimension of the Hilbert space
      * @param quietmode_ Flag for quiet operation
      */
-    HamiltonianFileReader(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_);
+    HamiltonianFileReader(std::string hamiltonian_file_Hsys, std::string hamiltonian_file_Hc, LindbladType lindbladtype_, int dim_rho_, bool quietmode_);
 
     ~HamiltonianFileReader();
 

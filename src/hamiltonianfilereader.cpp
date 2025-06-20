@@ -4,13 +4,15 @@ HamiltonianFileReader::HamiltonianFileReader(){
 }
 
 
-HamiltonianFileReader::HamiltonianFileReader(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_) {
+HamiltonianFileReader::HamiltonianFileReader(std::string hamiltonian_file_Hsys_, std::string hamiltonian_file_Hc_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_) {
 
   lindbladtype = lindbladtype_;
   dim_rho = dim_rho_;
-  hamiltonian_file = hamiltonian_file_;
+  hamiltonian_file_Hsys = hamiltonian_file_Hsys_;
+  hamiltonian_file_Hc = hamiltonian_file_Hc_;
   quietmode=quietmode_;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+  MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
 }
 
 HamiltonianFileReader::~HamiltonianFileReader(){
@@ -38,7 +40,7 @@ void HamiltonianFileReader::receiveHsys(Mat& Bd, Mat& Ad){
   std::string testheader = "# Hsys_real";
   int success = 0;
   if (mpirank_world == 0) {
-    success = read_vector(hamiltonian_file.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
+    success = read_vector(hamiltonian_file_Hsys.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
     if (success != 1){
       printf("# ERROR: Did not receive real system Hamiltonian.\n");
       exit(1);
@@ -81,7 +83,7 @@ void HamiltonianFileReader::receiveHsys(Mat& Bd, Mat& Ad){
   testheader = "# Hsys_imag";
   success = 0;
   if (mpirank_world == 0) {
-    success = read_vector(hamiltonian_file.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
+    success = read_vector(hamiltonian_file_Hsys.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
     if (success != 1){
       printf("# ERROR: Did not receive imaginary system Hamiltonian.\n");
       exit(1);
@@ -125,6 +127,9 @@ void HamiltonianFileReader::receiveHc(int noscillators, std::vector<Mat>& Ac_vec
   int success;
   std::string testheader;
 
+
+  if (hamiltonian_file_Hc.compare("none") == 0 ) return;
+
   // if (mpirank_world == 0) printf("Receiving control Hamiltonian terms...\n");
 
   /* Get the dimensions right */
@@ -143,7 +148,7 @@ void HamiltonianFileReader::receiveHc(int noscillators, std::vector<Mat>& Ac_vec
     std::vector<double> vals (nelems);
     testheader = "# Oscillator " + std::to_string(k) + " Hc_real";
     if (mpirank_world == 0) {
-      success = read_vector(hamiltonian_file.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
+      success = read_vector(hamiltonian_file_Hc.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
       if (success==1) skiplines += nelems+1;
     }
     MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -185,7 +190,7 @@ void HamiltonianFileReader::receiveHc(int noscillators, std::vector<Mat>& Ac_vec
     /* Read imaginary part from file */
     testheader = "# Oscillator " + std::to_string(k) + " Hc_imag";
     if (mpirank_world == 0) {
-      success = read_vector(hamiltonian_file.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
+      success = read_vector(hamiltonian_file_Hc.c_str(), vals.data(), nelems, quietmode, skiplines, testheader);
       if (success==1) skiplines += nelems+1;
     }
     MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);

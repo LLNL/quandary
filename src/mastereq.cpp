@@ -11,7 +11,7 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_, bool quietmode_) {
+MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_Hsys_, const std::string& hamiltonian_file_Hc_, bool quietmode_) {
   nlevels = nlevels_;
   nessential = nessential_;
   noscillators = nlevels.size();
@@ -21,7 +21,8 @@ MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nes
   eta = eta_;
   usematfree = usematfree_;
   lindbladtype = lindbladtype_;
-  hamiltonian_file = hamiltonian_file_;
+  hamiltonian_file_Hsys = hamiltonian_file_Hsys_;
+  hamiltonian_file_Hc = hamiltonian_file_Hc_;
   quietmode = quietmode_;
 
 
@@ -254,11 +255,11 @@ void MasterEq::initSparseMatSolver(){
   int dimmat = dim_rho; // this is N!
 
   /* If a Hamiltonian file is given, read the system matrices from file. */ 
-  if (hamiltonian_file.compare("none") != 0 ) {
-    if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from file %s.\n\n", hamiltonian_file.c_str());
+  if (hamiltonian_file_Hsys.compare("none") != 0 || hamiltonian_file_Hc.compare("none") != 0) {
+    if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from files.\n");
 
     /* Read Hamiltonians from file */
-    HamiltonianFileReader* py = new HamiltonianFileReader(hamiltonian_file, lindbladtype, dim_rho, quietmode);
+    HamiltonianFileReader* py = new HamiltonianFileReader(hamiltonian_file_Hsys, hamiltonian_file_Hc, lindbladtype, dim_rho, quietmode);
     py->receiveHsys(Bd, Ad);
     py->receiveHc(noscillators, Ac_vec, Bc_vec); 
 
