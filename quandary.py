@@ -349,7 +349,7 @@ class Quandary:
 
         Optional arguments:
         ------------------- 
-        pcof0         : List of control parameters to be simulated. Default: Use use initial guess from the quandary object (pcof0, or pcof0_filename, or randomized initial guess)
+        pcof0         : List of control parameters to be simulated. Default: Use initial guess from the quandary object (pcof0, or pcof0_filename, or randomized initial guess)
         pt0           : List of ndarrays for the real part of the control function [MHz] for each oscillator, ndarray size = nsteps+1. Assumes spline_order == 0 and ignores the pcof0 argument. Default: []
         qt0           : Same as pt0, but for the imaginary part.
         maxcores      : Maximum number of processing cores. Default: number of initial conditions
