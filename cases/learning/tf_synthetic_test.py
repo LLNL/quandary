@@ -12,30 +12,58 @@ do_extrapolate = False
 do_analyze = False
 do_prune = False
 
-# Standard Hamiltonian and Lindblad model setup
 unitMHz = True
+
+# Standard Hamiltonian and Lindblad model setup
 Ne = [3]			# Number of essential levels
 Ng = [0]			# Number of guard levels
-freq01 = [4105.95]  # 01- transition [MHz]
-rotfreq = freq01	# rotating frame frequency
-selfkerr = [219.8]  # 1-2 transition [MHz]
-N = np.prod([Ne[i] + Ng[i] for i in range(len(Ne))])
 
-# Set the duration (us)
-T = 0.2		  # 2.0 
-# dt = 3.00e-05
-dt = 0.0001
-output_frequency = 1  # write every x-th timestep
+#  Transition frequencies [GHz] from the device: 2025, Jan 06
+f01 = 3422.625432
+f12=  3213.617052
+
+# 01 transition frequencies [GHz] per oscillator
+freq01 = [f01] 
+# Anharmonicities [GHz] per oscillator
+selfkerr = [f01-f12]
+# Rotating frame frequency
+rotfreq = freq01
+
+# Set the gate duration (us)
+T = 0.240
+
+# Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
+maxctrl_MHz = 4.0
+
+# Set up a target gate (in essential level dimensions)
+unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
+
+# Prepare Quandary with those options. This set default options for all member variables and overwrites those that are passed through the constructor here. Use help(Quandary) to see all options.
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, rand_seed=1234, unitMHz= unitMHz)
+
+# Execute quandary. Default number of executing cores is the essential Hilbert space dimension. Limit the number of cores by passing ncores=<int>. Use help(quandary.optimize) to see all arguments.
+datadir="./SWAP02_run_dir"
+t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize(datadir=datadir)
+print(f"\nFidelity = {1.0 - infidelity}")
+
+plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
+
+# Original case
+# freq01 = [4105.95]  # 01- transition [MHz]
+# rotfreq = freq01	# rotating frame frequency
+# selfkerr = [219.8]  # 1-2 transition [MHz]
+
+# # Set the duration (us)
+# T = 0.2		  # 2.0 
+# # dt = 3.00e-05
+# dt = 0.0001
+
+# # Set up a dummy gate
+# unitary = np.identity(np.prod(Ne))
 
 # For testing, can add a prefix for run directories. 
 dirprefix = "data_out"
-
-# Decoherence [us]
-T1 = [100.0]
-T2 = [40.0]
-
-# Set up a dummy gate
-unitary = np.identity(np.prod(Ne))
+output_frequency = 1  # write every x-th timestep
 
 # Initial condition at t=0: Groundstate
 initialcondition = "pure, 0"
@@ -43,6 +71,11 @@ initialcondition = "pure, 0"
 verbose = False
 rand_seed=1234
 
+N = np.prod([Ne[i] + Ng[i] for i in range(len(Ne))]) # Never used?
+
+# Decoherence [us]
+T1 = [100.0]
+T2 = [40.0]
 
 # Generate training data trajectories for various pulse strength (one trajectory for each element in the initctrl_MHz vector)
 initctrl_MHz = [8.0] # [1.0, 0.5, 0.25]
@@ -54,7 +87,8 @@ for ctrlMHz in initctrl_MHz:
 	trainingdatadir.append(cwd+"/"+dirprefix+"_ctrlMHz"+str(ctrlMHz)+"_asmeasured")
 
 	# Setup quandary object using the standard Hamiltonian model.
-	quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, dT=dt, randomize_init_ctrl=randomize_init_ctrl, initctrl_MHz=ctrlMHz, output_frequency=output_frequency, unitMHz=unitMHz) 
+	quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, T=T, targetgate=unitary, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, randomize_init_ctrl=randomize_init_ctrl, initctrl_MHz=ctrlMHz, output_frequency=output_frequency, unitMHz=unitMHz) 
+	# dT=dt why specify the time step?
 
 	if do_datageneration:
 
