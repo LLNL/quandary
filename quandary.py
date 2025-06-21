@@ -97,7 +97,7 @@ class Quandary:
     _gatefilename         : str 
     _initstatefilename    : str 
     _initialstate         : List[complex] = field(default_factory=list)
-    unitMHz               : Switch using MHz units
+    unitMHz               : Use MHz/us units
 
 
     Output parameters, available after Quandary has been executed (simulate or optimze)
@@ -141,7 +141,7 @@ class Quandary:
     initctrl_MHz        : List[float] = field(default_factory=list)   
     maxctrl_MHz         : List[float] = field(default_factory=list)   
     control_enforce_BC  : bool        = False                         
-    spline_knot_spacing : float       = 3.0
+    spline_knot_spacing : float       = -1
     nsplines            : int         = -1 
     spline_order        : int         = 2                           
     carrier_frequency   : List[List[float]] = field(default_factory=list) 
@@ -219,6 +219,32 @@ class Quandary:
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
+
+        # Scale duration and time step to [ns] and frequences to [GHz]
+        if self.unitMHz:
+            time_fac = 1e3
+            freq_fac = 1e-3
+
+            # Times from us to ns
+            self.T = self.T*time_fac
+            self.dT = self.dT*time_fac
+
+            # Freq's from MHz to GHz
+            res = [x * freq_fac for x in self.freq01]
+            self.freq01 = res
+
+            res = [x * freq_fac for x in self.selfkerr]
+            self.selfkerr = res
+
+            res = [x * freq_fac for x in self.crosskerr]
+            self.crosskerr = res
+
+            res = [x * freq_fac for x in self.rotfreq]
+            self.rotfreq = res
+
+            res = [x * freq_fac for x in self.Jkl]
+            self.Jkl = res
+
         # if len(self.Hsys) > 0: # User-provided Hamiltonian operators 
             # self.standardmodel=False   
         # else: # Using standard Hamiltonian model
@@ -249,6 +275,7 @@ class Quandary:
         # Estimate the number of required time steps
         if self.dT < 0:
             if self.standardmodel==True: # set up the standard Hamiltonian first
+                # AP: The Hamiltonian was already calculated above, why do it again?
                 Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
                 self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
@@ -257,8 +284,15 @@ class Quandary:
             self.nsteps = int(np.ceil(self.T / self.dT))
             self.T = self.nsteps*self.dT
         if self.verbose:
-            print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
-            print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
+            print("Final time: ",self.T,"[ns], Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "[ns]")
+            print("Maximum control amplitudes: ", self.maxctrl_MHz, "[MHz]")
+
+        # Get the spline knot spacing correct wrt to the units
+        if self.spline_knot_spacing < 0:
+            self.spline_knot_spacing = 3.0 # [ns]
+        else: # spline_knot_spacing specified by user, only scale to [ns] if needed
+            if not self.unitMHz:
+                self.spline_knot_spacing = self.spline_knot_spacing / 1e+3
 
         # Get number of splines right
         if self.nsplines < 0:
@@ -734,13 +768,14 @@ class Quandary:
                 # Scale initial control amplitudes by the number of carrier waves and convert to ns
                 initamp = self.initctrl_MHz[iosc] / len(self.carrier_frequency[iosc])
                 if not self.unitMHz:
-                    initamp = initamp / 1e+3
+                    initamp = initamp / 1e+3 # Scale to [GHz]
                 initstring = ("random, " if self.randomize_init_ctrl else "constant, ") + str(initamp) + "\n"
             mystring += "control_initialization" + str(iosc) + " = " + initstring 
             if len(self.maxctrl_MHz) == 0: # Disable bounds, if not specified
                 boundval = 1e+12
             else:
-                boundval = self.maxctrl_MHz[iosc]/1000.0  # Scale to ns
+                boundval = self.maxctrl_MHz[iosc] # Always in MHz
+                boundval = boundval/1000.0  # Scale to GHz
             mystring += "control_bounds" + str(iosc) + " = " + str(boundval) + "\n"
             mystring += "carrier_frequency" + str(iosc) + " = "
             omi = self.carrier_frequency[iosc]
@@ -938,7 +973,7 @@ class Quandary:
         return time, pt, qt, uT, expectedEnergy, population, pcof, infid_last, optim_hist
 
 
-def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pmin=40, unitMHz=False):
+def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pmin=40):
     """
     Helper function to estimate the number of time steps based on eigenvalues of the system Hamiltonian and maximum control Hamiltonians. Note: The estimate does not account for quickly varying signals or a large number of splines. Double check that at least 2-3 points per spline are present to resolve control function. #TODO: Automate this.
     """
@@ -953,14 +988,12 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
 
     for i in range(len(Hc_re)):
         est_radns = est_ctrl_MHz[i]*2.0*np.pi
-        if not unitMHz:
-            est_radns  = est_radns / 1e+3
+        est_radns  = est_radns / 1e+3
         if len(Hc_re[i])>0:
             K1 += est_radns * Hc_re[i] 
     for i in range(len(Hc_im)):
         est_radns = est_ctrl_MHz[i]*2.0*np.pi
-        if not unitMHz:
-            est_radns  = est_radns / 1e+3
+        est_radns  = est_radns / 1e+3
         if len(Hc_im[i])>0:
             K1 = K1 + 1j * est_radns * Hc_im[i] # can't use += due to type!
     
