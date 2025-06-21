@@ -620,21 +620,19 @@ void MasterEq::initSparseMatSolver(){
 
 
 //   // Test: Print out Hamiltonian terms.
-//   printf("\n\n HEYHEY! Printing out the system matrices: \n\n");
-//   printf("Ad=\n");
-//   MatView(Ad, NULL);
-//   printf("Bd=\n");
-//   MatView(Bd, NULL);
-//   for (int k=0; k<noscillators; k++){
-//     for (int i=0; i<Bc_vec[k].size(); i++){
-//       printf("Oscil %d, control term Bc %d:\n", k, i);
-//       MatView(Bc_vec[k][i], NULL);
-//     }
-//     for (int i=0; i<Ac_vec[k].size(); i++){
-//       printf("Oscil %d, control term Ac %d:\n", k, i);
-//       MatView(Ac_vec[k][i], NULL);
-//     }
-//   }
+  // printf("\n\n HEYHEY! Printing out the system matrices: \n\n");
+  // printf("Ad=\n");
+  // MatView(Ad, NULL);
+  // printf("Bd=\n");
+  // MatView(Bd, NULL);
+  // for (int i=0; i<Bc_vec.size(); i++){
+  //   printf("Oscil %d, Bc :\n",i);
+  //   MatView(Bc_vec[i], NULL);
+  // }
+  // for (int i=0; i<Ac_vec.size(); i++){
+  //   printf("Oscil %d, Ac:\n", i);
+  //   MatView(Ac_vec[i], NULL);
+  // }
 //   for (int kl=0; kl<Ad_vec.size(); kl++) {
 //     printf("Bd_vec[%d]=\n", kl);
 //     MatView(Bd_vec[kl], NULL);

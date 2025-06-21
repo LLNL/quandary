@@ -4,6 +4,7 @@
 #include <vector>
 #include <assert.h>
 #include <iostream> 
+#include <fstream>
 #include <controlbasis.hpp>
 
 #pragma once

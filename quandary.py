@@ -560,36 +560,26 @@ class Quandary:
         # If not standard Hamiltonian model, write provided Hamiltonians to a file
         if not self.standardmodel:
             # Write non-standard Hamiltonians to file  
-            # System Hamiltonian (complex)
+            # Write system Hamiltonian (complex)
             self._hamiltonian_filename_Hsys= "hamiltonian_Hsys.dat"
+            H = self.Hsys
             with open(os.path.join(datadir, self._hamiltonian_filename_Hsys), "w", newline='\n') as f:
                 f.write("# Hsys_real \n")
-                Hsyslist = list(np.array(self.Hsys.real).flatten(order='F'))
-                for value in Hsyslist:
-                    f.write("{:20.13e}\n".format(value))
-                f.write("# Hsys_imag\n")
-                Hsyslist = list(np.array(self.Hsys.imag).flatten(order='F'))
-                for value in Hsyslist:
-                    f.write("{:20.13e}\n".format(value))
-
-            # Control Hamiltonians, if given
+                nz = np.nonzero(H)
+                for i, j in zip(*nz):
+                    v = H[i, j]
+                    f.write(f"{i} {j} {v.real:.13e} {v.imag:.13e}\n")
+            # Write control Hamiltonians, if given
             if len(self.Hc_re)>0 or len(self.Hc_im)>0:
                 self._hamiltonian_filename_Hc = "hamiltonian_Hc.dat"
-                for iosc in range(len(self.Ne)):
-                    # Real part, if given
-                    if len(self.Hc_re)>iosc and len(self.Hc_re[iosc])>0:
-                        with open(os.path.join(datadir, self._hamiltonian_filename_Hc), "a", newline='\n') as f:
-                            Hcrelist = list(np.array(self.Hc_re[iosc]).flatten(order='F'))
-                            f.write("# Oscillator {:d} Hc_real \n".format(iosc))
-                            for value in Hcrelist:
-                                f.write("{:20.13e}\n".format(value))
-                    # Imaginary part, if given
-                    if len(self.Hc_im)>iosc and len(self.Hc_im[iosc])>0:
-                        with open(os.path.join(datadir, self._hamiltonian_filename_Hc), "a", newline='\n') as f:
-                            Hcimlist = list(np.array(self.Hc_im[iosc]).flatten(order='F'))
-                            f.write("# Oscillator {:d} Hc_imag \n".format(iosc))
-                            for value in Hcimlist:
-                                f.write("{:20.13e}\n".format(value))
+                with open(os.path.join(datadir, self._hamiltonian_filename_Hc), "w", newline='\n') as f:
+                    for iosc, (Hc_re, Hc_im) in enumerate(zip(self.Hc_re, self.Hc_im)):
+                        Hc = np.array(Hc_re) + 1j * np.array(Hc_im)
+                        nz = np.nonzero(Hc)
+                        f.write(f"# Oscillator {iosc} \n")
+                        for i, j in zip(*nz):
+                            v = Hc[i, j]
+                            f.write(f"{iosc} {i} {j} {v.real:.13e} {v.imag:.13e}\n")
             if self.verbose:
                 print("Hamiltonian operators written to ", os.path.join(datadir, self._hamiltonian_filename_Hsys), os.path.join(datadir, self._hamiltonian_filename_Hc))
 
