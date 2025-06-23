@@ -225,9 +225,15 @@ class Quandary:
             time_fac = 1e3
             freq_fac = 1e-3
 
-            # Times from us to ns
+            # Duration and time-step from us to ns
             self.T = self.T*time_fac
             self.dT = self.dT*time_fac
+
+            # decoherence times from us to ns
+            res = [x * time_fac for x in self.T1]
+            self.T1 = res
+            res = [x * time_fac for x in self.T2]
+            self.T2 = res
 
             # Freq's from MHz to GHz
             res = [x * freq_fac for x in self.freq01]
