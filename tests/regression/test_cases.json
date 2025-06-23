@@ -148,5 +148,15 @@
         "number_of_processes": [
             1, 2, 4
         ]
+    },
+    {
+        "simulation_name": "hamiltonian-reader",
+        "files_to_compare": [
+            "population*.dat",
+            "expected*.dat"
+        ],
+        "number_of_processes": [
+            1, 4
+        ]
     }
 ]
