@@ -65,6 +65,15 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
     exit(1);
   }
 
+  // Check for potential integer overflow when dim >= 2^30 and PetscInt is 32-bit.
+  if (dim >= (1 << 30) && sizeof(PetscInt) <= 4) {
+    if (mpirank_world == 0) {
+      printf("\nERROR: System dimension (%lld) is too large for 32-bit PetscInt.\n", (long long)dim);
+      printf("Please recompile with 64-bit PetscInts or reduce system size.\n\n");
+    }
+    exit(1);
+  }
+
   /* Create matrix shell for applying system matrix (RHS), */
   /* dimension: 2*dim x 2*dim for the real-valued system */
   MatCreateShell(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, 2*dim, 2*dim, (void**) &RHSctx, &RHS);
