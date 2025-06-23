@@ -564,7 +564,7 @@ class Quandary:
             self._hamiltonian_filename_Hsys= "hamiltonian_Hsys.dat"
             H = self.Hsys
             with open(os.path.join(datadir, self._hamiltonian_filename_Hsys), "w", newline='\n') as f:
-                f.write("# Hsys_real \n")
+                f.write("# row col Hsys_real Hsys_imag \n")
                 nz = np.nonzero(H)
                 for i, j in zip(*nz):
                     v = H[i, j]
@@ -576,7 +576,7 @@ class Quandary:
                     for iosc, (Hc_re, Hc_im) in enumerate(zip(self.Hc_re, self.Hc_im)):
                         Hc = np.array(Hc_re) + 1j * np.array(Hc_im)
                         nz = np.nonzero(Hc)
-                        f.write(f"# Oscillator {iosc} \n")
+                        f.write(f"# oscillator row col Hc_real Hc_imag \n")
                         for i, j in zip(*nz):
                             v = Hc[i, j]
                             f.write(f"{iosc} {i} {j} {v.real:.13e} {v.imag:.13e}\n")
