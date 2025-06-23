@@ -18,7 +18,7 @@ HamiltonianFileReader::HamiltonianFileReader(std::string hamiltonian_file_Hsys_,
 HamiltonianFileReader::~HamiltonianFileReader(){
 }
 
-void HamiltonianFileReader::receiveHsys(Mat& Bd, Mat& Ad){
+void HamiltonianFileReader::receiveHsys(Mat& Ad, Mat& Bd){
   MatSetOption(Bd, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
 
@@ -64,7 +64,7 @@ void HamiltonianFileReader::receiveHsys(Mat& Bd, Mat& Ad){
   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
 }
 
-void HamiltonianFileReader::receiveHc(int noscillators, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec){
+void HamiltonianFileReader::receiveHc(std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec){
 
   if (hamiltonian_file_Hc.compare("none") == 0 ) return;
 

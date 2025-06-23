@@ -49,7 +49,7 @@ class HamiltonianFileReader{
    * @param[out] Bd Reference to matrix that stores the imaginary part of the system matrix for (-i*Hsys). Must be allocated. 
    * @param[out] Ad Reference to matrix that stores the real part of the system matrix for (-i*Hsys). Must be allocated. 
    */
-  void receiveHsys(Mat& Bd, Mat& Ad);
+  void receiveHsys(Mat& Ad, Mat& Bd);
 
   /**
    * @brief Receives real and imaginary control operators from file.
@@ -61,5 +61,5 @@ class HamiltonianFileReader{
    * @param Ac_vec Reference to vector of matrices storing real parts of control system matrices. One per oscillator.
    * @param Bc_vec Reference to vector of matrices storing imaginary parts of control matrices. One per oscillator.
    */
-  void receiveHc(int noscillators, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec);
+  void receiveHc(std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec);
 };

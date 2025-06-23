@@ -260,8 +260,8 @@ void MasterEq::initSparseMatSolver(){
 
     /* Read Hamiltonians from file */
     HamiltonianFileReader* py = new HamiltonianFileReader(hamiltonian_file_Hsys, hamiltonian_file_Hc, lindbladtype, dim_rho, quietmode);
-    py->receiveHsys(Bd, Ad);
-    py->receiveHc(noscillators, Ac_vec, Bc_vec); 
+    py->receiveHsys(Ad, Bd);
+    py->receiveHc(Ac_vec, Bc_vec); 
 
     if (mpirank_world==0&& !quietmode) printf("# Done. \n\n");
     delete py;
