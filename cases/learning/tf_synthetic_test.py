@@ -68,22 +68,28 @@ N = np.prod([Ne[i] + Ng[i] for i in range(len(Ne))]) # Never used?
 dirprefix = "data_out" # add a prefix for run directories
 cwd = os.getcwd()
 datadir_test = cwd+"/"+dirprefix+"_asmeasured" # NOTE: not an array anymore
-perturbfac = 1.5 # For perturbing the control vector
+# perturbfac = 1.5 # For perturbing the control vector
+pfact = [0.75, 1.5]
 
 if do_datageneration:
 	# First simulate the unperturbed controls to get the params of the unperturbed controls
 	datadir_orig = cwd+"/"+dirprefix+"_origpulse"
 	# simulate NOTE: how is the simulation distributed?
-	t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(maxcores=maxcores, datadir=datadir_orig)
+	t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(pcof0=pcof_opt, maxcores=maxcores, datadir=datadir_orig)
 	# plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
 
-	# Now perturb the controls: Scale each carrier wave component. Here: two carrier waves, but choose scaling g1 = g2 = const. TODO. 
-	pcof_pert = [pcofi * perturbfac for pcofi in pcof_opt] 	# original control vector in pcof_opt
+	# Now perturb the controls: Scale each carrier wave component
+	# One system, 2 frequencies in this test
+	Nfirst = round(len(pcof_opt)/2) # Number of elements for the first carrier frequency
+
+	pcof_pert = np.zeros(2*Nfirst)
+	pcof_pert[0:Nfirst] = [pcofi * pfact[0] for pcofi in pcof_opt[0:Nfirst]]
+	pcof_pert[Nfirst:2*Nfirst] = [pcofi * pfact[1] for pcofi in pcof_opt[Nfirst:2*Nfirst]]	# original control vector in pcof_opt
 
 	# Generate training data: Simulate perturbed controls
 	t, pt, qt, infidelity_pert, expectedEnergy, population = quandary.simulate(pcof0=pcof_pert, maxcores=maxcores, datadir=datadir_test)
 
-	print("-> Generated trajectory for perturbed pulse amplitude with perturbation factor:", perturbfac)
+	print("-> Generated trajectory for perturbed pulse amplitude with perturbation factor:", pfact)
 	print("->   Unperturbed pulse trajectory directory:", datadir_orig, " Fidelity:", 1.0 - infidelity)
 	print("->   Perturbed pulse (training data) directory:", datadir_test, " Fidelity:", 1.0 - infidelity_pert,"\n")
  
@@ -128,7 +134,7 @@ quandary.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=U
 print(" CHECK: Loss should be large!\n")
 
 ### TEST: Simulate with transfer functions set to the exact pertubation from above -> Loss should be large!
-learnparams_perturb = [id*perturbfac for id in learnparams_identity]
+learnparams_perturb = pfact # [id*perturbfac for id in learnparams_identity]
 
 quandary.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learnparams_perturb, maxcores=maxcores, datadir=UDEdatadir+"_scaledtransfer")
 print(" CHECK: Loss should be zero (small)!\n")
