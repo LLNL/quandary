@@ -150,15 +150,15 @@ def test_example_cnot(mpi_exec):
     for i in range(n_osc):
         pt_samples = [pt[i][idx] for idx in SAMPLE_INDICES]
         qt_samples = [qt[i][idx] for idx in SAMPLE_INDICES]
-        assert np.allclose(pt_samples, EXPECTED_PT[i], rtol=REL_TOL, atol=ABS_TOL)
-        assert np.allclose(qt_samples, EXPECTED_QT[i], rtol=REL_TOL, atol=ABS_TOL)
+        np.testing.assert_allclose(pt_samples, EXPECTED_PT[i], rtol=REL_TOL, atol=ABS_TOL)
+        np.testing.assert_allclose(qt_samples, EXPECTED_QT[i], rtol=REL_TOL, atol=ABS_TOL)
 
     for i in range(n_osc):
         for j in range(n_levels):
             energy_data = expectedEnergy[i][j]
             energy_samples = [energy_data[idx] for idx in SAMPLE_INDICES]
-            assert np.allclose(energy_samples, EXPECTED_ENERGY[i][j], rtol=REL_TOL, atol=ABS_TOL)
+            np.testing.assert_allclose(energy_samples, EXPECTED_ENERGY[i][j], rtol=REL_TOL, atol=ABS_TOL)
 
             pop_data = population[i][j]
             pop_samples = [pop_data[0, idx] for idx in SAMPLE_INDICES]
-            assert np.allclose(pop_samples, EXPECTED_POPULATION[i][j], rtol=REL_TOL, atol=ABS_TOL)
+            np.testing.assert_allclose(pop_samples, EXPECTED_POPULATION[i][j], rtol=REL_TOL, atol=ABS_TOL)
