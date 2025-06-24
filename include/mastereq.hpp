@@ -1,4 +1,5 @@
 #include "defs.hpp"
+// #include "heisen.hpp"
 #include "oscillator.hpp"
 #include "util.hpp"
 #include <petscts.h>
@@ -7,6 +8,11 @@
 #include <iostream> 
 #include "gate.hpp"
 #include "hamiltonianfilereader.hpp"
+#include "util.hpp"
+// #include <complex>
+#include <cmath>
+using namespace std;
+// using Complex = complex<double>;
 
 #pragma once
 
@@ -254,6 +260,22 @@ class MasterEq{
     // void createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs);
     // /* Derivative of reduced density computation */
     // void createReducedDensity_diff(Vec rhobar, const Vec reducedbar, const std::vector<int>& oscilIDs);
+
+    /** 
+     * @brief Retrieve matrix element from Heisenberg spinchain matrix
+     * 
+     * @param[in] row Matrix row
+     * @param[in] col Matrix column
+     * @param[in] J 
+     * @param[in] K
+     * @param[in] U 
+     * @param[in] hpara
+     * @param[in] hperp
+     * @param[out] out_re Real part of matrix element
+     * @param[out] out_im Imaginary part of matrix element
+     * 
+     */
+    void getHeisenbergMatElement(int row, int col, const vector<double>& J, const vector<double>& K, const vector<double>& U, const vector<double>& hpara, const vector<double>& hperp, double* out_re, double* out_im);
 };
 
 

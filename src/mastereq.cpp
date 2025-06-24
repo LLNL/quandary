@@ -266,6 +266,35 @@ void MasterEq::initSparseMatSolver(){
     if (mpirank_world==0&& !quietmode) printf("# Done. \n\n");
     delete py;
 
+  //   int N = noscillators;
+  //   vector<double> J(N-1, -2.0);      // XX coupling
+  //   vector<double> K(N-1, 3.0);      // YY coupling  
+  //   vector<double> U(N-1, -1.0);      // ZZ coupling
+  //   vector<double> hpara(N, 2.0);    // Z-field
+  //   vector<double> hperp(N, 1.5);   // X-field    
+
+  //   // pass to Ad=Re(-iH)=Im(H), Bd=Im(-iH)=-Re(H)
+  //   MatZeroEntries(Ad);
+  //   MatZeroEntries(Bd);
+  // MatSetOption(Ad, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+  // MatSetOption(Bd, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+  //   for (int row=0; row<dim_rho; row++){
+  //     for (int col=0; col<dim_rho; col++){
+  //       double val_re, val_im;
+  //       getHeisenbergMatElement(row, col, J, K, U, hpara, hperp, &val_re, &val_im);
+  //       if (fabs(val_im) > 1e-12){
+  //         MatSetValue(Ad, row, col, val_im, ADD_VALUES);
+  //       }
+  //       if (fabs(val_re) > 1e-12){
+  //         MatSetValue(Bd, row, col, -val_re, ADD_VALUES);
+  //       }
+  //     }
+  //   }
+  //   MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
+  //   MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
+  //   MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
+  //   MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
+
   /* Else: Initialize system matrices with standard Hamiltonian model */
   } else {
 
@@ -681,6 +710,80 @@ void MasterEq::compute_dRHS_dParams(const double t, const Vec x, const Vec xbar,
     compute_dRHS_dParams_matfree(t, x, xbar,  alpha, grad, nlevels, lindbladtype, oscil_vec);
   }
 }
+
+
+void MasterEq::getHeisenbergMatElement(int row, int col, const vector<double>& J, const vector<double>& K, const vector<double>& U, const vector<double>& hpara, const vector<double>& hperp, double* out_re, double* out_im){
+  int N = hpara.size();
+  double element_re = 0.0;
+  double element_im = 0.0;
+
+  // Convert row and col to binary representations (spin configurations)
+  vector<int> bra(N), ket(N);
+  for (int i = 0; i < N; i++) {
+    bra[i] = (row >> i) & 1;  // |bra⟩
+    ket[i] = (col >> i) & 1;  // |ket⟩
+  }
+
+  // Single-qubit terms (magnetic fields)
+  for (int i = 0; i < N; i++) {
+    // Z-field term: hpara[i] * ⟨bra|sz_i|ket⟩
+    if (vectorsEqual(bra, ket)) {
+      double z_eigenval = (ket[i] == 0) ? 1.0 : -1.0;
+      element_re += hpara[i] * z_eigenval;
+    }
+    // X-field term: hperp[i] * ⟨bra|sx_i|ket⟩
+    vector<int> ket_flipped = ket;
+    ket_flipped[i] = 1 - ket_flipped[i];  // Apply sx_i to |ket⟩
+    if (vectorsEqual(bra, ket_flipped)) {
+      element_re += hperp[i];
+    }
+  }
+
+  // Two-qubit interaction terms
+  for (int i = 0; i < N - 1; i++) {
+    // ZZ interaction: U[i] * ⟨bra|sz_i * sz_{i+1}|ket⟩
+    if (vectorsEqual(bra, ket)) {
+      double z_i = (ket[i] == 0) ? 1.0 : -1.0;
+      double z_j = (ket[i+1] == 0) ? 1.0 : -1.0;
+      element_re += U[i] * z_i * z_j;
+    }
+    // XX interaction: -J[i] * ⟨bra|sx_i * sx_{i+1}|ket⟩
+    vector<int> ket_xx = ket;
+    ket_xx[i] = 1 - ket_xx[i];        // Apply sx_i
+    ket_xx[i+1] = 1 - ket_xx[i+1];   // Apply sx_{i+1}
+    if (vectorsEqual(bra, ket_xx)) {
+      element_re -= J[i];
+    }
+    // YY interaction: -K[i] * ⟨bra|sy_i * sy_{i+1}|ket⟩
+    vector<int> ket_yy = ket;
+    ket_yy[i] = 1 - ket_yy[i];        // Y flips the spin
+    ket_yy[i+1] = 1 - ket_yy[i+1];   // Y flips the spin
+    if (vectorsEqual(bra, ket_yy)) {
+      // Calculate phase: sy|0⟩ = i|1⟩, sy|1⟩ = -i|0⟩
+      double phase_re, phase_im;
+      // Phase from sy_i
+      if (ket[i] == 0) {
+        phase_re = 0.0;  phase_im = 1.0;  // i
+      } else {
+        phase_re = 0.0; phase_im = -1.0;  // -i
+      }
+      // Phase from sy_{i+1}
+      if (ket[i+1] == 0) {
+        double tmp = phase_re;
+        phase_re = -phase_im; phase_im = tmp;  // *= i
+      } else {
+        double tmp = phase_re;
+        phase_re = phase_im; phase_im = tmp; // -i
+      }
+      element_re -= K[i] * phase_re;
+      element_im -= K[i] * phase_im;
+    }
+  }
+
+  (*out_re) = element_re;
+  (*out_im) = element_im;
+}
+
 
 void MasterEq::setControlAmplitudes(const Vec x) {
 
