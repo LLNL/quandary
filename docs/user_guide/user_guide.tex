@@ -306,16 +306,16 @@ Compare Section \ref{sec:penalty}.
 \subsection{Interfacing to Python environment}
 You can use the Python interface for Quandary to simulate and optimize from within a python environment (version $\geq$ 3). It eases the use of Quandary, and adds some additional functionality, such as automatic computation of the required number of time-steps, automatic choice of the carrier frequencies, and it allows for custom Hamiltonian models to be used (system and control Hamiltonian operators $H_d$ and $H_c$). A good place to start is to have a look into the example \texttt{example\_swap02.py}. This test case optimizes for a 3-level SWAP02 gate that swaps the state of the zero and the second energy level of a 3-level qudit. 
 
-All interface functions are defined in \texttt{quandary.py}, which should be imported at the beginning of the script. Hence, you should either have this file in your working directory, or append your python path with the location of that file.
-Most importantly, the python interface defines the \texttt{Quandary} Dataclass that gathers all configuration options and sets defaults. Default values are overwritten by user input either through the constructor call through \texttt{Quandary(<membervar>=<value>)} directly, or by accessing the member variables after construction and calling \texttt{config.update()} afterwards (compare \texttt{example\_swap02.py}). 
+All interface functions are defined in \texttt{quandary.py}. Most importantly, it defines the \texttt{Quandary} dataclass that gathers all configuration options and sets defaults. Default values are overwritten by user input either through the constructor call through \texttt{Quandary(<membervar>=<value>)} directly, or by accessing the member variables after construction and calling \texttt{update()} afterwards (compare \texttt{example\_swap02.py}). 
 
 After setting up the configuration, you can evoke simulations or optimizations with \texttt{quandary.\-simulate/\-optimize()}. Check out \texttt{help(Quandary)} to see all available user functions. Under the hood, those function writes the required Quandary configuration files (\texttt{config.cfg}, etc.) to a data directory, then evokes (multiple) subprocesses to execute parallel C++ Quandary on that configuration file through the shell, and then loads the results from Quandary's output files back into the python interpreter. Plotting scripts are also provided, see the example scripts.
 
-In addition to the standard Hamiltonian models as described in Section \ref{sec:model}, the python interface allows for user-defined Hamiltonian operators $H_d$ and $H_c$. Those are provided to Quandary through optional arguments to the python interface configuration \texttt{QuandaryConfig}. If those user-defined Hamiltonians are given, Quandary replaces the Hamiltonian operators in \eqref{eq:Hd_rotating} (system Hamiltonian) and \eqref{eq:Hc_rotating} (control Hamiltonian operators $a\pm a'$) by the provided matrices.
+In addition to the standard Hamiltonian models as described in Section \ref{sec:model}, the python interface allows for user-defined Hamiltonian operators $H_d$ and $H_c$. Those are provided to Quandary through optional arguments to the python configuration \texttt{Quandary}, in which case Quandary replaces the Hamiltonian operators in \eqref{eq:Hd_rotating} (system Hamiltonian) and \eqref{eq:Hc_rotating} (control Hamiltonian operators $a\pm a'$) by the provided matrices.
 \begin{itemize}
-  \item The system Hamiltonian $H_d$ must be real-valued, and time-independent. The units of the system Hamiltonian should be angular frequency (multiply $2\pi$). 
-  \item For each oscillator, a maximum of one complex-valued control operator can be specified. Those should be provided in terms of their real and imaginary parts separately, e.g. the standard model control operators would be specified as $H_{c,k}^{re} = a_k+a_k^\dagger$ and $H_{c,k}^{im}=a_k-a_k^\dagger$, for each oscillator $k$. The real parts will be multiplied by the control pulses $p_k(t)$, while the imaginary parts will be multiplied by $iq_k(t)$ for each oscillator $k$, similar to the model in \eqref{eq:Hc_rotating}. Control Hamiltonian operators should be 'unit-free', since those units come in through the multiplied control pulses $p$ and $q$.
-  \item Note: While control Hamiltonian operators are optional, the system Hamiltonian is always required. (Set it to zero otherwise.)
+  \item The system Hamiltonian $H_d$ is a time-independent complex hermitian matrix. The units of the system Hamiltonian should be angular frequency (multiply $2\pi$). 
+  \item For each oscillator, one complex-valued control operator can be specified. Those should be provided in terms of their real and imaginary parts separately, e.g. the standard model control operators would be specified as $H_{c,k}^{re} = a_k+a_k^\dagger$ and $H_{c,k}^{im}=a_k-a_k^\dagger$, for each oscillator $k$. The real parts will be multiplied by the control pulses $p_k(t)$, while the imaginary parts will be multiplied by $iq_k(t)$ for each oscillator $k$, similar to the model in \eqref{eq:Hc_rotating}. Control Hamiltonian operators should be 'unit-free', since those units come in through the multiplied control pulses $p$ and $q$.
+  \item To enable the use of the custom Hamiltonians, pass the configuration option \texttt{standardmodel=False}, in addition to \texttt{Hsys=<yourSystemHamiltonian>} and \texttt{Hc\_real=[<HcReal oscillator1, HcReal oscillator2, ...]},  \texttt{Hc\_imag=[<HcImag oscillator1, HcImag oscillator2, ...]}. 
+  \item Note: The control Hamiltonian operators are optional, but the system Hamiltonian is always required if \texttt{standardmodel=False}. 
   \item Note: The matrix-free solver can not be used when custom Hamiltonians are provided. The code will therefore be slower. 
 \end{itemize}
 
@@ -860,13 +860,13 @@ Livermore National Laboratory under Contract DE-AC52-07NA27344. LLNL-SM-818073.
   \section{Summary of all C++ configuration options}
   Here is a list of all options available to the C++ Quandary code, this is the same as in \texttt{config\_template.cfg}.
  
-  \lstinputlisting[breaklines]{../config_template.cfg}
+  \lstinputlisting[breaklines]{../../config_template.cfg}
 
 
   \section{Summary of all python interface options}
   Here is a list of all options available to the python interface, this is the same as in \texttt{quandary.py}.
 
-  \lstinputlisting[breaklines, firstline=17, lastline=91, keepspaces=false, language=mylanguage]{../quandary.py}
+  \lstinputlisting[breaklines, firstline=17, lastline=91, keepspaces=false, language=mylanguage]{../../quandary.py}
   
 
 \end{document}

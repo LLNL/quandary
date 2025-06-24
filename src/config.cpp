@@ -2,11 +2,11 @@
 
 
 
-MapParam::MapParam() { 
+Config::Config() { 
     mpi_rank = 0; 
 }
 
-MapParam::MapParam(MPI_Comm comm_, std::stringstream& logstream, bool quietmode_)
+Config::Config(MPI_Comm comm_, std::stringstream& logstream, bool quietmode_)
 {
   comm = comm_;
   MPI_Comm_rank(comm, &mpi_rank);
@@ -14,7 +14,7 @@ MapParam::MapParam(MPI_Comm comm_, std::stringstream& logstream, bool quietmode_
   quietmode = quietmode_;
 }
 
-MapParam::~MapParam(){}
+Config::~Config(){}
 
 void StringTrim(std::string &s)
 {
@@ -35,7 +35,7 @@ void StringTrim(std::string &s)
   }
 }
 
-void MapParam::ReadFile(std::string filename)
+void Config::ReadFile(std::string filename)
 {
   std::string line;
   std::ifstream file;
@@ -73,7 +73,7 @@ void MapParam::ReadFile(std::string filename)
   file.close();
 }
 
-void MapParam::GetVecDoubleParam(std::string key, std::vector<double> &fillme, double default_val, bool exportme, bool warnme) const 
+void Config::GetVecDoubleParam(std::string key, std::vector<double> &fillme, double default_val, bool exportme, bool warnme) const 
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   if (it_value == this->end())
@@ -96,7 +96,7 @@ void MapParam::GetVecDoubleParam(std::string key, std::vector<double> &fillme, d
   }
 }
 
-double MapParam::GetDoubleParam(std::string key, double default_val, bool warnme) const
+double Config::GetDoubleParam(std::string key, double default_val, bool warnme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   double val;
@@ -113,7 +113,7 @@ double MapParam::GetDoubleParam(std::string key, double default_val, bool warnme
   return val;
 }
 
-int MapParam::GetIntParam(std::string key, int default_val, bool warnme, bool exportme) const
+int Config::GetIntParam(std::string key, int default_val, bool warnme, bool exportme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   int val;
@@ -133,7 +133,7 @@ int MapParam::GetIntParam(std::string key, int default_val, bool warnme, bool ex
   return val;
 }
 
-std::string MapParam::GetStrParam(std::string key, std::string default_val, bool exportme, bool warnme) const
+std::string Config::GetStrParam(std::string key, std::string default_val, bool exportme, bool warnme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   std::string val;
@@ -150,7 +150,7 @@ std::string MapParam::GetStrParam(std::string key, std::string default_val, bool
   return val;
 }
 
-bool MapParam::GetBoolParam(std::string key, bool default_val, bool warnme) const
+bool Config::GetBoolParam(std::string key, bool default_val, bool warnme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   bool val;
@@ -175,12 +175,12 @@ bool MapParam::GetBoolParam(std::string key, bool default_val, bool warnme) cons
 }
 
 
-int MapParam::GetMpiRank() const { 
+int Config::GetMpiRank() const { 
     return mpi_rank; 
 }
 
 
-void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int default_val, bool warnme) const 
+void Config::GetVecIntParam(std::string key, std::vector<int> &fillme, int default_val, bool warnme) const 
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   std::string lineexp;
@@ -205,7 +205,7 @@ void MapParam::GetVecIntParam(std::string key, std::vector<int> &fillme, int def
 }
 
 
-void MapParam::GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val, bool exportme, bool warnme) const
+void Config::GetVecStrParam(std::string key, std::vector<std::string> &fillme, std::string default_val, bool exportme, bool warnme) const
 {
   std::map<std::string, std::string>::const_iterator it_value = this->find(key);
   std::string lineexp;

@@ -54,7 +54,7 @@ int main(int argc,char **argv)
     return 0;
   }
   std::stringstream log;
-  MapParam config(MPI_COMM_WORLD, log, quietmode);
+  Config config(MPI_COMM_WORLD, log, quietmode);
   config.ReadFile(argv[1]);
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
@@ -473,7 +473,7 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize optimization --- */
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, output, x_is_control, quietmode);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, x_is_control, output, quietmode);
 
   /* Set upt solution and gradient vector */
   Vec xinit;
@@ -508,7 +508,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
-    optimctx->timestepper->writeDataFiles = true;
+    optimctx->timestepper->writeTrajectoryDataFiles = true;
     objective = optimctx->evalF(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
@@ -519,7 +519,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
-    optimctx->timestepper->writeDataFiles = true;
+    optimctx->timestepper->writeTrajectoryDataFiles = true;
     optimctx->evalGradF(xinit, grad);
     VecNorm(grad, NORM_2, &gnorm);
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
@@ -535,7 +535,7 @@ int main(int argc,char **argv)
     optimctx->getStartingPoint(xinit);
     VecCopy(xinit, optimctx->xinit); // Store the initial guess
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
-    optimctx->timestepper->writeDataFiles = false;
+    optimctx->timestepper->writeTrajectoryDataFiles = false;
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
   }
@@ -553,7 +553,7 @@ int main(int argc,char **argv)
     }
     int pulseID = ipulse_global;
     if (learning->data->getNPulses() <=1)  pulseID = -1;
-    output->writeControls(optimctx->timestepper->mastereq, optimctx->timestepper->ntime, optimctx->timestepper->dt, pulseID);
+    output->writeControls(xinit, optimctx->timestepper->mastereq, optimctx->timestepper->ntime, optimctx->timestepper->dt, pulseID);
   }
 
   /* Only evaluate and write control pulses (no propagation) */
@@ -561,8 +561,7 @@ int main(int argc,char **argv)
     std::vector<double> pt, qt;
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
-    output->writeParams(xinit);
-    output->writeControls(mastereq, ntime, dt, -1);
+    output->writeControls(xinit, mastereq, ntime, dt, -1);
   }
 
   /* Output */

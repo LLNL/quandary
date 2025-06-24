@@ -9,7 +9,7 @@ Data::Data() {
 	dt = 0.0;
 }
 
-Data::Data(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) {
+Data::Data(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) {
   nlevels = nlevels_;
   comm_optim = comm_optim_;
   lindbladtype = lindbladtype_;
@@ -179,7 +179,7 @@ void Data::writeFullstate(const char* filename_re, const char* filename_im, int 
 }
 
 
-SyntheticQuandaryData::SyntheticQuandaryData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_) {
+SyntheticQuandaryData::SyntheticQuandaryData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_) {
 
   /* Load training data */
   loadData(data_name, &tstart, &tstop, &dt);
@@ -294,7 +294,7 @@ void SyntheticQuandaryData::loadData(std::vector<std::string>& data_name, double
   if (mpirank_world == 0) printf("-> Data loaded sucessfully. Data dt = %f, tstop = %f\n", *dt, *tstop);
 }
 
-Tant2levelData::Tant2levelData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_){
+Tant2levelData::Tant2levelData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_){
 
   // Only for 2level data. 
   assert(dim == 4);
@@ -456,7 +456,7 @@ void Tant2levelData::loadData(std::vector<std::string>& data_name, double* tstar
   }
 }
 
-Tant3levelData::Tant3levelData(MapParam config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_) {
+Tant3levelData::Tant3levelData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_) {
   // Only for 3level data. 
   assert(dim == 9);
 

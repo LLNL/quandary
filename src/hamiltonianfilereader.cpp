@@ -1,10 +1,10 @@
-#include "pythoninterface.hpp"
+#include "hamiltonianfilereader.hpp"
 
-PythonInterface::PythonInterface(){
+HamiltonianFileReader::HamiltonianFileReader(){
 }
 
 
-PythonInterface::PythonInterface(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_) {
+HamiltonianFileReader::HamiltonianFileReader(std::string hamiltonian_file_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_) {
 
   lindbladtype = lindbladtype_;
   dim_rho = dim_rho_;
@@ -13,10 +13,10 @@ PythonInterface::PythonInterface(std::string hamiltonian_file_, LindbladType lin
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 }
 
-PythonInterface::~PythonInterface(){
+HamiltonianFileReader::~HamiltonianFileReader(){
 }
 
-void PythonInterface::receiveHsys(Mat& Bd, Mat& Ad){
+void HamiltonianFileReader::receiveHsys(Mat& Bd, Mat& Ad){
   PetscInt ilow, iupp;
   MatGetOwnershipRange(Bd, &ilow, &iupp);
 
@@ -26,7 +26,6 @@ void PythonInterface::receiveHsys(Mat& Bd, Mat& Ad){
   int sqdim = dim;
   if (lindbladtype != LindbladType::NONE) sqdim = (int) sqrt(dim); // sqdim = N 
 
-  MatSetOption(Ad, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
   MatSetOption(Bd, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
   /* ----- Real system matrix Hd_real, write it into Bd ---- */
@@ -91,7 +90,7 @@ void PythonInterface::receiveHsys(Mat& Bd, Mat& Ad){
   MPI_Bcast(vals.data(), nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   /* Iterate over all elements*/
-  for (int i = 0; i<vals.size(); i++) {
+  for (size_t i = 0; i<vals.size(); i++) {
     if (fabs(vals[i])<1e-14) continue; // Skip zeros
 
     // Get position in the Bd matrix
@@ -121,7 +120,7 @@ void PythonInterface::receiveHsys(Mat& Bd, Mat& Ad){
 
 }
 
-void PythonInterface::receiveHc(int noscillators, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec){
+void HamiltonianFileReader::receiveHc(int noscillators, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec){
   PetscInt ilow, iupp;
   int success;
   std::string testheader;

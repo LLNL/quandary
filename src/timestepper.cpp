@@ -9,7 +9,7 @@ TimeStepper::TimeStepper() {
   dt = 0.0;
   storeFWD = false;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
-  writeDataFiles = false;
+  writeTrajectoryDataFiles = false;
 }
 
 TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
@@ -82,8 +82,8 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int pulse_num){
   if (mastereq->learning->data->getNPulses() <= 1){
     pulseid = -1;
   }
-  if (writeDataFiles) {
-    output->openDataFiles("rho", initid, pulseid);
+  if (writeTrajectoryDataFiles) {
+    output->openTrajectoryDataFiles("rho", initid, pulseid);
   }
 
   /* Set initial condition  */
@@ -115,8 +115,8 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int pulse_num){
 
     /* store and write current state. */
     if (storeFWD) VecCopy(x, store_states[n]);
-    if (writeDataFiles) {
-      output->writeDataFiles(n, tstart, x, mastereq);
+    if (writeTrajectoryDataFiles) {
+      output->writeTrajectoryDataFiles(n, tstart, x, mastereq);
     }
 
     /* Take one time step */
@@ -163,9 +163,9 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0, int pulse_num){
   }
 
   /* Write last time step and close files */
-  if (writeDataFiles) {
-    output->writeDataFiles(ntime, ntime*dt, x, mastereq);
-    output->closeDataFiles();
+  if (writeTrajectoryDataFiles) {
+    output->writeTrajectoryDataFiles(ntime, ntime*dt, x, mastereq);
+    output->closeTrajectoryDataFiles();
   }
   
 
@@ -485,9 +485,6 @@ double TimeStepper::energyPenaltyIntegral(double time){
 void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec redgrad){
 
   int col_shift = 0;
-  if (!mastereq->x_is_control) { // Skip gradient elements wrt learnable hamiltonian or Lindblad.
-    col_shift += mastereq->learning->getNParamsHamiltonian() + mastereq->learning->getNParamsLindblad();
-  }
   double* grad_ptr;
   VecGetArray(redgrad, &grad_ptr);
 
@@ -542,7 +539,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
   /* Add to reduced gradient */
   if (compute_gradient) {
-    mastereq->computedRHSdp(tstop, x, x_adj, dt, grad);
+    mastereq->compute_dRHS_dParams(tstop, x, x_adj, dt, grad);
   }
 
   /* update x_adj = x_adj + hA^Tx_adj */
@@ -714,7 +711,7 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
         break;
     }
     VecAYPX(stage, dt / 2.0, x);
-    mastereq->computedRHSdp(thalf, stage, stage_adj, 1.0, grad);
+    mastereq->compute_dRHS_dParams(thalf, stage, stage_adj, 1.0, grad);
   }
 
   /* Revert changes to RHS from above, if gmres solver */

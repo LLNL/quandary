@@ -224,39 +224,23 @@ class Quandary:
         if self.unitMHz:
             time_fac = 1e3
             freq_fac = 1e-3
-
             # Duration and time-step from us to ns
             self.T = self.T*time_fac
             self.dT = self.dT*time_fac
-
             # decoherence times from us to ns
-            res = [x * time_fac for x in self.T1]
-            self.T1 = res
-            res = [x * time_fac for x in self.T2]
-            self.T2 = res
-
+            self.T1 =[x * time_fac for x in self.T1] 
+            self.T2 = [x * time_fac for x in self.T2]
             # Freq's from MHz to GHz
-            res = [x * freq_fac for x in self.freq01]
-            self.freq01 = res
+            self.freq01 = [x * freq_fac for x in self.freq01]
+            self.selfkerr = [x * freq_fac for x in self.selfkerr]
+            self.crosskerr = [x * freq_fac for x in self.crosskerr]
+            self.rotfreq = [x * freq_fac for x in self.rotfreq]
+            self.Jkl = [x * freq_fac for x in self.Jkl]
 
-            res = [x * freq_fac for x in self.selfkerr]
-            self.selfkerr = res
-
-            res = [x * freq_fac for x in self.crosskerr]
-            self.crosskerr = res
-
-            res = [x * freq_fac for x in self.rotfreq]
-            self.rotfreq = res
-
-            res = [x * freq_fac for x in self.Jkl]
-            self.Jkl = res
-
-        # if len(self.Hsys) > 0: # User-provided Hamiltonian operators 
-            # self.standardmodel=False   
-        # else: # Using standard Hamiltonian model
-        if self.standardmodel:
-            Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
-            self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
+        if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
+            self.standardmodel=False   
+        else: # Using standard Hamiltonian model. Set it up only if needed for computing dT or the carrier wave frequencies later
+            self.standardmodel=True
         if len(self.targetstate) > 0:
             self.optim_target = "file"
         if len(self.targetgate) > 0:
@@ -315,7 +299,7 @@ class Quandary:
         if self.spline_order == 0 and len(self.carrier_frequency) == 0:
             self.carrier_frequency = [[0.0] for _ in range(len(self.freq01))]
         if len(self.carrier_frequency) == 0: 
-            # set up the standard Hamiltonian first, if needed
+            # set up the standard Hamiltonian first, if needed and if not done so already
             if self.standardmodel==True and len(self.Hsys)<=0:
                 Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
                 self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
@@ -444,7 +428,9 @@ class Quandary:
 
         # Copy original setting and overwrite number of time steps for simulation
         nsteps_org = self.nsteps
+        dT_org = self.dT
         self.nsteps = int(np.floor(self.T * points_per_ns))
+        self.dT = self.T/self.nsteps
     
         datadir = resolve_datadir(datadir)
 
@@ -461,6 +447,7 @@ class Quandary:
     
         # Restore original setting
         self.nsteps = nsteps_org
+        self.dT = dT_org 
 
         return time, pt, qt
 
@@ -619,9 +606,9 @@ class Quandary:
         # If not standard Hamiltonian model, write provided Hamiltonians to a file
         if not self.standardmodel:
             # Write non-standard Hamiltonians to file  
-            self._hamiltonian_filename= "./hamiltonian.dat"
-            with open(datadir+"/" + self._hamiltonian_filename, "w") as f:
-                f.write("# Hsys_real\n")
+            self._hamiltonian_filename= "hamiltonian.dat"
+            with open(os.path.join(datadir, self._hamiltonian_filename), "w", newline='\n') as f:
+                f.write("# Hsys_real \n")
                 Hsyslist = list(np.array(self.Hsys.real).flatten(order='F'))
                 for value in Hsyslist:
                     f.write("{:20.13e}\n".format(value))
@@ -970,7 +957,7 @@ class Quandary:
             # Extract the pulses 
             time = x[:,0]   # Time domain
             unitfac = 1.0
-            if not self.unitMHz:
+            if self.unitMHz:
                 unitfac = 1e+3
             pt.append([x[n,1]*unitfac for n in range(len(x[:,0]))])     # Rot frame p(t), MHz
             qt.append([x[n,2]*unitfac for n in range(len(x[:,0]))])     # Rot frame q(t), MHz

@@ -318,4 +318,3 @@ void BSpline0::enforceBoundary(double* x, int carrierfreqID){
         x[skip + (2*carrierfreqID+1)*nsplines ] = 0.0; // first imag
         x[skip + (2*carrierfreqID+1)*nsplines + nsplines- 1] = 0.0; // last imag
 }
-

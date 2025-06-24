@@ -7,7 +7,7 @@ Oscillator::Oscillator(){
   control_enforceBC = true;
 }
 
-Oscillator::Oscillator(MapParam config, size_t id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine){
+Oscillator::Oscillator(Config config, size_t id, const std::vector<int>& nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine){
 
   myid = id;
   nlevels = nlevels_all_[id];
@@ -130,7 +130,7 @@ Oscillator::Oscillator(MapParam config, size_t id, std::vector<int> nlevels_all_
         controlinitializations.push_back("0.0");
     }
     // Check config option for 'constant' or 'random' initialization
-    // Note, the config amplitude is multiplied by 2pi !!
+    // Note, the config amplitude is multiplied by 2pi here!!
     double initval = atof(controlinitializations[idini+1].c_str())*2.0*M_PI;
     if (controlinitializations[idini].compare("constant") == 0 ) {
       // If STEP: scale to [0,1]
@@ -344,7 +344,7 @@ int Oscillator::evalControl_diff(const double t, double* grad, bool x_is_control
             // basisfunctions[bs]->derivative(t, params, dpdalpha, carrier_freq[f], 1.0, f);  // +/-1.0 is used as a flag inside Bsline2ndAmplitude->evaluate() to determine whether this is for p (1.0) or for q (-1.0)
             // basisfunctions[bs]->derivative(t, params, dqdalpha, carrier_freq[f], -1.0, f);
             // basisfunctions[bs]->derivative(t, params, dpdalpha, carrier_freq[f], 1.0, f);  // +/-1.0 is used as a flag inside Bsline2ndAmplitude->evaluate() to determine whether this is for p (1.0) or for q (-1.0)
-            printf("Gradient for BsplineAmp parameterization is currently not implemented. TODO!\n");
+            printf("Gradient for BsplineAmp parameterization is currently not implemented. Reach out to guenther5@llnl.gov if you need this. TODO.\n");
             exit(1);
           } else {
 
@@ -425,6 +425,93 @@ int Oscillator::evalControl_Labframe(const double t, double* f, Learning* learni
   }
 
   return 0;
+}
+
+double Oscillator::expectedEnergy(const Vec x) {
+ 
+  PetscInt dim;
+  VecGetSize(x, &dim);
+  int dimmat;
+  if (lindbladtype != LindbladType::NONE)  dimmat = (int) sqrt(dim/2);
+  else dimmat = (int) dim/2;
+
+  /* Get locally owned portion of x */
+  PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
+  VecGetOwnershipRange(x, &ilow, &iupp);
+
+  /* Iterate over diagonal elements to add up expected energy level */
+  double expected = 0.0;
+  // YC: for-loop below can iterate only for ilow <= 2 * (i * dimmat + i) < iupp
+  for (int i=0; i<dimmat; i++) {
+    /* Get diagonal element in number operator */
+    int num_diag = i % (nlevels*dim_postOsc);
+    num_diag = num_diag / dim_postOsc;
+    /* Get diagonal element in rho (real) */
+    if (lindbladtype != LindbladType::NONE) idx_diag_re = getIndexReal(getVecID(i,i,dimmat));
+    else {
+      idx_diag_re = getIndexReal(i);
+      idx_diag_im = getIndexImag(i);
+    }
+    
+    double xdiag = 0.0;
+    if (lindbladtype != LindbladType::NONE){ // Lindblad solver: += i * rho_ii
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      expected += num_diag * xdiag;
+    }
+    else { // Schoedinger solver: += i * | psi_i |^2
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      expected += num_diag * xdiag * xdiag;
+      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
+      expected += num_diag * xdiag * xdiag;
+    }
+  }
+  
+  /* Sum up from all Petsc processors */
+  double myexp = expected;
+  MPI_Allreduce(&myexp, &expected, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+
+  return expected;
+}
+
+
+void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar) {
+  PetscInt dim;
+  VecGetSize(x, &dim);
+  int dimmat;
+  if (lindbladtype != LindbladType::NONE) dimmat = (int) sqrt(dim/2);
+  else dimmat = (int) dim/2;
+  double xdiag, val;
+
+  /* Get locally owned portion of x */
+  PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
+  VecGetOwnershipRange(x, &ilow, &iupp);
+
+  /* Derivative of projective measure */
+  for (int i=0; i<dimmat; i++) {
+    int num_diag = i % (nlevels*dim_postOsc);
+    num_diag = num_diag / dim_postOsc;
+    if (lindbladtype != LindbladType::NONE) { // Lindblas solver
+      val = num_diag * obj_bar;
+      idx_diag_re = getIndexReal(getVecID(i, i, dimmat));
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecSetValues(x_bar, 1, &idx_diag_re, &val, ADD_VALUES);
+    }
+    else {
+      // Real part
+      idx_diag_re = getIndexReal(i);
+      xdiag = 0.0;
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      val = num_diag * xdiag * obj_bar;
+      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecSetValues(x_bar, 1, &idx_diag_re, &val, ADD_VALUES);
+      // Imaginary part
+      idx_diag_im = getIndexImag(i);
+      xdiag = 0.0;
+      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
+      val = - num_diag * xdiag * obj_bar; // TODO: Is this a minus or a plus?? 
+      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecSetValues(x_bar, 1, &idx_diag_im, &val, ADD_VALUES);
+    }
+  }
+  VecAssemblyBegin(x_bar); VecAssemblyEnd(x_bar);
+
 }
 
 
