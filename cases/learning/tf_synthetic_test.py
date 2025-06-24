@@ -69,14 +69,15 @@ dirprefix = "data_out" # add a prefix for run directories
 cwd = os.getcwd()
 datadir_test = cwd+"/"+dirprefix+"_asmeasured" # NOTE: not an array anymore
 # perturbfac = 1.5 # For perturbing the control vector
-pfact = [0.75, 1.5]
+pfact = [0.75, 1.5] # [0.75, 1.25] #
 
 if do_datageneration:
 	# First simulate the unperturbed controls to get the params of the unperturbed controls
 	datadir_orig = cwd+"/"+dirprefix+"_origpulse"
 	# simulate NOTE: how is the simulation distributed?
 	t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(pcof0=pcof_opt, maxcores=maxcores, datadir=datadir_orig)
-	# plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
+	print("Optimized pulse with Lindblad's eqn")
+	plot_pulse(Ne, t, pt, qt)
 
 	# Now perturb the controls: Scale each carrier wave component
 	# One system, 2 frequencies in this test
@@ -88,6 +89,9 @@ if do_datageneration:
 
 	# Generate training data: Simulate perturbed controls
 	t, pt, qt, infidelity_pert, expectedEnergy, population = quandary.simulate(pcof0=pcof_pert, maxcores=maxcores, datadir=datadir_test)
+	print("Rescaled pulse")
+	plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
+	#plot_pulse(Ne, t, pt, qt)
 
 	print("-> Generated trajectory for perturbed pulse amplitude with perturbation factor:", pfact)
 	print("->   Unperturbed pulse trajectory directory:", datadir_orig, " Fidelity:", 1.0 - infidelity)
