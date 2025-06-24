@@ -64,7 +64,7 @@ int main(int argc,char **argv)
     rand_seed = rd();  // random non-reproducable seed
   }
   MPI_Bcast(&rand_seed, 1, MPI_INT, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
-  std::default_random_engine rand_engine{};
+  std::mt19937 rand_engine{}; // Use Mersenne Twister for cross-platform reproducibility
   rand_engine.seed(rand_seed);
   export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
 
