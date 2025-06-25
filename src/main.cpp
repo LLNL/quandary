@@ -319,13 +319,14 @@ int main(int argc,char **argv)
     }
   }
   // Check if Hamiltonian should be read from file
-  std::string hamiltonian_file = config.GetStrParam("hamiltonian_file", "none", true, false);
-  if (hamiltonian_file.compare("none") != 0 && usematfree) {
+  std::string hamiltonian_file_Hsys = config.GetStrParam("hamiltonian_file_Hsys", "none", true, false);
+  std::string hamiltonian_file_Hc = config.GetStrParam("hamiltonian_file_Hc", "none", true, false);
+  if ((hamiltonian_file_Hsys.compare("none") != 0 ||hamiltonian_file_Hc.compare("none") != 0 ) && usematfree) {
     if (mpirank_world==0 && !quietmode) printf("# Warning: Matrix-free solver can not be used when Hamiltonian is read fromfile. Switching to sparse-matrix version.\n");
     usematfree = false;
   }
   // Initialize Master equation
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, hamiltonian_file, quietmode);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, hamiltonian_file_Hsys, hamiltonian_file_Hc, quietmode);
 
 
   /* Output */
