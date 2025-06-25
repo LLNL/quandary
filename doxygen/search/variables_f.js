@@ -8,6 +8,6 @@ var searchData=
   ['populationfile_5',['populationfile',['../classOutput.html#af5cecbdd746abaf4288b4b05ea51274d',1,'Output']]],
   ['populationfile_5fcomp_6',['populationfile_comp',['../classOutput.html#a61d5d34b19b88a30c1a0d9dcc19cb2a8',1,'Output']]],
   ['preconditioner_7',['preconditioner',['../classImplMidpoint.html#a42b9d47152740692f88b4e222f1fb8a3',1,'ImplMidpoint']]],
-  ['purestateid_8',['purestateID',['../classOptimTarget.html#aa69e0b67c4310287c217d84bf984789e',1,'OptimTarget']]],
+  ['purestateid_8',['purestateID',['../classOptimTarget.html#a633585f6dccf774666142b3434063dee',1,'OptimTarget']]],
   ['purity_5frho0_9',['purity_rho0',['../classOptimTarget.html#a821937fbbb90e0149ef0604e0296ded7',1,'OptimTarget']]]
 ];

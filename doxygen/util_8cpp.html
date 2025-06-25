@@ -123,21 +123,21 @@ Functions</h2></td></tr>
 <tr class="memitem:afa56983887ff02fe6da5b6ab182b889a" id="r_afa56983887ff02fe6da5b6ab182b889a"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#afa56983887ff02fe6da5b6ab182b889a">getRampFactor_diff</a> (const double time, const double tstart, const double tstop, const double tramp)</td></tr>
 <tr class="memdesc:afa56983887ff02fe6da5b6ab182b889a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Derivative of ramping factor with respect to stop time.  <br /></td></tr>
 <tr class="separator:afa56983887ff02fe6da5b6ab182b889a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a09af5f588eae760f90201f0f7074e831" id="r_a09af5f588eae760f90201f0f7074e831"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a09af5f588eae760f90201f0f7074e831">getIndexReal</a> (const int i)</td></tr>
-<tr class="memdesc:a09af5f588eae760f90201f0f7074e831"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns storage index for real part of a state vector element.  <br /></td></tr>
-<tr class="separator:a09af5f588eae760f90201f0f7074e831"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a82dd81c4e0a2068d3706773e1a1a5ec4" id="r_a82dd81c4e0a2068d3706773e1a1a5ec4"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a82dd81c4e0a2068d3706773e1a1a5ec4">getIndexImag</a> (const int i)</td></tr>
-<tr class="memdesc:a82dd81c4e0a2068d3706773e1a1a5ec4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns storage index for imaginary part of a state vector element.  <br /></td></tr>
-<tr class="separator:a82dd81c4e0a2068d3706773e1a1a5ec4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2d90f5a42abfad1e3377f7c447222da7" id="r_a2d90f5a42abfad1e3377f7c447222da7"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a2d90f5a42abfad1e3377f7c447222da7">getVecID</a> (const int row, const int col, const int dim)</td></tr>
-<tr class="memdesc:a2d90f5a42abfad1e3377f7c447222da7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns vectorized index for matrix element (row,col).  <br /></td></tr>
-<tr class="separator:a2d90f5a42abfad1e3377f7c447222da7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afb73f9cf366ebe1d5b03d769b2da99e4" id="r_afb73f9cf366ebe1d5b03d769b2da99e4"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#afb73f9cf366ebe1d5b03d769b2da99e4">mapEssToFull</a> (const int i, const std::vector&lt; int &gt; &amp;nlevels, const std::vector&lt; int &gt; &amp;nessential)</td></tr>
-<tr class="memdesc:afb73f9cf366ebe1d5b03d769b2da99e4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maps index from essential level system to full-dimension system.  <br /></td></tr>
-<tr class="separator:afb73f9cf366ebe1d5b03d769b2da99e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adba8cd77869357377a20810521bc49af" id="r_adba8cd77869357377a20810521bc49af"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#adba8cd77869357377a20810521bc49af">mapFullToEss</a> (const int i, const std::vector&lt; int &gt; &amp;nlevels, const std::vector&lt; int &gt; &amp;nessential)</td></tr>
-<tr class="memdesc:adba8cd77869357377a20810521bc49af"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maps index from full dimension to essential dimension system.  <br /></td></tr>
-<tr class="separator:adba8cd77869357377a20810521bc49af"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a654088f206b8d5f16a706c0b8d56b2fe" id="r_a654088f206b8d5f16a706c0b8d56b2fe"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a654088f206b8d5f16a706c0b8d56b2fe">getIndexReal</a> (const PetscInt i)</td></tr>
+<tr class="memdesc:a654088f206b8d5f16a706c0b8d56b2fe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns storage index for real part of a state vector element.  <br /></td></tr>
+<tr class="separator:a654088f206b8d5f16a706c0b8d56b2fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6a0c2fd007c17d204e5627619a4ce171" id="r_a6a0c2fd007c17d204e5627619a4ce171"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a6a0c2fd007c17d204e5627619a4ce171">getIndexImag</a> (const PetscInt i)</td></tr>
+<tr class="memdesc:a6a0c2fd007c17d204e5627619a4ce171"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns storage index for imaginary part of a state vector element.  <br /></td></tr>
+<tr class="separator:a6a0c2fd007c17d204e5627619a4ce171"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a25c8efa290eddfe75dc334e06f59f161" id="r_a25c8efa290eddfe75dc334e06f59f161"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a25c8efa290eddfe75dc334e06f59f161">getVecID</a> (const PetscInt row, const PetscInt col, const PetscInt dim)</td></tr>
+<tr class="memdesc:a25c8efa290eddfe75dc334e06f59f161"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns vectorized index for matrix element (row,col).  <br /></td></tr>
+<tr class="separator:a25c8efa290eddfe75dc334e06f59f161"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae3f5a6346e785a0a2f8cad04f9699b6c" id="r_ae3f5a6346e785a0a2f8cad04f9699b6c"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#ae3f5a6346e785a0a2f8cad04f9699b6c">mapEssToFull</a> (const PetscInt i, const std::vector&lt; int &gt; &amp;nlevels, const std::vector&lt; int &gt; &amp;nessential)</td></tr>
+<tr class="memdesc:ae3f5a6346e785a0a2f8cad04f9699b6c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maps index from essential level system to full-dimension system.  <br /></td></tr>
+<tr class="separator:ae3f5a6346e785a0a2f8cad04f9699b6c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae613a07b81a9c32e94883022d6c64c10" id="r_ae613a07b81a9c32e94883022d6c64c10"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#ae613a07b81a9c32e94883022d6c64c10">mapFullToEss</a> (const PetscInt i, const std::vector&lt; int &gt; &amp;nlevels, const std::vector&lt; int &gt; &amp;nessential)</td></tr>
+<tr class="memdesc:ae613a07b81a9c32e94883022d6c64c10"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maps index from full dimension to essential dimension system.  <br /></td></tr>
+<tr class="separator:ae613a07b81a9c32e94883022d6c64c10"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4c67cd06b21b66d2b447fa85d322048e" id="r_a4c67cd06b21b66d2b447fa85d322048e"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a4c67cd06b21b66d2b447fa85d322048e">isEssential</a> (const int i, const std::vector&lt; int &gt; &amp;nlevels, const std::vector&lt; int &gt; &amp;nessential)</td></tr>
 <tr class="memdesc:a4c67cd06b21b66d2b447fa85d322048e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Tests if density matrix index corresponds to an essential level.  <br /></td></tr>
 <tr class="separator:a4c67cd06b21b66d2b447fa85d322048e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -307,16 +307,16 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a82dd81c4e0a2068d3706773e1a1a5ec4" name="a82dd81c4e0a2068d3706773e1a1a5ec4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a82dd81c4e0a2068d3706773e1a1a5ec4">&#9670;&#160;</a></span>getIndexImag()</h2>
+<a id="a6a0c2fd007c17d204e5627619a4ce171" name="a6a0c2fd007c17d204e5627619a4ce171"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6a0c2fd007c17d204e5627619a4ce171">&#9670;&#160;</a></span>getIndexImag()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">int getIndexImag </td>
+          <td class="memname">PetscInt getIndexImag </td>
           <td>(</td>
-          <td class="paramtype">const int&#160;</td>
+          <td class="paramtype">const PetscInt&#160;</td>
           <td class="paramname"><em>i</em></td><td>)</td>
           <td></td>
         </tr>
@@ -334,16 +334,16 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a09af5f588eae760f90201f0f7074e831" name="a09af5f588eae760f90201f0f7074e831"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a09af5f588eae760f90201f0f7074e831">&#9670;&#160;</a></span>getIndexReal()</h2>
+<a id="a654088f206b8d5f16a706c0b8d56b2fe" name="a654088f206b8d5f16a706c0b8d56b2fe"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a654088f206b8d5f16a706c0b8d56b2fe">&#9670;&#160;</a></span>getIndexReal()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">int getIndexReal </td>
+          <td class="memname">PetscInt getIndexReal </td>
           <td>(</td>
-          <td class="paramtype">const int&#160;</td>
+          <td class="paramtype">const PetscInt&#160;</td>
           <td class="paramname"><em>i</em></td><td>)</td>
           <td></td>
         </tr>
@@ -466,28 +466,28 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a2d90f5a42abfad1e3377f7c447222da7" name="a2d90f5a42abfad1e3377f7c447222da7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2d90f5a42abfad1e3377f7c447222da7">&#9670;&#160;</a></span>getVecID()</h2>
+<a id="a25c8efa290eddfe75dc334e06f59f161" name="a25c8efa290eddfe75dc334e06f59f161"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a25c8efa290eddfe75dc334e06f59f161">&#9670;&#160;</a></span>getVecID()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">int getVecID </td>
+          <td class="memname">PetscInt getVecID </td>
           <td>(</td>
-          <td class="paramtype">const int&#160;</td>
+          <td class="paramtype">const PetscInt&#160;</td>
           <td class="paramname"><em>row</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const int&#160;</td>
+          <td class="paramtype">const PetscInt&#160;</td>
           <td class="paramname"><em>col</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const int&#160;</td>
+          <td class="paramtype">const PetscInt&#160;</td>
           <td class="paramname"><em>dim</em>&#160;</td>
         </tr>
         <tr>
@@ -761,16 +761,16 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="afb73f9cf366ebe1d5b03d769b2da99e4" name="afb73f9cf366ebe1d5b03d769b2da99e4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afb73f9cf366ebe1d5b03d769b2da99e4">&#9670;&#160;</a></span>mapEssToFull()</h2>
+<a id="ae3f5a6346e785a0a2f8cad04f9699b6c" name="ae3f5a6346e785a0a2f8cad04f9699b6c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae3f5a6346e785a0a2f8cad04f9699b6c">&#9670;&#160;</a></span>mapEssToFull()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">int mapEssToFull </td>
+          <td class="memname">PetscInt mapEssToFull </td>
           <td>(</td>
-          <td class="paramtype">const int&#160;</td>
+          <td class="paramtype">const PetscInt&#160;</td>
           <td class="paramname"><em>i</em>, </td>
         </tr>
         <tr>
@@ -806,16 +806,16 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="adba8cd77869357377a20810521bc49af" name="adba8cd77869357377a20810521bc49af"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adba8cd77869357377a20810521bc49af">&#9670;&#160;</a></span>mapFullToEss()</h2>
+<a id="ae613a07b81a9c32e94883022d6c64c10" name="ae613a07b81a9c32e94883022d6c64c10"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae613a07b81a9c32e94883022d6c64c10">&#9670;&#160;</a></span>mapFullToEss()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">int mapFullToEss </td>
+          <td class="memname">PetscInt mapFullToEss </td>
           <td>(</td>
-          <td class="paramtype">const int&#160;</td>
+          <td class="paramtype">const PetscInt&#160;</td>
           <td class="paramname"><em>i</em>, </td>
         </tr>
         <tr>
