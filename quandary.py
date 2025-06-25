@@ -241,6 +241,8 @@ class Quandary:
             self.standardmodel=False   
         else: # Using standard Hamiltonian model. Set it up only if needed for computing dT or the carrier wave frequencies later
             self.standardmodel=True
+            Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
+            self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
         if len(self.targetstate) > 0:
             self.optim_target = "file"
         if len(self.targetgate) > 0:
@@ -264,10 +266,6 @@ class Quandary:
         
         # Estimate the number of required time steps
         if self.dT < 0:
-            if self.standardmodel==True: # set up the standard Hamiltonian first
-                # AP: The Hamiltonian was already calculated above, why do it again?
-                Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
-                self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
             self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
             self.dT = self.T/self.nsteps
         else:
@@ -760,8 +758,8 @@ class Quandary:
             else:
                 # Scale initial control amplitudes by the number of carrier waves and convert to ns
                 initamp = self.initctrl_MHz[iosc] / len(self.carrier_frequency[iosc])
-                if not self.unitMHz:
-                    initamp = initamp / 1e+3 # Scale to [GHz]
+                # if not self.unitMHz:
+                initamp = initamp / 1e+3 # Scale to [GHz]
                 initstring = ("random, " if self.randomize_init_ctrl else "constant, ") + str(initamp) + "\n"
             mystring += "control_initialization" + str(iosc) + " = " + initstring 
             if len(self.maxctrl_MHz) == 0: # Disable bounds, if not specified
