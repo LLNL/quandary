@@ -734,7 +734,11 @@ class Quandary:
         if len(learn_params_filename) > 0:
             mystring += "learnparams_initialization = file, " + str(learn_params_filename) + "\n"
         else:
-            mystring += "learnparams_initialization = random, 0.0001, 0.0001, 1.0\n"
+            ## SCALE to GHz! 
+            learn_hamiltonian_init_GHz = 0.0001*1e-3
+            learn_lindblad_init_GHz = 0.0001*1e-3
+            learn_transfer_init = 1.0
+            mystring += "learnparams_initialization = random, "+str(learn_hamiltonian_init_GHz) +", " + str(learn_lindblad_init_GHz) + ", " + str(learn_transfer_init) + "\n"
         ## SCALE T_train! 
         if self.unitMHz:
             T_train = T_train *1e3
