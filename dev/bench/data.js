@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1750878902112,
+  "lastUpdate": 1750886808099,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -791,6 +791,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4392.97,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "62934eb6d6a543fb1f678eb3e944398b19889a27",
+          "message": "Merge pull request #65 from LLNL/scaling-issue\n\nFix overflow by using PetscInt",
+          "timestamp": "2025-06-25T20:38:16Z",
+          "url": "https://github.com/LLNL/quandary/commit/62934eb6d6a543fb1f678eb3e944398b19889a27"
+        },
+        "date": 1750886806699,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 1.0120532119999552,
+            "unit": "seconds",
+            "range": "0.19228990205179283"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 88.86,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 15.212458272999356,
+            "unit": "seconds",
+            "range": "0.10014038527290214"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4390.86,
             "unit": "MB"
           }
         ]
