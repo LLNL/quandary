@@ -11,7 +11,7 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string hamiltonian_file_, bool quietmode_) {
+MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_Hsys_, const std::string& hamiltonian_file_Hc_, bool quietmode_) {
   nlevels = nlevels_;
   nessential = nessential_;
   noscillators = nlevels.size();
@@ -21,7 +21,8 @@ MasterEq::MasterEq(std::vector<int> nlevels_, std::vector<int> nessential_, Osci
   eta = eta_;
   usematfree = usematfree_;
   lindbladtype = lindbladtype_;
-  hamiltonian_file = hamiltonian_file_;
+  hamiltonian_file_Hsys = hamiltonian_file_Hsys_;
+  hamiltonian_file_Hc = hamiltonian_file_Hc_;
   quietmode = quietmode_;
 
 
@@ -263,13 +264,13 @@ void MasterEq::initSparseMatSolver(){
   PetscInt dimmat = dim_rho; // this is N!
 
   /* If a Hamiltonian file is given, read the system matrices from file. */ 
-  if (hamiltonian_file.compare("none") != 0 ) {
-    if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from file %s.\n\n", hamiltonian_file.c_str());
+  if (hamiltonian_file_Hsys.compare("none") != 0 || hamiltonian_file_Hc.compare("none") != 0) {
+    if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from files.\n");
 
     /* Read Hamiltonians from file */
-    HamiltonianFileReader* py = new HamiltonianFileReader(hamiltonian_file, lindbladtype, dim_rho, quietmode);
-    py->receiveHsys(Bd, Ad);
-    py->receiveHc(noscillators, Ac_vec, Bc_vec); 
+    HamiltonianFileReader* py = new HamiltonianFileReader(hamiltonian_file_Hsys, hamiltonian_file_Hc, lindbladtype, dim_rho, quietmode);
+    py->receiveHsys(Ad, Bd);
+    py->receiveHc(Ac_vec, Bc_vec); 
 
     if (mpirank_world==0&& !quietmode) printf("# Done. \n\n");
     delete py;
@@ -628,21 +629,19 @@ void MasterEq::initSparseMatSolver(){
 
 
 //   // Test: Print out Hamiltonian terms.
-//   printf("\n\n HEYHEY! Printing out the system matrices: \n\n");
-//   printf("Ad=\n");
-//   MatView(Ad, NULL);
-//   printf("Bd=\n");
-//   MatView(Bd, NULL);
-//   for (int k=0; k<noscillators; k++){
-//     for (int i=0; i<Bc_vec[k].size(); i++){
-//       printf("Oscil %d, control term Bc %d:\n", k, i);
-//       MatView(Bc_vec[k][i], NULL);
-//     }
-//     for (int i=0; i<Ac_vec[k].size(); i++){
-//       printf("Oscil %d, control term Ac %d:\n", k, i);
-//       MatView(Ac_vec[k][i], NULL);
-//     }
-//   }
+  // printf("\n\n HEYHEY! Printing out the system matrices: \n\n");
+  // printf("Ad=\n");
+  // MatView(Ad, NULL);
+  // printf("Bd=\n");
+  // MatView(Bd, NULL);
+  // for (int i=0; i<Bc_vec.size(); i++){
+  //   printf("Oscil %d, Bc :\n",i);
+  //   MatView(Bc_vec[i], NULL);
+  // }
+  // for (int i=0; i<Ac_vec.size(); i++){
+  //   printf("Oscil %d, Ac:\n", i);
+  //   MatView(Ac_vec[i], NULL);
+  // }
 //   for (int kl=0; kl<Ad_vec.size(); kl++) {
 //     printf("Bd_vec[%d]=\n", kl);
 //     MatView(Bd_vec[kl], NULL);

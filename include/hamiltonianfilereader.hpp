@@ -4,6 +4,7 @@
 #include <vector>
 #include <assert.h>
 #include <iostream> 
+#include <fstream>
 #include <controlbasis.hpp>
 
 #pragma once
@@ -20,8 +21,10 @@ class HamiltonianFileReader{
 
     LindbladType lindbladtype; ///< Type of solver (Lindblad vs Schroedinger)
     PetscInt dim_rho; ///< Dimension of the Hilbert space (N)
-    std::string hamiltonian_file; ///< Filename for Hamiltonian data ('none' if not used)
+    std::string hamiltonian_file_Hsys; ///< Filename for system Hamiltonian data ('none' if not used)
+    std::string hamiltonian_file_Hc; ///< Filename for control Hamiltonian data ('none' if not used)
     int mpirank_world; ///< Rank of global MPI communicator
+    int mpisize_world; ///< Rank of global MPI communicator
     bool quietmode; ///< Flag for quiet mode operation
 
 	public:
@@ -30,22 +33,23 @@ class HamiltonianFileReader{
     /**
      * @brief Constructor with Hamiltonian file specification.
      *
-     * @param hamiltonian_file_ Path to file containing Hamiltonian data
+     * @param hamiltonian_file_Hsys Path to file containing system Hamiltonian data
+     * @param hamiltonian_file_Hc Path to file containing control Hamiltonian data
      * @param lindbladtype_ Type of solver (Lindblad or Schroedinger)
      * @param dim_rho_ Dimension of the Hilbert space
      * @param quietmode_ Flag for quiet operation
      */
-    HamiltonianFileReader(std::string hamiltonian_file_, LindbladType lindbladtype_, PetscInt dim_rho_, bool quietmode_);
+    HamiltonianFileReader(std::string hamiltonian_file_Hsys, std::string hamiltonian_file_Hc, LindbladType lindbladtype_, PetscInt dim_rho_, bool quietmode_);
 
     ~HamiltonianFileReader();
 
   /**
    * @brief Reads the constant system Hamiltonian from file.
    *
-   * @param[out] Bd Reference to matrix that stores the imaginary part of the system matrix for (-i*Hsys). Must be allocated. 
    * @param[out] Ad Reference to matrix that stores the real part of the system matrix for (-i*Hsys). Must be allocated. 
+   * @param[out] Bd Reference to matrix that stores the imaginary part of the system matrix for (-i*Hsys). Must be allocated. 
    */
-  void receiveHsys(Mat& Bd, Mat& Ad);
+  void receiveHsys(Mat& Ad, Mat& Bd);
 
   /**
    * @brief Receives real and imaginary control operators from file.
@@ -53,9 +57,8 @@ class HamiltonianFileReader{
    * Reads control Hamiltonian matrices for each oscillator from the
    * Hamiltonian file and stores them in the provided matrix vectors.
    *
-   * @param noscillators Number of oscillators in the system
    * @param Ac_vec Reference to vector of matrices storing real parts of control system matrices. One per oscillator.
    * @param Bc_vec Reference to vector of matrices storing imaginary parts of control matrices. One per oscillator.
    */
-  void receiveHc(int noscillators, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec);
+  void receiveHc(std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec);
 };
