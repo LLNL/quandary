@@ -418,9 +418,9 @@ double Oscillator::expectedEnergy(const Vec x) {
  
   PetscInt dim;
   VecGetSize(x, &dim);
-  int dimmat;
-  if (lindbladtype != LindbladType::NONE)  dimmat = (int) sqrt(dim/2);
-  else dimmat = (int) dim/2;
+  PetscInt dimmat;
+  if (lindbladtype != LindbladType::NONE)  dimmat = (PetscInt) sqrt(dim/2);
+  else dimmat = (PetscInt) dim/2;
 
   /* Get locally owned portion of x */
   PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
@@ -429,9 +429,9 @@ double Oscillator::expectedEnergy(const Vec x) {
   /* Iterate over diagonal elements to add up expected energy level */
   double expected = 0.0;
   // YC: for-loop below can iterate only for ilow <= 2 * (i * dimmat + i) < iupp
-  for (int i=0; i<dimmat; i++) {
+  for (PetscInt i=0; i<dimmat; i++) {
     /* Get diagonal element in number operator */
-    int num_diag = i % (nlevels*dim_postOsc);
+    PetscInt num_diag = i % (nlevels*dim_postOsc);
     num_diag = num_diag / dim_postOsc;
     /* Get diagonal element in rho (real) */
     if (lindbladtype != LindbladType::NONE) idx_diag_re = getIndexReal(getVecID(i,i,dimmat));
@@ -464,9 +464,9 @@ double Oscillator::expectedEnergy(const Vec x) {
 void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar) {
   PetscInt dim;
   VecGetSize(x, &dim);
-  int dimmat;
-  if (lindbladtype != LindbladType::NONE) dimmat = (int) sqrt(dim/2);
-  else dimmat = (int) dim/2;
+  PetscInt dimmat;
+  if (lindbladtype != LindbladType::NONE) dimmat = (PetscInt) sqrt(dim/2);
+  else dimmat = dim/2;
   double xdiag, val;
 
   /* Get locally owned portion of x */
@@ -474,8 +474,8 @@ void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_ba
   VecGetOwnershipRange(x, &ilow, &iupp);
 
   /* Derivative of projective measure */
-  for (int i=0; i<dimmat; i++) {
-    int num_diag = i % (nlevels*dim_postOsc);
+  for (PetscInt i=0; i<dimmat; i++) {
+    PetscInt num_diag = i % (nlevels*dim_postOsc);
     num_diag = num_diag / dim_postOsc;
     if (lindbladtype != LindbladType::NONE) { // Lindblas solver
       val = num_diag * obj_bar;
@@ -504,7 +504,7 @@ void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_ba
 
 void Oscillator::population(const Vec x, std::vector<double> &pop) {
 
-  int dimN = dim_preOsc * nlevels * dim_postOsc;
+  PetscInt dimN = dim_preOsc * nlevels * dim_postOsc;
   double val;
 
   assert (pop.size() == static_cast<size_t>(nlevels));
@@ -517,15 +517,15 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
 
   /* Iterate over diagonal elements of the reduced density matrix for this oscillator */
   for (int i=0; i < nlevels; i++) {
-    int identitystartID = i * dim_postOsc;
+    PetscInt identitystartID = i * dim_postOsc;
     /* Sum up elements from all dim_preOsc blocks of size (n_k * dim_postOsc) */
     double sum = 0.0;
-    for (int j=0; j < dim_preOsc; j++) {
-      int blockstartID = j * nlevels * dim_postOsc; // Go to the block
+    for (PetscInt j=0; j < dim_preOsc; j++) {
+      PetscInt blockstartID = j * nlevels * dim_postOsc; // Go to the block
       /* Iterate over identity */
-      for (int l=0; l < dim_postOsc; l++) {
+      for (PetscInt l=0; l < dim_postOsc; l++) {
         /* Get diagonal element */
-        int rhoID = blockstartID + identitystartID + l; // Diagonal element of rho
+        PetscInt rhoID = blockstartID + identitystartID + l; // Diagonal element of rho
         if (lindbladtype != LindbladType::NONE) { // Lindblad solver
           PetscInt diagID = getIndexReal(getVecID(rhoID, rhoID, dimN));  // Position in vectorized rho
           double val = 0.0;

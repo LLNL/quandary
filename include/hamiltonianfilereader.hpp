@@ -20,7 +20,7 @@ class HamiltonianFileReader{
   protected:
 
     LindbladType lindbladtype; ///< Type of solver (Lindblad vs Schroedinger)
-    int dim_rho; ///< Dimension of the Hilbert space (N)
+    PetscInt dim_rho; ///< Dimension of the Hilbert space (N)
     std::string hamiltonian_file_Hsys; ///< Filename for system Hamiltonian data ('none' if not used)
     std::string hamiltonian_file_Hc; ///< Filename for control Hamiltonian data ('none' if not used)
     int mpirank_world; ///< Rank of global MPI communicator
@@ -39,7 +39,7 @@ class HamiltonianFileReader{
      * @param dim_rho_ Dimension of the Hilbert space
      * @param quietmode_ Flag for quiet operation
      */
-    HamiltonianFileReader(std::string hamiltonian_file_Hsys, std::string hamiltonian_file_Hc, LindbladType lindbladtype_, int dim_rho_, bool quietmode_);
+    HamiltonianFileReader(std::string hamiltonian_file_Hsys, std::string hamiltonian_file_Hc, LindbladType lindbladtype_, PetscInt dim_rho_, bool quietmode_);
 
     ~HamiltonianFileReader();
 

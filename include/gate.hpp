@@ -26,8 +26,8 @@ class Gate {
 
     bool quietmode; ///< Flag to suppress output messages.
 
-    int dim_ess; ///< Dimension of target gate matrix (non-vectorized), essential levels only.
-    int dim_rho; ///< Dimension of system matrix rho (non-vectorized), all levels, N.
+    PetscInt dim_ess; ///< Dimension of target gate matrix (non-vectorized), essential levels only.
+    PetscInt dim_rho; ///< Dimension of system matrix rho (non-vectorized), all levels, N.
 
     double final_time; ///< Final time T. Time of gate rotation.
     std::vector<double> gate_rot_freq; ///< Frequencies of gate rotation (rad/time). Default: same as the rotational frequencies.
@@ -60,9 +60,9 @@ class Gate {
     /**
      * @brief Retrieves the dimension of the density matrix.
      *
-     * @return int Dimension of the system density matrix (all levels).
+     * @return PetscInt Dimension of the system density matrix (all levels).
      */
-    int getDimRho() { return dim_rho; };
+    PetscInt getDimRho() { return dim_rho; };
 
     /**
      * @brief Assembles the vectorized gate matrix.

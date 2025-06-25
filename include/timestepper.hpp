@@ -32,7 +32,7 @@
  */
 class TimeStepper{
   protected:
-    int dim; ///< State vector dimension
+    PetscInt dim; ///< State vector dimension
     Vec x; ///< Auxiliary vector for forward time stepping
     Vec xadj; ///< Auxiliary vector needed for adjoint (backward) time stepping
     Vec xprimal; ///< Auxiliary vector for backward time stepping
