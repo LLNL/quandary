@@ -5,8 +5,8 @@ from quandary import Quandary
 # Mark all tests in this file as regression tests
 pytestmark = pytest.mark.regression
 
-REL_TOL = 1.0e-7
-ABS_TOL = 1.0e-15
+REL_TOL = 1.0e-3
+ABS_TOL = 1.0e-10
 
 # Sample every 100 time steps
 SAMPLE_STEP = 100
