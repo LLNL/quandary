@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1750875474906,
+  "lastUpdate": 1750878902112,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -747,6 +747,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4393.42,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "c76aaa97d2f338baee6cc37f6795829e980b132e",
+          "message": "Merge pull request #67 from LLNL/random-number-generator\n\nUse cross platform reproducible random number generator",
+          "timestamp": "2025-06-25T18:52:52Z",
+          "url": "https://github.com/LLNL/quandary/commit/c76aaa97d2f338baee6cc37f6795829e980b132e"
+        },
+        "date": 1750878900879,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 1.0321371290010575,
+            "unit": "seconds",
+            "range": "0.22560047551930348"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 88.93,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 15.370089299001847,
+            "unit": "seconds",
+            "range": "0.03481370685259169"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4392.97,
             "unit": "MB"
           }
         ]
