@@ -279,8 +279,8 @@ class Quandary:
         if self.spline_knot_spacing < 0:
             self.spline_knot_spacing = 3.0 # [ns]
         else: # spline_knot_spacing specified by user, only scale to [ns] if needed
-            if not self.unitMHz:
-                self.spline_knot_spacing = self.spline_knot_spacing / 1e+3
+            if self.unitMHz:
+                self.spline_knot_spacing = self.spline_knot_spacing * 1e+3
 
         # Get number of splines right
         if self.nsplines < 0:
