@@ -485,6 +485,9 @@ double TimeStepper::energyPenaltyIntegral(double time){
 void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec redgrad){
 
   int col_shift = 0;
+  if (!mastereq->x_is_control) { // Skip gradient elements wrt learnable hamiltonian or Lindblad.
+    col_shift += mastereq->learning->getNParamsHamiltonian() + mastereq->learning->getNParamsLindblad();
+  }
   double* grad_ptr;
   VecGetArray(redgrad, &grad_ptr);
 

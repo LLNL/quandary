@@ -977,8 +977,16 @@ void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec xbar, c
     VecGetSubVector(xbar, isu, &ubar);
     VecGetSubVector(xbar, isv, &vbar);
 
-    /* Set the gradient wrt controls */
     int col_shift = 0;
+
+    /* Gradient wrt learnable parameters for Hamiltonian and Lindblad System Mats */
+    if (!x_is_control) {
+      learning->dRHSdp(grad, u, v, alpha, ubar, vbar);
+      // Set the initial skip in gradient elements wrt learnable hamiltonian and lindblad parameters
+      col_shift += learning->getNParamsHamiltonian() + learning->getNParamsLindblad();
+    }
+
+    /* Gradient wrt controls or learnable transfer functions */
     double* grad_ptr;
     VecGetArray(grad, &grad_ptr);
     // Iterate over oscillators 
@@ -998,9 +1006,13 @@ void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec xbar, c
 
       double* grad_for_this_oscillator = grad_ptr + col_shift; 
       oscil_vec[iosc]->evalControl_diff(t, grad_for_this_oscillator, x_is_control, learning, alpha*pbar, alpha*qbar);
-
+      
       // Set the shift in the gradient vector for the next oscillator
-      col_shift += oscil_vec[iosc]->getNParams();
+      if (x_is_control) {
+        col_shift += oscil_vec[iosc]->getNParams();
+      } else {
+        col_shift += learning->getNParamsTransfer(iosc);
+      }
     }
     VecRestoreArray(grad, &grad_ptr);
 
