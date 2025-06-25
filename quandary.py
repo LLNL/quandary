@@ -735,6 +735,9 @@ class Quandary:
             mystring += "learnparams_initialization = file, " + str(learn_params_filename) + "\n"
         else:
             mystring += "learnparams_initialization = random, 0.0001, 0.0001, 1.0\n"
+        ## SCALE T_train! 
+        if self.unitMHz:
+            T_train = T_train *1e3
         if T_train <= self.T:
             mystring += "data_tstop = " + str(T_train) + "\n"
         mystring += "loss_scaling_factor = " + str(self.loss_scaling_factor) + "\n"
