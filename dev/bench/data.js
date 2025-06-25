@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1750199760043,
+  "lastUpdate": 1750875474906,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -703,6 +703,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4393.5,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Stefanie Guenther",
+            "username": "steffi7574",
+            "email": "guenther5@llnl.gov"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "4e539a4db385f3db2fa2a6e505e3ee0088e8acf5",
+          "message": "Merge pull request #64 from LLNL/read-sparse-hamiltonian\n\nWhen using a custom Hamiltonian through the python interface, only the nonzero elements of the Hamiltonian will be written to file, and loaded into the C++ code.",
+          "timestamp": "2025-06-25T17:18:08Z",
+          "url": "https://github.com/LLNL/quandary/commit/4e539a4db385f3db2fa2a6e505e3ee0088e8acf5"
+        },
+        "date": 1750875473701,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 1.0370572624997294,
+            "unit": "seconds",
+            "range": "0.19088532645769035"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 88.84,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 15.327549139998155,
+            "unit": "seconds",
+            "range": "0.03564252246132128"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4393.42,
             "unit": "MB"
           }
         ]
