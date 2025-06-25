@@ -36,6 +36,7 @@ class Quandary:
     Hc_re               # Optional: User specified control Hamiltonian operators for each qubit (real-parts). List of Arrays
     Hc_im               # Optional: User specified control Hamiltonian operators for each qubit (real-parts) List of Arrays
     standardmodel       # Internal: Bool to use standard Hamiltonian model for superconduction qubits. Default: True
+    spin_coeffs         # Optional: Coefficients for spin chain dynamics: [J,K,U,hpara,hperp]
 
     # Time duration and discretization options
     T            # Pulse duration (simulation time). Default: 100ns
@@ -116,6 +117,7 @@ class Quandary:
     Hc_re               : List[List[float]] = field(default_factory=list)
     Hc_im               : List[List[float]] = field(default_factory=list)
     standardmodel       : bool              = True
+    spin_coeffs         : List[List[float]] = field(default_factory=list)
     # Time duration and discretization options
     T            : float = 100.0
     Pmin         : int   = 150
@@ -210,6 +212,8 @@ class Quandary:
             self.usematfree=False
         else: # Using standard Hamiltonian model. Set it up only if needed for computing dT or the carrier wave frequencies later
             self.standardmodel=True
+        if len(self.spin_coeffs)>0:
+            self.usematfree=False
         if len(self.targetstate) > 0:
             self.optim_target = "file"
         if len(self.targetgate) > 0:
@@ -642,6 +646,29 @@ class Quandary:
             mystring += "initialcondition = " + str(self.initialcondition) + ", " + self._initstatefilename + "\n"
         else:
             mystring += "initialcondition = " + str(self.initialcondition) + "\n"
+        
+        if len(self.spin_coeffs) > 0:
+            mystring += "spin_J = "
+            for Ji in self.spin_coeffs[0]:
+                mystring += str(Ji) + ", "
+            mystring += "\n"
+            mystring += "spin_K = "
+            for Ki in self.spin_coeffs[1]:
+                mystring += str(Ki) + ", "
+            mystring += "\n"
+            mystring += "spin_U = "
+            for Ui in self.spin_coeffs[2]:
+                mystring += str(Ui) + ", "
+            mystring += "\n"
+            mystring += "spin_hpara = "
+            for hparai in self.spin_coeffs[3]:
+                mystring += str(hparai) + ", "
+            mystring += "\n"
+            mystring += "spin_hperp = "
+            for hperpi in self.spin_coeffs[4]:
+                mystring += str(hperpi) + ", "
+            mystring += "\n"
+
         for iosc in range(len(self.Ne)):
             if self.spline_order == 0:
                 mystring += "control_segments" + str(iosc) + " = spline0, " + str(self.nsplines) + "\n"
