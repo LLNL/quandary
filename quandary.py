@@ -23,11 +23,11 @@ class Quandary:
     # Quantum system specifications
     Ne           # Number of essential energy levels per qubit. Default: [3]        
     Ng           # Number of extra guard levels per qubit. Default: [0] (no guard levels)
-    freq01       # 01-transition frequencies [GHz] per qubit. Default: [4.10595]
-    selfkerr     # Anharmonicities [GHz] per qubit. Default: [0.2198]
-    rotfreq      # Frequency of rotations for computational frame [GHz] per qubit. Default: freq01
-    Jkl          # Dipole-dipole coupling strength [GHz]. Formated list [J01, J02, ..., J12, J13, ...] Default: 0
-    crosskerr    # ZZ coupling strength [GHz]. Formated list [g01, g02, ..., g12, g13, ...] Default: 0
+    freq01       # 01-transition frequencies per qubit. Default: [4.10595 GHz]
+    selfkerr     # Anharmonicities per qubit. Default: [0.2198 GHz]
+    rotfreq      # Frequency of rotations for computational frame per qubit. Default: freq01
+    Jkl          # Dipole-dipole coupling strength. Formated list [J01, J02, ..., J12, J13, ...] Default: 0
+    crosskerr    # ZZ coupling strength. Formated list [g01, g02, ..., g12, g13, ...] Default: 0
     T1           # Optional: T1-Decay time [ns] per qubit (invokes Lindblad solver). Default: 0
     T2           # Optional: T2-Dephasing time [ns] per qubit (invokes Lindblad solver). Default: 0
 
@@ -53,8 +53,8 @@ class Quandary:
     pcof0               # Optional: Pass an initial vector of control parameters. Default: none
     pcof0_filename      # Optional: Load initial control parameter vector from a file. Default: none
     randomize_init_ctrl # Randomize the initial control parameters (will be ignored if pcof0 or pcof0_filename are given). Default: True
-    initctrl_MHz        # Amplitude [MHz] of initial control parameters. Float or List[float]. Default: 10 MHz.
-    maxctrl_MHz         # Amplitude bounds for the control pulses [MHz]. Float or List[float]. Default: none
+    initctrl            # Amplitude of initial control parameters. Float or List[float]. Default: 1/T
+    maxctrl             # Amplitude bounds for the control pulses. Float or List[float]. Default: none
     control_enforce_BC  # Bool to let control pulses start and end at zero. Default: False
     spline_knot_spacing # Spacing of Bspline basis functions [ns]. The smaller this is, the larger the number of splines. Default: 3ns
     nsplines            # Number of Bspline basis functions. Default: T/spline_knot_spacing + 2
@@ -97,7 +97,6 @@ class Quandary:
     _gatefilename         : str 
     _initstatefilename    : str 
     _initialstate         : List[complex] = field(default_factory=list)
-    unitMHz               : Use MHz/us units
 
 
     Output parameters, available after Quandary has been executed (simulate or optimze)
@@ -138,10 +137,10 @@ class Quandary:
     pcof0               : List[float] = field(default_factory=list)   
     pcof0_filename      : str         = ""                            
     randomize_init_ctrl : bool        = True                          
-    initctrl_MHz        : List[float] = field(default_factory=list)   
-    maxctrl_MHz         : List[float] = field(default_factory=list)   
+    initctrl        : List[float] = field(default_factory=list)   
+    maxctrl         : List[float] = field(default_factory=list)   
     control_enforce_BC  : bool        = False                         
-    spline_knot_spacing : float       = -1
+    spline_knot_spacing : float       = -1.0
     nsplines            : int         = -1 
     spline_order        : int         = 2                           
     carrier_frequency   : List[List[float]] = field(default_factory=list) 
@@ -177,7 +176,7 @@ class Quandary:
     _gatefilename         : str         = ""
     _initstatefilename    : str         = ""
     _initialstate         : List[complex] = field(default_factory=list)
-    unitMHz               : bool        = False
+    _freq_scaling_factor  : float = -1.0 # Scaling factor for the frequencies: 1/T
 
     
     # Output parameters available after Quandary has been run
@@ -193,7 +192,11 @@ class Quandary:
           - <nsteps>            : the number of time steps based on Hamiltonian eigenvalues and Pmin
           - <carrier_frequency> : carrier wave frequencies bases on system resonances
         """
+
+        # Set a reference scaling for default frequency units
+        self._freq_scaling_factor = 1.0/self.T
         
+        # Set min number of splines
         if self.spline_order == 0:
             minspline = 2
         elif self.spline_order == 2:
@@ -214,28 +217,12 @@ class Quandary:
         if len(self.gate_rot_freq) == 0:
             self.gate_rot_freq = np.zeros(len(self.rotfreq))
         
-        if isinstance(self.initctrl_MHz, float) or isinstance(self.initctrl_MHz, int):
-            max_alloscillators = self.initctrl_MHz
-            self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
-        if len(self.initctrl_MHz) == 0:
-            self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
-
-        # Scale duration and time step to [ns] and frequences to [GHz]
-        if self.unitMHz:
-            time_fac = 1e3
-            freq_fac = 1e-3
-            # Duration and time-step from us to ns
-            self.T = self.T*time_fac
-            self.dT = self.dT*time_fac
-            # decoherence times from us to ns
-            self.T1 =[x * time_fac for x in self.T1] 
-            self.T2 = [x * time_fac for x in self.T2]
-            # Freq's from MHz to GHz
-            self.freq01 = [x * freq_fac for x in self.freq01]
-            self.selfkerr = [x * freq_fac for x in self.selfkerr]
-            self.crosskerr = [x * freq_fac for x in self.crosskerr]
-            self.rotfreq = [x * freq_fac for x in self.rotfreq]
-            self.Jkl = [x * freq_fac for x in self.Jkl]
+        if isinstance(self.initctrl, float) or isinstance(self.initctrl, int):
+            max_alloscillators = self.initctrl
+            self.initctrl = [max_alloscillators for _ in range(len(self.Ne))]
+        if len(self.initctrl) == 0:
+            amp = self._freq_scaling_factor 
+            self.initctrl = [amp for _ in range(len(self.Ne))]
 
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
             self.standardmodel=False   
@@ -250,10 +237,10 @@ class Quandary:
         if not isinstance(self.initialcondition, str):
             self._initialstate=self.initialcondition.copy()
             self.initialcondition = "file" 
-        # Convert maxctrl_MHz to a list for each oscillator, if not so already
-        if isinstance(self.maxctrl_MHz, float) or isinstance(self.maxctrl_MHz, int):
-            max_alloscillators = self.maxctrl_MHz
-            self.maxctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
+        # Convert maxctrl to a list for each oscillator, if not so already
+        if isinstance(self.maxctrl, float) or isinstance(self.maxctrl, int):
+            max_alloscillators = self.maxctrl
+            self.maxctrl = [max_alloscillators for _ in range(len(self.Ne))]
         
         # Store the number of initial conditions and solver flag
         self._lindblad_solver = True if (len(self.T1)>0) or (len(self.T2)>0) else False
@@ -266,21 +253,18 @@ class Quandary:
         
         # Estimate the number of required time steps
         if self.dT < 0:
-            self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
+            self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl=self.maxctrl, Pmin=self.Pmin)
             self.dT = self.T/self.nsteps
         else:
             self.nsteps = int(np.ceil(self.T / self.dT))
             self.T = self.nsteps*self.dT
         if self.verbose:
-            print("Final time: ",self.T,"[ns], Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "[ns]")
-            print("Maximum control amplitudes: ", self.maxctrl_MHz, "[MHz]")
+            print("Final time: ",self.T,", Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps)
+            print("Maximum control amplitudes: ", self.maxctrl)
 
         # Get the spline knot spacing correct wrt to the units
         if self.spline_knot_spacing < 0:
-            self.spline_knot_spacing = 3.0 # [ns]
-        else: # spline_knot_spacing specified by user, only scale to [ns] if needed
-            if self.unitMHz:
-                self.spline_knot_spacing = self.spline_knot_spacing * 1e+3
+            self.spline_knot_spacing = 1.0/(33.3*self._freq_scaling_factor)
 
         # Get number of splines right
         if self.nsplines < 0:
@@ -338,7 +322,7 @@ class Quandary:
         Optional arguments:
         ------------------- 
         pcof0         : List of control parameters to be simulated. Default: Use initial guess from the quandary object (pcof0, or pcof0_filename, or randomized initial guess)
-        pt0           : List of ndarrays for the real part of the control function [MHz] for each oscillator, ndarray size = nsteps+1. Assumes spline_order == 0 and ignores the pcof0 argument. Default: []
+        pt0           : List of ndarrays for the real part of the control function for each oscillator, ndarray size = nsteps+1. Assumes spline_order == 0 and ignores the pcof0 argument. Default: []
         qt0           : Same as pt0, but for the imaginary part.
         maxcores      : Maximum number of processing cores. Default: number of initial conditions
         datadir       : Data directory for storing output files. Default: "./run_dir".
@@ -351,7 +335,7 @@ class Quandary:
         Returns:
         --------
         time            :  List of time-points at which the controls are evaluated  (List)
-        pt, qt          :  p,q-control pulses [MHz] at each time point for each oscillator (List of list)
+        pt, qt          :  p,q-control pulses at each time point for each oscillator (List of list)
         infidelity      :  Infidelity of the pulses for the specified target operation (Float)
         expectedEnergy  :  Evolution of the expected energy of each oscillator and each initial condition. Acces: expectedEnergy[oscillator][initialcondition]
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
@@ -372,7 +356,7 @@ class Quandary:
         ------------------- 
         pcof0          : List of control parameters to start the optimization from. Default: Use initial guess from the Quandary (pcof0, or pcof0_filename, or randomized initial guess)
         maxcores      : Maximum number of processing cores. Default: number of initial conditions
-        pt, qt          :  p,q-control pulses [MHz] at each time point for each oscillator (List of list)
+        pt, qt          :  p,q-control pulses at each time point for each oscillator (List of list)
         datadir       : Data directory for storing output files. Default: "./run_dir".
                         If $QUANDARY_BASE_DATADIR is set, this will be relative to that directory, otherwise relative to current working directory
         quandary_exec : Location of Quandary's C++ executable, if not in $PATH
@@ -466,7 +450,7 @@ class Quandary:
                 if sizes_ok:
                     # do the downsampling and construct pcof0
                     pcof0 = np.zeros(0) # to hold the downsampled numpy array for the control vector
-                    fact = 2e-3*np.pi # conversion factor from MHz to rad/ns
+                    fact = 2*np.pi # conversion to angular freq
                     
                     for iosc in range(Nsys):
                         Nelem = np.size(pt0[iosc])
@@ -734,14 +718,10 @@ class Quandary:
         if len(learn_params_filename) > 0:
             mystring += "learnparams_initialization = file, " + str(learn_params_filename) + "\n"
         else:
-            ## SCALE to GHz! 
-            learn_hamiltonian_init_GHz = 0.0001*1e-3
-            learn_lindblad_init_GHz = 0.0001*1e-3
+            learn_hamiltonian_init = 0.000001
+            learn_lindblad_init = 0.000001
             learn_transfer_init = 1.0
-            mystring += "learnparams_initialization = random, "+str(learn_hamiltonian_init_GHz) +", " + str(learn_lindblad_init_GHz) + ", " + str(learn_transfer_init) + "\n"
-        ## SCALE T_train! 
-        if self.unitMHz:
-            T_train = T_train *1e3
+            mystring += "learnparams_initialization = random, "+str(learn_hamiltonian_init) +", " + str(learn_lindblad_init) + ", " + str(learn_transfer_init) + "\n"
         if T_train <= self.T:
             mystring += "data_tstop = " + str(T_train) + "\n"
         mystring += "loss_scaling_factor = " + str(self.loss_scaling_factor) + "\n"
@@ -764,16 +744,13 @@ class Quandary:
                 initstring = "file, "+str(self.pcof0_filename) + "\n"
             else:
                 # Scale initial control amplitudes by the number of carrier waves and convert to ns
-                initamp = self.initctrl_MHz[iosc] / len(self.carrier_frequency[iosc])
-                # if not self.unitMHz:
-                initamp = initamp / 1e+3 # Scale to [GHz]
+                initamp = self.initctrl[iosc] / len(self.carrier_frequency[iosc])
                 initstring = ("random, " if self.randomize_init_ctrl else "constant, ") + str(initamp) + "\n"
             mystring += "control_initialization" + str(iosc) + " = " + initstring 
-            if len(self.maxctrl_MHz) == 0: # Disable bounds, if not specified
+            if len(self.maxctrl) == 0: # Disable bounds, if not specified
                 boundval = 1e+12
             else:
-                boundval = self.maxctrl_MHz[iosc] # Always in MHz
-                boundval = boundval/1000.0  # Scale to GHz
+                boundval = self.maxctrl[iosc]
             mystring += "control_bounds" + str(iosc) + " = " + str(boundval) + "\n"
             mystring += "carrier_frequency" + str(iosc) + " = "
             omi = self.carrier_frequency[iosc]
@@ -961,39 +938,35 @@ class Quandary:
                 x = np.zeros((1,4))
             # Extract the pulses 
             time = x[:,0]   # Time domain
-            unitfac = 1.0
-            if self.unitMHz:
-                unitfac = 1e+3
-            pt.append([x[n,1]*unitfac for n in range(len(x[:,0]))])     # Rot frame p(t), MHz
-            qt.append([x[n,2]*unitfac for n in range(len(x[:,0]))])     # Rot frame q(t), MHz
-            ft.append([x[n,3]*unitfac for n in range(len(x[:,0]))])     # Lab frame f(t)
+            pt.append([x[n,1] for n in range(len(x[:,0]))])     # Rot frame p(t)
+            qt.append([x[n,2] for n in range(len(x[:,0]))])     # Rot frame q(t) 
+            ft.append([x[n,3] for n in range(len(x[:,0]))])     # Lab frame f(t)
     
         return time, pt, qt, uT, expectedEnergy, population, pcof, infid_last, optim_hist
 
 
-def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pmin=40):
+def estimate_timesteps(*, T=100.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl=[], Pmin=40):
     """
     Helper function to estimate the number of time steps based on eigenvalues of the system Hamiltonian and maximum control Hamiltonians. Note: The estimate does not account for quickly varying signals or a large number of splines. Double check that at least 2-3 points per spline are present to resolve control function. #TODO: Automate this.
     """
 
     # Get estimated control pulse amplitude
-    est_ctrl_MHz = maxctrl_MHz[:]
-    if len(maxctrl_MHz) == 0:
-        est_ctrl_MHz = [10.0 for _ in range(max(len(Hc_re), len(Hc_im)))] 
+    est_ctrl = maxctrl[:]
+    if len(maxctrl) == 0:
+        amp = 1.0/T * 10.0
+        est_ctrl = [amp for _ in range(max(len(Hc_re), len(Hc_im)))] 
 
     # Set up Hsys +  maxctrl*Hcontrol
     K1 = np.copy(Hsys) 
 
     for i in range(len(Hc_re)):
-        est_radns = est_ctrl_MHz[i]*2.0*np.pi
-        est_radns  = est_radns / 1e+3
+        est_rad = est_ctrl[i]*2.0*np.pi
         if len(Hc_re[i])>0:
-            K1 += est_radns * Hc_re[i] 
+            K1 += est_rad * Hc_re[i] 
     for i in range(len(Hc_im)):
-        est_radns = est_ctrl_MHz[i]*2.0*np.pi
-        est_radns  = est_radns / 1e+3
+        est_rad = est_ctrl[i]*2.0*np.pi
         if len(Hc_im[i])>0:
-            K1 = K1 + 1j * est_radns * Hc_im[i] # can't use += due to type!
+            K1 = K1 + 1j * est_rad * Hc_im[i] # can't use += due to type!
     
     # Estimate time step
     eigenvalues = np.linalg.eigvals(K1)
@@ -1052,16 +1025,16 @@ def eigen_and_reorder(H0, verbose=False):
 def get_resonances(*, Ne, Ng, Hsys, Hc_re=[], Hc_im=[], rotfreq=[], cw_amp_thres=1e-7, cw_prox_thres=1e-2,verbose=True, stdmodel=True):
     """ 
     Computes system resonances, to be used as carrier wave frequencie.
-    Returns resonance frequencies in GHz and corresponding growth rates.
+    Returns resonance frequencies and corresponding growth rates.
     """ 
 
     if verbose:
-        print("\nComputing carrier frequencies, ignoring growth rate slower than:", cw_amp_thres, "and frequencies closer than:", cw_prox_thres, "[GHz])")
+        print("\nComputing carrier frequencies, ignoring growth rate slower than:", cw_amp_thres, "and frequencies closer than:", cw_prox_thres )
 
     nqubits = len(Ne)
     n = Hsys.shape[0]
     
-    # Get eigenvalues of system Hamiltonian (GHz)
+    # Get eigenvalues of system Hamiltonian 
     Hsys_evals, Utrans = eigen_and_reorder(Hsys, verbose)
     Hsys_evals = Hsys_evals.real  # Eigenvalues may have a small imaginary part due to numerical imprecision
     Hsys_evals = Hsys_evals / (2 * np.pi) 
@@ -1198,13 +1171,13 @@ def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], ver
     Parameters:
     -----------
     N        :  Total levels per oscillator (essential plus guard levels for each qubit)
-    freq 01  :  Groundstate frequency for each qubit [GHz]
-    selfkerr :  Self-kerr coefficient for each qubit [GHz]
+    freq 01  :  Groundstate frequency for each qubit 
+    selfkerr :  Self-kerr coefficient for each qubit 
 
     Optional Parameters:
     ---------------------
-    Crosskerr  : ZZ-coupling strength [GHz]
-    Jkl        : dipole-dipole coupling strength [GHz]
+    Crosskerr  : ZZ-coupling strength 
+    Jkl        : dipole-dipole coupling strength 
     rotfreq    : Rotational frequencies for each qubit
     verbose    : Switch to turn on more output. Default: True
 
@@ -1240,10 +1213,10 @@ def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], ver
     # Set up system Hamiltonian: Duffing oscillators
     Hsys = np.zeros((n, n))
     for q in range(nqubits):
-        domega_radns =  2.0*np.pi * (freq01[q] - rotfreq[q])
-        selfkerr_radns = 2.0*np.pi * selfkerr[q]
-        Hsys +=  domega_radns * Amat[q].T @ Amat[q]
-        Hsys -= selfkerr_radns/2.0 * Amat[q].T @ Amat[q].T @ Amat[q] @ Amat[q]
+        domega_rad =  2.0*np.pi * (freq01[q] - rotfreq[q])
+        selfkerr_rad = 2.0*np.pi * selfkerr[q]
+        Hsys +=  domega_rad * Amat[q].T @ Amat[q]
+        Hsys -= selfkerr_rad/2.0 * Amat[q].T @ Amat[q].T @ Amat[q] @ Amat[q]
 
     # Add cross cerr coupling, if given
     if len(crosskerr)>0:
@@ -1251,8 +1224,8 @@ def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], ver
         for q in range(nqubits):
             for p in range(q + 1, nqubits):
                 if abs(crosskerr[idkl]) > 1e-14:
-                    crosskerr_radns = 2.0*np.pi * crosskerr[idkl]
-                    Hsys -= crosskerr_radns * Amat[q].T @ Amat[q] @ Amat[p].T @ Amat[p]
+                    crosskerr_rad = 2.0*np.pi * crosskerr[idkl]
+                    Hsys -= crosskerr_rad * Amat[q].T @ Amat[q] @ Amat[p].T @ Amat[p]
                 idkl += 1
     
     # Add Jkl coupling term. 
@@ -1262,8 +1235,8 @@ def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], ver
         for q in range(nqubits):
             for p in range(q + 1, nqubits):
                 if abs(Jkl[idkl]) > 1e-14:
-                    Jkl_radns  = 2.0*np.pi*Jkl[idkl]
-                    Hsys += Jkl_radns * (Amat[q].T @ Amat[p] + Amat[q] @ Amat[p].T)
+                    Jkl_rad  = 2.0*np.pi*Jkl[idkl]
+                    Hsys += Jkl_rad * (Amat[q].T @ Amat[p] + Amat[q] @ Amat[p].T)
                 idkl += 1
 
     # Set up control Hamiltonians
@@ -1272,7 +1245,7 @@ def hamiltonians(*, N, freq01, selfkerr, crosskerr=[], Jkl = [], rotfreq=[], ver
 
     if verbose:
         print(f"*** {nqubits} coupled quantum systems setup ***")
-        print("System Hamiltonian frequencies [GHz]: f01 =", freq01, "rot. freq =", rotfreq)
+        print("System Hamiltonian frequencies: f01 =", freq01, "rot. freq =", rotfreq)
         print("Selfkerr=", selfkerr)
         print("Coupling: X-Kerr=", crosskerr, ", J-C=", Jkl)
 
@@ -1291,10 +1264,11 @@ def plot_pulse(Ne, time, pt, qt):
         plt.plot(time, pt[iosc], "r", label="p(t)")
         plt.plot(time, qt[iosc], "b", label="q(t)")
         plt.xlabel('time (ns)')
-        plt.ylabel('Drive strength [MHz]')
+        plt.ylabel('Drive strength')
         maxp = max(np.abs(pt[iosc]))
         maxq = max(np.abs(qt[iosc]))
-        plt.title('Qubit '+str(iosc)+'\n max. drive '+str(round(maxp,1))+", "+str(round(maxq,1))+" MHz")
+        plt.title(f'Qubit {iosc}\n max. drive {maxp:.2e}, {maxq:.2e}')
+        # plt.title('Qubit '+str(iosc)+'\n max. drive '+str(round(maxp,5))+", "+str(round(maxq,5)))
         plt.legend(loc='lower right')
         plt.xlim([0.0, time[-1]])
     # plt.grid()
@@ -1394,28 +1368,30 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     t = myconfig.time
 
     # Plot pulses
-    ax[0,0].plot(t, p, label='I') # y label: MHz
-    ax[0,0].plot(t, q, label='Q') # y label: MHz
-    ax[0,0].set_ylabel('Pulse amplitude (MHz)')
-    ax[0,0].set_xlabel('Time (ns)')
+    ax[0,0].plot(t, p, label='I')
+    ax[0,0].plot(t, q, label='Q') 
+    ax[0,0].set_ylabel('Pulse amplitude')
+    ax[0,0].set_xlabel('Time')
     ax[0,0].legend()
     ax[0,0].grid()
 
 
     # Compute and plot FFT
-    zlist = np.array(p)*1e-3 + 1j*np.array(q)*1e-3
+    zlist = np.array(p) + 1j*np.array(q)
     fft = np.fft.fft(zlist)
     dt = myconfig.T / myconfig.nsteps
     fftfr = np.fft.fftfreq(len(zlist), d=dt)
+    freq_min = np.min(fftfr)
+    freq_max = np.max(fftfr)
 
-    ax[0,1].scatter(fftfr*1e3, np.abs(fft)**2)
+    ax[0,1].scatter(fftfr, np.abs(fft))
     ax[0,1].set_ylabel('FFT')
-    ax[0,1].set_xlabel('Frequency (MHz)')
+    ax[0,1].set_xlabel('Frequency')
     ax[0,1].grid()
     ax[0,1].set_title('FFT')
     ax[0,1].set_yscale('log')
-    ax[0,1].set_xlim(-500, 500)
-    ax[0,1].set_ylim(1e-8, 1e5)
+    ax[0,1].set_xlim(freq_min*0.03, freq_max*0.03)
+    # ax[0,1].set_ylim(1e-8, 1e5)
 
     # Plot Populations for each initial condition 
     for iinit in range(len(population)):  # for each of the initial states
