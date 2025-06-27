@@ -118,15 +118,15 @@
             
             <li class="nav-item" data-bs-level="1"><a href="#sec:model" class="nav-link">Model equation</a>
               <ul class="nav flex-column">
-            <li class="nav-item" data-bs-level="2"><a href="#rotational-frame-approximation" class="nav-link">Rotational frame approximation</a>
+            <li class="nav-item" data-bs-level="2"><a href="#rotational-frame" class="nav-link">Rotational frame</a>
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#subsec:controlpulses" class="nav-link">Control pulses</a>
+            <li class="nav-item" data-bs-level="2"><a href="#sec:essential" class="nav-link">Essential and non-essential energy levels</a>
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#interfacing-to-python-environment" class="nav-link">Interfacing to Python environment</a>
+            <li class="nav-item" data-bs-level="2"><a href="#sec:controlpulses" class="nav-link">Control pulse parameterization</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -135,10 +135,6 @@
             
             <li class="nav-item" data-bs-level="1"><a href="#sec:optim" class="nav-link">The Optimal Control Problem</a>
               <ul class="nav flex-column">
-            <li class="nav-item" data-bs-level="2"><a href="#sec:fidelity" class="nav-link">Fidelity</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
             <li class="nav-item" data-bs-level="2"><a href="#sec:objectivefunctionals" class="nav-link">Objective function</a>
               <ul class="nav flex-column">
               </ul>
@@ -147,11 +143,15 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#subsec:initcond" class="nav-link">Initial conditions</a>
+            <li class="nav-item" data-bs-level="2"><a href="#sec:initcond" class="nav-link">Initial conditions</a>
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#sec:penalty" class="nav-link">Tikhonov regularization, penalty terms, and leakage prevention</a>
+            <li class="nav-item" data-bs-level="2"><a href="#sec:penalty" class="nav-link">Regularization, penalty terms, and leakage prevention</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#optimization-algorithm" class="nav-link">Optimization algorithm</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -160,11 +160,7 @@
             
             <li class="nav-item" data-bs-level="1"><a href="#implementation" class="nav-link">Implementation</a>
               <ul class="nav flex-column">
-            <li class="nav-item" data-bs-level="2"><a href="#vectorization-of-lindblads-master-equation" class="nav-link">Vectorization of Lindblad's master equation</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#sparse-matrix-vs-matrix-free-solver" class="nav-link">Sparse-matrix vs. matrix-free solver</a>
+            <li class="nav-item" data-bs-level="2"><a href="#real-valued-and-vectorized-formulation" class="nav-link">Real-valued and vectorized formulation</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -172,11 +168,15 @@
               <ul class="nav flex-column">
               </ul>
             </li>
+            <li class="nav-item" data-bs-level="2"><a href="#sparse-matrix-vs-matrix-free-solver" class="nav-link">Sparse-matrix vs. matrix-free solver</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
             <li class="nav-item" data-bs-level="2"><a href="#gradient-computation-via-discrete-adjoint-back-propagation" class="nav-link">Gradient computation via discrete adjoint back-propagation</a>
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#optimization-algorithm" class="nav-link">Optimization algorithm</a>
+            <li class="nav-item" data-bs-level="2"><a href="#storage-of-the-control-parameters" class="nav-link">Storage of the control parameters</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -190,18 +190,6 @@
             
             <li class="nav-item" data-bs-level="1"><a href="#output-and-plotting-the-results" class="nav-link">Output and plotting the results</a>
               <ul class="nav flex-column">
-            <li class="nav-item" data-bs-level="2"><a href="#output-options-with-regard-to-state-evolution" class="nav-link">Output options with regard to state evolution</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#output-with-regard-to-simulation-and-optimization" class="nav-link">Output with regard to simulation and optimization</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#plotting" class="nav-link">Plotting</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
               </ul>
             </li>
             
@@ -215,7 +203,7 @@
               </ul>
             </li>
             
-            <li class="nav-item" data-bs-level="1"><a href="#appendix-details-for-the-real-valued-vectorized-hamiltonian" class="nav-link">Appendix: Details for the real-valued, vectorized Hamiltonian</a>
+            <li class="nav-item" data-bs-level="1"><a href="#appendix-details-for-the-real-valued-system-matrices-standard-model" class="nav-link">Appendix: Details for the real-valued system matrices (standard model)</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -230,190 +218,95 @@
 underlying dynamics are modelled by either Schroedinger's equation (for closed systems), or Lindblad's master equation (for open systems that interact with the environment). Quandary solves the respective ordinary differential equation (ODE) numerically by applying a time-stepping integration scheme, and applies a gradient-based optimization
 scheme to determine optimal control pulses that drive the quantum system to a desired target.
 The target can be a unitary, i.e. optimizing for pulses that
-realize a logical quantum operation, or state preparation that aims to drive the quantum system from one (or multiple) initial state to a desired target state, such as for example the ground state of zero energy level, or for the creation of entangled state.</p>
+realize a logical quantum operation, or state preparation that aims to drive the quantum system from one (or multiple) initial state to a desired target state, such as for example the ground state of zero energy level, or for the creation of entangled states.</p>
 <p>Quandary is designed to solve optimal control problems in larger (potentially open) quantum systems, targeting modern high performance computing (HPC) platforms. Quandary utilizes distributed memory computations using the message passing paradigm that enables scalability to large number of compute cores. Implemented in C++, Quandary is portable and its object-oriented implementation allows developers to extend the predefined setup to suit their particular simulation and optimization requirements. For example, customized gates for Hamiltonian simulations can easily be added to supplement Quandary’s predefined gate set.
 The Python interface allows for greater flexibility where custom Hamiltonian models can be used.</p>
 <p>This document outlines the mathematical background and underlying equations, and summarizes their
-implementation and usage in Quandary. We also refer to our publications <sup id="fnref:guenther2021quandary"><a class="footnote-ref" href="#fn:guenther2021quandary">2</a></sup> <sup id="fnref:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">3</a></sup>.</p>
+implementation and usage in Quandary. Also refer to publications <sup id="fnref:guenther2021quandary"><a class="footnote-ref" href="#fn:guenther2021quandary">1</a></sup> <sup id="fnref:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">2</a></sup>.</p>
 <h1 id="sec:model">Model equation</h1>
-<p>Quandary models composite quantum systems consisting of <span class="arithmatex">\(Q\)</span> subsystems, with <span class="arithmatex">\(n_k\)</span> energy levels for the
-<span class="arithmatex">\(k\)</span>-th subsystem, <span class="arithmatex">\(k=0,\dots,Q-1\)</span>. The Hilbert space dimension is hence the product of each subsystem dimensions: <span class="arithmatex">\(N = \prod_{k=0}^{Q-1} n_k\)</span>.</p>
-<p>The default system Hamiltonian model for the composite system is</p>
-<pre class="arithmatex">\[\begin{align}
-  H_d &amp;:= \sum_{k=0}^{Q-1} \left(\omega_k a_k^{\dagger}a_k- \frac{\xi_k}{2} a_k^{\dagger}a_k^{\dagger}a_k a_k  + \sum_{l&gt; k} \left(  J_{kl} \left( a_k^\dagger a_l + a_k a_l^\dagger \right) -\xi_{kl} a_{k}^{\dagger}a_{k}   a_{l}^{\dagger} a_{l} \right)\right)
-\end{align}\]</pre>
-<p>where <span class="arithmatex">\(\omega_k\geq 0\)</span> denotes the <span class="arithmatex">\(0 \rightarrow 1\)</span> transition frequency and <span class="arithmatex">\(\xi_k\geq 0\)</span> is the self-Kerr coefficient of subsystem <span class="arithmatex">\(k\)</span>, and the cross resonance coefficients are <span class="arithmatex">\(J_{kl}\geq 0\)</span> ("dipole-dipole interaction") and <span class="arithmatex">\(\xi_{kl}\geq 0\)</span> ("zz-coupling"). Here,
-<span class="arithmatex">\(a_k\in \C^{N\times N}\)</span> denotes the lowering operator acting on subsystem <span class="arithmatex">\(k\)</span>, which is defined as</p>
-<pre class="arithmatex">\[\begin{align}
-  \begin{array}{rl}
-  a_0 &amp;:= a^{(n_0)} \otimes I_{n_1} \otimes \dots \otimes
-  I_{n_{Q-1}}\\
-  a_1 &amp;:= I_{n_0} \otimes a^{(n_1)} \otimes \dots \otimes
-  I_{n_{Q-1}}\\
-  \vdots \, &amp; \\
-  a_{Q-1} &amp;:= I_{n_0} \otimes I_{n_1} \otimes \dots \otimes
-  a^{(n_{Q-1})}\\
-  \end{array}
-  \quad \text{with}\quad
- a^{(n_k)} := \begin{pmatrix}
-   0 &amp; 1 &amp;          &amp;         &amp;    \\
-     &amp; 0 &amp; \sqrt{2} &amp;         &amp;     \\
-     &amp;   &amp; \ddots   &amp; \ddots  &amp;    \\
-     &amp;   &amp;          &amp;         &amp; \sqrt{n_k-1}  \\
-     &amp;   &amp;          &amp;         &amp; 0
- \end{pmatrix} \in \R^{n_k \times n_k}
-\end{align}\]</pre>
-<p>where <span class="arithmatex">\(I_{n_k} \in \R^{n_k \times n_k}\)</span> is the identity matrix.</p>
-<p>The action of external control fields on the quantum system is modelled through the control Hamiltonian</p>
-<pre class="arithmatex">\[\begin{align}
-  H_c(t) &amp;:= \sum_{k=0}^{Q-1} f^k(\vec{\alpha}^k,t) \left(a_k + a_k^\dagger \right)
-\end{align}\]</pre>
-<p>where <span class="arithmatex">\(f^k(\vec{\alpha}^k,t)\)</span> are real-valued, time-dependent control functions that are parameterized by real-valued parameters <span class="arithmatex">\(\vec{\alpha}^k\in \R^d\)</span>, which can be either specified, or optimized for.</p>
+<p>Quandary models composite quantum systems consisting of <span class="arithmatex">\(Q\)</span> subsystems ("oscillators", "qubits"), with <span class="arithmatex">\(n_k\)</span> energy levels for the
+<span class="arithmatex">\(k\)</span>-th subsystem, <span class="arithmatex">\(k=0,\dots,Q-1\)</span>. The Hilbert space dimension is <span class="arithmatex">\(N = \prod_{k=0}^{Q-1} n_k\)</span>.</p>
 <p>For a <strong>closed quantum system</strong> (no environmental interactions), the quantum state is described by a complex-valued vector <span class="arithmatex">\(\psi\in\C^N\)</span>, with <span class="arithmatex">\(\|\psi\| = 1\)</span>. For a given initial state <span class="arithmatex">\(\psi(t=0)\)</span>, the evolution of the state vector is modelled through <strong>Schroedinger's equation</strong></p>
 <pre class="arithmatex">\[\begin{align} \label{eq:schroedinger}
-  \dot{\psi}(t)  = -i H(t) \psi(t), \quad \text{with} \quad  H(t) := H_d + H_c(t).
+  \dot{\psi}(t)  = -i H(t) \psi(t)
 \end{align}\]</pre>
-<p><strong>Open quantum systems</strong> take interactions with the environment into account, allowing us to model decoherence and noise in the system. In that case, the state of the quantum system is described by its density matrix <span class="arithmatex">\(\rho\in \C^{N\times N}\)</span>, and the time-evolution is modelled by <strong>Lindblad's master equation</strong>:</p>
+<p>For <strong>open quantum systems</strong> (taking interactions with the environment into account), the quantum state is described by the density matrix <span class="arithmatex">\(\rho\in \C^{N\times N}\)</span> (hermitian, trace one, positive semi definite). In that case, Quandary models the the quantum dynamics via <strong>Lindblad's master equation</strong>:</p>
 <pre class="arithmatex">\[\begin{align}\label{mastereq}
   \dot{\rho}(t) = &amp;-i(H(t)\rho(t) - \rho(t)H(t)) + \Ell(\rho(t)),
 \end{align}\]</pre>
-<p>where again <span class="arithmatex">\(H(t) = H_d + H_c(t)\)</span>, and where <span class="arithmatex">\(\Ell(\rho(t))\)</span> denotes the Lindbladian collapse operators to model system-environment interactions. The Lindbladian operator <span class="arithmatex">\(\Ell(\rho(t))\)</span> is assumed to be of the form</p>
+<p><em>Note:</em> In the remainder, the quantum state will mostly be denoted by <span class="arithmatex">\(\rho\)</span>, which, depending on the context, either relates to the density matrix solving Lindblad's equation, or to the state vector <span class="arithmatex">\(\psi\in \C^N\)</span> solving Schroedinger's equation. Distinction will only be made explicit where necessary.</p>
+<p>The <strong>default Hamiltonian</strong> in Quandary models superconducting (transmon) qubits, decomposing the Hamiltonian matrix into a constant system part and a time-dependent control part that models the action of control fields applied to each subsystem:</p>
+<pre class="arithmatex">\[\begin{align}
+  H(t) = H_d + H_c(t) \quad \text{where} \quad
+  H_d &amp;:= \sum_{k=0}^{Q-1} \omega_k a_k^{\dagger}a_k- \frac{\xi_k}{2} a_k^{\dagger}a_k^{\dagger}a_k a_k  + \sum_{l&gt; k} J_{kl} \left( a_k^\dagger a_l + a_k a_l^\dagger \right) - \sum_{l&gt; k}\xi_{kl} a_{k}^{\dagger}a_{k}   a_{l}^{\dagger} a_{l} \\
+  H_c(t) &amp;:= \sum_{k=0}^{Q-1} f^k(t) \left(a_k + a_k^\dagger \right)
+\end{align}\]</pre>
+<p>where <span class="arithmatex">\(\omega_k\geq 0\)</span> denotes <span class="arithmatex">\(0 \rightarrow 1\)</span> transition frequencies for each oscillator <span class="arithmatex">\(k\)</span>, <span class="arithmatex">\(\xi_k\geq 0\)</span> are the self-Kerr coefficients. Coulings can be specified through the cross resonance coefficients <span class="arithmatex">\(J_{kl}\geq 0\)</span> ("dipole-dipole interaction") or through <span class="arithmatex">\(\xi_{kl}\geq 0\)</span> ("zz-coupling"). 
+Here, <span class="arithmatex">\(a_k\in \C^{N\times N}\)</span> denotes the lowering operator acting on subsystem <span class="arithmatex">\(k\)</span>.
+The control pulses <span class="arithmatex">\(f^k(t)\)</span> can be either specified or optimized for, compare section <a href="#sec:controlpulses">Control pulse parameterization</a>. <strong>Custom system and control Hamiltonian operators</strong> can be specified through Quandary's python interface.</p>
+<p>The <strong>default Lindbladian</strong> operator <span class="arithmatex">\(\Ell(\rho(t))\)</span> is of the form</p>
 <pre class="arithmatex">\[\begin{align} \label{eq:collapseop}
   \Ell(\rho(t)) = \sum_{k=0}^{Q-1} \sum_{l=1}^2 \Ell_{lk} \rho(t)
   \Ell_{lk}^{\dagger} - \frac 1 2 \left( \Ell_{lk}^{\dagger}\Ell_{lk}
   \rho(t) + \rho(t)\Ell_{lk}^{\dagger} \Ell_{lk}\right)
 \end{align}\]</pre>
-<p>where the collapse operators <span class="arithmatex">\(\Ell_{lk}\)</span> model decay and dephasing processes in the subsystem <span class="arithmatex">\(k\)</span> with</p>
+<p>where the collapse operators <span class="arithmatex">\(\Ell_{lk}\)</span> model decay and dephasing in each subsystem <span class="arithmatex">\(k\)</span> with</p>
 <ul>
 <li>Decay  ("<span class="arithmatex">\(T_1\)</span>"): <span class="arithmatex">\(\Ell_{1k} = \frac{1}{\sqrt{T_1^k}} a_k\)</span></li>
 <li>Dephasing  ("<span class="arithmatex">\(T_2\)</span>"): <span class="arithmatex">\(\Ell_{2k} = \frac{1}{\sqrt{T_2^k}} a_k^{\dagger}a_k\)</span></li>
 </ul>
-<p>The constants <span class="arithmatex">\(T_l^k&gt;0\)</span> correspond to the half-life of process <span class="arithmatex">\(l\)</span> on subsystem <span class="arithmatex">\(k\)</span>. Typical <span class="arithmatex">\(T_1\)</span> decay time is between <span class="arithmatex">\(10-100\)</span> microseconds (us). <span class="arithmatex">\(T_2\)</span> dephasing time is typically about half of T1 decay time.</p>
-<!-- Decay processes typically behave like $\exp(-t/{T_1})$. -->
+<!-- Note that the main choice here is which equation should be solved for and which representation of the quantum state will be used (either Schroedinger with a state vector $\psi \in \C^N$, or Lindblad's equation for a density matrix $\rho \in \C^{N\times N}$). In the C++ configuration file, this choice is determined through the option `collapse_type`, where `none` will result in Schroedinger's equation and any other choice will result in Lindblad's equation being solved for. Further note, that choosing `collapse_type` $\neq$ `none`, together with a collapse time $T_{l}^k = 0.0$ will omit the evaluation of the corresponding term in the Lindblad operator $\eqref{eq:collapseop}$ (but will still solve Lindblad's equation for the density matrix). In the python interface, Lindblad's solver is enabled by passing decay and decoherence times `T1` and `T2` per oscillator to the Quandary object. -->
 
-<p>All the above constants and system parameters can be specified in the first part of the configuration file that Quandary's executable takes as an input, compare <code>config_template.cfg</code>.
-Note that the main choice here is which equation should be solved for and which representation of the quantum state will be used (either Schroedinger with a state vector <span class="arithmatex">\(\psi \in \C^N\)</span>, or Lindblad's equation for a density matrix <span class="arithmatex">\(\rho \in \C^{N\times N}\)</span>). In the configuration file, this choice is determined through the option <code>collapse_type</code>, where <code>none</code> will result in Schroedinger's equation and any other choice will result in Lindblad's equation being solved for. Further note, that choosing <code>collapse_type</code> <span class="arithmatex">\(\neq\)</span> <code>none</code>, together with a collapse time <span class="arithmatex">\(T_{l}^k = 0.0\)</span> will omit the evaluation of the corresponding term in the Lindblad operator <span class="arithmatex">\(\eqref{eq:collapseop}\)</span> (but will still solve Lindblad's equation for the density matrix).</p>
-<p><em>Note:</em> In the remainder of this document, the quantum state will mostly be denoted by <span class="arithmatex">\(\rho\)</span>, independent of which equation is solved for. Depending on the context, <span class="arithmatex">\(\rho\)</span> can then either denotes the density matrix <span class="arithmatex">\(\rho\in \C^{N\times N}\)</span>, or the state vector <span class="arithmatex">\(\psi\in \C^N\)</span>. A clear distinction between the two will only be made explicit if necessary.</p>
-<h2 id="rotational-frame-approximation">Rotational frame approximation</h2>
-<p>Quandary uses the rotating wave approximation in order to slow down the time scales in the solution of Schroedinger's or Lindblad's master equations. To that end, the user can specify the rotation frequencies <span class="arithmatex">\(\omega_k^r\)</span> for each oscillator. Under the rotating frame wave approximation, the Hamiltonians are transformed to</p>
+<h2 id="rotational-frame">Rotational frame</h2>
+<p>Quandary uses the rotating wave approximation to slow down the time scale of the quantum dynamics. The user can specify the rotation frequencies <span class="arithmatex">\(\omega_k^r\)</span> for each oscillator. Under the rotating frame wave approximation, the Hamiltonians are transformed to</p>
 <pre class="arithmatex">\[\begin{align}
   \tilde{H}_d(t) &amp;:= \sum_{k=0}^{Q-1} \left(\omega_k - \omega_k^{r}\right)a_k^{\dagger}a_k- \frac{\xi_k}{2}
   a_k^{\dagger}a_k^{\dagger}a_k a_k
    - \sum_{l&gt; k} \xi_{kl} a_{k}^{\dagger}a_{k}   a_{l}^{\dagger} a_{l} \notag \\
-   &amp; + \sum_{k=0}^{Q-1}\sum_{l&gt;k} J_{kl} \left(\cos(\eta_{kl}t) \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + i\sin(\eta_{kl}t)\left(a_k^\dagger a_l - a_k a_l^\dagger\right) \right) \label{eq:Hd_rotating} \\
+   &amp; + \sum_{l&gt;k} J_{kl} \cos(\eta_{kl}t) \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + iJ_{kl} \sin(\eta_{kl}t)\left(a_k^\dagger a_l - a_k a_l^\dagger\right) \label{eq:Hd_rotating} \\
    %
-   \tilde{H}_c(t) &amp;:= \sum_{k=0}^{Q-1} \left( p^k(\vec{\alpha}^k,t) (a_k +
-   a_k^{\dagger}) + i q^k(\vec{\alpha}^k,t)(a_k - a_k^{\dagger})
-   \right)  \label{eq:Hc_rotating}
+   \tilde{H}_c(t) &amp;:= \sum_{k=0}^{Q-1} p^k(t) (a_k +
+   a_k^{\dagger}) + i q^k(t)(a_k - a_k^{\dagger})
+    \label{eq:Hc_rotating}
 \end{align}\]</pre>
-<p>where <span class="arithmatex">\(\eta_{kl} := \omega_k^{r} - \omega_l^{r}\)</span> are the differences in rotational frequencies between subsystems.</p>
-<p>Note that the eigenvalues of the rotating frame Hamiltonian become significantly smaller in magnitude by choosing <span class="arithmatex">\(\omega_k^r \approx \omega_k\)</span> (so that the first term with <span class="arithmatex">\(a_k^\dagger a_k\)</span> drops out). This slows down the time variation of the state evolution, hence bigger time-step sizes can be chosen when solving the master equation numerically. We remark that the rotating wave approximation ignores terms in the control Hamiltonian that oscillate with frequencies <span class="arithmatex">\(\pm 2\omega_k^r\)</span>. Below, we drop the tildes on <span class="arithmatex">\(\tilde{H}_d\)</span> and <span class="arithmatex">\(\tilde{H}_c\)</span> and use the rotating frame definition of the Hamiltonians to model the system evolution in time.</p>
-<p>Using the rotating wave approximation, the real-valued laboratory frame control functions are written as</p>
+<p>where <span class="arithmatex">\(\eta_{kl} := \omega_k^{r} - \omega_l^{r}\)</span> are the differences in rotational frequencies between subsystems. Note that the dipole-dipole coupling is time-dependent if <span class="arithmatex">\(\eta_{kl} \neq 0\)</span>. Using the rotating wave approximation, the rotating-frame control pulses <span class="arithmatex">\(p^k(t)\)</span> and <span class="arithmatex">\(q^k(t)\)</span> relate to the laboratory frame control pulse through </p>
 <pre class="arithmatex">\[\begin{align}
-  f^k(\vec{\alpha}^k,t) = 2\mbox{Re}\left(d^k(\vec{\alpha}^k,t)e^{i\omega_k^r t}\right), \quad d^k(\vec{\alpha}^k,t) = p^k(\vec{\alpha}^k,t) + i q^k(\vec{\alpha}^k,t)
+  f^k(t) = 2\mbox{Re}\left(d^k(t)e^{i\omega_k^r t}\right), \quad d^k(t) = p^k(t) + i q^k(t)
 \end{align}\]</pre>
-<p>where the rotational frequencies <span class="arithmatex">\(\omega_k^r\)</span> act as carrier waves to the rotating-frame control functions <span class="arithmatex">\(d^k(\vec{\alpha}^k, t)\)</span>.</p>
-<h2 id="subsec:controlpulses">Control pulses</h2>
-<p>The time-dependent rotating-frame control functions <span class="arithmatex">\(d^k(\vec{\alpha}^k,t)\)</span> are parameterized using <span class="arithmatex">\(N_s^k\)</span> basis functions <span class="arithmatex">\(B_s(t)\)</span> acting as envelope for <span class="arithmatex">\(N_f^k\)</span> carrier waves:</p>
+<h2 id="sec:essential">Essential and non-essential energy levels</h2>
+<p>It is recommended to model the system with more energy levels than those that will be occupied during the dynamical evolution, in order to prevent leakage out of the computational subspace (modelling the infinite dimensional system with more accuracy by including more levels) and/or to allow the system to transition through higher energy levels in order to achieve a final-time target faster. In that case, <em>essential</em> levels, <span class="arithmatex">\(n_k^e\)</span>, denote the computational subspace, e.g. <span class="arithmatex">\(n_k^e = 2\)</span> for qubits, whereas the total number of energy levels <span class="arithmatex">\(n_k \geq n_k^e\)</span> could be larger, e.g. <span class="arithmatex">\(n_k=3\)</span>. Any non-essential level is considered a <em>guard</em> level.</p>
+<h2 id="sec:controlpulses">Control pulse parameterization</h2>
+<p>The time-dependent rotating-frame control pulses <span class="arithmatex">\(d^k(t) = p^k(t) + iq^k(t)\)</span> are parameterized using Bsplines with <span class="arithmatex">\(N_s^k\)</span> basis functions <span class="arithmatex">\(B_s(t)\)</span>, that act as an envelope for <span class="arithmatex">\(N_f^k\)</span> carrier waves:</p>
 <pre class="arithmatex">\[\begin{align}\label{eq:spline-ctrl}
-  d^k(\vec{\alpha}^k,t) = \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s^k} \alpha_{s,f}^k B_s(t) e^{i\Omega_k^ft}, \quad \alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)} \in \C
+  d^k(\vec{\alpha}^k,t) = \sum_{f=1}^{N_f^k} e^{i\Omega^k_ft} \sum_{s=1}^{N_s^k} \alpha_{s,f}^k B_s(t) , \quad \alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)} \in \C
 \end{align}\]</pre>
-<p>By default, the basis functions are piecewise quadratic (2nd order) B-spline polynomials, centered on an equally spaced grid in time. To instead use a piecewise constant (0th order) B-spline basis, see Section <a href="#subsec:bspline-0">Zeroth order B-spline basis functions</a>.
-The amplitudes <span class="arithmatex">\(\alpha_{s,f}^{k(1)}, \alpha_{s,f}^{k(2)} \in \R\)</span> are the control
-parameters (<em>design</em> variables) that Quandary can optimize in order to realize a
-desired system behavior, giving a total number of <span class="arithmatex">\(2\sum_k N_s^k N_f^k\)</span> real-valued optimization variables. (Note that the number of carrier wave frequencies <span class="arithmatex">\(N_f^k\)</span> as well as the number of spline basis functions <span class="arithmatex">\(N_s^k\)</span> can be different for each subsystem <span class="arithmatex">\(k\)</span>.) <span class="arithmatex">\(\Omega_k^f \in \R\)</span> denote the carrier wave frequencies in the rotating frame which can be chosen to trigger certain system frequencies. The corresponding Lab-frame carrier frequencies become <span class="arithmatex">\(\omega_k^r + \Omega_k^f\)</span>. Those frequencies can be chosen to match the transition frequencies in the lab-frame system Hamiltonian. For example, when <span class="arithmatex">\(\xi_{kl} &lt;&lt; \xi_k\)</span>, the transition frequencies satisfy <span class="arithmatex">\(\omega_k - n\xi_k\)</span>. Thus by choosing <span class="arithmatex">\(\Omega_k^f = \omega_k-\omega_k^r - n \xi_k\)</span>, one triggers transition between energy levels <span class="arithmatex">\(n\)</span> and <span class="arithmatex">\(n+1\)</span> in subsystem <span class="arithmatex">\(k\)</span>. Choosing effective carrier wave frequencies is quite important for optimization performance. We recommend to have a look at <sup id="fnref:petersson2021optimal"><a class="footnote-ref" href="#fn:petersson2021optimal">4</a></sup> for details on how to choose them.</p>
-<p>Using trigonometric identities, the real and imaginary part of the rotating-frame control <span class="arithmatex">\(d^k(\vec{\alpha}^k,t) = p^k(\vec{\alpha}^k,t) + iq^k(\vec{\alpha}^k,t)\)</span> are given by</p>
+<p>Using trigonometric identities, the real and imaginary part of the rotating-frame control <span class="arithmatex">\(d^k(\vec{\alpha}^k,t) = p^k(\vec{\alpha}^k,t) + iq^k(\vec{\alpha}^k,t)\)</span> can be written as</p>
 <pre class="arithmatex">\[\begin{align}
-  p^k(\vec{\alpha}^k,t) &amp;= \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s^k} B_s(t)
-  \left(\alpha^{k
-  (1)}_{s,f} \cos(\Omega_f^k t) - \alpha^{k (2)}_{s,f} \sin(\Omega_f^k t)
-  \right) \\
-  q^k(\vec{\alpha}^k,t) &amp;= \sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s^k} B_s(t)\left( \alpha^{k
-  (1)}_{s,f} \sin(\Omega_f^k t) + \alpha^{k (2)}_{s,f} \cos(\Omega_f^k t)
-  \right)
+  p^k(\vec{\alpha}^k,t) &amp;= \sum_{f=1}^{N_f^k} \cos(\Omega_f^k t) B^{(1)}(t) 
+    - \sin(\Omega_f^k t) B^{(2)}(t) \\
+  q^k(\vec{\alpha}^k,t) &amp;= \sum_{f=1}^{N_f^k} \sin(\Omega_f^k t) B^{(1)}(t) + \cos(\Omega_f^k t)B^{(2)}(t) 
 \end{align}\]</pre>
-<p>Those relate to the Lab-frame control <span class="arithmatex">\(f^k(\vec{\alpha}^k,t)\)</span> through</p>
-<pre class="arithmatex">\[\begin{align}
-  f^k(t) &amp;=  2\sum_{f=1}^{N_f^k} \sum_{s=1}^{N_s^k} B_s(t) \left(\alpha_{s,f}^{k(1)} \cos((\omega_k^{r} + \Omega_f^k) t) - \alpha_{s,f}^{k(2)}\sin((\omega_k^{r} + \Omega_f^k) t) \right) \\
-         &amp;= 2 p^k(\vec{\alpha}^k, t) \cos(\omega_k^{r} t) - 2 q^k(\vec{\alpha}^k,
-         t)\sin(\omega_k^{r} t) \\
-         &amp;= 2\mbox{Re}\left( d^k(\vec{\alpha}^k,t)e^{i\omega_k^r t} \right)
-\end{align}\]</pre>
-<h3 id="storage-of-the-control-parameters">Storage of the control parameters</h3>
-<p>The control parameters <span class="arithmatex">\(\bs{\alpha}\)</span> are stored in the Quandary code in the following order: List oscillators first <span class="arithmatex">\((\vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1})\)</span>, then for each <span class="arithmatex">\(\vec{\alpha}^k \in
-\R^{2 N_s^k N_f^k}\)</span>, iterate over all carrierwaves <span class="arithmatex">\(\vec{\alpha}^k =
-(\alpha^k_1,\dots, \alpha^k_{N_f})\)</span> with <span class="arithmatex">\(\alpha^k_f \in \R^{2 N_s^k}\)</span>, then each
-<span class="arithmatex">\(\alpha^k_f\)</span> iterates over spline basis functions listing first all real then all imaginary
-components: <span class="arithmatex">\(\alpha^k_f = \alpha^{k(1)}_{1,f}, \dots, \alpha^{k(1)}_{N_s^k,f}, \alpha^{k(2)}_{1,f}, \dots, \alpha^{k(2)}_{N_s^k,f}\)</span>. Hence there are a total of <span class="arithmatex">\(2\sum_k N_s^k N_f^k\)</span> real-valued optimization parameters, which are stored in the following order:</p>
-<pre class="arithmatex">\[\begin{align}
-  \boldsymbol{\alpha} &amp;:= \left( \vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1} \right), \in
-  \R^{2\sum_k N_s^k N_f^k} \quad \text{where}\\
-  \vec{\alpha}^k = &amp;\left( \alpha_{1,1}^{k(1)},\dots, \alpha_{N_s^k,1}^{k(1)}, \dots, \alpha_{1,N_f^k}^{k(1)}, \dots, \alpha_{N_s^k,N_f^k}^{k(1)} \right.\\
-                 &amp;  \left. \alpha_{1,1}^{k(2)},\dots, \alpha_{N_s^k,1}^{k(2)}, \dots, \alpha_{1,N_f^k}^{k(2)}, \dots, \alpha_{N_s^k,N_f^k}^{k(2)} \right)
-\end{align}\]</pre>
-<p>iterating over <span class="arithmatex">\(Q\)</span> subsystems first, then <span class="arithmatex">\(N_f^k\)</span> carrier wave frequencies, then <span class="arithmatex">\(N_s^k\)</span> splines, listing first all real parts then all imaginary parts. To access an element <span class="arithmatex">\(\alpha_{s,f}^{k(i)}\)</span>, <span class="arithmatex">\(i=0,1\)</span>, from storage <span class="arithmatex">\(\bfa\)</span>:</p>
-<pre class="arithmatex">\[\begin{align}
-  \alpha_{s,f}^{k(i)} = \bfa \left[ \left(\sum_{j=0}^{k-1} 2 N_s^j N_f^j\right) + f*2 N_s^k + s + i*N_s^k N_f^k \right],
-\end{align}\]</pre>
-<p><em>Note: this ordering of the controls is compatible with the order of control parameters in the Juqbox.jl software <sup id="fnref2:petersson2021optimal"><a class="footnote-ref" href="#fn:petersson2021optimal">4</a></sup>.</em></p>
-<p>When executing Quandary, the control parameter <span class="arithmatex">\(\boldsymbol{\alpha}\)</span> can be either specified (e.g. a constant pulse, a pi-pulse, or pulses whose parameters are read from a given file), or can be optimized for (Section <a href="#sec:optim">The Optimal Control Problem</a>).</p>
-<p>In order to guarantee that the optimizer yields control pulses that are bounded with <span class="arithmatex">\(|p^k(t)| \leq c^k_{max}\)</span>, <span class="arithmatex">\(|q^k(t)| \leq c^k_{max}\)</span> for given bounds <span class="arithmatex">\(c^k_{max}\)</span> for each subsystem <span class="arithmatex">\(k=0,\dots, Q-1\)</span>, box constraints are implemented as:</p>
-<pre class="arithmatex">\[\begin{align}
-  | \alpha_{s,f}^{k(1)}| \leq \frac{c^k_{max}}{N_f^k} \quad \text{and} \quad |
-  \alpha_{s,f}^{k(2)} | \leq \frac{c^k_{max}}{N_f^k}.
-\end{align}\]</pre>
+<p>where <span class="arithmatex">\(B^{(1)}(t) = \sum_{s=1}^{N_s^k} \alpha^{k(1)}_{s,f} B_s(t)\)</span> and <span class="arithmatex">\(B^{(2)}(t) = \sum_{s=1}^{N_s^k} \alpha^{k(2)}_{s,f} B_s(t)\)</span> evaluate the splines using the control coefficients <span class="arithmatex">\(\alpha_{f,s}^{k(1)}, \alpha_{f,s}^{k(2)}\in \R\)</span>. 
+By default, the basis functions are piecewise quadratic B-spline polynomials with compact support, centered on an equally spaced grid in time. To instead use a piecewise constant (0th order) Bspline basis, see Section <a href="#sec:bspline-0">0-th order Bspline basis functions</a>.</p>
+<p>The control parameter vector <span class="arithmatex">\(\boldsymbol{\alpha} = (\alpha_{f,s}^{k(i)})\)</span> (<em>design</em> variables) can be either specified (e.g. a constant pulse, a pi-pulse, or pulses whose parameters are read from a given file), or can be optimized for in order to realize a desired system behavior (Section <a href="#sec:optim">The Optimal Control Problem</a>).  </p>
+<h3 id="carrier-wave-frequencies">Carrier wave frequencies</h3>
+<p>The rotating-frame carrier wave frequencies <span class="arithmatex">\(\Omega^k_f \in \R\)</span> should be chosen to trigger intrinsic system resonance frequencies. For example, when <span class="arithmatex">\(\xi_{kl} &lt;&lt; \xi_k\)</span>, the intrinsic qubit transition frequencies are <span class="arithmatex">\(\omega_k - n\xi_k\)</span>. Thus by choosing <span class="arithmatex">\(\Omega^k_f = \omega_k-\omega_k^r - n \xi_k\)</span> in the rotating frame, one triggers transition between energy levels <span class="arithmatex">\(n\)</span> and <span class="arithmatex">\(n+1\)</span> in subsystem <span class="arithmatex">\(k\)</span>. Choosing effective carrier wave frequencies is quite important for optimization performance, particulary when qubit interactions are desired, such as when optimizing for a CNOT gate. Using the python interface for Quandary, the carrier wave frequencies <span class="arithmatex">\(\Omega^k_f\)</span> are automatically computed based on an eigenvalue decomposition of the system Hamiltonian. For the C++ code, it is recommended to follow <sup id="fnref:petersson2021optimal"><a class="footnote-ref" href="#fn:petersson2021optimal">3</a></sup> for details on how to choose them effectively.  </p>
 <h3 id="alternative-control-parameterization-based-on-b-spline-amplitudes-and-time-constant-phases">Alternative control parameterization based on B-spline amplitudes and time-constant phases</h3>
-<p>As an alternative to the above parameterization, we can parameterize only the <em>amplitudes</em> of the control pulse with B-splines, and add a time-constant phase per carrierwave:</p>
+<p>As an alternative parameterization, the user can choose to parameterize only the <em>amplitudes</em> of the control pulse with 2nd order B-splines, adding a time-constant phase per carrierwave:</p>
 <pre class="arithmatex">\[\begin{align}
   d(t) = \sum_f e^{i\Omega_f t} a_f(t)e^{ib_f} \quad \text{where} \quad a_f(t) = \sum_s \alpha_{f,s} B_s(t) \\
   \Rightarrow d(t)= \sum_f\sum_s \alpha_{f,s}B_s(t)e^{i\Omega_ft + b_f}
 \end{align}\]</pre>
 <p>where the control parameters are <span class="arithmatex">\(b_f\in [-\pi, \pi]\)</span> (phases for each carrier wave) and the amplitudes <span class="arithmatex">\(\alpha_{f,s}\in \R\)</span> for <span class="arithmatex">\(s=1,\dots, N_s\)</span>, <span class="arithmatex">\(f=1,\dots, N_f\)</span>. Hence for <span class="arithmatex">\(Q\)</span> oscillators, we have a total of <span class="arithmatex">\(\sum_q (N_s^q + 1) N_f^q\)</span> control parameters.</p>
-<p>The rotating frame pulses are then given by</p>
-<pre class="arithmatex">\[\begin{align}
-  p(t) = \sum_f \sum_s \alpha_{f,s} \cos(\Omega_f t + b_f) B_s(t) \\
-  q(t) = \sum_f \sum_s \alpha_{f,s} \sin(\Omega_f t + b_f) B_s(t)
-\end{align}\]</pre>
-<h3 id="subsec:bspline-0">Zeroth order B-spline basis functions (piecewise constant controls)</h3>
-<p>A piecewise continuous envelope function can be generated by using zeroth order B-spline basis functions. When the carrier wave frequency is set to zero, this results in a control function that is piecewise constant in the rotating frame. For example, to use the zeroth order basis functions for controlling sub-system number 0 with 50 constant control segments, use the configuration option:</p>
-<pre><code>control_segments0 = spline0, 50
-</code></pre>
-<p>When optimizing with zeroth order B-spline control functions, strong variations between consecutive control amplitudes can be avoided by enabling the total variation penalty term through the command</p>
-<pre><code>optim_penalty_variation= 1.0
-</code></pre>
-<p>Compare Section <a href="#sec:penalty">Tikhonov regularization, penalty terms, and leakage prevention</a>.</p>
-<h2 id="interfacing-to-python-environment">Interfacing to Python environment</h2>
-<p>You can use the Python interface for Quandary to simulate and optimize from within a python environment (version <span class="arithmatex">\(\geq\)</span> 3). It eases the use of Quandary, and adds some additional functionality, such as automatic computation of the required number of time-steps, automatic choice of the carrier frequencies, and it allows for custom Hamiltonian models to be used (system and control Hamiltonian operators <span class="arithmatex">\(H_d\)</span> and <span class="arithmatex">\(H_c\)</span>). A good place to start is to have a look into the example <code>example_swap02.py</code>. This test case optimizes for a 3-level SWAP02 gate that swaps the state of the zero and the second energy level of a 3-level qudit.</p>
-<p>All interface functions are defined in <code>quandary.py</code>. Most importantly, it defines the <code>Quandary</code> dataclass that gathers all configuration options and sets defaults. Default values are overwritten by user input either through the constructor call through <code>Quandary(&lt;membervar&gt;=&lt;value&gt;)</code> directly, or by accessing the member variables after construction and calling <code>update()</code> afterwards (compare <code>example_swap02.py</code>).</p>
-<p>After setting up the configuration, you can evoke simulations or optimizations with <code>quandary.simulate/optimize()</code>. Check out <code>help(Quandary)</code> to see all available user functions. Under the hood, those function writes the required Quandary configuration files (<code>config.cfg</code>, etc.) to a data directory, then evokes (multiple) subprocesses to execute parallel C++ Quandary on that configuration file through the shell, and then loads the results from Quandary's output files back into the python interpreter. Plotting scripts are also provided, see the example scripts.</p>
-<p>In addition to the standard Hamiltonian models as described in Section <a href="#sec:model">Model equation</a>, the python interface allows for user-defined Hamiltonian operators <span class="arithmatex">\(H_d\)</span> and <span class="arithmatex">\(H_c\)</span>. Those are provided to Quandary through optional arguments to the python configuration <code>Quandary</code>, in which case Quandary replaces the Hamiltonian operators in <span class="arithmatex">\(\eqref{eq:Hd_rotating}\)</span> (system Hamiltonian) and <span class="arithmatex">\(\eqref{eq:Hc_rotating}\)</span> (control Hamiltonian operators <span class="arithmatex">\(a\pm a'\)</span>) by the provided matrices.</p>
-<ul>
-<li>The system Hamiltonian <span class="arithmatex">\(H_d\)</span> is a time-independent complex hermitian matrix. The units of the system Hamiltonian should be angular frequency (multiply <span class="arithmatex">\(2\pi\)</span>).</li>
-<li>For each oscillator, one complex-valued control operator can be specified. Those should be provided in terms of their real and imaginary parts separately, e.g. the standard model control operators would be specified as <span class="arithmatex">\(H_{c,k}^{re} = a_k+a_k^\dagger\)</span> and <span class="arithmatex">\(H_{c,k}^{im}=a_k-a_k^\dagger\)</span>, for each oscillator <span class="arithmatex">\(k\)</span>. The real parts will be multiplied by the control pulses <span class="arithmatex">\(p_k(t)\)</span>, while the imaginary parts will be multiplied by <span class="arithmatex">\(iq_k(t)\)</span> for each oscillator <span class="arithmatex">\(k\)</span>, similar to the model in <span class="arithmatex">\(\eqref{eq:Hc_rotating}\)</span>. Control Hamiltonian operators should be 'unit-free', since those units come in through the multiplied control pulses <span class="arithmatex">\(p\)</span> and <span class="arithmatex">\(q\)</span>.</li>
-<li>To enable the use of the custom Hamiltonians, pass the configuration option <code>standardmodel=False</code>, in addition to <code>Hsys=&lt;yourSystemHamiltonian&gt;</code> and <code>Hc_real=[&lt;HcReal oscillator1, HcReal oscillator2, ...]</code>, <code>Hc_imag=[&lt;HcImag oscillator1, HcImag oscillator2, ...]</code>.</li>
-<li>Note: The control Hamiltonian operators are optional, but the system Hamiltonian is always required if <code>standardmodel=False</code>.</li>
-<li>Note: The matrix-free solver can not be used when custom Hamiltonians are provided. The code will therefore be slower.</li>
-</ul>
-<p>The python interface is set up such that it automatically computes the time-step size for discretizing the time domain, as well as the carrier wave frequencies that trigger system resonances. Note that the carrier wave frequency analysis are tailored for the standard Hamiltonian model, and those frequencies might need to be adapted when custom Hamiltonian operators are used (read the screen output). You can always check the written configuration file <code>config.cfg</code>, and the log to see what frequencies are being used, and potentially modify them.</p>
-<p>To switch between the Schroedinger solver and the Lindblad solver, the optional <span class="arithmatex">\(T_1\)</span> decay and <span class="arithmatex">\(T_2\)</span> dephasing times can be passed to the python QuandaryConfig. For the Lindblad solver, the same collapse terms as defined in <span class="arithmatex">\(\eqref{eq:collapseop}\)</span> will be added to the dynamical equation.</p>
+<h3 id="sec:bspline-0">Piecewise constant control parameterization (0-th order Bspline basis functions)</h3>
+<p>Piecewise constant control pulses can be generated by using 0-th order Bspline basis functions. In this case, it is recommended to set the carrier wave frequencies to zero in the rotating frame. When optimizing with 0-th order B-spline basis functions, strong variations between consecutive control amplitudes can be suppressed by enabling the total variation penalty term, compare Section <a href="#sec:penalty">Regularization, penalty terms, and leakage prevention</a>.</p>
 <h1 id="sec:optim">The Optimal Control Problem</h1>
-<p>In the most general form, Quandary can solve the following optimization problem</p>
+<p>In the most general form, Quandary can solve the following optimization problem:</p>
 <pre class="arithmatex">\[\begin{align}\label{eq:minproblem}
-  % \min_{\boldsymbol{\alpha}} \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \beta_i J(\rho^{target}_i, \rho_i(T)) + \gamma_1 \int_0^T P\left(\rho_i(t)\right) \, \mathrm{d} t + \gamma_2 \| \bfa \|^2_2
-  \min_{\boldsymbol{\alpha}} J(\{\rho^{target}_i, \rho_i(T) \}) \quad + \mbox{Regularization} + \mbox{Penalty}
+  \min_{\boldsymbol{\alpha}} J\left(\{\rho^{target}_i, \rho_i(T)\}\right) +  \mbox{Regularization} + \mbox{Penalty}
 \end{align}\]</pre>
-<p>where <span class="arithmatex">\(\rho_i(T)\)</span> denotes one or multiple quantum states evaluated at a final time <span class="arithmatex">\(T&gt;0\)</span>, which solve either Lindblad's master equation <span class="arithmatex">\(\eqref{mastereq}\)</span> or Schroedinger's equation <span class="arithmatex">\(\eqref{eq:schroedinger}\)</span> in the rotating frame for initial conditions <span class="arithmatex">\(\rho_i(0)\)</span>, as specified in Section <a href="#subsec:initcond">Initial conditions</a>, <span class="arithmatex">\(i=1,\dots, n_{init}\)</span>. The first term in <span class="arithmatex">\(\eqref{eq:minproblem}\)</span> minimizes an objective function <span class="arithmatex">\(J\)</span> (see Section <a href="#sec:objectivefunctionals">Objective function</a>) that quantifies the discrepancy between the realized states <span class="arithmatex">\(\rho_i(T)\)</span> at final time <span class="arithmatex">\(T\)</span> driven by the current control <span class="arithmatex">\(\boldsymbol{\alpha}\)</span> and the desired target <span class="arithmatex">\(\rho^{target}_i\)</span>, see Section <a href="#sec:targets">Optimization targets</a>.
-The remaining terms are regularization and penalty terms that can be added to stabilize convergence, or prevent leakage, compare Section <a href="#sec:penalty">Tikhonov regularization, penalty terms, and leakage prevention</a></p>
-<h2 id="sec:fidelity">Fidelity</h2>
-<p>As a measure of optimization success, Quandary reports on the fidelity computed from</p>
-<pre class="arithmatex">\[\begin{align}\label{eq:fidelity}
-  F = \begin{cases}
-    \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \mbox{Tr}\left(\left(\rho^{target}_i\right)^\dagger\rho_i(T) \right) &amp; \text{if Lindblad} \\
-    \left|\frac{1}{n_{init}} \sum_{i=1}^{n_{init}} (\psi^{target}_i)^\dagger \psi_i(T) \right|^2 &amp; \text{if Schroedinger}
-  \end{cases}
-\end{align}\]</pre>
-<p>The fidelity is an average of Hilbert-Schmidt overlaps of the target states and the evolved states: for the density matrix, the Hilbert-Schmidt overlap is <span class="arithmatex">\(\langle \rho^{target}, \rho(t)\rangle = \mbox{Tr}\left(\left(\rho^{target}\right)^\dagger\rho(T)\right)\)</span>, which is <em>real</em> if both states are density matrices (which is always the case in Quandary, see definition of basis matrices). For the state vector (and the Schroedinger solver), the Hilbert-Schmidt overlap is <span class="arithmatex">\(\langle \psi^{target}, \psi(T)\rangle = (\psi^{target})^{\dagger}\psi\)</span>, which is complex. Note that in the fidelity above (and also in the corresponding objective function <span class="arithmatex">\(J_{trace}\)</span>, the absolute value is taken <em>outside</em> of the sum, hence relative phases are taken into account.</p>
-<p>Further note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while choosing the three initial condition as in Section <a href="#subsec:threeinitcond">Three initial states for gate optimization</a>, the fidelity that is reported during optimization will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential initial states. It is advised to recompute the average fidelity <strong>after</strong> optimization has finished by propagating all basis states <span class="arithmatex">\(B_{kj}\)</span> to final time <span class="arithmatex">\(T\)</span> using the optimized control parameter, or by propagating only <span class="arithmatex">\(N+1\)</span> initial states to get an estimate thereof.</p>
+<p>where the (single or multiple) final-time states <span class="arithmatex">\(\rho_i(T)\)</span> solve either Lindblad's master equation <span class="arithmatex">\(\eqref{mastereq}\)</span> or Schroedinger's equation <span class="arithmatex">\(\eqref{eq:schroedinger}\)</span> in the rotating frame for (one or multiple) initial conditions <span class="arithmatex">\(\rho_i(0)\)</span>, as specified in Section <a href="#sec:initcond">Initial conditions</a>, <span class="arithmatex">\(i=1,\dots, n_{init}\)</span>. The first term in <span class="arithmatex">\(\eqref{eq:minproblem}\)</span> minimizes an objective function <span class="arithmatex">\(J\)</span> (see Section <a href="#sec:objectivefunctionals">Objective function</a>) that quantifies the discrepancy between the realized states <span class="arithmatex">\(\rho_i(T)\)</span> at final time <span class="arithmatex">\(T\)</span> driven by the current control <span class="arithmatex">\(\boldsymbol{\alpha}\)</span> and the desired target <span class="arithmatex">\(\rho^{target}_i\)</span>, see Section <a href="#sec:targets">Optimization targets</a>.
+The remaining terms are regularization and penalty terms that can be added to stabilize convergence, or prevent leakage, compare Section <a href="#sec:penalty">Regularization, penalty terms, and leakage prevention</a></p>
 <h2 id="sec:objectivefunctionals">Objective function</h2>
 <p>The following objective functions can be used for optimization in Quandary (config option <code>optim_objective</code>):</p>
 <pre class="arithmatex">\[\begin{align}
@@ -425,155 +318,99 @@ The remaining terms are regularization and penalty terms that can be added to st
 \end{cases}\\
  J_{measure} &amp;= \sum_{i=1}^{n_{init}} \beta_i \mbox{Tr} \left( N_m \rho(T) \right) \label{eq:Jmeasure}
 \end{align}\]</pre>
-<p>Here, <span class="arithmatex">\(\beta_i\)</span> denote weights with <span class="arithmatex">\(\sum_{i=1}^{n_{init}} \beta _i = 1\)</span> that can be used to scale the contribution of each initial/target state <span class="arithmatex">\(i\)</span> (default <span class="arithmatex">\(\beta_i = 1/n_{init}\)</span>).
-<span class="arithmatex">\(J_{Frobenius}\)</span> measures (weighted average of) the Frobenius norm between target and final states. <span class="arithmatex">\(J_{Trace}\)</span> measures the (weighted) infidelity in terms of the Hilbert-Schmidt overlap, compare the definition of fidelity in eq. <span class="arithmatex">\(\eqref{eq:fidelity}\)</span>. Here, <span class="arithmatex">\(w_i = \mbox{Tr}\left(\rho_i(0)^2\right)\)</span> is the purity of the initial state. Both those measures are common for optimization towards a unitary gate transformation, for example. <span class="arithmatex">\(J_{measure}\)</span> is (only) useful when considering pure-state optimization, see Section <a href="#sec:statepreparation">Pure target states</a>. Here, <span class="arithmatex">\(m\in\N\)</span> is a given integer, and <span class="arithmatex">\(N_m\)</span> is a diagonal matrix with diagonal elements being <span class="arithmatex">\(|k-m|, k=0,\dots N-1\)</span></p>
-<p>The distinction for the Lindblad vs. Schroedinger solver is made explicit for <span class="arithmatex">\(J_{trace}\)</span> above. The other two measures apply naturally to either the density matrix version solving Lindblad's equation, or the state vector version solving Schroedinger's equation with <span class="arithmatex">\(\|\rho^{target} - \rho(T)\| = \|\psi^{target} - \psi(T)\|\)</span> and <span class="arithmatex">\(\mbox{Tr}\left(N_m\rho(T)\right) = \psi(T)^\dagger N_m \psi(T)\)</span>.</p>
+<p>for default weights default <span class="arithmatex">\(\beta_i = 1/n_{init}\)</span> that can be chosen to scale different contribution of each initial-to-target state.
+<span class="arithmatex">\(J_{Frobenius}\)</span> measures (weighted average of) the Frobenius norm between target and final states. <span class="arithmatex">\(J_{Trace}\)</span> measures the (weighted) infidelity in terms of the Hilbert-Schmidt overlap. Here, <span class="arithmatex">\(w_i = \mbox{Tr}\left(\rho_i(0)^2\right)\)</span> is the purity of the initial state. Both measures are common for optimization towards a unitary gate transformation, for example. <span class="arithmatex">\(J_{measure}\)</span> is (only) useful when considering unconditional pure-state preparation, see Section <a href="#sec:targets">Optimization targets</a>. Here, <span class="arithmatex">\(m\in\N\)</span> is a given integer, and <span class="arithmatex">\(N_m\)</span> is a diagonal matrix with diagonal elements being <span class="arithmatex">\(|k-m|, k=0,\dots N-1\)</span></p>
+<!-- The distinction for the Lindblad vs. Schroedinger solver is made explicit for $J_{trace}$ above. The other two measures apply naturally to either the density matrix version solving Lindblad's equation, or the state vector version solving Schroedinger's equation. -->
+
+<h3 id="fidelity">Fidelity</h3>
+<p>As a measure of optimization success, Quandary reports on the <strong>fidelity</strong> computed from</p>
+<pre class="arithmatex">\[\begin{align}\label{eq:fidelity}
+  F = \begin{cases}
+    \frac{1}{n_{init}} \sum_{i=1}^{n_{init}} \mbox{Tr}\left(\left(\rho^{target}_i\right)^\dagger\rho_i(T) \right) &amp; \text{if Lindblad} \\
+    \left|\frac{1}{n_{init}} \sum_{i=1}^{n_{init}} (\psi^{target}_i)^\dagger \psi_i(T) \right|^2 &amp; \text{if Schroedinger}
+  \end{cases}
+\end{align}\]</pre>
+<p>The fidelity is an average of Hilbert-Schmidt overlaps of the target states and the evolved states: for the density matrix, the Hilbert-Schmidt overlap is <span class="arithmatex">\(\langle \rho^{target}, \rho(t)\rangle = \mbox{Tr}\left(\left(\rho^{target}\right)^\dagger\rho(T)\right)\)</span>, which is <em>real</em> if both states are density matrices (which is always the case in Quandary, see definition of basis matrices). For the state vector (and the Schroedinger solver), the Hilbert-Schmidt overlap is <span class="arithmatex">\(\langle \psi^{target}, \psi(T)\rangle = (\psi^{target})^{\dagger}\psi\)</span>, which is complex. Note that in the fidelity above (and also in the corresponding objective function <span class="arithmatex">\(J_{trace}\)</span>, the absolute value is taken <em>outside</em> of the sum, hence relative phases are taken into account.</p>
+<p>Further note that this fidelity is averaged over the chosen initial conditions, so the user should be careful how to interpret this number. E.g. if one optimizes for a logical gate while choosing the three initial condition as in Section <a href="#sec:initcond">Initial conditions</a>, the fidelity that is reported during optimization will be averaged over those three initial states, which is not sufficient to estimate the actual average fidelity over the entire space of potential initial states. It is advised to recompute the average fidelity <strong>after</strong> optimization has finished by propagating all basis states <span class="arithmatex">\(B_{kj}\)</span> to final time <span class="arithmatex">\(T\)</span> using the optimized control parameter, or by propagating only <span class="arithmatex">\(N+1\)</span> initial states to get an estimate thereof.</p>
 <h2 id="sec:targets">Optimization targets</h2>
-<p>Here we describe the target states <span class="arithmatex">\(\rho^{target}\)</span> that are realized in Quandary (C++ config option <code>optim_target</code>). Two cases are considered: State preparation, where the target state is the same for all initial conditions, and gate optimization, where the target state is a unitary transformation of the initial condition.</p>
-<h3 id="sec:statepreparation">Pure target states</h3>
-<p>State preparation aims to drive the system from either one specific or from any arbitrary initial state to a common desired (fixed) target state. Quandary can optimize towards <em>pure</em> target states of the form</p>
-<pre class="arithmatex">\[\begin{align}
- \psi^{target} = \boldsymbol{e}_m \quad \text{or} \quad \rho^{target} = \boldsymbol{e}_m \boldsymbol{e}_m^\dagger, \quad \text{for}\quad m\in \N_0\quad \text{with}\quad 0\leq m &lt; N
-\end{align}\]</pre>
-<p>where <span class="arithmatex">\(\boldsymbol{e}_m\)</span> denotes the <span class="arithmatex">\(m\)</span>-th unit vector in <span class="arithmatex">\(\R^N\)</span>.<sup id="fnref:footnote_purestates"><a class="footnote-ref" href="#fn:footnote_purestates">1</a></sup></p>
-<p>The integer <span class="arithmatex">\(m\)</span> refers to the <span class="arithmatex">\(|m\rangle\)</span>-th state of the entire system under consideration with dimension <span class="arithmatex">\(N\)</span>, which can be a composite of <span class="arithmatex">\(Q\)</span> subsystems.
-In the configuration file however, the pure target state is specified by defining the desired pure target for <em>each</em> of the subsystems individually. For a composite system of <span class="arithmatex">\(Q\)</span> subsystems with <span class="arithmatex">\(n_k\)</span> levels each, a composite target pure state is specified by a list of integers <span class="arithmatex">\(m_k\)</span> with <span class="arithmatex">\(0\leq m_k &lt; n_k\)</span> representing the pure target state in each subsystem <span class="arithmatex">\(k\)</span>. The composite pure target state is then</p>
-<pre class="arithmatex">\[\begin{align}
-  \psi^{target} = |m_0 m_1 m_2 \dots m_{Q-1} \rangle \quad \text{aka} \quad  \psi^{target} = \boldsymbol{e}_{m_0}\otimes  \boldsymbol{e}_{m_1}\otimes  \dots \otimes\boldsymbol{e}_{m_{Q-1}}
-\end{align}\]</pre>
-<p>for unit vectors <span class="arithmatex">\(\boldsymbol{e}_{m_k} \in \R^{n_k}\)</span>, and <span class="arithmatex">\(\rho^{target} = \psi^{target} (\psi^{target})^\dagger\)</span> for the density matrix. The composite-system index <span class="arithmatex">\(m\)</span> is computed inside Quandary, from</p>
-<pre class="arithmatex">\[\begin{align}
-  m = m_0 \frac{N}{n_0} + m_1 \frac{N}{n_0n_1} + m_2 \frac{N}{n_0n_1n_2} + \dots + m_{Q-1}
-\end{align}\]</pre>
-<p>Depending on the choice for the initial conditions, optimization towards a pure target state can be used to realize either a simple state-to-state transfer (choosing one specific initial condition, <span class="arithmatex">\(n_{init}=1\)</span>), or to realize the more complex task of state preparation that drives <em>any</em> initial state to a common pure target state.
-For <span class="arithmatex">\(m=0\)</span>, the target state represents the ground state of the system under consideration, which has important applications for quantum reset as well as quantum error correction. Driving <em>any</em> initial state to a common target will require to couple to a dissipative bath, which should be accounted for in the model setup. In the latter case, typically a full basis of initial conditions needs to be considered during the optimization (<span class="arithmatex">\(n_{init}=N^2\)</span> for density matrices). However, it is shown in <sup id="fnref2:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">3</a></sup>, that if one chooses the objective function <span class="arithmatex">\(J_{measure}\)</span> with corresponding measurement operator <span class="arithmatex">\(N_m\)</span> (see eq. <span class="arithmatex">\(\eqref{eq:Jmeasure}\)</span>), one can reduce the number of initial conditions to only <em>one</em> being an ensemble of all basis states, and hence <span class="arithmatex">\(n_{init}=1\)</span> independent of the system dimension <span class="arithmatex">\(N\)</span>. Compare <sup id="fnref3:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">3</a></sup> for details, and Section <a href="#sec:ensemblestate">Ensemble state for pure-state optimization</a>.</p>
-<!-- For example, assume one considers a composite system consisting of a qubit modelled with $n_0=2$ levels coupled to a readout cavity modelled with $n_1=10$ levels, and one wants to drive the qubit to the $|1\rangle$ state and the cavity to the ground state. The target pure state input for Quandary is hence $m_0=1, m_1=0$ (i.e. the $|10\rangle$ state in the composite system), which corresponds $m=1\cdot10+0 = 10$ in the composite system of dimension $N=2\cdot 10 = 20$. -->
-
-<h3 id="arbitrary-target-state">Arbitrary target state</h3>
-<p>A specific (non-pure) target state <span class="arithmatex">\(\rho^{target}\)</span> can also be used as a target. For the C++ code, such a target state is read from file. File format: The vectorized density matrix (column-wise vectorization) in the Lindblad case, or the state vector in the Schroedinger case, one real-valued number per row, first list all real parts, then list all imaginary parts (hence either <span class="arithmatex">\(2N^2\)</span> lines with one real number each, or <span class="arithmatex">\(2N\)</span> lines with one real number each). The configuration option should be pointing to the file location. For the Python interface, the target state can be passed as a numpy array.</p>
 <h3 id="gate-optimization">Gate optimization</h3>
-<p>Quandary can be used to realize logical gate operations. In that case, the target state is not fixed across the initial states, but instead is a unitary transformation of each initial condition. Let <span class="arithmatex">\(V\in \C^{N\times N}\)</span> be a unitary matrix presenting a logical operation, the goal is to drive any initial state <span class="arithmatex">\(\rho(0)\)</span> to the unitary transformation <span class="arithmatex">\(\rho^{target} = V\rho(0)V^{\dagger}\)</span>, or, in the Schroedinger case, drive any initial state <span class="arithmatex">\(\psi(0)\)</span> to the unitary transformation <span class="arithmatex">\(\psi(T) =  V\psi(0)\)</span>.
-In the C++ code, some default target gates that are currently available:</p>
-<pre class="arithmatex">\[\begin{align}
-  V_{X} := \begin{bmatrix} 0 &amp; 1 \\ 1 &amp; 0  \end{bmatrix} \quad
-  V_{Y} := \begin{bmatrix} 0 &amp; -i \\ i &amp; 0 \end{bmatrix} \quad
-  V_{Z} := \begin{bmatrix} 1 &amp; 0 \\ 0 &amp; -1 \end{bmatrix} \quad
-  V_{Hadamard} := \frac{1}{\sqrt{2}}
-           \begin{bmatrix} 1 &amp; 1 \\ 1 &amp; -1 \end{bmatrix} \\
-  V_{CNOT} := \begin{bmatrix} 1  &amp; 0 &amp; 0 &amp; 0 \\
-                               0  &amp; 1 &amp; 0 &amp; 0 \\
-                               0  &amp; 0 &amp; 0 &amp; 1 \\
-                               0  &amp; 0 &amp; 1 &amp; 0 \\
-                \end{bmatrix} \quad
-  V_{SWAP} := \begin{bmatrix}
-    1 &amp; 0 &amp; 0 &amp; 0 \\
-    0 &amp; 0 &amp; 1 &amp; 0 \\
-    0 &amp; 1 &amp; 0 &amp; 0 \\
-    0 &amp; 0 &amp; 0 &amp; 1 \\
-  \end{bmatrix} \quad
-  V_{QFT} = ...
-\end{align}\]</pre>
-<p>as well as a multi-qubit generalization of the SWAP and the CNOT gate for general <span class="arithmatex">\(Q\)</span> subsystems: The SWAP-0Q gate swaps the state of the first and the last qubit, while leaving all other oscillators in their respective initial state, and the CQNOT gate performs a NOT operation on the last qubit if all other qubits are in the one-state.
-New, user-defined gates can be added to the C++ code by augmenting the <code>Gate</code> class in the corresponding <code>.cpp</code> and <code>.hpp</code> files.
-The target gate matrix can also be read from file. The file is a simple text file that contains the vectorized target unitary matrix (column-wise vectorization), first all real parts, then all imaginary parts (giving a total of <span class="arithmatex">\(2N^2\)</span> real-valued numbers). It should be specified in the essential dimensions.
-For the python interface, the target unitary matrix is passed to Quandary through a numpy array.</p>
-<p>For gate optimization, the first two objective function <span class="arithmatex">\(J_{Frobenius}\)</span> and <span class="arithmatex">\(J_{trace}\)</span> are appropriate. Since <em>any</em> initial quantum state should be transformed by the control pulses, typically a basis for the initial states should be considered (<span class="arithmatex">\(n_{init} = N\)</span> for Schroedinger solver, and <span class="arithmatex">\(n_{init}=N^2\)</span> for Lindblad solver). In the Lindblad solver case, it has however been shown in <sup id="fnref:goerz2014optimal"><a class="footnote-ref" href="#fn:goerz2014optimal">5</a></sup> that it is enough to optimize with only three specific initial states (<span class="arithmatex">\(n_{init} = 3\)</span>), independent of the Hilbert space dimension <span class="arithmatex">\(N\)</span>. Those three states are set up in such a way that they can distinguish between any two unitary matrices in that Hilbert space. The three initial states are readily available in Quandary, see Section <a href="#subsec:initcond">Initial conditions</a>. Note that when optimizing with only those three initial states, it turns out that the choice of the weights <span class="arithmatex">\(\beta_i\)</span> that weight the contribution from each initial state in the overall objective function strongly influences the optimization convergence. For faster convergence, it is often beneficial to emphasize on the first of the three initial conditions (<span class="arithmatex">\(\rho_1(0)\)</span> in Section <a href="#subsec:threeinitcond">Three initial states for gate optimization</a>), hence choosing <span class="arithmatex">\(\beta_1\)</span> (much) bigger than <span class="arithmatex">\(\beta_2\)</span> and <span class="arithmatex">\(\beta_3\)</span> (e.g. <span class="arithmatex">\(\beta = \{20,1,1\}\)</span> often works better than <span class="arithmatex">\(\beta = \{1,1,1\}\)</span>, try it yourself). We refer to <sup id="fnref2:goerz2014optimal"><a class="footnote-ref" href="#fn:goerz2014optimal">5</a></sup> for details. Note that the weights will be scaled internally such that <span class="arithmatex">\(\sum_i \beta_i = 1\)</span>.</p>
-<p>Target gates will by default be rotated into the computational frame (see Section <a href="#sec:model">Model equation</a>). Alternatively, the user can specify the rotation of the target gate through the configuration option <code>gate_rot_freq</code> (list of floats).</p>
-<h3 id="sec:essentiallevels">Essential and non-essential levels</h3>
-<p>It is often useful, to model the quantum system with more energy levels than the number of levels that the target gate is defined on. For example when optimizing for a SWAP gate on two qubits, with <span class="arithmatex">\(V_{SWAP}\in\C^{4\times 4}\)</span>, one might want to model each qubit with more than two energy levels in order to (a) model the (infinite dimensional) system with more accuracy by including more levels and (b) allow the system to transition through higher energy levels in order to achieve the target at final time <span class="arithmatex">\(T\)</span>. In that case, the <em>essential</em> levels denote the levels that the target gate is defined on.
-To this end, Quandary provides the option to specify the number of essential energy levels <span class="arithmatex">\(n_k^e\)</span> in addition to the number of energy levels <span class="arithmatex">\(n_k\)</span>, where <span class="arithmatex">\(n_k^e \leq n_k\)</span> for each subsystem <span class="arithmatex">\(k\)</span>. The quantum dynamics are then modelled with (more) energy levels with <span class="arithmatex">\(N=\prod_k n_k\)</span> and <span class="arithmatex">\(\rho(t)\in \C^{N\times N}\)</span> (or <span class="arithmatex">\(\psi\in\C^N\)</span>), while the gate is defined in the essential level dimensions only: <span class="arithmatex">\(V\in \C^{N_e \times N_e}, N_e=\prod_k n_k^e\)</span>. In the example above, <span class="arithmatex">\(n^e_0=n^e_1=2\)</span> and hence <span class="arithmatex">\(V_{SWAP}\in \C^{4\times 4}\)</span>, but one can choose the number of energy levels <span class="arithmatex">\(n_0\)</span> and <span class="arithmatex">\(n_1\)</span> to be bigger than <span class="arithmatex">\(2\)</span> to when modelling the system dynamics.</p>
-<p>To compute the objective function at final time T, the essential-dimensional gate is projected upwards to the full dimensions <span class="arithmatex">\(\tilde{V} \in \C^{N\times N}\)</span> by inserting identity blocks for rows/columns that correspond to a non-essential level of either of the subsystems. Hence, a realization of the gate <span class="arithmatex">\(\tilde{V}\)</span> will not alter the occupation of higher (non-essential) energy level compared to their initial occupation at <span class="arithmatex">\(t=0\)</span>.</p>
-<!-- When only the three states as initial conditions are considered (see below), those three initial states will be spanned in the full dimensional system. On the other hand, when the basis of initial states is considered, or their diagonals only, those initial states will be spanned only in the essential level dimensions and zero rows and columns will be inserted for all non-essential levels. Hence, the gate will be realized for any initial state that is spanned in the essential level dimensions, and occupations of non-essential levels at $T=0$ are avoided. -->
-
-<h2 id="subsec:initcond">Initial conditions</h2>
-<p>The initial states <span class="arithmatex">\(\rho_i(0)\)</span> which are accounted for during optimization in eq. <span class="arithmatex">\(\eqref{eq:minproblem}\)</span> can be specified with the configuration option <code>initialcondition</code>. Below are the available choices.</p>
-<h3 id="pure-state-initialization">Pure-state initialization</h3>
-<p>One can choose to simulate and optimize for only one specific pure initial state (then <span class="arithmatex">\(n_{init} = 1\)</span>). The initial density matrix is then composed of Kronecker products of pure states for each of the subsystems. E.g. for a bipartite system with <span class="arithmatex">\(n_1
-\otimes n_2\)</span> levels, one can propagate any initial pure state</p>
-<pre class="arithmatex">\[\begin{align}
-  \psi(0) &amp;= |m_1\rangle \otimes |m_2\rangle \quad \text{for} \, m_1 \in \{0,\dots, n_1-1\}, m_2\in \{0,\dots, n_2-1\}\\
-   \text{and} \quad \rho(0) &amp;= \psi(0)\psi(0)^\dagger
-\end{align}\]</pre>
-<p>Note that, again, in this notation <span class="arithmatex">\(|m_1\rangle = \boldsymbol{e}_{m_1} \in \R^{n_1}\)</span>. The configuration input takes a list of the integers <span class="arithmatex">\(m_k\)</span> for each subsystem.</p>
-<h3 id="basis-states">Basis states</h3>
-<p>To span any possible initial state, an entire basis of states can be used as initial conditions. For open systems using the density matrix representation (Lindblad solver), the <span class="arithmatex">\(n_{init}=N^2\)</span> basis states as defined in <sup id="fnref4:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">3</a></sup> are implemented:</p>
-<pre class="arithmatex">\[\begin{align}\label{eq:basismats}
-B^{kj} := \frac 12 \left(\bs{e}_k\bs{e}_k^\dagger + \bs{e}_j\bs{e}_j^\dagger\right) +  \begin{cases}
-          0 &amp; \text{if} \, k=j \\
-        \frac 12 \left( \bs{e}_k\bs{e}_j^\dagger  + \bs{e}_j\bs{e}_k^\dagger \right) &amp; \text{if} \, k&lt;j \\
-        \frac i2 \left( \bs{e}_j\bs{e}_k^\dagger  - \bs{e}_k\bs{e}_j^\dagger \right) &amp; \text{if} \, k&gt;j
-      \end{cases}
-\end{align}\]</pre>
-<p>for all <span class="arithmatex">\(k,j\in\{0,\dots, N-1\}\)</span>.
-These density matrices represent <span class="arithmatex">\(N^2\)</span> pure, linear independent states that span the space of all density matrices in this Hilbert space. For closed systems using the state vector representation (Schroedinger's solver), the basis states are the unit vector in <span class="arithmatex">\(\C^{N}\)</span>, hence <span class="arithmatex">\(n_{init} = N\)</span> initial states <span class="arithmatex">\(\boldsymbol{e}_i \in \R^N, i=0,\dots N-1\)</span>.</p>
-<p>When composite systems of multiple subsystems are considered, the user can provide a consecutive list of integer ID's to determine in which of the subsystems the basis states should be spanned. Other subsystems will then be initialized in the ground state.</p>
-<p><em>Note:</em> The basis states are spanned in the <em>essential dimensions</em> of the system, if applicable.</p>
-<p>In order to uniquely identify the different initial conditions in the Quandary code and in the output files, a
-unique index <span class="arithmatex">\(i \in \{0,\dots, N^2-1\}\)</span> is assigned to each basis state with</p>
-<pre class="arithmatex">\[\begin{align*}
-  B^i := B^{k(i), j(i)}, \quad \text{with} \quad k(i) := i \,\mbox{mod}\, N,
-  \quad \text{and} \quad j(i) := \left\lfloor \frac{i}{N} \right\rfloor
-\end{align*}\]</pre>
-<p>(column-wise vectorization of a matrix of matrices <span class="arithmatex">\(\left\{B^{kj}\right\}_{kj}\)</span>).</p>
-<h3 id="only-the-diagonal-density-basis-matrices">Only the diagonal density basis matrices</h3>
-<p>For density matrices (Lindblad solver), one can choose to propagate only those basis states that correspond to pure states of the form <span class="arithmatex">\(\boldsymbol{e}_k\boldsymbol{e}_k^\dagger\)</span>, i.e. propagating only the <span class="arithmatex">\(B^{kk}\)</span> in <span class="arithmatex">\(\eqref{eq:basismats}\)</span> for <span class="arithmatex">\(k=0,\dots, N-1\)</span>, and then <span class="arithmatex">\(n_{init}=N\)</span>. For the Schroedinger solver, this is equivalent to all basis states.</p>
-<p>Again, when composite systems of multiple subsystems are considered, the user can provide a consecutive list of integer ID's to determine in which of the subsystems the diagonal states should be spanned. Other subsystems will then be initialized in the ground state.</p>
-<p><em>Note:</em> the diagonal states are spanned in the <em>essential dimensions</em> of the system, if applicable.</p>
-<h3 id="sec:ensemblestate">Ensemble state for pure-state optimization</h3>
-<p><em>Only valid for the density matrix version, solving Lindblad's master equation.</em></p>
-<p>For pure-state optimization using the objective function <span class="arithmatex">\(J_{measure}\)</span> <span class="arithmatex">\(\eqref{eq:Jmeasure}\)</span>, one can use the ensemble state</p>
-<pre class="arithmatex">\[\begin{align}\label{eq:ensemblestate}
-  \rho_s(0) = \frac{1}{N^2}\sum_{i,j=0}^{N-1} B^{kj}
-\end{align}\]</pre>
-<p>as the only initial condition for optimization or simulation (<span class="arithmatex">\(\Rightarrow n_{init}=1\)</span>). Since Lindblad's master equation is linear in the initial condition, and <span class="arithmatex">\(J_{measure}\)</span> is linear in the final state, propagating this single initial state yields the same target value as if one propagates all basis states spanning that space and averages their measure at final time <span class="arithmatex">\(T\)</span> (compare <sup id="fnref5:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">3</a></sup>). To specify the ensemble state in Quandary for composite quantum systems with multiple subsystems, on can provide a list of integer ID's that determine in which of the subsystems the ensemble state should be spanned. Other subsystems will be initialized in the ground state.</p>
-<p>To be precise: the user specifies a list of consecutive ID's <span class="arithmatex">\(\langle k_0 \rangle, \dots, \langle k_m \rangle\)</span> with <span class="arithmatex">\(0 \leq k_j \leq Q-1\)</span> and <span class="arithmatex">\(k_{j+1} = k_j+1\)</span>, the ensemble state <span class="arithmatex">\(\rho_s(0)\)</span> will be spanned in the dimension given by those subsystems, <span class="arithmatex">\(N_s = \prod_{j=0}^{m} n_{k_j}\)</span> and <span class="arithmatex">\(\rho_s(0) \in \C^{N_s\times N_s}\)</span> with basis matrices <span class="arithmatex">\(B^{kj}\)</span> spanned in <span class="arithmatex">\(\C^{N_s\times N_s}\)</span>. The initial state that Quandary propagates is then given by</p>
-<pre class="arithmatex">\[\begin{align}
-  \rho(0) = \bs{e}_0\bs{e}_0^\dagger \otimes \underbrace{\rho_s(0)}_{\in \C^{N_s\times N_s}} \otimes \, \bs{e}_0 \bs{e}_0^\dagger
-\end{align}\]</pre>
-<p>where the first <span class="arithmatex">\(\bs{e}_0\)</span> (before the kronecker product) is the first unit vector in <span class="arithmatex">\(\R^{\prod_{k=0}^{k_0-1}}\)</span> (i.e. ground state in all preceding subsystems), and the second <span class="arithmatex">\(\bs{e}_0\)</span> (behind the kronecker products) is the first unit vector in the dimension of all subsequent systems, <span class="arithmatex">\(\R^{\prod_{k=k_m+1}^{Q-1}}\)</span>.</p>
-<p>Note: The ensemble state will be spanned in the <em>essential</em> levels of the (sub)system, if applicable, and will then be lifted up to the full dimension by inserting zero rows and columns.</p>
-<h3 id="subsec:threeinitcond">Three initial states for gate optimization</h3>
-<p><em>Only valid for the density matrix version, solving Lindblad's master equation.</em></p>
-<p>When considering gate optimization, it has been shown in <sup id="fnref3:goerz2014optimal"><a class="footnote-ref" href="#fn:goerz2014optimal">5</a></sup> that it is enough to consider only three specific initial states during optimization (<span class="arithmatex">\(n_{init}=3\)</span>), independent of the Hilbert space dimension. Those three initial states are given by</p>
-<pre class="arithmatex">\[\begin{align}
-    \rho(0)_1 &amp;= \sum_{i=0}^{N-1} \frac{2(N-i+1)}{N(N+1)} \bs{e}_i\bs{e}_i^\dagger \\
-    \rho(0)_2 &amp;= \sum_{ij=0}^{N-1} \frac{1}{N} \bs{e}_i\bs{e}_j^\dagger\\
-    \rho(0)_3 &amp;= \frac{1}{N} I_N
-\end{align}\]</pre>
-<p>where <span class="arithmatex">\(I_N\in R^{N\times N}\)</span> is the identity matrix. They are readily implemented in Quandary. Note that it is important to choose the weights <span class="arithmatex">\(\beta_i, i=1,2,3\)</span> in the objective function appropriately to achieve fast convergence.</p>
-<p>Note: The three initial states are spanned in the <em>full</em> dimension of the system, including non-essential levels. The theory for gate optimization with three initial states had been developed for considering <em>only</em> essential levels (the gate is defined in the same dimension as the system state evolution), and at this point we are not certain if the theory generalizes to the case when non-essential levels are present. It is advised to optimize on the full basis if non-essential levels are present (or work on the theory, and let us know what you find.). The same holds for <span class="arithmatex">\(N+1\)</span> initial states below.</p>
-<h3 id="n1-initial-states-for-gate-optimization"><span class="arithmatex">\(N+1\)</span> initial states for gate optimization</h3>
-<p><em>Only valid for the density matrix version, solving Lindblad's master equation.</em></p>
-<p>The three initial states from above do not suffice to estimate the fidelity of the realized gate (compare <sup id="fnref4:goerz2014optimal"><a class="footnote-ref" href="#fn:goerz2014optimal">5</a></sup>). Instead, it is suggested in that same paper to choose <span class="arithmatex">\(N+1\)</span> initial states to compute the fidelity. Those <span class="arithmatex">\(N+1\)</span> initial states consist of the <span class="arithmatex">\(N\)</span> diagonal states <span class="arithmatex">\(B^{kk}\)</span> in the Hilbert space of dimension <span class="arithmatex">\(N\)</span>, as well as the totally rotated state <span class="arithmatex">\(\rho(0)_2\)</span> from above. Quandary offers the choice to simulate (or optimize) using those initial states, then <span class="arithmatex">\(n_{init} = N+1\)</span>.</p>
-<p>Note: The <span class="arithmatex">\(N+1\)</span> initial states are spanned in the <em>full</em> dimension of the system, including non-essential levels, see above for 3-state initialization.</p>
-<h3 id="reading-an-initial-state-from-file">Reading an initial state from file</h3>
-<p>A specific initial state can also be read from file (<span class="arithmatex">\(\Rightarrow n_{init}=1\)</span>). Format: one column being the vectorized density matrix (vectorization is column-wise), or the state vector, first all real parts, then all imaginary parts (i.e. number of lines is <span class="arithmatex">\(2N^2\)</span> or <span class="arithmatex">\(2N\)</span>, with one real-valued number per line).</p>
-<p>This option is useful for example if one wants to propagate a specific <em>non-pure</em> initial state. In that case, one first has to generate a datafile storing that state (e.g. by simulating a system and storing the output), which can then be read in as initial condition.</p>
-<h2 id="sec:penalty">Tikhonov regularization, penalty terms, and leakage prevention</h2>
-<p>In order to regularize the optimization problem (stabilize optimization convergence), a standard Tikhonov regularization term can added to the objective function.</p>
+<p>Quandary can be used to design control pulses that realize logical gate operations. Let <span class="arithmatex">\(V\in \C^{N\times N}\)</span> be the unitary matrix (gate), optimized control pulses drive any initial state <span class="arithmatex">\(\rho(0)\)</span> to the unitary transformation <span class="arithmatex">\(\rho^{target} = V\rho(0)V^{\dagger}\)</span> (Lindblad), or, in the Schroedinger case, drive any <span class="arithmatex">\(\psi(0)\)</span> to <span class="arithmatex">\(\psi(T) =  V\psi(0)\)</span>.
+Some default target gates that are readily available, or can be specified from file or through the Python interface. (File format: column-wise vectorization, first all real parts then all imaginary parts.)</p>
+<p>Since <em>any</em> initial quantum state should be transformed by the control pulses, the corresponding initial conditions must span a basis with <span class="arithmatex">\(n_{init} = N\)</span> for Schroedinger solver, and <span class="arithmatex">\(n_{init}=N^2\)</span> for Lindblad solver, see Section <a href="#sec:initcond">Initial conditions</a>. </p>
+<p>Target gates will by default be rotated into the computational frame (Section <a href="#sec:model">Model equation</a>). Alternatively, the user can specify the rotation of the target gate through the configuration option <code>gate_rot_freq</code>.</p>
+<p>If guard levels are used (<span class="arithmatex">\(n_k &gt; n_k^e\)</span>, compare Section <a href="#sec:essential">Essential and guard levels</a>), the gate should be defined in the essential-level dimensions only. Internally, the gate is projected upwards to the full dimensions by inserting identity blocks for rows/columns that correspond to a non-essential levels of the subsystems. Hence, a realization of the gate <span class="arithmatex">\(\tilde{V}\)</span> will not alter the occupation of higher (non-essential) energy level compared to their initial occupation at <span class="arithmatex">\(t=0\)</span>.</p>
+<h3 id="sec:stateprep">State preparation</h3>
+<p>Quandary can be used to optimize for pulses that drive (one or multiple) initial states to a fixed target state <span class="arithmatex">\(\rho^{target}\)</span>. Depending on the choise of the <a href="#sec:initcond">Initial conditions</a>, this enables pulses for either direct <strong>state-to-state transfer</strong> (by choosing one specific initial condition, <span class="arithmatex">\(n_{init}=1\)</span>), and one specific target state), or <strong>unconditional state preparation</strong> such as qubit reset (by spanning a basis of initial conditions, <span class="arithmatex">\(n_{init}=N\)</span> or $N^2, and one specific target state). Driving a basis of initial state to a common target will require to couple to a dissipative bath, which should be accounted for in the model setup. For unconditional <em>pure</em>-state preparation, it is shown in <sup id="fnref2:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">2</a></sup> that if one chooses the objective function <span class="arithmatex">\(J_{measure}\)</span> with corresponding measurement operator <span class="arithmatex">\(N_m\)</span> (see eq. <span class="arithmatex">\(\eqref{eq:Jmeasure}\)</span>), one can reduce the number of initial conditions to only <em>one</em> being an ensemble of all basis states, and hence <span class="arithmatex">\(n_{init}=1\)</span> independent of <span class="arithmatex">\(N\)</span>. Compare <sup id="fnref3:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">2</a></sup> for details, and Section <a href="#sec:ensemblestate">Ensemble state for pure-state optimization</a>.</p>
+<p>If the target state is <em>pure</em>, internal computations are simplified and it is recommended to pass the specific identifier <code>pure, i0, i1, i2, ...</code> to the Quandary configuration for the optimization target, denoting a pure target state of the form <span class="arithmatex">\(\psi = |i_0i_1i_2...\rangle\)</span>, or <span class="arithmatex">\(\rho = \psi\psi^\dagger\)</span></p>
+<h2 id="sec:initcond">Initial conditions</h2>
+<p>The initial states <span class="arithmatex">\(\rho_i(0)\)</span> which are accounted for in the objective function eq. <span class="arithmatex">\(\eqref{eq:minproblem}\)</span> can be specified with the configuration option <code>initialcondition</code>. </p>
+<ul>
+<li>
+<p><strong>Basis states for gate optimization</strong>: <span class="arithmatex">\(n_{init}=N\)</span> (Schroedinger case), or <span class="arithmatex">\(n_{init}=N^2\)</span> Lindblad case. For the Schroedinger case, the basis states are the unit vectors <span class="arithmatex">\(\psi_i(0)=\boldsymbol{e}_i \in \R^N, i=0,\dots N-1\)</span>. For the Lindblad's case, the <span class="arithmatex">\(N^2\)</span> basis density matrices defined in <sup id="fnref6:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">2</a></sup> are used as initial states. 
+In order to uniquely identify the different initial conditions in the Quandary code and in the output files, a
+unique index <span class="arithmatex">\(i \in \{0,\dots, N^2-1\}\)</span> is assigned to each basis state with <span class="arithmatex">\(B^i := B^{k(i), j(i)}\)</span> with <span class="arithmatex">\(k(i) := i \,\mbox{mod}\, N\)</span> and <span class="arithmatex">\(j(i) := \left\lfloor \frac{i}{N} \right\rfloor\)</span>
+(column-wise vectorization of the matrix of basis matrices).
+<br>
+For composite systems of multiple subsystems, the user can specify a consecutive list of integer ID's to determine in which of the subsystems the basis states should be spanned. Other subsystems will then be initialized in the ground state only.
+<br>
+<em>Note:</em> The basis states are spanned in the <em>essential dimensions</em> of the system, if applicable.</p>
+</li>
+<li>
+<p><strong>Only diagonal density basis matrices</strong>: <span class="arithmatex">\(n_{init}=N\)</span>. For the Lindblad solver, one can choose to propagate only the <em>diagonal</em> basis matrices <span class="arithmatex">\(\boldsymbol{e}_k\boldsymbol{e}_k^\dagger\)</span>. For the Schroedinger solver, this option is equivalent to all basis states.
+<br>
+<em>Note:</em> the diagonal states are spanned in the <em>essential dimensions</em> of the system, if applicable.</p>
+</li>
+<li>
+<p><strong>Three initial states for gate optimization</strong>: <span class="arithmatex">\(n_{init}=3\)</span>. <em>Only valid for the Lindblad solver.</em>
+When considering gate optimization with Lindblad's solver, it is shown in <sup id="fnref2:goerz2014optimal"><a class="footnote-ref" href="#fn:goerz2014optimal">4</a></sup> that it is enough to consider only three specific initial states during optimization (<span class="arithmatex">\(n_{init}=3\)</span>), independent of the Hilbert space dimension. They are readily implemented in Quandary. Note that it is important to choose the weights <span class="arithmatex">\(\beta_i, i=1,2,3\)</span> in the objective function appropriately to achieve fast convergence.
+<br>
+Note: The three initial states are spanned in the <em>full</em> dimension of the system, including non-essential levels. The theory for gate optimization with three initial states had been developed for considering <em>only</em> essential levels (the gate is defined in the same dimension as the system state evolution), and at this point we are not certain if the theory generalizes to the case when non-essential levels are present. It is advised to optimize on the full basis if non-essential levels are present (or work on the theory, and let us know what you find.). The same holds for <span class="arithmatex">\(N+1\)</span> initial states below.</p>
+</li>
+<li>
+<p><strong><span class="arithmatex">\(N+1\)</span> initial states for gate optimization</strong>: <span class="arithmatex">\(n_{init}=N+1\)</span>. <em>Only valid for the density matrix version, solving Lindblad's master equation.</em>
+The three initial states from above do not suffice to estimate the fidelity of the realized gate (compare <sup id="fnref:goerz2014optimal"><a class="footnote-ref" href="#fn:goerz2014optimal">4</a></sup>). Instead, it is suggested in that same paper to choose <span class="arithmatex">\(N+1\)</span> initial states to compute the fidelity. Those <span class="arithmatex">\(N+1\)</span> initial states consist of the <span class="arithmatex">\(N\)</span> diagonal states <span class="arithmatex">\(B^{kk}\)</span> in the Hilbert space of dimension <span class="arithmatex">\(N\)</span>, as well as the totally rotated state <span class="arithmatex">\(\rho(0)_2\)</span> from above. 
+<br>
+Note: The <span class="arithmatex">\(N+1\)</span> initial states are spanned in the <em>full</em> dimension of the system, including non-essential levels, see above for 3-state initialization.</p>
+</li>
+<li>
+<p><strong>Pure initial state for state-to-state tranfer</strong>: <span class="arithmatex">\(n_{init} = 1\)</span>. The user can choose a pure initial state of the form <span class="arithmatex">\(\psi(0) = |i_0, i_1, i_2, ...\rangle\)</span>, or <span class="arithmatex">\(\rho(0) = \psi(0)\psi(0)^\dagger\)</span>, through the configuration option <code>pure, i0, i1, i2, ...</code></p>
+</li>
+<li>
+<p><strong>Arbitrary initial state for state-to-state transformation</strong>: <span class="arithmatex">\(n_{init}=1\)</span>. An arbitrary (non-pure) initial state can be passed to Quandary directly through the Python interface, or can be read from a file in the C++ code. File format: column-wise vectorized density matrix or the state vector, first all real parts, then all imaginary parts. </p>
+</li>
+<li>
+<p><strong>Ensemble state for unconditional pure-state preparation</strong>: <span class="arithmatex">\(n_{init}=1\)</span>. <em>Only valid for Lindblad's solver.</em> When choosing the objective function <span class="arithmatex">\(J_{measure}\)</span> <span class="arithmatex">\(\eqref{eq:Jmeasure}\)</span>, one can use the ensemble state <span class="arithmatex">\(\rho_s(0) = \frac{1}{N^2}\sum_{i,j=0}^{N-1} B^{kj}\)</span> as the only initial condition for optimizing for pulses that realize unconditional pure-state preparation, compare <sup id="fnref5:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">2</a></sup>). To specify the ensemble state in Quandary (C++), one can provide a list of consecutive integer ID's that determine in which of the subsystems the ensemble state should be spanned. Other subsystems will be initialized in the ground state.
+<br>
+<em>Note</em>: The ensemble state will be spanned in the <em>essential</em> levels of the (sub)system, if applicable, and will then be lifted up to the full dimension by inserting zero rows and columns.</p>
+</li>
+</ul>
+<h2 id="sec:penalty">Regularization, penalty terms, and leakage prevention</h2>
+<p>In order to regularize the optimization problem (stabilize optimization convergence), it is adviced to add a Tikhonov regularization term to the objective function, by choosing a small <span class="arithmatex">\(\gamma_1 &gt; 0\)</span></p>
 <pre class="arithmatex">\[\begin{align}
   \mbox{Tikhonov} = \frac{\gamma_1}{2} \| \bfa \|^2_2
 \end{align}\]</pre>
-<p>By adding this term with a small parameter <span class="arithmatex">\(\gamma_1 &gt; 0\)</span>, the optimization problem will favor optimal control vectors that have a small norm. It regularizes the optimization problem since it adds a small but positive identity matrix to the Hessian of the objective function, hence "convexifying" the problem.</p>
-<p>In addition to the Tikhonov regularization term, four additional penalty terms can optionally be added to the objective function if desired:</p>
+<p>In addition, the following penalty terms can be added to the objective function, if desired:</p>
 <pre class="arithmatex">\[\begin{align*}
   Penalty &amp;= \frac{\gamma_2}{T} \int_0^T P\left(\{\rho_i(t)\}\right) \, \mathrm{d} t   \hspace{3cm} \rightarrow \text{Leakage prevention}\\
          &amp;+  \frac{\gamma_3}{T} \int_0^T \, \| \partial_{tt} \mbox{Pop}(\rho_i(t)) \|^2 \mathrm{d}t \hspace{2cm} \rightarrow \text{State variation penalty} \\
         &amp;+\frac{\gamma_4}{T} \int_0^T \, \sum_k |d^k(\alpha^k,t)|^2\, dt  \hspace{2cm}\rightarrow  \text{Control energy penalty}\\
         &amp;+ \frac{\gamma_5}{2} Var(\vec{\alpha}) \hspace{4cm}\rightarrow  \text{Control variation penalty}
 \end{align*}\]</pre>
-<p>The first penalty term can be added with <span class="arithmatex">\(\gamma_2 &gt; 0\)</span> to drive the quantum system towards the desired state over the entire time-domain <span class="arithmatex">\(0\leq t\leq T\)</span>, rather than only at the final time. If extra (non-essential levels are considered through the optimization for at least one oscillator (<span class="arithmatex">\(n_k^e &lt; n_k\)</span> for at least <span class="arithmatex">\(k\)</span>, compare Sec. <a href="#sec:essentiallevels">Essential and non-essential levels</a>), then this term can be used to prevent leakage to higher energy levels that are not modelled. In particular, in that case, the occupation of all <em>guard levels</em> are penalized with</p>
-<pre class="arithmatex">\[\begin{align}\label{eq:leakprevention}
-  P(\rho(t)) = \sum_{r} \| \rho(t)_{rr} \|^2_2
-\end{align}\]</pre>
-<p>where <span class="arithmatex">\(r\)</span> iterates over all indices that correspond to a guard level (i.e., the final (highest) non-essential energy level) of at least one of the subsystems, and <span class="arithmatex">\(\rho(t)_{rr}\)</span> denotes their corresponding population.</p>
-<p>The second penalty term can be added with parameter <span class="arithmatex">\(\gamma_3 &gt; 0\)</span> to encourage solutions whose populations vary slowly in time by penalizing the second derivative of the populations of the state.</p>
-<p>The third penalty term can be added with parameter <span class="arithmatex">\(\gamma_4 &gt; 0\)</span> to encourage small control pulse amplitudes by penalizing the control pulse energy. This term can be useful if hardware bounds are given for the control pulse amplitudes: Rather than include amplitude bounds on control pulse directly, which often leads to more non-convex optimization problems and convergence deterioration, one can utilize this penalty term to favor short control pulses with small amplitudes. Compare also <sup id="fnref:gunther2023practical"><a class="footnote-ref" href="#fn:gunther2023practical">6</a></sup> for its usage to determine minimal gate durations.</p>
-<p>The last penalty term, activated by setting <span class="arithmatex">\(\gamma_5&gt;0\)</span>, is used to penalize variation in control strength between consecutive B-spline coefficients. It is currently only implemented for piecewise zeroth order spline functions, see Section <a href="#subsec:bspline-0">Zeroth order B-spline basis functions</a>, where it is useful to prevent noisy control pulses. Referring to the control function representation in <span class="arithmatex">\(\eqref{eq:spline-ctrl}\)</span>, this penalty function takes the form:</p>
-<pre class="arithmatex">\[\begin{align}
-  Var(\vec{\alpha}) = \sum_{k=1}^Q Var_k(\vec{\alpha}),\quad Var_k(\vec{\alpha}) = \sum_{f=1}^{N_f^k} \sum_{s=2}^{N_s^k} |\alpha_{s,f}^k - \alpha_{s-1,f}^k|^2,
-\end{align}\]</pre>
-<p>in terms of the complex-valued control parameters <span class="arithmatex">\(\alpha_{s,f}^k = \alpha_{s,f}^{k(1)} + i \alpha_{s,f}^{k(2)}\)</span>. Penalizing the variance can significantly reduce the noise level in the optimized control functions.</p>
+<ul>
+<li>
+<p><strong>Leakage prevention:</strong> Choose a small <span class="arithmatex">\(\gamma_2 &gt; 0\)</span> to penalize (suppress) leakage into non-essential energy levels (if <span class="arithmatex">\(n_k^e &lt; n_k\)</span> for at least <span class="arithmatex">\(k\)</span>, compare Sec. <a href="#sec:essentiallevels">Essential and non-essential levels</a>). This term penalizes the occupation of all <em>guard levels</em> with <span class="arithmatex">\(P(\rho(t)) = \sum_{r} \| \rho(t)_{rr} \|^2_2\)</span>, where <span class="arithmatex">\(r\)</span> iterates over all indices that correspond to a guard level (i.e., the final (highest) non-essential energy level) of at least one of the subsystems, and <span class="arithmatex">\(\rho(t)_{rr}\)</span> denotes their corresponding population.</p>
+</li>
+<li>
+<p><strong>State variation penalty</strong>: Choose a small <span class="arithmatex">\(\gamma_3 &gt; 0\)</span> to encourage state evolutions whose populations vary slowly in time by penalizing the second derivative of the populations of the state.</p>
+</li>
+<li>
+<p><strong>Control energy penalty</strong>: Choose a small <span class="arithmatex">\(\gamma_4 &gt; 0\)</span> to encourage small control pulse amplitudes by penalizing the control pulse energy. This term can be useful if hardware bounds are given for the control pulse amplitudes: Rather than specifying control bounds for the optimization directly, which can lead to convergence deterioration, one can utilize this penalty term to favor control pulses with smaller amplitudes. Compare also <sup id="fnref:gunther2023practical"><a class="footnote-ref" href="#fn:gunther2023practical">5</a></sup> for its usage to determine minimal gate durations.</p>
+</li>
+<li>
+<p><strong>Control variation penalty</strong>: Choose a small <span class="arithmatex">\(\gamma_5&gt;0\)</span> to penalize variations in control strength between consecutive B-spline coefficients. It is currently only implemented for piecewise zeroth order spline functions, see Section <a href="#sec:bspline-0">Zeroth order B-spline basis functions</a>, where it is useful to prevent noisy control pulses. Referring to the control function representation in <span class="arithmatex">\(\eqref{eq:spline-ctrl}\)</span>, this penalty function takes the form:
+<span class="arithmatex">\(Var(\vec{\alpha}) = \sum_{k=1}^Q Var_k(\vec{\alpha})\)</span> with <span class="arithmatex">\(Var_k(\vec{\alpha}) = \sum_{f,s}|\alpha_{s,f}^k - \alpha_{s-1,f}^k|^2\)</span>.</p>
+</li>
+</ul>
 <p>Note: All regularization and penalty coefficients <span class="arithmatex">\(\gamma_i\)</span> should be chosen small enough so that they do not dominate the final-time objective function <span class="arithmatex">\(J\)</span>. This might require some fine-tuning. It is recommended to always add <span class="arithmatex">\(\gamma_1&gt;0\)</span>, e.g. <span class="arithmatex">\(\gamma_1 = 10^{-4}\)</span>, and add other penalties only if needed.</p>
 <!--
 Achieving a target at EARLIER time-steps:
@@ -584,35 +421,42 @@ Achieving a target at EARLIER time-steps:
 for a penalty parameter $0 \leq a \leq 1$. Note, that as $a\to 0$, the weighting function $w(t)$ converges to the Dirac delta distribution with peak at final time $T$, hence reducing $a$ leads to more emphasis on the final time $T$ while larger $a$ penalize non-zero energy states at earlier times $t\leq T$.
 -->
 
+<h2 id="optimization-algorithm">Optimization algorithm</h2>
+<p>Quandary utilized Petsc's Toolkit for Advanced Optimization (TAO) package to solve the optimal control problem. In the current setup, Quasi-Newton updates are applied to the control parameters using L-BFGS Hessian approximations. A projected line-search is used to incorporate box constraints for control pulse amplitude bounds <span class="arithmatex">\(|p^k(t)| \leq c^k_{max}\)</span>, <span class="arithmatex">\(|q^k(t)| \leq c^k_{max}\)</span> via</p>
+<pre class="arithmatex">\[\begin{align}
+  | \alpha_{s,f}^{k(1)}| \leq \frac{c^k_{max}}{\sqrt{2}N_f^k} \quad \text{and} \quad |
+  \alpha_{s,f}^{k(2)} | \leq \frac{c^k_{max}}{\sqrt{2}N_f^k}.
+\end{align}\]</pre>
 <h1 id="implementation">Implementation</h1>
-<h2 id="vectorization-of-lindblads-master-equation">Vectorization of Lindblad's master equation</h2>
-<p>When solving Lindblad's master equation <span class="arithmatex">\(\eqref{mastereq}\)</span>, Quandary uses a vectorized representation of the density matrix with <span class="arithmatex">\(q(t) := \text{vec}(\rho(t)) \in \C^{N^2}\)</span> (column-wise vectorization). Using the relations</p>
+<h2 id="real-valued-and-vectorized-formulation">Real-valued and vectorized formulation</h2>
+<p>Quandary solves the quantum dynamical system in real-valued variables with <span class="arithmatex">\(q(t) = u(t) + iv(t)\)</span>, evolving the real-valued
+states <span class="arithmatex">\(u(t), v(t)\in \R^{M}\)</span> for <span class="arithmatex">\(M=N\)</span> (if Schroedinger's eq.) or <span class="arithmatex">\(M=N^2\)</span> (if Lindblad's eq., see below). Particularly, considering Schroedinger's equation first, the real-valued dynamical system is given by </p>
+<pre class="arithmatex">\[\begin{align}
+  \dot{q}(t) = -iH(t) q(t) \quad \Leftrightarrow \quad &amp;\begin{bmatrix} \dot{u}(t) \\ \dot{v}(t) \end{bmatrix} =
+\begin{bmatrix} A(t) &amp; -B(t) \\ B(t) &amp; A(t) \end{bmatrix}
+\begin{pmatrix} u(t) \\ v(t) \end{pmatrix}  \\
+\notag\\
+\text{where} \quad A(t) &amp;= Re(-iH(t)) = Im(H)\notag \\
+     B(t) &amp;= Im(-iH(t)) = -Re(H(t))\notag
+\label{realvaluedODE}
+\end{align}\]</pre>
+<p>When solving Lindblad's master equation <span class="arithmatex">\(\eqref{mastereq}\)</span>, Quandary uses the column-wise vectorization relations</p>
 <pre class="arithmatex">\[\begin{align}
   \text{vec}(AB) &amp;= (I_N\otimes A)\text{vec}(B) = (B^T\otimes I_N)\text{vec}(A)
   \\
   \text{vec}(ABC) &amp;= (C^T\otimes A)\text{vec}(B)
 \end{align}\]</pre>
-<p>for square matrices <span class="arithmatex">\(A,B,C\in\C^{N\times N}\)</span>, the vectorized
-  form of the Lindblad master equation is given by:</p>
+<p>to derive the vectorized master equation for <span class="arithmatex">\(q(t) := \text{vec}(\rho(t)) \in \C^{N^2}\)</span>, and its real-valued formulation as</p>
 <pre class="arithmatex">\[\begin{align}\label{mastereq_vectorized}
-  &amp;\dot{q}(t) = M(t) q(t) \quad  \text{where} \\
-  &amp;M(t) := -i(I_N\otimes H(t) - H(t)^T \otimes I_N) + \sum_{k=0}^{Q-1}\sum_{l=1}^2 \gamma_{lk}
+  &amp;\dot{q}(t) = \left(I_N\otimes \left(-i H(t)\right) - \left(-iH(t)\right)^T \otimes I_N  + \vec L \right) q(t) \quad  \text{for} \quad
+  \vec L := \sum_{k=0}^{Q-1}\sum_{l=1}^2 \gamma_{lk}
   \left( \Ell_{lk}\otimes \Ell_{lk} - \frac 1 2 \left( I_N\otimes
-  \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right)
-\end{align}\]</pre>
-<p>with <span class="arithmatex">\(M(t) \in \C^{N^2\times N^2}\)</span>, and <span class="arithmatex">\(H(t) = H_d(t) + H_c(t)\)</span> being the rotating frame system and control Hamiltonians as in <span class="arithmatex">\(\eqref{eq:Hd_rotating}\)</span> and <span class="arithmatex">\(\eqref{eq:Hc_rotating}\)</span>, respectively.</p>
-<p>When solving Schroedinger's equation <span class="arithmatex">\(\eqref{eq:schroedinger}\)</span>, Quandary operates directly on the state <span class="arithmatex">\(q(t) := \psi(t)\in\C^N\)</span> and solves <span class="arithmatex">\(\eqref{mastereq_vectorized}\)</span> with <span class="arithmatex">\(M(T) := -iH(t)\)</span>.</p>
-<h3 id="real-valued-system-and-state-storage">Real-valued system and state storage</h3>
-<p>Quandary solves the (vectorized) equation <span class="arithmatex">\(\eqref{mastereq_vectorized}\)</span> in
-real-valued variables with <span class="arithmatex">\(q(t) = u(t) + iv(t)\)</span>, evolving the real-valued
-states <span class="arithmatex">\(u(t), v(t)\in \R^{M}\)</span> for <span class="arithmatex">\(M=N\)</span> (Schroedinger's eq.) or <span class="arithmatex">\(M=N^2\)</span> (Lindblad's eq.) with</p>
-<pre class="arithmatex">\[\begin{align}
-  \dot{q}(t) = M(t) q(t) \quad \Leftrightarrow \quad \begin{bmatrix} \dot{u}(t) \\ \dot{v}(t) \end{bmatrix} =
+  \Ell^T_{lk}\Ell_{lk} + \Ell^T_{lk}\Ell_{lk} \otimes I_N \right) \right) \\
+  &amp;\Leftrightarrow \quad \begin{bmatrix} \dot{u}(t) \\ \dot{v}(t) \end{bmatrix} =
 \begin{bmatrix} A(t) &amp; -B(t) \\ B(t) &amp; A(t) \end{bmatrix}
-\begin{pmatrix} u(t) \\ v(t) \end{pmatrix}
-\label{realvaluedODE}
+\begin{pmatrix} u(t) \\ v(t) \end{pmatrix}  \quad \text{where}\quad A(t) = I_N\otimes Re(-i H(t)) - Re(-iH(t))^T \otimes I_N + \vec L \notag \\
+&amp; \qquad \qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\quad  B(t) = I_N\otimes Im(-i H(t)) - Im(-iH(t))^T \otimes I_N)  \notag 
 \end{align}\]</pre>
-<p>for real and imaginary parts <span class="arithmatex">\(A(t) = \mbox{Re} \left(M(t)\right)\)</span> and <span class="arithmatex">\(B(t) = \mbox{Im}\left(M(t)\right)\)</span>.</p>
 <p>The real and imaginary parts of <span class="arithmatex">\(q(t)\)</span> are stored in a colocated manner: For
   <span class="arithmatex">\(q = u+iv\)</span> with <span class="arithmatex">\(u,v\in\R^{M}\)</span>, a vector of size <span class="arithmatex">\(2M\)</span> is stored that
   staggers real and imaginary parts behind each other for each component:</p>
@@ -628,76 +472,58 @@ states <span class="arithmatex">\(u(t), v(t)\in \R^{M}\)</span> for <span class=
     u_1 \\ v_1\\ u_2 \\ v_2 \\ \vdots \\ u_{M} \\ v_{M}
   \end{bmatrix}
 \end{align*}\]</pre>
-<h2 id="sparse-matrix-vs-matrix-free-solver">Sparse-matrix vs. matrix-free solver</h2>
-<p>In Quandary, two versions to evaluate the right hand side of Lindblad's
-equation, <span class="arithmatex">\(M(t)q(t)\)</span>, of the vectorized real-valued system are available:</p>
-<ol>
-<li>The <em>sparse-matrix solver</em> uses PETSc's sparse matrix format (sparse AIJ) to set up (and store) the time-independent building blocks inside <span class="arithmatex">\(A(t)\)</span> and <span class="arithmatex">\(B(t)\)</span>. Sparse matrix-vector products are then applied at each time-step to evaluate the products <span class="arithmatex">\(A(t)u(t) - B(t) v(t)\)</span> and <span class="arithmatex">\(B(t)u(t) + A(t)v(t)\)</span>.</li>
-</ol>
-<p>For developers, the appendix provides details on each term within <span class="arithmatex">\(A(t)\)</span> and <span class="arithmatex">\(B(t)\)</span> which can be matched to the implementation in the code (class <code>MasterEq</code>).</p>
-<ol>
-<li>The <em>matrix-free solver</em> considers the state density matrix <span class="arithmatex">\(\rho\in C^{N\times N}\)</span> to be a tensor of rank <span class="arithmatex">\(2Q\)</span> (one axis for each subsystems for each matrix dimension, hence <span class="arithmatex">\(2\cdot Q\)</span> axes). Instead of storing the matrices within <span class="arithmatex">\(M(t)\)</span>, the matrix-free solver applies tensor contractions to realize the action of <span class="arithmatex">\(A(t)\)</span> and <span class="arithmatex">\(B(t)\)</span> on the state vectors.</li>
-</ol>
-<p>In our current test cases, the matrix-free solver is much faster than the sparse-matrix solver (about 10x), no surprise. However the matrix-free solver is currently only implemented for composite systems consisting of <strong>2, 3, 4, or 5</strong> subsystems.</p>
-<p><strong>The matrix-free solver currently does not parallelize across the system dimension <span class="arithmatex">\(N\)</span></strong>, hence the state vector is <strong>not</strong> distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that <span class="arithmatex">\(Q\)</span> can often be large while each axis can be very short (e.g. modelling <span class="arithmatex">\(Q=12\)</span> qubits with <span class="arithmatex">\(n_k=2\)</span> energy levels per qubit), which yields a very high-dimensional tensor with very short axes. In that case, the standard (?) approach of parallelizing the tensor along its axes will likely lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate!</p>
 <h2 id="time-stepping">Time-stepping</h2>
-<p>To solve the (vectorized) master equation <span class="arithmatex">\(\eqref{mastereq_vectorized}\)</span>, <span class="arithmatex">\(\dot
-q(t) = M(t) q(t)\)</span> for <span class="arithmatex">\(t\in [0,T]\)</span>, Quandary applies a time-stepping integration
-scheme on a uniform time discretization grid <span class="arithmatex">\(0=t_0 &lt; \dots t_{N} = T\)</span>, with
-<span class="arithmatex">\(t_n = n \delta t\)</span> and <span class="arithmatex">\(\delta t = \frac{T}{N}\)</span>, and approximates the
-solution at each discrete time-step <span class="arithmatex">\(q^{n} \approx q(t_n)\)</span>. The time-stepping scheme can be chosen in Quandary through the configuration option <code>timestepper</code>.</p>
-<h3 id="implicit-midpoint-rule-imr">Implicit Midpoint Rule (<code>IMR</code>)</h3>
-<p>The implicit midpoint rule is a second-order accurate, symplectic time-stepping algorithm with Runge-Kutta scheme tableau
+<p>To solve the resulting real-valued differential equation </p>
+<pre class="arithmatex">\[\begin{align*}
+\dot q(t) = M(t) q(t) \forall t\in (0,T), \quad \text{with}\quad M(t) =\begin{bmatrix} A(t) &amp; -B(t) \\ B(t) &amp; A(t) \end{bmatrix} 
+\end{align*}\]</pre>
+<p>Quandary applies a time-stepping integration scheme on a uniform time discretization grid <span class="arithmatex">\(0=t_0 &lt; \dots t_{N} = T\)</span>, with
+<span class="arithmatex">\(t_n = n \delta t\)</span> and <span class="arithmatex">\(\delta t = \frac{T}{N}\)</span> to approximate the
+solution at each discrete time-step <span class="arithmatex">\(q^{n} \approx q(t_n)\)</span>. The default and recommended time-stepping scheme is the Implicit Midpoint Rule <code>IMR</code>. The implicit midpoint rule is a second-order accurate, symplectic time-stepping algorithm with Runge-Kutta scheme tableau
 <span class="arithmatex">\(\begin{array}{c|c}
 1/2 &amp; 1/2 \\
 \hline
 &amp; 1
-\end{array}\)</span></p>
-<p>Given a state <span class="arithmatex">\(q^n\)</span> at time <span class="arithmatex">\(t_n\)</span>, the update formula to compute <span class="arithmatex">\(q^{n+1}\)</span>
-is hence</p>
+\end{array}\)</span>
+Given a state <span class="arithmatex">\(q^n\)</span> at time <span class="arithmatex">\(t_n\)</span>, the update formula to compute <span class="arithmatex">\(q^{n+1}\)</span>
+is given by</p>
 <pre class="arithmatex">\[\begin{align}
   q^{n+1} = q^n + \delta t k_1 \quad \text{where} \, k_1 \, \text{solves}
   \quad \left( I-\frac{\delta t}{2} M^{n+1/2} \right) k_1 = M^{n+1/2}  q^n
 \end{align}\]</pre>
 <p>where <span class="arithmatex">\(M^{n+1/2} := M(t_n + \frac{\delta t}{2})\)</span>. In each time-step,
-a linear equation is solved to get the stage variable <span class="arithmatex">\(k_1\)</span>, which is then used it
+a linear equation is solved using GMRES to compute the stage variable <span class="arithmatex">\(k_1\)</span>, which is then used it
 to update <span class="arithmatex">\(q^{n+1}\)</span>.</p>
-<h3 id="higher-order-compositional-imr-imr4-or-imr8">Higher-order compositional IMR (<code>IMR4</code>, or <code>IMR8</code>)</h3>
-<p>A compositional version of the Implicit Midpoint Rule is available that performs multiple IMR steps in each time-step interval, which are composed in such a way that the resulting compositional step is of higher order. Currently, Compared to the standard IMR, the higher-order methods can be very beneficial as it allows for much larger time-steps to be taken to reach a certain accuracy tolerance. Even though more work is done per time-step, the reduction in the number of time-steps needed can be several orders or magnitude and there is hence a tradeoff where the compositional methods outperform the standard IMR scheme.</p>
-<p>Currently available is a compositional method of 4-th order that performs 3 sub-steps per time-step (<code>IMR4</code>), and a compositional method of 8-th order performing 15 sub-steps per time-step (<code>IMR8</code>).</p>
+<p>In addition to the IMR, two higher-order time-stepping schemes are available in Quandary, particularly a 4-th order and a 8-th order scheme which both are compsitional versions of the IMR. Those methods perform multiple composed IMR steps in each time-step interval to achieve higher order accuracy. Particularly, the 4-th order scheme (<code>IMR4</code>) performs 3 sub-steps per time interval, and the 8-th order (<code>IMR8</code>) performs 15 sub-steps per time time interval. Compared to the standard IMR, the higher-order methods allow for much larger time-steps to be taken to reach a certain accuracy tolerance, however, more work is done per time-step, creating a tradeoff at which the compositional methods can outperform the standard IMR scheme.</p>
 <h3 id="choice-of-the-time-step-size">Choice of the time-step size</h3>
-<p>The python interface to Quandary automatically computes a time-step size based on the fastest period of the system Hamiltonian. For the C++ code, it needs to be set by the user.</p>
-<p>In order to choose a time-step size <span class="arithmatex">\(\delta t\)</span>, an eigenvalue analysis of
-the constant drift Hamiltonian <span class="arithmatex">\(H_d\)</span> is often useful. Since <span class="arithmatex">\(H_d\)</span> is Hermitian, there exists a transformation <span class="arithmatex">\(Y\)</span> such that <span class="arithmatex">\(Y^{\dagger}H_d Y = \Lambda \qquad  \text{where} \quad Y^{\dagger} = Y\)</span> where <span class="arithmatex">\(\Lambda\)</span> is a diagonal matrix containing the eigenvalues of <span class="arithmatex">\(H_d\)</span>.
-Transform the state <span class="arithmatex">\(\tilde{q} = Y^{\dagger} q\)</span>, then the ODE transforms to</p>
-<pre class="arithmatex">\[\begin{align*}
-  \dot{\tilde{q}} = -i \Lambda \tilde{q} \quad \Rightarrow \dot{\tilde{q}}_i =
-  -i\lambda_i \tilde{q}_i \quad \Rightarrow \tilde{q}_i = a
-  \exp(-i\lambda_i t)
-\end{align*}\]</pre>
-<p>Therefore, the period for each mode is <span class="arithmatex">\(\tau_i =
-\frac{2\pi}{|\lambda_i|}\)</span>, hence the shortest period is <span class="arithmatex">\(\tau_{min} =
-\frac{2\pi}{\max_i\{|\lambda_i|\}}\)</span>. If we want <span class="arithmatex">\(p\)</span> discrete time points
-per period, then <span class="arithmatex">\(p\delta t = \tau_{min}\)</span>, hence</p>
+<!-- The python interface to Quandary automatically computes a time-step size based on the fastest period of the system Hamiltonian. For the C++ code, it needs to be set by the user.  -->
+
+<p>In order to estimate a time-step size <span class="arithmatex">\(\delta t\)</span> that yields stable and accurate timestepping, Quandary's Python interface performs an eigenvalue decomposition of the system Hamiltonian <span class="arithmatex">\(H_d\)</span> to determine the fastest period of intrinsic dynamics. The user can adjust the desired number of timesteps (<span class="arithmatex">\(P_{min}\)</span>) that are used to discretize per fastest period, and the time-step size is then computed from </p>
 <pre class="arithmatex">\[\begin{align} \label{eq:timestepsize}
-  \delta t = \frac{\tau_{min}}{p} = \frac{2\pi}{p\max_i\{|\lambda_i|\}}
+  \delta t = \frac{\tau_{min}}{P_{min}} = \frac{2\pi}{P_{min} \lambda_{max}}
 \end{align}\]</pre>
-<p>Usually, for the second order scheme we would use something like <span class="arithmatex">\(p=40\)</span>. The above estimate provides a first idea on how big (small) the time-step size should be, and the user is advised to consider this estimate when running a test case. However, the estimate ignores contributions from the control Hamiltonian, where larger control amplitudes will require smaller and smaller time-steps in order to resolve (a) the time-varying controls themselves and (b) the dynamics induced by large control contributions. A standard <span class="arithmatex">\(\Delta t\)</span> test should be performed in order to verify that the time-step is small enough. For example, one can compute the Richardson error estimator of the current approximation error to some true quantity <span class="arithmatex">\(J^*\)</span> from</p>
+<p>where <span class="arithmatex">\(\lambda_{max}\)</span> is the largest eigenvalue of the Hamiltonian. For the 2nd order IMR scheme, we recommend at least <span class="arithmatex">\(P_{min}=80\)</span>. </p>
+<p>In order to test time-stepping accuracy, a standard <span class="arithmatex">\(\Delta t\)</span>-test is recommended performed to ensure that the chosen time-step is small enough. For example, one can compute the <em>Richardson error estimator</em> of the current approximation error in <span class="arithmatex">\(J^{\Delta t}\)</span> compared to the true quantity <span class="arithmatex">\(J^*\)</span> with </p>
 <pre class="arithmatex">\[\begin{align}
   J^* - J^{\Delta t} = \frac{J^{\Delta t} - J^{\Delta t m}}{1-m^p} + O(\Delta t^{p+1})
 \end{align}\]</pre>
-<p>where <span class="arithmatex">\(p\)</span> is the order of the time-stepping scheme (i.e. <span class="arithmatex">\(p=2\)</span> for the IMR and <span class="arithmatex">\(p=8\)</span> for the compositional IMR8), and <span class="arithmatex">\(J^{\Delta t}, J^{\Delta tm}\)</span> denote approximations thereof using the time-stepping sizes <span class="arithmatex">\(\Delta t\)</span> and <span class="arithmatex">\(\Delta t m\)</span> for some factor <span class="arithmatex">\(m\)</span>.</p>
-<!--
-If one wants to include the time-varying Hamiltonian part $H = H_d +
-H_c(t)$ in the analysis, one could use the constraints on the control
-parameter amplitudes to remove the time-dependency using their large
-value instead.
--->
+<p>where <span class="arithmatex">\(p\)</span> is the order of the time-stepping scheme (i.e. <span class="arithmatex">\(p=2\)</span> for the IMR and <span class="arithmatex">\(p=8\)</span> for the compositional IMR8), and <span class="arithmatex">\(J^{\Delta t}, J^{\Delta tm}\)</span> are approximations of the target quantity when using time-step sizes <span class="arithmatex">\(\Delta t\)</span> and <span class="arithmatex">\(\Delta t m\)</span>, for a factor <span class="arithmatex">\(m\)</span>.</p>
+<h2 id="sparse-matrix-vs-matrix-free-solver">Sparse-matrix vs. matrix-free solver</h2>
+<p>Solving the differential equation with a time-stepping scheme requires efficient application of the right-hand-side (RHS) system matrix <span class="arithmatex">\(M(t)\)</span> to a (vectorized) state <span class="arithmatex">\(q\)</span>. In Quandary, two versions to evaluate the matrix product <span class="arithmatex">\(M(t)q(t)\)</span> are available:</p>
+<ol>
+<li>
+<p>The <em>sparse-matrix solver</em> uses PETSc's sparse matrix format (sparse AIJ) to set up (and store) all building blocks inside <span class="arithmatex">\(A(t)\)</span> and <span class="arithmatex">\(B(t)\)</span>, compare the appendix. Sparse matrix-vector products are then applied at each time-step to evaluate the products <span class="arithmatex">\(A(t)u(t) - B(t) v(t)\)</span> and <span class="arithmatex">\(B(t)u(t) + A(t)v(t)\)</span>. For developers, the appendix provides details on each term within <span class="arithmatex">\(A(t)\)</span> and <span class="arithmatex">\(B(t)\)</span> which can be matched to the implementation in the code (class <code>MasterEq</code>).</p>
+</li>
+<li>
+<p>The <em>matrix-free solver</em> considers the quantum state to be a tensor of rank <span class="arithmatex">\(Q\)</span> (Schroedinger) or <span class="arithmatex">\(2Q\)</span> (Lindblad). Instead of storing the building block matrices inside <span class="arithmatex">\(M(t)\)</span>, the matrix-free solver applies tensor contractions to realize the action of <span class="arithmatex">\(A(t)\)</span> and <span class="arithmatex">\(B(t)\)</span> on the state vector. The matrix-free solver is much faster than the sparse-matrix solver (about 10x), no surprise. However the matrix-free solver is currently only implemented for systems of <strong>2, 3, 4, or 5</strong> oscillators.</p>
+</li>
+</ol>
+<!-- **The matrix-free solver currently does not parallelize across the system dimension $N$**, hence the state vector is **not** distributed (i.e. no parallel Petsc!). The reason why we did not implement that yet is that $Q$ can often be large while each axis can be very short (e.g. modelling $Q=12$ qubits with $n_k=2$ energy levels per qubit), which yields a very high-dimensional tensor with very short axes. In that case, the standard (?) approach of parallelizing the tensor along its axes will likely lead to very poor scalability due to high communication overhead. We have not found a satisfying solution yet - if you have ideas, please reach out, we are happy to collaborate! -->
 
 <h2 id="gradient-computation-via-discrete-adjoint-back-propagation">Gradient computation via discrete adjoint back-propagation</h2>
 <p>Quandary computes the gradients of the objective function with respect to the design variables <span class="arithmatex">\(\boldsymbol{\alpha}\)</span> using the discrete adjoint method. The discrete adjoint approach yields exact and consistent gradients on the algorithmic level, at costs that are independent of the number of design variables.
 To that end, the adjoint approach propagates local sensitivities backwards through the time-domain while concatenating contributions to the gradient using the chain-rule.</p>
-<p>The consistent discrete adjoint time-integration step for
+<p>For the IMR timestepper, the discrete adjoint time-integration step for
 adjoint variables denoted by <span class="arithmatex">\(\bar q^{n}\)</span> is given by</p>
 <pre class="arithmatex">\[\begin{align}
   \bar q^{n} = \bar q^{n+1} + \delta t \left(M^{n+1/2}\right)^T \bar k_1
@@ -710,22 +536,40 @@ adjoint variables denoted by <span class="arithmatex">\(\bar q^{n}\)</span> is g
   \left(q^n + \frac{\delta t}{2} k_1\right) \right)^T\bar k_1
 \end{align}\]</pre>
 <p>Each evaluation of the gradient <span class="arithmatex">\(\nabla J\)</span> involves a forward solve of <span class="arithmatex">\(n_{init}\)</span> initial quantum states to evaluate the objective function at final time <span class="arithmatex">\(T\)</span>, as well as <span class="arithmatex">\(n_{init}\)</span> backward solves to compute the adjoint states and the contributions to the gradient. Note that the gradient computation <span class="arithmatex">\(\eqref{eq:gradient}\)</span> requires the states and adjoint states at each time-step. For the Schroedinger solver, the primal states are recomputed by integrating Schroedinger's equation backwards in time, alongside the adjoint computation. For the Lindblad solver, the states <span class="arithmatex">\(q^n\)</span> are stored during forward propagation, and taken from storage during adjoint back-propagation (since we can't recompute it in case of Lindblad solver, due to dissipation).</p>
-<h2 id="optimization-algorithm">Optimization algorithm</h2>
-<p>Quandary utilized Petsc's <code>Tao</code> optimization package to apply gradient-based iterative updates to the control variables. The <code>Tao</code> optimization interface takes routines to evaluate the objective function as well as the gradient computation. In the current setting in Quandary, <code>Tao</code> applies a nonlinear Quasi-Newton optimization scheme using a preconditioned gradient based on L-BFGS updates to approximate the Hessian of the objective function. A projected line-search is applied to ensure that the objective function yields sufficient decrease per optimization iteration while keeping the control parameters within the prescribed box-constraints.</p>
+<p>For developers, a Central Finite Difference (CFD) test can be enabled by setting the compiler directive <code>TEST_FD_GRAD = 1</code> at the beginning of the <code>src/main.cpp</code> file. Quandary will then iterate over all elements in <span class="arithmatex">\(\alpha\)</span> and report the <em>relative</em> error of the implemented gradient with respect to the "true" gradient computed from CFD:</p>
+<pre class="arithmatex">\[\begin{align*}
+    \left(\nabla J(\boldsymbol{\alpha}) \right)_i \approx \frac{J(\bfa + \epsilon\bs{e}_i) - J(\bfa - \epsilon\bs{e}_i)}{2\epsilon} 
+\end{align*}\]</pre>
+<p>for unit vectors <span class="arithmatex">\(\bs{e}_i\in \R^d\)</span>, and <span class="arithmatex">\(d\)</span> being the dimension of <span class="arithmatex">\(\bfa\)</span>.</p>
+<h2 id="storage-of-the-control-parameters">Storage of the control parameters</h2>
+<p>The control parameters <span class="arithmatex">\(\bs{\alpha}\)</span> are stored in the Quandary code in the following order: List oscillators first <span class="arithmatex">\((\vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1})\)</span>, then for each <span class="arithmatex">\(\vec{\alpha}^k \in
+\R^{2 N_s^k N_f^k}\)</span>, iterate over all carrierwaves <span class="arithmatex">\(\vec{\alpha}^k =
+(\alpha^k_1,\dots, \alpha^k_{N_f})\)</span> with <span class="arithmatex">\(\alpha^k_f \in \R^{2 N_s^k}\)</span>, then each
+<span class="arithmatex">\(\alpha^k_f\)</span> iterates over spline basis functions listing first all real then all imaginary
+components: <span class="arithmatex">\(\alpha^k_f = \alpha^{k(1)}_{1,f}, \dots, \alpha^{k(1)}_{N_s^k,f}, \alpha^{k(2)}_{1,f}, \dots, \alpha^{k(2)}_{N_s^k,f}\)</span>. Hence there are a total of <span class="arithmatex">\(2\sum_k N_s^k N_f^k\)</span> real-valued optimization parameters, which are stored in the following order:</p>
+<pre class="arithmatex">\[\begin{align}
+  \boldsymbol{\alpha} &amp;:= \left( \vec{\alpha}^0, \dots, \vec{\alpha}^{Q-1} \right), \in
+  \R^{2\sum_k N_s^k N_f^k} \quad \text{where}\\
+  \vec{\alpha}^k = &amp;\left( \alpha_{1,1}^{k(1)},\dots, \alpha_{N_s^k,1}^{k(1)}, \dots, \alpha_{1,N_f^k}^{k(1)}, \dots, \alpha_{N_s^k,N_f^k}^{k(1)} \right.\\
+                 &amp;  \left. \alpha_{1,1}^{k(2)},\dots, \alpha_{N_s^k,1}^{k(2)}, \dots, \alpha_{1,N_f^k}^{k(2)}, \dots, \alpha_{N_s^k,N_f^k}^{k(2)} \right)
+\end{align}\]</pre>
+<p>iterating over <span class="arithmatex">\(Q\)</span> subsystems first, then <span class="arithmatex">\(N_f^k\)</span> carrier wave frequencies, then <span class="arithmatex">\(N_s^k\)</span> splines, listing first all real parts then all imaginary parts. To access an element <span class="arithmatex">\(\alpha_{s,f}^{k(i)}\)</span>, <span class="arithmatex">\(i=0,1\)</span>, from storage <span class="arithmatex">\(\bfa\)</span>:</p>
+<pre class="arithmatex">\[\begin{align}
+  \alpha_{s,f}^{k(i)} = \bfa \left[ \left(\sum_{j=0}^{k-1} 2 N_s^j N_f^j\right) + f*2 N_s^k + s + i*N_s^k N_f^k \right],
+\end{align}\]</pre>
 <h1 id="parallelization">Parallelization</h1>
 <p>Quandary offers two levels of parallelization using MPI.</p>
 <ol>
 <li>Parallelization over initial conditions: The <span class="arithmatex">\(n_{init}\)</span> initial conditions <span class="arithmatex">\(\rho_i(0)\)</span> can be distributed over <code>np_init</code> compute units. Since initial condition are propagated through the time-domain for solving Lindblad's or Schroedinger's equation independently from each other, speedup from distributed initial conditions is ideal.</li>
-<li>Parallel linear algebra with Petsc (sparse-matrix solver only): For the sparse-matrix solver, Quandary utilizes Petsc's parallel sparse matrix and vector storage to distribute the state vector onto <code>np_petsc</code> compute units (spatial parallelization). To perform scaling results, make sure to disable code output (or reduce the output frequency to print only the last time-step), because writing the data files invokes additional MPI calls to gather data on the master node.</li>
+<li>Parallel linear algebra with Petsc (sparse-matrix solver only): For the sparse-matrix solver, Quandary utilizes Petsc's parallel sparse matrix and vector storage to distribute the state vector onto <code>np_petsc</code> compute units (spatial parallelization). To perform scaling results, make sure to disable code output (or reduce the output frequency to print only the last time-step), because writing the data files invokes additional MPI calls to gather data on the master node. Strong and weak scaling studies for parallel linear algebra are presented in <sup id="fnref4:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">2</a></sup>.</li>
 </ol>
-<p>Strong and weak scaling studies are presented in <sup id="fnref6:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">3</a></sup>.</p>
 <p>Since those two levels of parallelism are orthogonal, Quandary splits the global communicator (MPI_COMM_WORLD) into
 two sub-communicator such that the total number of executing MPI
 processes (<span class="arithmatex">\(np_{total}\)</span>) is split as</p>
 <pre class="arithmatex">\[\begin{align*}
   np_{init} * np_{petsc} = np_{total}.
 \end{align*}\]</pre>
-<p>Since parallelization over different initial conditions is perfect, Quandary automatically sets <span class="arithmatex">\(np_{init} = n_{init}\)</span>, i.e. the total number of cores for distributing initial conditions is the total number of initial conditions that are considered in this run, as specified by the configuration option <code>intialcondition</code>. The number of cores for distributed linear algebra with Petsc is then computed from the above equation.</p>
+<p>Since parallelization over different initial conditions is perfect, Quandary automatically sets <span class="arithmatex">\(np_{init} = n_{init}\)</span>, i.e. the total number of cores for distributing initial conditions is the total number of initial conditions that are considered in this run, as specified by the configuration option <code>intialcondition</code>. The number of cores for distributed linear algebra with Petsc is then computed from above.</p>
 <p>It is currently required that the number of total cores for executing quandary is an integer divisor of multiplier of the number of initial conditions, such that each processor group owns the same number of initial conditions.</p>
 <p>It is further required that the system dimension is an integer multiple of the number of cores used for distributed linear algebra from Petsc, i.e. it is required that <span class="arithmatex">\(\frac{M}{np_{petsc}} \in \mathbb{N}\)</span> where <span class="arithmatex">\(M=N^2\)</span> in the Lindblad solver case and <span class="arithmatex">\(M=N\)</span> in the Schroedinger case. This requirement is a little
   annoying, however the current implementation requires this due to the
@@ -733,47 +577,37 @@ processes (<span class="arithmatex">\(np_{total}\)</span>) is split as</p>
   state.</p>
 <h1 id="output-and-plotting-the-results">Output and plotting the results</h1>
 <p>Quandary generates various output files for system evolution of the current (optimized) controls as well as the optimization progress. All data files will be dumped into a user-specified folder through the config option <code>datadir</code>.</p>
-<h2 id="output-options-with-regard-to-state-evolution">Output options with regard to state evolution</h2>
+<h3 id="output-options-with-regard-to-state-evolution">Output options with regard to state evolution</h3>
 <p>For each subsystem <span class="arithmatex">\(k\)</span>, the user can specify the desired state evolution output through the config option <code>output&lt;k&gt;</code>:</p>
 <ul>
 <li>
-<p><code>expectedEnergy</code>: This option prints the time evolution of the expected energy level of subsystem <span class="arithmatex">\(k\)</span> into files with naming convention <code>expected&lt;k&gt;.iinit&lt;m&gt;.dat</code>, where <span class="arithmatex">\(m=1,\dots,n_{init}\)</span> denotes the unique identifier for each initial condition <span class="arithmatex">\(\rho_m(0)\)</span> that was propagated through (see Section <a href="#subsec:initcond">Initial conditions</a>). This file contains two columns, the first row being the time values, the second one being the expectation value of the energy level of subsystem <span class="arithmatex">\(k\)</span> at that time point, computed from</p>
+<p><code>expectedEnergy</code>: This option prints the time evolution of the expected energy level of subsystem <span class="arithmatex">\(k\)</span> into files with naming convention <code>expected&lt;k&gt;.iinit&lt;i&gt;.dat</code>, where <span class="arithmatex">\(i=1,\dots,n_{init}\)</span> denotes the unique identifier for each initial condition <span class="arithmatex">\(\rho_i(0)\)</span> that was propagated through (see Section <a href="#sec:initcond">Initial conditions</a>). This file contains two columns, the first row being the time values, the second one being the expectation value of the energy level of subsystem <span class="arithmatex">\(k\)</span> at that time point, computed from</p>
 <pre class="arithmatex">\[\begin{align}
   \langle N^{(n_k)}\rangle = \mbox{Tr}\left(N^{(n_k)} \rho^k(t)\right)
 \end{align}\]</pre>
-<p>where <span class="arithmatex">\(N^{(n_k)} = \left(a^{(n_k)}\right)^\dagger \left(a^{(n_k)}\right)\)</span> denotes the number operator in subsystem <span class="arithmatex">\(k\)</span> and <span class="arithmatex">\(\rho^k\)</span> denotes the reduced density matrix for subsystem <span class="arithmatex">\(k\)</span>, each with dimension <span class="arithmatex">\(n_k\times n_k\)</span>. Note that this equivalent to <span class="arithmatex">\(\mbox{Tr}\left(N_k \rho(t)\right)\)</span> with <span class="arithmatex">\(N_k = I_{n_1} \otimes \dots \otimes I_{n_{k-1}} \otimes N^{(n_k)} \otimes I_{n_{k+1}}\otimes \dots \otimes I_Q\)</span> and the full state <span class="arithmatex">\(\rho(t)\)</span> in the full dimensions <span class="arithmatex">\(N\times N\)</span>.</p>
+<p>where <span class="arithmatex">\(N^{(n_k)} = \left(a^{(n_k)}\right)^\dagger \left(a^{(n_k)}\right)\)</span> denotes the number operator in subsystem <span class="arithmatex">\(k\)</span> and <span class="arithmatex">\(\rho^k\)</span> denotes the reduced density matrix or state for subsystem <span class="arithmatex">\(k\)</span>. 
+- <code>expectedEnergyComposite</code> Prints the time evolution of the expected energy level of the entire (full-dimensional) system state into files (one for each initial condition, as above): <span class="arithmatex">\(mbox{Tr}\left(N \rho(t)\right)\)</span> for the number operator <span class="arithmatex">\(N\)</span> in the full dimensions.
+- <code>population</code>: This option prints the time evolution of the state's occupation in each energy level into files named <code>population&lt;k&gt;.iinit&lt;i&gt;.dat</code>, for each initial condition <span class="arithmatex">\(i=1,\dots, n_{init}\)</span> and each subsystem <span class="arithmatex">\(k\)</span>. The files contain <span class="arithmatex">\(n_k+1\)</span> columns, the first one being the time values, the remaining ones correspond to the population of each level <span class="arithmatex">\(l=0,\dots,n_k-1\)</span> of the reduced density matrix or state vector at that time point. For Lindblad's solver, these are the diagonal elements of the reduced density matrix (<span class="arithmatex">\(\rho_{ll}^k(t), l=0,\dots n_k-1\)</span>), for Schroedinger's solver it's the absolute values of the reduced state vector elements <span class="arithmatex">\(|\psi^k_l(t)|^2, l=0,\dots n_k-1\)</span>. 
+- <code>populationComposite</code>: Prints the time evolution of the state populations of the entire (full-dimensional) system into files (one for each initial condition, as above).
+- <code>fullstate</code>: For smaller systems, one can choose to print out the full state <span class="arithmatex">\(\rho(t)\)</span> or <span class="arithmatex">\(\psi(t)\)</span> for each time point into the files <code>rho_Re.iinit&lt;m&gt;.dat</code> and <code>rho_Im.iinit&lt;m&gt;.dat</code>, for the real and imaginary parts. These files contain <span class="arithmatex">\(N^2+1\)</span> (Lindblad) or <span class="arithmatex">\(N+1\)</span> (Schroedinger) columns the first one being the time point value and the remaining ones contain the vectorized density matrix or the state vector for that time point. Note that these file become very big very quickly -- use with care!</p>
 </li>
-<li>
-<p><code>expectedEnergyComposite</code> Prints the time evolution of the expected energy level of the entire (full-dimensional) system state into files (one for each initial condition, as above): <span class="arithmatex">\(mbox{Tr}\left(N \rho(t)\right)\)</span> for the number operator <span class="arithmatex">\(N\)</span> in the full dimensions.</p>
-</li>
-<li><code>population</code>: This option prints the time evolution of the state populations (diagonal of density matrix, state probabilities) of subsystem <span class="arithmatex">\(k\)</span> into files named <code>population&lt;k&gt;.iinit&lt;m&gt;.dat</code> for each initial condition <span class="arithmatex">\(m=1,\dots, n_{init}\)</span>. The files contain <span class="arithmatex">\(n_k+1\)</span> columns, the first one being the time values, the remaining <span class="arithmatex">\(n_k\)</span> columns correspond to the population of each level <span class="arithmatex">\(l=0,\dots,n_k-1\)</span> of the reduced density matrix <span class="arithmatex">\(\rho^k(t)\)</span> at that time point. For Lindblad's solver, these are the diagonal elements of the reduced density matrix (<span class="arithmatex">\(\rho_{ll}^k(t), l=0,\dots n_k-1\)</span>), for Schroedinger's solver it's the absolute values of the reduced state vector elements <span class="arithmatex">\(|\psi^k_l(t)|^2, l=0,\dots n_k-1\)</span>. Note that the reduction to the subsystem <span class="arithmatex">\(k\)</span> induces a sum over all oscillators to collect contributions to the reduced state.</li>
-<li><code>populationComposite</code>: Prints the time evolution of the state populations of the entire (full-dimensional) system into files (one for each initial condition, as above).</li>
-<li><code>fullstate</code>: Probably only relevant for debugging or very small systems, one can print out the full state <span class="arithmatex">\(\rho(t)\)</span> or <span class="arithmatex">\(\psi(t)\)</span> for each time point into the files <code>rho_Re.iinit&lt;m&gt;.dat</code> and <code>rho_Im.iinit&lt;m&gt;.dat</code>, for the real and imaginary parts of the state, respectively. These files contain <span class="arithmatex">\(N^2 +1\)</span> (Lindblad) or <span class="arithmatex">\(N+1\)</span> (Schroedinger) columns the first one being the time point value and the remaining ones contain the vectorized density matrix (Lindblad, <span class="arithmatex">\(N^2\)</span> elements) or the state vector (Schroedinger, <span class="arithmatex">\(N\)</span> elements) for each time-step. Note that these file become very big very quickly -- use with care!</li>
 </ul>
 <p>The user can change the frequency of output in time (printing only every <span class="arithmatex">\(j\)</span>-th time point) through the option <code>output_frequency</code>. This is particularly important when doing performance tests, as computing the reduced states for output requires extra computation and communication that might skew performance tests.</p>
-<h2 id="output-with-regard-to-simulation-and-optimization">Output with regard to simulation and optimization</h2>
+<h3 id="output-with-regard-to-simulation-and-optimization">Output with regard to simulation and optimization</h3>
 <ul>
-<li><code>config_log.dat</code> contains all configuration options that had been used for the current run.</li>
-<li><code>params.dat</code> contains the control parameters <span class="arithmatex">\(\bfa\)</span> that had been used to determine the current control pulses. This file contains one column containing all parameters, ordered as stored, see Section <a href="#subsec:controlpulses">Control pulses</a>.</li>
+<li><code>config_log.dat</code> contains all configuration options that had been used for the current run of the C++ code.</li>
+<li><code>params.dat</code> contains the control parameters <span class="arithmatex">\(\bfa\)</span> that had been used to determine the current control pulses. This file contains one column containing all parameters, ordered as stored, see Section <a href="#sec:controlpulses">Control pulses</a>.</li>
 <li><code>control&lt;k&gt;.dat</code> contain the resulting control pulses applied to subsystem <span class="arithmatex">\(k\)</span> over time. It contains four columns, the first one being the time, second and third being <span class="arithmatex">\(p^k(t)\)</span> and <span class="arithmatex">\(q^k(t)\)</span> (rotating frame controls), and the last one is the corresponding lab-frame pulse <span class="arithmatex">\(f^k(t)\)</span>. Note that the units of the control pulses are in frequency domain (divided by <span class="arithmatex">\(2\pi)\)</span>. The unit matches the unit specified with the system parameters such as the qubit ground frequencies <span class="arithmatex">\(\omega_k\)</span>.</li>
 <li><code>optim_history.dat</code> contains information about the optimization progress in terms of the overall objective function and contribution from each term (cost at final time <span class="arithmatex">\(T\)</span> and contribution from the tikhonov regularization and the penalty term), as well the norm of the gradient and the fidelity, for each iteration of the optimization. If only a forward simulation is performed, this file still prints out the objective function and fidelity for the forward simulation.
 Quandary always prints the current parameters and control pulses at the beginning of a simulation or optimization, and in addition at every <span class="arithmatex">\(l\)</span>-th optimization iteration determined from the <code>optim_monitor_frequency</code> configuration option.</li>
 </ul>
-<h2 id="plotting">Plotting</h2>
+<h3 id="plotting">Plotting</h3>
 <p>The format of all output files are very well suited for plotting with <a href="http://www.gnuplot.info">Gnuplot</a>, which is a command-line based plotting program that can output directly to screen, or into many other formats such as png, eps, or even tex. As an example, from within a Gnuplot session, you can plot e.g. the expected energy level of subsystem <span class="arithmatex">\(k=0\)</span> for initial condition <span class="arithmatex">\(m=0\)</span> by the simple command</p>
 <pre><code class="language-console">gnuplot&gt; plot 'expected0.iinit0000.dat' using 1:2 with lines title 'expected energy subsystem 0'
 </code></pre>
-<p>which plots the first against the second column of the file 'expected0.iinit0000.dat' to screen, connecting each point with a line. Additional lines (and files) can be added to the same plot by extending the above command with another file separated by comma (only omit the 'plot' keyword for the second command). There are many example scripts for plotting with gnuplot online, and as a starting point I recommend looking into some scripts in the 'quandary/util/' folder.</p>
+<p>which plots the first against the second column of the file 'expected0.iinit0000.dat' to screen, connecting each point with a line. Additional lines (and files) can be added to the same plot by extending the above command with another file separated by comma. There are many example scripts for plotting with gnuplot online, and as a starting point I recommend looking into some scripts in the 'quandary/util/' folder.</p>
 <h1 id="testing">Testing</h1>
-<ul>
-<li>Quandary has a set of regression tests. Please take a look at the <code>tests/regression/README.md</code> document for instructions on how to run the regression tests.</li>
-<li>In order to check if the gradient implementation is correct, one can choose to run a Central Finite Difference test. Let the overall objective function be denoted by <span class="arithmatex">\(F(\boldsymbol{\alpha})\)</span>. The Central Finite Difference test compares each element of the gradient <span class="arithmatex">\(\nabla F(\boldsymbol{\alpha})\)</span> with the following (second-order accurate) estimate:</li>
-</ul>
-<pre class="arithmatex">\[\begin{align*}
-    \left(\nabla F(\boldsymbol{\alpha}) \right)_i \approx \frac{F(\bfa + \epsilon\bs{e}_i) - F(\bfa - \epsilon\bs{e}_i)}{2\epsilon} \qquad \qquad \text{(CFD)}
-\end{align*}\]</pre>
-<p>for unit vectors <span class="arithmatex">\(\bs{e}_i\in \R^d\)</span>, and <span class="arithmatex">\(d\)</span> being the dimension of <span class="arithmatex">\(\bfa\)</span>.</p>
-<p>To enable the test, set the flag for the compiler directive <code>TEST_FD_GRAD</code> at the beginning of the <code>src/main.cpp</code> file. Quandary will then iterate over all elements in <span class="arithmatex">\(\alpha\)</span> and report the <em>relative</em> error of the implemented gradient with respect to the "true" gradient computed from CFD.</p>
+<p>Quandary has a set of regression tests. Please take a look at the <code>tests/regression/README.md</code> document for instructions on how to run the regression tests.</p>
 <h1 id="acknowledgments">Acknowledgments</h1>
 <p>This work was performed under the auspices of the U.S. Department of Energy by Lawrence
 Livermore National Laboratory under Contract DE-AC52-07NA27344. LLNL-SM-818073.</p>
@@ -791,61 +625,52 @@ necessarily state or reflect those of the United States government or Lawrence L
 National Security, LLC, and shall not be used for advertising or product endorsement purposes.
 -->
 
-<h1 id="appendix-details-for-the-real-valued-vectorized-hamiltonian">Appendix: Details for the real-valued, vectorized Hamiltonian</h1>
-<p>To assemble (evaluate)
-<span class="arithmatex">\(A(t) = Re(M(t))\)</span> and <span class="arithmatex">\(B(t) = Im(M(t))\)</span>, consider</p>
-<pre class="arithmatex">\[\begin{align}
-iH &amp;= iH_d(t) + iH_c(t) \\
-  &amp;= i\left( \sum_k (\omega_k - \omega_k^{\text{rot}}) a_k^\dagger a_k - \frac{\xi}{2}a_k^\dagger a_k^\dagger a_k a_k  - \sum_{l&gt;k}  \xi_{kl} a_k^\dagger a_k a_l^\dagger a_l +  \sum_{l&gt;k} J_{kl} \cos(\eta_{kl}t)\left(a_k^\dagger a_l + a_ka_l^\dagger \right)
-    \right.\\
-  &amp; \left. \quad \quad + \sum_k p^k(\vec{\alpha}^k,t) \left(a_k + a_k^\dagger\right) \right)\\
-  &amp;+ \left( \sum_k \sum_{kl} - J_{kl} \sin(\eta_{kl}t) \left(a_k^\dagger a_l - a_ka_l^\dagger\right)  - \sum_k q^k(\vec{\alpha}^k, t)\left(a_k - a_k^\dagger\right)\right)
-\end{align}\]</pre>
-<p>Hence <span class="arithmatex">\(A(t)\)</span> and <span class="arithmatex">\(B(t)\)</span> are given by</p>
+<h1 id="appendix-details-for-the-real-valued-system-matrices-standard-model">Appendix: Details for the real-valued system matrices (standard model)</h1>
+<p>The RHS system matrices <span class="arithmatex">\(A(t) = Re(-iH(t))=Im(H(t))\)</span> and <span class="arithmatex">\(B(t) = Im(-iH(t)) = -Re(H(t))\)</span> for the standard Hamiltonian model are assembled as follows. </p>
 <pre class="arithmatex">\[\begin{align}
 A(t) &amp;= A_d + \sum_k  q^k(\vec{\alpha}^k,t) A_c^k + \sum_{l&gt;k} J_{kl} \sin(\eta_{kl}t)  A_d^{kl} \\
-\text{with} \quad  A_d &amp;:= \sum_k \sum_{j=1,2} \gamma_{jk} \left( \Ell_{jk}\otimes\Ell_{jk} - \frac 1 2 \left(I_N \otimes \Ell_{jk}^T\Ell_{jk} + \Ell_{jk}^T\Ell_{jk}\otimes I_N\right) \right)\\
-A_c^k &amp;:=  I_N \otimes \left(a_k - a_k^\dagger\right) - \left(a_k - a_k^\dagger\right)^T\otimes I_N \\
-A_d^{kl} &amp;:=  I_N\otimes \left(a_k^\dagger a_l - a_k a_l^\dagger\right) - \left(a_k^\dagger a_l - a_k a_l^\dagger\right)^T\otimes I_N
+B(t) &amp;=  B_d + \sum_k p^k(\vec{\alpha}^k,t) B_c^k + \sum_{kl} J_{kl} \cos(\eta_{kl}t)B_d^{kl}\\
 \end{align}\]</pre>
-<p>and</p>
+<p><strong>Schroedinger solver</strong>:</p>
 <pre class="arithmatex">\[\begin{align}
-  B(t) &amp;=  B_d + \sum_k p^k(\vec{\alpha}^k,t) B_c^k + \sum_{kl} J_{kl} \cos(\eta_{kl}t)B_d^{kl}\\
-  \text{with} \quad B_d &amp;:= \sum_k (\omega_k - \omega_k^{\text{rot}}) \left(-I_N \otimes a_k^\dagger a_k + (a_k^\dagger a_k)^T \otimes I_N \right) - \frac{\xi_k}{2}\left(- I_N \otimes a_k^\dagger a_k^\dagger a_k a_k + (a_k^\dagger a_k^\dagger a_k a_k )^T\otimes I_N\right)  \\
-    &amp;\quad - \sum_{l&gt;k}  \xi_{kl} \left(-I_N \otimes a_k^\dagger a_k a_l^\dagger a_l + (a_k^\dagger a_k a_l^\dagger a_l)^T \otimes I_N \right)\\
-    B_c^k &amp;:=  - I_N \otimes \left(a_k + a_k^\dagger\right) + \left(a_k + a_k^\dagger\right)^T\otimes I_N \\
-    B_d^{kl} &amp;:=  - I_N\otimes \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + \left(a_k^\dagger a_l + a_k a_l^\dagger\right)^T\otimes I_N \\
+  A_d &amp;:= 0\\
+  A_c^k &amp;:=  a_k - a_k^\dagger  \\
+  A_d^{kl} &amp;:=  a_k^\dagger a_l + a_k a_l^\dagger \\
+\notag\\
+  B_d &amp;:= \sum_k -(\omega_k - \omega_k^{\text{rot}}) a_k^\dagger a_k  + \frac{\xi_k}{2}\left( a_k^\dagger a_k^\dagger a_k a_k \right)  + \sum_{l&gt;k}  \xi_{kl}\left(a_k^\dagger a_k a_l^\dagger a_l  \right)\\
+    B_c^k &amp;:=  -(a_k + a_k^\dagger) \\
+    B_d^{kl} &amp;:=  - \left(a_k^\dagger a_l + a_k a_l^\dagger\right)  
 \end{align}\]</pre>
-<p>The sparse-matrix solver initializes and stores the constant matrices
-<span class="arithmatex">\(A_d, A_d^{kl}, A_c^k, B_d, B_d^{kl}, B_c^k\)</span> using Petsc's sparse-matrix format. They are used
-as building blocks to evaluate the blocks in the system matrix <span class="arithmatex">\(M(t)\)</span> with</p>
+<p><strong>Lindblad solver</strong></p>
 <pre class="arithmatex">\[\begin{align}
-  A(t) &amp;= Re(M(t)) = A_d + \sum_k q^k(\alpha^k, t)A_c^k + \sum_{l&gt;k} J_{kl} \sin(\eta_{kl}t) A_d^{kl}\\
-  B(t) &amp;= Im(M(t)) = B_d + \sum_k p^k(\alpha^k, t)B_c^k + \sum_{kl} J_{kl} \cos(\eta_{kl}t) B_d^{kl}
+  A_d &amp;:= \vec L\\
+  A_c^k &amp;:=  I_N \otimes \left(a_k - a_k^\dagger\right) - \left(a_k - a_k^\dagger\right)^T\otimes I_N \\
+  A_d^{kl} &amp;:=  I_N\otimes \left(a_k^\dagger a_l - a_k a_l^\dagger\right) - \left(a_k^\dagger a_l - a_k a_l^\dagger\right)^T\otimes I_N \\
+\notag\\
+  B_d &amp;:= \sum_k -(\omega_k - \omega_k^{\text{rot}}) \left(I_N \otimes a_k^\dagger a_k - (a_k^\dagger a_k)^T \otimes I_N \right) + \frac{\xi_k}{2}\left( I_N \otimes a_k^\dagger a_k^\dagger a_k a_k - (a_k^\dagger a_k^\dagger a_k a_k )^T\otimes I_N\right)  \\
+    &amp;\quad + \sum_{l&gt;k}  \xi_{kl} \left(I_N \otimes a_k^\dagger a_k a_l^\dagger a_l - (a_k^\dagger a_k a_l^\dagger a_l)^T \otimes I_N \right)\\
+    B_c^k &amp;:=  -\left( I_N \otimes \left(a_k + a_k^\dagger\right) + \left(a_k + a_k^\dagger\right)^T\otimes I_N \right)\\
+    B_d^{kl} &amp;:=  - \left(I_N\otimes \left(a_k^\dagger a_l + a_k a_l^\dagger\right) + \left(a_k^\dagger a_l + a_k a_l^\dagger\right)^T\otimes I_N \right)\\
 \end{align}\]</pre>
-<p>at each time <span class="arithmatex">\(t\)</span>, which are applied to the vectorized, real-valued density matrix using Petsc's sparse MatVec implementation.</p>
-<p>The matrix-free solver does not explicitly store the matrices <span class="arithmatex">\(A_d,B_d,
-A_c^k, B_c^k\)</span>, etc., but instead only evaluates their action on a vector <span class="arithmatex">\(q(t)\)</span> using tensor contractions applied to the corresponding dimension of the density matrix tensor.</p>
+<p>The sparse-matrix solver initializes and stores the building blocks 
+<span class="arithmatex">\(A_d, A_d^{kl}, A_c^k, B_d, B_d^{kl}, B_c^k\)</span> using Petsc's sparse-matrix MPIAIJ format. The matrix-free solver (2-5 subsystems) applies the actions of those building blocks to state vectors.</p>
 <div class="footnote">
 <hr />
 <ol>
-<li id="fn:footnote_purestates">
-<p>We note that considering pure states of that specific form (<span class="arithmatex">\(\boldsymbol{e}_m\)</span> or <span class="arithmatex">\(\boldsymbol{e}_m\boldsymbol{e}_m^\dagger\)</span>) is not a restriction, because any other pure target state can be transformed to this representation using a unitary change of coordinates (compare the Appendix in <sup id="fnref7:guenther2021quantum"><a class="footnote-ref" href="#fn:guenther2021quantum">3</a></sup> for a more detailed description).&#160;<a class="footnote-backref" href="#fnref:footnote_purestates" title="Jump back to footnote 1 in the text">&#8617;</a></p>
-</li>
 <li id="fn:guenther2021quandary">
-<p>Stefanie Günther, N. Anders Petersson, and Jonathan L. DuBois. Quandary: an open-source c++ package for high-performance optimal control of open quantum systems. https://arxiv.org/abs/2110.10310, 2021. <a href="https://arxiv.org/abs/2110.10310">arXiv:2110.10310</a>.&#160;<a class="footnote-backref" href="#fnref:guenther2021quandary" title="Jump back to footnote 2 in the text">&#8617;</a></p>
+<p>Stefanie Günther, N. Anders Petersson, and Jonathan L. DuBois. Quandary: an open-source c++ package for high-performance optimal control of open quantum systems. https://arxiv.org/abs/2110.10310, 2021. <a href="https://arxiv.org/abs/2110.10310">arXiv:2110.10310</a>.&#160;<a class="footnote-backref" href="#fnref:guenther2021quandary" title="Jump back to footnote 1 in the text">&#8617;</a></p>
 </li>
 <li id="fn:guenther2021quantum">
-<p>Stefanie Günther, N. Anders Petersson, and Jonathan L. DuBois. Quantum optimal control for pure-state preparation using one initial state. <em>AVS Quantum Science</em>, 3:043801, 2021. <a href="https://arxiv.org/abs/2106.09148">arXiv:2106.09148</a>.&#160;<a class="footnote-backref" href="#fnref:guenther2021quantum" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:guenther2021quantum" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:guenther2021quantum" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:guenther2021quantum" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:guenther2021quantum" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:guenther2021quantum" title="Jump back to footnote 3 in the text">&#8617;</a><a class="footnote-backref" href="#fnref7:guenther2021quantum" title="Jump back to footnote 3 in the text">&#8617;</a></p>
+<p>Stefanie Günther, N. Anders Petersson, and Jonathan L. DuBois. Quantum optimal control for pure-state preparation using one initial state. <em>AVS Quantum Science</em>, 3:043801, 2021. <a href="https://arxiv.org/abs/2106.09148">arXiv:2106.09148</a>.&#160;<a class="footnote-backref" href="#fnref:guenther2021quantum" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:guenther2021quantum" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:guenther2021quantum" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:guenther2021quantum" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:guenther2021quantum" title="Jump back to footnote 2 in the text">&#8617;</a><a class="footnote-backref" href="#fnref6:guenther2021quantum" title="Jump back to footnote 2 in the text">&#8617;</a></p>
 </li>
 <li id="fn:petersson2021optimal">
-<p>N. Anders Petersson and Fortino Garcia. Optimal control of closed quantum systems via B-splines with carrier waves. <em>SIAM Journal on Scientific Computing</em>, 44(6):A3592&ndash;A3616, 2022. <a href="https://doi.org/10.1137/21M1429618">doi:10.1137/21M1429618</a>.&#160;<a class="footnote-backref" href="#fnref:petersson2021optimal" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:petersson2021optimal" title="Jump back to footnote 4 in the text">&#8617;</a></p>
+<p>N. Anders Petersson and Fortino Garcia. Optimal control of closed quantum systems via B-splines with carrier waves. <em>SIAM Journal on Scientific Computing</em>, 44(6):A3592&ndash;A3616, 2022. <a href="https://doi.org/10.1137/21M1429618">doi:10.1137/21M1429618</a>.&#160;<a class="footnote-backref" href="#fnref:petersson2021optimal" title="Jump back to footnote 3 in the text">&#8617;</a></p>
 </li>
 <li id="fn:goerz2014optimal">
-<p>Michael H. Goerz, Daniel M. Reich, and Christiane P. Koch. Optimal control theory for a unitary operation under dissipative evolution. <em>New Journal of Physics</em>, 16(5):055012, 2014.&#160;<a class="footnote-backref" href="#fnref:goerz2014optimal" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:goerz2014optimal" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:goerz2014optimal" title="Jump back to footnote 5 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:goerz2014optimal" title="Jump back to footnote 5 in the text">&#8617;</a></p>
+<p>Michael H. Goerz, Daniel M. Reich, and Christiane P. Koch. Optimal control theory for a unitary operation under dissipative evolution. <em>New Journal of Physics</em>, 16(5):055012, 2014.&#160;<a class="footnote-backref" href="#fnref:goerz2014optimal" title="Jump back to footnote 4 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:goerz2014optimal" title="Jump back to footnote 4 in the text">&#8617;</a></p>
 </li>
 <li id="fn:gunther2023practical">
-<p>Stefanie Günther and N. Anders Petersson. A practical approach to determine minimal quantum gate durations using amplitude-bounded quantum controls. <em>AVS Quantum Science</em>, 2023.&#160;<a class="footnote-backref" href="#fnref:gunther2023practical" title="Jump back to footnote 6 in the text">&#8617;</a></p>
+<p>Stefanie Günther and N. Anders Petersson. A practical approach to determine minimal quantum gate durations using amplitude-bounded quantum controls. <em>AVS Quantum Science</em>, 2023.&#160;<a class="footnote-backref" href="#fnref:gunther2023practical" title="Jump back to footnote 5 in the text">&#8617;</a></p>
 </li>
 </ol>
 </div></div>
