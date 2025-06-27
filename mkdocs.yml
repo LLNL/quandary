@@ -40,8 +40,8 @@ nav:
     - Tutorial: QuandaryWithPython_HowTo.ipynb
   - User Guide: user_guide.md
   - Reference:
-    - Python API: python_api.md
-    - Config Reference: config.md
+    - Python API Reference: python_api.md
+    - C++ Configuration Reference: config.md
     - Doxygen: "https://software.llnl.gov/quandary/doxygen/"
 
 use_directory_urls: true
