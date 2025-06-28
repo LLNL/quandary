@@ -267,18 +267,3 @@ void copyLast(std::vector<Tval>& fillme, int tosize){
       // std::cout<<std::endl;
     // }
 };
-
-/**
- * @brief Tests if two vectors of same length have equal elements
- * 
- * @param[in] a Vector to compare
- * @param[in] b Vector to compare, same length as a
- * @return bool True if and only if all elements are equal
- */
-bool vectorsEqual(const std::vector<int>& a, const std::vector<int>& b) {
-  int N = a.size();
-  for (int i = 0; i < N; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-};

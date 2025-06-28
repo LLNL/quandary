@@ -124,6 +124,12 @@ class MasterEq{
     std::string hamiltonian_file_Hsys; ///< Filename if a custom system Hamiltonian is read from file ('none' if standard Hamiltonian is used)
     std::string hamiltonian_file_Hc; ///< Filename if a custom control Hamiltonians are read from file ('none' if standard Hamiltonian is used)
 
+    std::vector<double> spin_J; ///< Spin-spin coupling coefficients for Heisenberg model
+    std::vector<double> spin_K; ///< Spin-Kerr coefficients for Heisenberg model
+    std::vector<double> spin_U; ///< Spin-U coefficients for Heisenberg model
+    std::vector<double> spin_hpara; ///< Spin-hpara coefficients for Heisenberg model
+    std::vector<double> spin_hperp; ///< Spin-hperp coefficients for Heisenberg model
+
   public:
     std::vector<int> nlevels; ///< Number of levels per oscillator
     std::vector<int> nessential; ///< Number of essential levels per oscillator
@@ -148,7 +154,7 @@ class MasterEq{
      * @param hamiltonian_file_Hc Filename for control Hamiltonian data
      * @param quietmode Flag for quiet operation (default: false)
      */
-    MasterEq(const std::vector<int>& nlevels, const std::vector<int>& nessential, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_Hsys, const std::string& hamiltonian_file_Hc, bool quietmode=false);
+    MasterEq(const std::vector<int>& nlevels, const std::vector<int>& nessential, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_Hsys, const std::string& hamiltonian_file_Hc, std::vector<double>& spin_J_, std::vector<double>& spin_K_, std::vector<double>& spin_U_, std::vector<double>& spin_hpara_, std::vector<double>& spin_hperp_, bool quietmode=false);
 
     ~MasterEq();
 

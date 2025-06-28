@@ -325,8 +325,16 @@ int main(int argc,char **argv)
     if (mpirank_world==0 && !quietmode) printf("# Warning: Matrix-free solver can not be used when Hamiltonian is read fromfile. Switching to sparse-matrix version.\n");
     usematfree = false;
   }
+  // Check for spin chain coefficients
+  std::vector<double> spin_J, spin_K, spin_U, spin_hpara, spin_hperp;
+  config.GetVecDoubleParam("spin_J", spin_J, 0.0, true, false);
+  config.GetVecDoubleParam("spin_K", spin_K, 0.0, true, false);
+  config.GetVecDoubleParam("spin_U", spin_U, 0.0, true, false);
+  config.GetVecDoubleParam("spin_hpara", spin_hpara, 0.0, true, false);
+  config.GetVecDoubleParam("spin_hperp", spin_hperp, 0.0, true, false);
+
   // Initialize Master equation
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, hamiltonian_file_Hsys, hamiltonian_file_Hc, quietmode);
+  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, hamiltonian_file_Hsys, hamiltonian_file_Hc, spin_J, spin_K, spin_U, spin_hpara, spin_hperp, quietmode);
 
 
   /* Output */
