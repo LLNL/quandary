@@ -289,10 +289,10 @@ void MasterEq::initSparseMatSolver(){
         double val_re, val_im;
         getHeisenbergMatElement(row, col, spin_J, spin_K, spin_U, spin_hpara, spin_hperp, &val_re, &val_im);
         if (fabs(val_im) > 1e-12){
-          MatSetValue(Ad, row, col, val_im, ADD_VALUES);
+          MatSetValue(Ad, row, col, val_im, INSERT_VALUES);
         }
         if (fabs(val_re) > 1e-12){
-          MatSetValue(Bd, row, col, -val_re, ADD_VALUES);
+          MatSetValue(Bd, row, col, -val_re, INSERT_VALUES);
         }
       }
     }
@@ -728,39 +728,39 @@ void MasterEq::getHeisenbergMatElement(int row, int col, const vector<double>& J
   for (int i = 0; i < N; i++) {
     // Z-field term: hpara[i] * ⟨bra|sz_i|ket⟩
     if (row == col) {
-      double z_eigenval = (col >> i) ? 1.0 : -1.0;
+      double z_eigenval = ((col >> (N-1-i)) & 1) ? -1.0 : 1.0;
       element_re += hpara[i] * z_eigenval;
     }
     // X-field term: hperp[i] * ⟨bra|sx_i|ket⟩
-    int ket_flipped = col ^ (1 << i);  // Flip bit i
+    int ket_flipped = col ^ (1 << (N-1-i)); // Flip bit i
     if (row == ket_flipped) {
       element_re += hperp[i];
     }
   }
 
-  // // Two-qubit interaction terms
+  // Two-qubit interaction terms
   for (int i = 0; i < N - 1; i++) {
     // ZZ interaction: U[i] * ⟨bra|sz_i * sz_{i+1}|ket⟩
     if (row == col) {
-      double z_i = (col >> i) ? 1.0 : -1.0;
-      double z_j = (col >> (i+1)) ? 1.0 : -1.0;
+      double z_i = ((col >> (N-1-i)) & 1) ? -1.0 : 1.0;
+      double z_j = ((col >> (N-1-(i+1))) & 1) ? -1.0 : 1.0;
       element_re += U[i] * z_i * z_j;
     }
     // XX interaction: -J[i] * ⟨bra|sx_i * sx_{i+1}|ket⟩
-    int ket_xx = col ^ (1 << i) ^ (1 << (i+1));  // Flip both bits i and i+1
+    int ket_xx =  col ^ (1 << (N-1-i)) ^ (1 << (N-1-(i+1)));  // Flip both bits i and i+1
     if (row == ket_xx) {
       element_re -= J[i];
     }
     // YY interaction: -K[i] * ⟨bra|sy_i * sy_{i+1}|ket⟩
-    int ket_yy = col ^ (1 << i) ^ (1 << (i+1));  // Flip both bits i and i+1
+    int ket_yy = col ^ (1 << (N-1-i)) ^ (1 << (N-1-(i+1)));  // Flip both bits i and i+1
     if (row == ket_yy) {
       // Calculate phase: sy|0⟩ = i|1⟩, sy|1⟩ = -i|0⟩
       double phase_re, phase_im;
       phase_re = 0.0;
-      phase_im = ((col >> i) & 1) ? -1.0 : 1.0;
+      phase_im = ((col >> (N-1-i)) & 1) ? -1.0 : 1.0;
       // Phase from sy_{i+1}
       double tmp = phase_re;
-      if ((col >> (i+1)) & 1) {  // ket[i+1] == 1
+      if ((col >> (N-1-(i+1))) & 1) {  // ket[i+1] == 1
         phase_re = phase_im; 
         phase_im = tmp;
       } else {  // ket[i+1] == 0
