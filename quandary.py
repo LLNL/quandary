@@ -191,7 +191,7 @@ class Quandary:
             return -1
 
         # Set some defaults, if not set by the user
-        if len(self.freq01) != len(self.Ne) and len(self.Hsys)<=0:
+        if len(self.freq01) != len(self.Ne) and self.standardmodel:
             self.Ne = [2 for _ in range(len(self.freq01))]
         if len(self.Ng) != len(self.Ne):
             self.Ng = [0 for _ in range(len(self.Ne))]
@@ -724,7 +724,7 @@ class Quandary:
         mystring += "optim_penalty_energy= " + str(self.gamma_energy) + "\n"
         mystring += "datadir= ./\n"
         for iosc in range(len(self.Ne)):
-            mystring += "output" + str(iosc) + "=expectedEnergy, population, fullstate\n"
+            mystring += "output" + str(iosc) + "=expectedEnergy, population\n"
         mystring += "output_frequency = 1\n"
         mystring += "optim_monitor_frequency = " + str(self.print_frequency_iter) + "\n"
         mystring += "runtype = " + runtype + "\n"
