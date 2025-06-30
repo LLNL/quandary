@@ -6,11 +6,6 @@ site_url: https://software.llnl.gov/quandary/
 plugins:
   - search
   - mkdocs-jupyter
-  - macros:
-      j2_variable_start_string: '[['
-      j2_variable_end_string: ']]'
-      j2_comment_start_string: '[#'
-      j2_comment_end_string: '#]'
   - bibtex:
       bib_file: "docs/mkdocs/user_guide.bib"
       enable_inline_citations: false
