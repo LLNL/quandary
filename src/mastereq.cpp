@@ -68,7 +68,16 @@ MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nes
 
   /* Sanity check for parallel petsc */
   if (dim % mpisize_petsc != 0) {
-    if (mpirank_world==0) printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer divisor of system dimension (%d).\n", mpisize_petsc, dim);
+    if (mpirank_world==0) printf("\n ERROR in parallel distribution: Petsc's communicator size (%d) must be integer divisor of system dimension (%lld).\n", mpisize_petsc, (long long)dim);
+    exit(1);
+  }
+
+  // Check for potential integer overflow when dim >= 2^30 and PetscInt is 32-bit.
+  if (dim >= (1 << 30) && sizeof(PetscInt) <= 4) {
+    if (mpirank_world == 0) {
+      printf("\nERROR: System dimension (%lld) is too large for 32-bit PetscInt.\n", (long long)dim);
+      printf("Please recompile with 64-bit PetscInts or reduce system size.\n\n");
+    }
     exit(1);
   }
 
@@ -110,7 +119,7 @@ MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nes
   /* Create vector strides for accessing Re and Im part in x */
   PetscInt ilow, iupp;
   MatGetOwnershipRange(RHS, &ilow, &iupp);
-  int dimis = (iupp - ilow)/2;
+  PetscInt dimis = (iupp - ilow)/2;
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
   ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
 
@@ -258,7 +267,7 @@ void MasterEq::initSparseMatSolver(){
     }
   }
 
-  int dimmat = dim_rho; // this is N!
+  PetscInt dimmat = dim_rho; // this is N!
 
   /* If a Hamiltonian file is given, read the system matrices from file. */ 
   if (hamiltonian_file_Hsys.compare("none") != 0 || hamiltonian_file_Hc.compare("none") != 0) {
@@ -367,21 +376,21 @@ void MasterEq::initSparseMatSolver(){
   } else {
 
     PetscInt ilow, iupp;
-    int r1,r2, r1a, r2a, r1b, r2b;
-    int col, col1, col2;
+    PetscInt r1,r2, r1a, r2a, r1b, r2b;
+    PetscInt col, col1, col2;
     double val;
 
     for (int iosc = 0; iosc < noscillators; iosc++) {
 
       /* Get dimensions */
       int nk     = oscil_vec[iosc]->getNLevels();
-      int npostk = oscil_vec[iosc]->dim_postOsc;
+      PetscInt npostk = oscil_vec[iosc]->dim_postOsc;
 
       /* Set control Hamiltonian system matrix real(-iHc) */
       /* Lindblad solver:     Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N   \in C^{N^2 x N^2}*/
       /* Schroedinger solver: Ac = a - a^T   \in C^{N x N}  */
       MatGetOwnershipRange(Ac_vec[iosc], &ilow, &iupp);
-      for (int row = ilow; row<iupp; row++){
+      for (PetscInt row = ilow; row<iupp; row++){
         // A_c or I_N \kron A_c
         col1 = row + npostk;
         col2 = row - npostk;
@@ -465,25 +474,25 @@ void MasterEq::initSparseMatSolver(){
     for (int iosc = 0; iosc < noscillators; iosc++) {
       // Dimensions of ioscillator
       int nk     = oscil_vec[iosc]->getNLevels();
-      int nprek  = oscil_vec[iosc]->dim_preOsc;
-      int npostk = oscil_vec[iosc]->dim_postOsc;
+      PetscInt nprek  = oscil_vec[iosc]->dim_preOsc;
+      PetscInt npostk = oscil_vec[iosc]->dim_postOsc;
 
       for (int josc=iosc+1; josc<noscillators; josc++){
         if (fabs(Jkl[id_kl]) > 1e-12) { // only allocate if coefficient is non-zero to save memory.
           // Dimensions of joscillator
           int nj     = oscil_vec[josc]->getNLevels();
-          int npostj = oscil_vec[josc]->dim_postOsc;
+          PetscInt npostj = oscil_vec[josc]->dim_postOsc;
 
           /* Iterate over local rows of Ad_vec / Bd_vec */
           MatGetOwnershipRange(Ad_vec[matid], &ilow, &iupp);
-          for (int row = ilow; row<iupp; row++){
+          for (PetscInt row = ilow; row<iupp; row++){
             // Add +/- I_N \kron (ak^Tal -/+ akal^T) (Lindblad)
             // or  +/- (ak^Tal -/+ akal^T) (Schrodinger)
             r1 = row % (dimmat / nprek);
-            r1a = (int) r1 / npostk;
+            r1a = r1 / npostk;
             r1b = r1 % (nj*npostj);
             r1b = r1b % (nj*npostj);
-            r1b = (int) r1b / npostj;
+            r1b = r1b / npostj;
             if (r1a > 0 && r1b < nj-1) {
               val = Jkl[id_kl] * sqrt(r1a * (r1b+1));
               col = row - npostk + npostj;
@@ -500,10 +509,10 @@ void MasterEq::initSparseMatSolver(){
             if (lindbladtype != LindbladType::NONE) {
               // Add -/+ (al^Tak -/+ alak^T) \kron I
               r1 = row % (dimmat * dimmat / nprek );
-              r1a = (int) r1 / (npostk*dimmat);
+              r1a = r1 / (npostk*dimmat);
               r1b = r1 % (npostk*dimmat);
               r1b = r1b % (nj*npostj*dimmat);
-              r1b = (int) r1b / (npostj*dimmat);
+              r1b = r1b / (npostj*dimmat);
               if (r1a < nk-1 && r1b > 0) {
                 val = Jkl[id_kl] * sqrt((r1a+1) * r1b);
                 col = row + npostk*dimmat - npostj*dimmat;
@@ -529,24 +538,24 @@ void MasterEq::initSparseMatSolver(){
     for (int iosc = 0; iosc < noscillators; iosc++) {
 
       int nk     = oscil_vec[iosc]->getNLevels();
-      int npostk = oscil_vec[iosc]->dim_postOsc;
+      PetscInt npostk = oscil_vec[iosc]->dim_postOsc;
       double xik = oscil_vec[iosc]->getSelfkerr();
       double detunek = oscil_vec[iosc]->getDetuning();
 
       /* Diagonal: detuning and anharmonicity  */
       /* Iterate over local rows of Bd */
       MatGetOwnershipRange(Bd, &ilow, &iupp);
-      for (int row = ilow; row<iupp; row++){
+      for (PetscInt row = ilow; row<iupp; row++){
 
         // Indices for -I_N \kron B_d
         if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
         else r1 = row;
         r1 = r1 % (nk * npostk);
-        r1 = (int) r1 / npostk;
+        r1 = r1 / npostk;
         // Indices for B_d \kron I_N
-        r2 = (int) row / dimmat;
+        r2 = row / dimmat;
         r2 = r2 % (nk * npostk);
-        r2 = (int) r2 / npostk;
+        r2 = r2 / npostk;
         if (lindbladtype == LindbladType::NONE) r2 = 0;
 
         // -Bd, or -I_N \kron B_d + B_d \kron I_N
@@ -558,11 +567,11 @@ void MasterEq::initSparseMatSolver(){
       /* zz-coupling term  -xi_ij * 2 * PI * (N_i*N_j) for j > i */
       for (int josc = iosc+1; josc < noscillators; josc++) {
         int nj     = oscil_vec[josc]->getNLevels();
-        int npostj = oscil_vec[josc]->dim_postOsc;
+        PetscInt npostj = oscil_vec[josc]->dim_postOsc;
         double xikj = crosskerr[coupling_id];
         coupling_id++;
 
-        for (int row = ilow; row<iupp; row++){
+        for (PetscInt row = ilow; row<iupp; row++){
           if (lindbladtype != LindbladType::NONE) r1 = row % dimmat;
           else r1 = row;
           r1 = r1 % (nk * npostk);
@@ -571,7 +580,7 @@ void MasterEq::initSparseMatSolver(){
           r1b = r1b % (nj*npostj);
           r1b = r1b / npostj;
 
-          r2 = (int) row / dimmat;
+          r2 = row / dimmat;
           r2 = r2 % (nk * npostk);
           r2a = r2 / npostk;
           r2b = r2 % npostk;
@@ -633,8 +642,8 @@ void MasterEq::initSparseMatSolver(){
   if (addT1 || addT2) {  // leave matrix empty if no T1 or T2 decay
 
     PetscInt ilow, iupp;
-    int r1,r1a, r1b;
-    int col1;
+    PetscInt r1,r1a, r1b;
+    PetscInt col1;
     double val;
     for (int iosc = 0; iosc < noscillators; iosc++) {
 
@@ -646,11 +655,11 @@ void MasterEq::initSparseMatSolver(){
 
       // Dimensions 
       int nk     = oscil_vec[iosc]->getNLevels();
-      int npostk = oscil_vec[iosc]->dim_postOsc;
+      PetscInt npostk = oscil_vec[iosc]->dim_postOsc;
 
       /* Iterate over local rows of Ad */
       MatGetOwnershipRange(Ad, &ilow, &iupp);
-      for (int row = ilow; row<iupp; row++){
+      for (PetscInt row = ilow; row<iupp; row++){
 
         /* Add Ad += gamma_j * L \kron L */
         r1 = row % (dimmat*nk*npostk);
@@ -1349,7 +1358,7 @@ void compute_dRHS_dParams_matfree(const double t,const Vec x,const Vec xbar, con
   VecRestoreArrayRead(xbar, &xbarptr);
 
   /* Set the gradient wrt controls */
-  int col_shift = 0;
+  PetscInt col_shift = 0;
   double* grad_ptr;
   VecGetArray(grad, &grad_ptr);
   for (int iosc = 0; iosc < noscillators; iosc++){
@@ -2988,7 +2997,7 @@ double MasterEq::expectedEnergy(const Vec x){
  
   PetscInt dim;
   VecGetSize(x, &dim);
-  int dimmat = dim_rho; // N 
+  PetscInt dimmat = dim_rho; // N
 
   /* Get locally owned portion of x */
   PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
@@ -2997,9 +3006,9 @@ double MasterEq::expectedEnergy(const Vec x){
 
   /* Iterate over diagonal elements to add up expected energy level */
   double expected = 0.0;
-  for (int i=0; i<dimmat; i++) {
+  for (PetscInt i=0; i<dimmat; i++) {
     /* Get diagonal element in number operator */
-    int num_diag = i ;
+    PetscInt num_diag = i ;
 
     /* Get diagonal element in rho (real) and sum up */
     if (lindbladtype != LindbladType::NONE){ // Lindblad solver: += i * rho_ii
@@ -3031,7 +3040,7 @@ double MasterEq::expectedEnergy(const Vec x){
 void MasterEq::population(const Vec x, std::vector<double> &pop){
 
   pop.clear();
-  for (int k=0; k<dim_rho; k++){
+  for (PetscInt k=0; k<dim_rho; k++){
     pop.push_back(0.0);
   }
   assert (pop.size() == static_cast<size_t>(dim_rho));
@@ -3043,7 +3052,7 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
   VecGetOwnershipRange(x, &ilow, &iupp);
 
   /* Iterate over diagonal elements of the density matrix */
-  for (int idiag=0; idiag < dim_rho; idiag++) {
+  for (PetscInt idiag=0; idiag < dim_rho; idiag++) {
     double popi = 0.0;
     /* Get the diagonal element */
     if (lindbladtype != LindbladType::NONE) { // Lindblad solver

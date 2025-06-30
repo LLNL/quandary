@@ -4,7 +4,7 @@ HamiltonianFileReader::HamiltonianFileReader(){
 }
 
 
-HamiltonianFileReader::HamiltonianFileReader(std::string hamiltonian_file_Hsys_, std::string hamiltonian_file_Hc_, LindbladType lindbladtype_, int dim_rho_, bool quietmode_) {
+HamiltonianFileReader::HamiltonianFileReader(std::string hamiltonian_file_Hsys_, std::string hamiltonian_file_Hc_, LindbladType lindbladtype_, PetscInt dim_rho_, bool quietmode_) {
 
   lindbladtype = lindbladtype_;
   dim_rho = dim_rho_;
@@ -33,7 +33,7 @@ void HamiltonianFileReader::receiveHsys(Mat& Ad, Mat& Bd){
     while (std::getline(infile, line)) {
         if (line.empty() || line[0] == '#') continue;
         std::istringstream iss(line);
-        int row, col;
+        PetscInt row, col;
         double real, imag;
         if (!(iss >> row >> col >> real >> imag)) continue;
         // Assemble: Ad = Real(-i*Hsys) = Imag(Hsys)
@@ -44,9 +44,9 @@ void HamiltonianFileReader::receiveHsys(Mat& Ad, Mat& Bd){
             if (fabs(real) > 1e-15) MatSetValue(Bd, row, col, -real, INSERT_VALUES);
         } else {
             // Lindblad: Vectorize I_N \kron X - X^T \kron I_N
-            for (int k = 0; k < dim_rho; k++) {
-              int rowk = row + dim_rho * k;
-              int colk = col + dim_rho * k;
+            for (PetscInt k = 0; k < dim_rho; k++) {
+              PetscInt rowk = row + dim_rho * k;
+              PetscInt colk = col + dim_rho * k;
               if (fabs(imag) > 1e-15) MatSetValue(Ad, rowk, colk, imag, INSERT_VALUES);
               if (fabs(real) > 1e-15) MatSetValue(Bd, rowk, colk, -real, INSERT_VALUES);
               rowk = col * dim_rho + k;
@@ -84,7 +84,8 @@ void HamiltonianFileReader::receiveHc(std::vector<Mat>& Ac_vec, std::vector<Mat>
     while (std::getline(infile, line)) {
         if (line.empty() || line[0] == '#') continue;
         std::istringstream iss(line);
-        int osc, row, col;
+        int osc;
+        PetscInt row, col;
         double real, imag;
         if (!(iss >> osc >> row >> col >> real >> imag)) continue;
         // printf("osc %d row %d col %d real %f imag %f\n", osc, row, col, real, imag);
@@ -96,9 +97,9 @@ void HamiltonianFileReader::receiveHc(std::vector<Mat>& Ac_vec, std::vector<Mat>
           if (fabs(real) > 1e-15) MatSetValue(Bc_vec[osc], row, col, -real, INSERT_VALUES);
         } else {
             // Lindblad: Vectorize I_N \kron X - X^T \kron I_N
-            for (int k = 0; k < dim_rho; k++) {
-              int rowk = row + dim_rho * k;
-              int colk = col + dim_rho * k;
+            for (PetscInt k = 0; k < dim_rho; k++) {
+              PetscInt rowk = row + dim_rho * k;
+              PetscInt colk = col + dim_rho * k;
               if (fabs(imag) > 1e-15) MatSetValue(Ac_vec[osc], rowk, colk, imag, INSERT_VALUES);
               if (fabs(real) > 1e-15) MatSetValue(Bc_vec[osc], rowk, colk, -real, INSERT_VALUES);
               rowk = col * dim_rho + k;

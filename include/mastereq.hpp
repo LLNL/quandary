@@ -96,9 +96,9 @@ int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y); ///< Transpose sparse m
 class MasterEq{
 
   protected:
-    int dim; ///< Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
-    int dim_rho; ///< Dimension of Hilbert space = N
-    int dim_ess; ///< Dimension of essential levels = N_e
+    PetscInt dim; ///< Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
+    PetscInt dim_rho; ///< Dimension of Hilbert space = N
+    PetscInt dim_ess; ///< Dimension of essential levels = N_e
     int noscillators; ///< Number of oscillators in the system
     Oscillator** oscil_vec; ///< Array of pointers to oscillator objects
 
@@ -189,23 +189,23 @@ class MasterEq{
     /**
      * @brief Retrieves the dimension of the vectorized system.
      *
-     * @return int \f$N^2\f$ for Lindblad solver, \f$N\f$ for Schroedinger solver
+     * @return PetscInt \f$N^2\f$ for Lindblad solver, \f$N\f$ for Schroedinger solver
      */
-    int getDim(){ return dim; }
+    PetscInt getDim(){ return dim; }
 
     /**
      * @brief Retrieves the dimension of the essential level system.
      *
-     * @return int Dimension N_e of essential levels
+     * @return PetscInt Dimension N_e of essential levels
      */
-    int getDimEss(){ return dim_ess; }
+    PetscInt getDimEss(){ return dim_ess; }
 
     /**
      * @brief Retrieves the dimension of the density matrix.
      *
-     * @return int Dimension N of the Hilbert space
+     * @return PetscInt Dimension N of the Hilbert space
      */
-    int getDimRho(){ return dim_rho; }
+    PetscInt getDimRho(){ return dim_rho; }
 
     /**
      * @brief Assembles the real-valued system matrix (RHS) at time t.
