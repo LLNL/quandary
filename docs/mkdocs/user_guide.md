@@ -40,7 +40,7 @@ The **default Hamiltonian** in Quandary models superconducting (transmon) qubits
   H_c(t) &:= \sum_{k=0}^{Q-1} f^k(t) \left(a_k + a_k^\dagger \right)
 \end{align}
 
-where $\omega_k\geq 0$ denotes $0 \rightarrow 1$ transition frequencies for each oscillator $k$, $\xi_k\geq 0$ are the self-Kerr coefficients. Coulings can be specified through the cross resonance coefficients $J_{kl}\geq 0$ ("dipole-dipole interaction") or through $\xi_{kl}\geq 0$ ("zz-coupling"). 
+where $\omega_k\geq 0$ denotes $0 \rightarrow 1$ transition frequencies for each oscillator $k$, $\xi_k\geq 0$ are the self-Kerr coefficients. Couplings can be specified through the cross resonance coefficients $J_{kl}\geq 0$ ("dipole-dipole interaction") or through $\xi_{kl}\geq 0$ ("zz-coupling"). 
 Here, $a_k\in \C^{N\times N}$ denotes the lowering operator acting on subsystem $k$.
 The control pulses $f^k(t)$ can be either specified or optimized for, compare section [Control pulse parameterization](#sec:controlpulses). **Custom system and control Hamiltonian operators** can be specified through Quandary's python interface.
 
@@ -176,7 +176,7 @@ Target gates will by default be rotated into the computational frame (Section [M
 If guard levels are used ($n_k > n_k^e$, compare Section [Essential and guard levels](#sec:essential)), the gate should be defined in the essential-level dimensions only. Internally, the gate is projected upwards to the full dimensions by inserting identity blocks for rows/columns that correspond to a non-essential levels of the subsystems. Hence, a realization of the gate $\tilde{V}$ will not alter the occupation of higher (non-essential) energy level compared to their initial occupation at $t=0$.
 
 ### State preparation {#sec:stateprep}
-Quandary can be used to optimize for pulses that drive (one or multiple) initial states to a fixed target state $\rho^{target}$. Depending on the choise of the [Initial conditions](#sec:initcond), this enables pulses for either direct **state-to-state transfer** (by choosing one specific initial condition, $n_{init}=1$), and one specific target state), or **unconditional state preparation** such as qubit reset (by spanning a basis of initial conditions, $n_{init}=N$ or $N^2, and one specific target state). Driving a basis of initial state to a common target will require to couple to a dissipative bath, which should be accounted for in the model setup. For unconditional *pure*-state preparation, it is shown in [@guenther2021quantum] that if one chooses the objective function $J_{measure}$ with corresponding measurement operator $N_m$ (see eq. $\eqref{eq:Jmeasure}$), one can reduce the number of initial conditions to only *one* being an ensemble of all basis states, and hence $n_{init}=1$ independent of $N$. Compare [@guenther2021quantum] for details, and Section [Ensemble state for pure-state optimization](#sec:ensemblestate).
+Quandary can be used to optimize for pulses that drive (one or multiple) initial states to a fixed target state $\rho^{target}$. Depending on the choice of the [Initial conditions](#sec:initcond), this enables pulses for either direct **state-to-state transfer** (by choosing one specific initial condition, $n_{init}=1$), and one specific target state), or **unconditional state preparation** such as qubit reset (by spanning a basis of initial conditions, $n_{init}=N$ or $N^2, and one specific target state). Driving a basis of initial state to a common target will require to couple to a dissipative bath, which should be accounted for in the model setup. For unconditional *pure*-state preparation, it is shown in [@guenther2021quantum] that if one chooses the objective function $J_{measure}$ with corresponding measurement operator $N_m$ (see eq. $\eqref{eq:Jmeasure}$), one can reduce the number of initial conditions to only *one* being an ensemble of all basis states, and hence $n_{init}=1$ independent of $N$. Compare [@guenther2021quantum] for details, and Section [Ensemble state for pure-state optimization](#sec:ensemblestate).
 
 If the target state is *pure*, internal computations are simplified and it is recommended to pass the specific identifier ``pure, i0, i1, i2, ...`` to the Quandary configuration for the optimization target, denoting a pure target state of the form $\psi = |i_0i_1i_2...\rangle$, or $\rho = \psi\psi^\dagger$
 
@@ -208,7 +208,7 @@ The three initial states from above do not suffice to estimate the fidelity of t
 <br>
 Note: The $N+1$ initial states are spanned in the *full* dimension of the system, including non-essential levels, see above for 3-state initialization.
 
-* **Pure initial state for state-to-state tranfer**: $n_{init} = 1$. The user can choose a pure initial state of the form $\psi(0) = |i_0, i_1, i_2, ...\rangle$, or $\rho(0) = \psi(0)\psi(0)^\dagger$, through the configuration option ``pure, i0, i1, i2, ...``
+* **Pure initial state for state-to-state transfer**: $n_{init} = 1$. The user can choose a pure initial state of the form $\psi(0) = |i_0, i_1, i_2, ...\rangle$, or $\rho(0) = \psi(0)\psi(0)^\dagger$, through the configuration option ``pure, i0, i1, i2, ...``
 
 * **Arbitrary initial state for state-to-state transformation**: $n_{init}=1$. An arbitrary (non-pure) initial state can be passed to Quandary directly through the Python interface, or can be read from a file in the C++ code. File format: column-wise vectorized density matrix or the state vector, first all real parts, then all imaginary parts. 
 
@@ -218,7 +218,7 @@ Note: The $N+1$ initial states are spanned in the *full* dimension of the system
 
 
 ## Regularization, penalty terms, and leakage prevention {#sec:penalty}
-In order to regularize the optimization problem (stabilize optimization convergence), it is adviced to add a Tikhonov regularization term to the objective function, by choosing a small $\gamma_1 > 0$
+In order to regularize the optimization problem (stabilize optimization convergence), it is advised to add a Tikhonov regularization term to the objective function, by choosing a small $\gamma_1 > 0$
 
 \begin{align}
   \mbox{Tikhonov} = \frac{\gamma_1}{2} \| \bfa \|^2_2
