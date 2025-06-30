@@ -275,32 +275,93 @@ void MasterEq::initSparseMatSolver(){
   /* Else: Check for Spinchain hamiltonian */
   } else if (spin_J.size() > 0 || spin_U.size() > 0 || spin_K.size() > 0 || spin_hpara.size() > 0 || spin_hperp.size() > 0) { 
 
+    /* pass to Ad=Re(-iH)=Im(H), Bd=Im(-iH)=-Re(H) */
+
     if (mpirank_world==0 && !quietmode) printf("\n# Set up Heisenberg Hamiltonian model.\n");
 
-    // pass to Ad=Re(-iH)=Im(H), Bd=Im(-iH)=-Re(H)
+    // Reset
     MatZeroEntries(Ad);
     MatZeroEntries(Bd);
     MatSetOption(Ad, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
     MatSetOption(Bd, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+
+    // Figure out petsc-parallel distribution 
     PetscInt row_start, row_end;
     MatGetOwnershipRange(Ad, &row_start, &row_end);
-    for (int row=row_start; row<row_end; row++){
-      for (int col=0; col<dim_rho; col++){
-        double val_re, val_im;
-        getHeisenbergMatElement(row, col, spin_J, spin_K, spin_U, spin_hpara, spin_hperp, &val_re, &val_im);
-        if (fabs(val_im) > 1e-12){
-          MatSetValue(Ad, row, col, val_im, INSERT_VALUES);
+
+    int N = spin_hpara.size();
+
+    // Process each basis state in the given row range
+    for (int state = row_start; state < row_end; state++) {
+
+      // Diagonal elements: Z-field contributions
+      double diagonal_val = 0.0;
+      for (int i = 0; i < N; i++) {
+          double z_eigenval = ((state >> (N-1-i)) & 1) ? -1.0 : 1.0;
+          diagonal_val += spin_hpara[i] * z_eigenval;
+      }
+      // Diagonal element: Two-qubit ZZ interaction 
+      for (int i = 0; i < N - 1; i++) {
+          double z_i = ((state >> (N-1-i)) & 1) ? -1.0 : 1.0;
+          double z_j = ((state >> (N-1-(i+1))) & 1) ? -1.0 : 1.0;
+          diagonal_val += spin_U[i] * z_i * z_j;
+      }
+      if (fabs(diagonal_val) > 1e-12) {
+          double val = -diagonal_val;
+          MatSetValues(Bd, 1, &state, 1, &state, &val, ADD_VALUES);
+      }
+
+      // Off-diagonal elements: X-field contributions
+      for (int i = 0; i < N; i++) {
+          if (fabs(spin_hperp[i]) > 1e-12) {
+              int flipped_state = state ^ (1 << (N-1-i));
+              double val = -spin_hperp[i];
+              MatSetValues(Bd, 1, &state, 1, &flipped_state, &val, ADD_VALUES);
+          }
+      }
+
+      // Off-diagonal elements:  
+      for (int i = 0; i < N - 1; i++) {
+        // Flip both bits i and i+1 simultaneously
+        int target_state = state ^ (1 << (N-1-i)) ^ (1 << (N-1-(i+1)));
+        double val_re = 0.0;
+        double val_im = 0.0;
+        // Two-qubit XX interaction terms
+        if (fabs(spin_J[i]) > 1e-12) {
+            val_re += spin_J[i];
         }
-        if (fabs(val_re) > 1e-12){
-          MatSetValue(Bd, row, col, -val_re, INSERT_VALUES);
+        // Two-qubit YY interaction 
+        if (fabs(spin_K[i]) > 1e-12) {
+          double phase_re = 0.0;
+          double phase_im = ((state >> (N-1-i)) & 1) ? -1.0 : 1.0;
+          // Phase from sy_{i+1}
+          double tmp = phase_re;
+          if ((state >> (N-1-(i+1))) & 1) {  // ket[i+1] == 1
+              phase_re = phase_im; 
+              phase_im = tmp;
+          } else {  // ket[i+1] == 0
+              phase_re = -phase_im; 
+              phase_im = tmp;
+          }
+          val_re +=  spin_K[i] * phase_re;
+          val_im += -spin_K[i] * phase_im;
+        }
+        if (fabs(val_im) > 1e-12) {
+            MatSetValues(Ad, 1, &state, 1, &target_state, &val_im, ADD_VALUES);
+        }
+        if (fabs(val_re) > 1e-12) {
+            MatSetValues(Bd, 1, &state, 1, &target_state, &val_re, ADD_VALUES);
         }
       }
     }
-    
+
     MatAssemblyBegin(Ad, MAT_FINAL_ASSEMBLY);
     MatAssemblyBegin(Bd, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Ad, MAT_FINAL_ASSEMBLY);
     MatAssemblyEnd(Bd, MAT_FINAL_ASSEMBLY);
+
+    // MatView(Ad, NULL);
+    // MatView(Bd, NULL);
 
   /* Else: Initialize system matrices with standard Hamiltonian model */
   } else {
@@ -716,64 +777,6 @@ void MasterEq::compute_dRHS_dParams(const double t, const Vec x, const Vec xbar,
   } else {  // matrix-free application of RHS
     compute_dRHS_dParams_matfree(t, x, xbar,  alpha, grad, nlevels, lindbladtype, oscil_vec);
   }
-}
-
-
-void MasterEq::getHeisenbergMatElement(int row, int col, const vector<double>& J, const vector<double>& K, const vector<double>& U, const vector<double>& hpara, const vector<double>& hperp, double* out_re, double* out_im){
-  int N = hpara.size();
-  double element_re = 0.0;
-  double element_im = 0.0;
-
-  // Single-qubit terms (magnetic fields)
-  for (int i = 0; i < N; i++) {
-    // Z-field term: hpara[i] * ⟨bra|sz_i|ket⟩
-    if (row == col) {
-      double z_eigenval = ((col >> (N-1-i)) & 1) ? -1.0 : 1.0;
-      element_re += hpara[i] * z_eigenval;
-    }
-    // X-field term: hperp[i] * ⟨bra|sx_i|ket⟩
-    int ket_flipped = col ^ (1 << (N-1-i)); // Flip bit i
-    if (row == ket_flipped) {
-      element_re += hperp[i];
-    }
-  }
-
-  // Two-qubit interaction terms
-  for (int i = 0; i < N - 1; i++) {
-    // ZZ interaction: U[i] * ⟨bra|sz_i * sz_{i+1}|ket⟩
-    if (row == col) {
-      double z_i = ((col >> (N-1-i)) & 1) ? -1.0 : 1.0;
-      double z_j = ((col >> (N-1-(i+1))) & 1) ? -1.0 : 1.0;
-      element_re += U[i] * z_i * z_j;
-    }
-    // XX interaction: -J[i] * ⟨bra|sx_i * sx_{i+1}|ket⟩
-    int ket_xx =  col ^ (1 << (N-1-i)) ^ (1 << (N-1-(i+1)));  // Flip both bits i and i+1
-    if (row == ket_xx) {
-      element_re -= J[i];
-    }
-    // YY interaction: -K[i] * ⟨bra|sy_i * sy_{i+1}|ket⟩
-    int ket_yy = col ^ (1 << (N-1-i)) ^ (1 << (N-1-(i+1)));  // Flip both bits i and i+1
-    if (row == ket_yy) {
-      // Calculate phase: sy|0⟩ = i|1⟩, sy|1⟩ = -i|0⟩
-      double phase_re, phase_im;
-      phase_re = 0.0;
-      phase_im = ((col >> (N-1-i)) & 1) ? -1.0 : 1.0;
-      // Phase from sy_{i+1}
-      double tmp = phase_re;
-      if ((col >> (N-1-(i+1))) & 1) {  // ket[i+1] == 1
-        phase_re = phase_im; 
-        phase_im = tmp;
-      } else {  // ket[i+1] == 0
-        phase_re = -phase_im; 
-        phase_im = tmp;
-      }
-      element_re -= K[i] * phase_re;
-      element_im -= K[i] * phase_im;
-    }
-  }
-
-  (*out_re) = element_re;
-  (*out_im) = element_im;
 }
 
 
