@@ -264,14 +264,14 @@ class Quandary:
 
         # Get the spline knot spacing correct wrt to the units
         if self.spline_knot_spacing < 0:
-            self.spline_knot_spacing = 1.0/(33.3*self._freq_scaling_factor)
+            self.spline_knot_spacing = 1.0/(80*self._freq_scaling_factor) # 1/3 when T = 240
 
         # Get number of splines right
         if self.nsplines < 0:
             if self.spline_order == 0:
                 self.nsplines = int(np.max([np.rint(self.nsteps*self.dT/self.spline_knot_spacing+1), minspline])) 
             else: 
-                self.nsplines = int(np.max([np.ceil(self.T/self.spline_knot_spacing+ 2), minspline]))
+                self.nsplines = int(np.max([np.ceil(self.T/self.spline_knot_spacing+2), minspline]))
 
             self.spline_knot_spacing = self.nsteps*self.dT / (self.nsplines-1) if self.spline_order == 0 else self.nsteps*self.dT / (self.nsplines-2)
         else:
