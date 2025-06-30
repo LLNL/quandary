@@ -12,4 +12,4 @@ Quandary numerically simulates and optimizes the time evolution of closed and op
 
 - [Python API Reference](python_api.md)
 - [C++ Config Reference](config.md)
-- [C++ Doxygen Documentation]("https://software.llnl.gov/quandary/doxygen/")
+- [C++ Doxygen Documentation](https://software.llnl.gov/quandary/doxygen/)
