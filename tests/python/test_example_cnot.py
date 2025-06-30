@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
-from pytest import approx
 from quandary import Quandary
+from utils import assert_results_equal
 
 # Mark all tests in this file as regression tests
 pytestmark = pytest.mark.regression
@@ -148,22 +148,21 @@ def test_example_cnot(mpi_exec):
         maxcores=2
     )
 
-    assert t[0] == 0.0 and t[-1] == T
-    assert len(t) == EXPECTED_LENGTH
-    assert infidelity == approx(EXPECTED_INFIDELITY, rel=REL_TOL, abs=ABS_TOL)
-
-    for i in range(n_osc):
-        pt_samples = [pt[i][idx] for idx in SAMPLE_INDICES]
-        qt_samples = [qt[i][idx] for idx in SAMPLE_INDICES]
-        np.testing.assert_allclose(pt_samples, EXPECTED_PT[i], rtol=REL_TOL, atol=ABS_TOL)
-        np.testing.assert_allclose(qt_samples, EXPECTED_QT[i], rtol=REL_TOL, atol=ABS_TOL)
-
-    for i in range(n_osc):
-        for j in range(n_levels):
-            energy_data = energy[i][j]
-            energy_samples = [energy_data[idx] for idx in SAMPLE_INDICES]
-            np.testing.assert_allclose(energy_samples, EXPECTED_ENERGY[i][j], rtol=REL_TOL, atol=ABS_TOL)
-
-            pop_data = population[i][j]
-            pop_samples = [pop_data[0, idx] for idx in SAMPLE_INDICES]
-            np.testing.assert_allclose(pop_samples, EXPECTED_POPULATION[i][j], rtol=REL_TOL, atol=ABS_TOL)
+    assert_results_equal(
+        t=t,
+        pt=pt,
+        qt=qt,
+        infidelity=infidelity,
+        energy=energy,
+        population=population,
+        T=T,
+        n_osc=n_osc,
+        n_levels=n_levels,
+        expected_length=EXPECTED_LENGTH,
+        expected_infidelity=EXPECTED_INFIDELITY,
+        expected_pt=EXPECTED_PT,
+        expected_qt=EXPECTED_QT,
+        expected_energy=EXPECTED_ENERGY,
+        expected_population=EXPECTED_POPULATION,
+        sample_indices=SAMPLE_INDICES
+    )
