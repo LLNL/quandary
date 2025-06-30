@@ -14,15 +14,13 @@ do_prune = False
 
 maxcores=3 # for unitary optimization
 
-unitMHz = True
-
 # Standard Hamiltonian and Lindblad model setup
 Ne = [3]			# Number of essential levels
 Ng = [0]			# Number of guard levels
 
 #  Transition frequencies [GHz] from the device: 2025, Jan 06
-f01 = 3422.625432
-f12=  3213.617052
+f01 = 3422.625432e-3
+f12=  3213.617052e-3
 
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [f01] 
@@ -32,10 +30,11 @@ selfkerr = [f01-f12]
 rotfreq = freq01
 
 # Set the gate duration (us)
-T = 0.240
+T = 0.240e3
 
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
-maxctrl_MHz = 4.0
+maxctrl = 4.0e-3
+initctrl = 10.0e-3
 
 # Set up a target gate (in essential level dimensions)
 unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
@@ -44,7 +43,7 @@ verbose = False
 rand_seed=1234
 
 # Prepare Quandary with the above options. This set default options for all member variables and overwrites those that are passed through the constructor here. Use help(Quandary) to see all options.
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, verbose=False, rand_seed=rand_seed, unitMHz= unitMHz)
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, nsplines=82,initctrl= initctrl, maxctrl=maxctrl, targetgate=unitary, T=T, verbose=False, rand_seed=rand_seed)
 
 # Execute quandary. Default number of executing cores is the essential Hilbert space dimension. Limit the number of cores by passing ncores=<int>. Use help(quandary.optimize) to see all arguments.
 datadir="./SWAP02_run_dir"
@@ -61,7 +60,7 @@ output_frequency = 1  # write every x-th timestep
 pcof_opt_file = datadir + "/params.dat"
 pcof_opt = np.loadtxt(pcof_opt_file) # get the control vector
 
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, pcof0=pcof_opt, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, output_frequency=output_frequency, unitMHz= unitMHz)
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl=maxctrl, targetgate=unitary, T=T, pcof0=pcof_opt, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, output_frequency=output_frequency)
 
 N = np.prod([Ne[i] + Ng[i] for i in range(len(Ne))]) # Never used?
 
