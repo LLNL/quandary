@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from pytest import approx
 from quandary import Quandary
 
 # Mark all tests in this file as regression tests
@@ -11,6 +12,8 @@ ABS_TOL = 1.0e-10
 # Sample every 100 time steps
 SAMPLE_STEP = 100
 SAMPLE_INDICES = list(range(0, 1000, SAMPLE_STEP))
+
+EXPECTED_INFIDELITY = 7.059941000597814e-05
 
 EXPECTED_PT = [
     [
@@ -145,7 +148,7 @@ def test_example_cnot(mpi_exec):
     )
 
     assert t[0] == 0.0 and t[-1] == 200.0
-    assert infidelity < 1e-4
+    assert infidelity == approx(EXPECTED_INFIDELITY, rel=REL_TOL, abs=ABS_TOL)
 
     for i in range(n_osc):
         pt_samples = [pt[i][idx] for idx in SAMPLE_INDICES]
