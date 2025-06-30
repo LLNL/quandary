@@ -34,6 +34,8 @@ T = 0.240e3
 
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
 maxctrl = 4.0e-3
+
+# Amplitude of randomized initial control vector
 initctrl = 10.0e-3
 
 # Set up a target gate (in essential level dimensions)
@@ -43,13 +45,15 @@ verbose = False
 rand_seed=1234
 
 # Prepare Quandary with the above options. This set default options for all member variables and overwrites those that are passed through the constructor here. Use help(Quandary) to see all options.
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, nsplines=82,initctrl= initctrl, maxctrl=maxctrl, targetgate=unitary, T=T, verbose=False, rand_seed=rand_seed)
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, initctrl= initctrl, maxctrl=maxctrl, targetgate=unitary, T=T, verbose=False, rand_seed=rand_seed)
 
 # Execute quandary. Default number of executing cores is the essential Hilbert space dimension. Limit the number of cores by passing ncores=<int>. Use help(quandary.optimize) to see all arguments.
 datadir="./SWAP02_run_dir"
 t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize(datadir=datadir, maxcores=maxcores)
 print(f"\nFidelity = {1.0 - infidelity}")
+pcof_opt = quandary.popt # get the optimized control vector
 
+print("Optimized pulse with Schroedinger's eqn, dir = ", datadir)
 plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
 
 # Modify quandary options for data generation & training (Use Lindblad's eqn)
@@ -57,26 +61,20 @@ initialcondition = "pure, 0" # Initial condition at t=0: Groundstate
 T1 = [100.0] # Decoherence times [us]
 T2 = [40.0]
 output_frequency = 1  # write every x-th timestep
-pcof_opt_file = datadir + "/params.dat"
-pcof_opt = np.loadtxt(pcof_opt_file) # get the control vector
 
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl=maxctrl, targetgate=unitary, T=T, pcof0=pcof_opt, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, output_frequency=output_frequency)
-
-N = np.prod([Ne[i] + Ng[i] for i in range(len(Ne))]) # Never used?
+quandary2 = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl=maxctrl, targetgate=unitary, T=T, pcof0=pcof_opt, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, output_frequency=output_frequency)
 
 dirprefix = "data_out" # add a prefix for run directories
 cwd = os.getcwd()
-datadir_test = cwd+"/"+dirprefix+"_asmeasured" # NOTE: not an array anymore
-# perturbfac = 1.5 # For perturbing the control vector
+datadir_test = cwd+"/"+dirprefix+"_asmeasured" # NOTE: not an array
 pfact = [0.75, 1.5] # [0.75, 1.25] #
 
 if do_datageneration:
 	# First simulate the unperturbed controls to get the params of the unperturbed controls
 	datadir_orig = cwd+"/"+dirprefix+"_origpulse"
 	# simulate NOTE: how is the simulation distributed?
-	t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(pcof0=pcof_opt, maxcores=maxcores, datadir=datadir_orig)
-	print("Optimized pulse with Lindblad's eqn")
-	plot_pulse(Ne, t, pt, qt)
+	t, pt, qt, infidelity, expectedEnergy, population = quandary2.simulate(pcof0=pcof_opt, maxcores=maxcores, datadir=datadir_orig)
+	print("Optimized pulse with Lindblad's eqn, dir = ", datadir_orig)
 
 	# Now perturb the controls: Scale each carrier wave component
 	# One system, 2 frequencies in this test
@@ -87,10 +85,9 @@ if do_datageneration:
 	pcof_pert[Nfirst:2*Nfirst] = [pcofi * pfact[1] for pcofi in pcof_opt[Nfirst:2*Nfirst]]	# original control vector in pcof_opt
 
 	# Generate training data: Simulate perturbed controls
-	t, pt, qt, infidelity_pert, expectedEnergy, population = quandary.simulate(pcof0=pcof_pert, maxcores=maxcores, datadir=datadir_test)
+	t, pt, qt, infidelity_pert, expectedEnergy, population = quandary2.simulate(pcof0=pcof_pert, maxcores=maxcores, datadir=datadir_test)
 	print("Rescaled pulse")
-	plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
-	#plot_pulse(Ne, t, pt, qt)
+	plot_results_1osc(quandary2, pt[0], qt[0], expectedEnergy[0], population[0])
 
 	print("-> Generated trajectory for perturbed pulse amplitude with perturbation factor:", pfact)
 	print("->   Unperturbed pulse trajectory directory:", datadir_orig, " Fidelity:", 1.0 - infidelity)
@@ -99,7 +96,7 @@ if do_datageneration:
 ################
 # NOW DO TRAINING! 
 ################
-# Make sure to use the same above assumed basemodel Hamiltonian
+# Make sure to use the same basemodel Hamiltonian as above
 
 # Set the UDE model: List of learnable terms, containing "hamiltonian" and/or "lindblad" and/or "transferLinear"
 UDEmodel = "transferLinear"
@@ -119,34 +116,33 @@ loss_scaling_factor = 1e3
 UDEdatadir = cwd+"/" + dirprefix+ "_UDE"
 
 # Set training optimization parameters
-quandary.gamma_tik0 = 1e-9
-quandary.gamma_tik0_onenorm = tik0_onenorm
-quandary.loss_scaling_factor = loss_scaling_factor
-quandary.tol_grad_abs = 1e-7
-quandary.tol_grad_rel = 1e-7
-quandary.tol_costfunc = 1e-8
-quandary.tol_infidelity = 1e-7
-quandary.gamma_leakage = 0.0
-quandary.gamma_energy = 0.0
-quandary.gamma_dpdm = 0.0
-quandary.maxiter = 500
+quandary2.gamma_tik0 = 1e-9
+quandary2.gamma_tik0_onenorm = tik0_onenorm
+quandary2.loss_scaling_factor = loss_scaling_factor
+quandary2.tol_grad_abs = 1e-7
+quandary2.tol_grad_rel = 1e-7
+quandary2.tol_costfunc = 1e-8
+quandary2.tol_infidelity = 1e-7
+quandary2.gamma_leakage = 0.0
+quandary2.gamma_energy = 0.0
+quandary2.gamma_dpdm = 0.0
+quandary2.maxiter = 500
 
 ### TEST: Simulate with transfer functions set to the identity -> Loss should be zero!
 learnparams_identity = [1.0, 1.0] # one for each carrier wave
-quandary.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learnparams_identity, maxcores=maxcores, datadir=UDEdatadir+"_identitytransfer")
-print(" CHECK: Loss should be large!\n")
+quandary2.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learnparams_identity, maxcores=maxcores, datadir=UDEdatadir+"_identitytransfer")
+print("learnparams = ", learnparams_identity, " CHECK: Loss should be large!\n")
 
 ### TEST: Simulate with transfer functions set to the exact pertubation from above -> Loss should be large!
-learnparams_perturb = pfact # [id*perturbfac for id in learnparams_identity]
-
-quandary.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learnparams_perturb, maxcores=maxcores, datadir=UDEdatadir+"_scaledtransfer")
-print(" CHECK: Loss should be zero (small)!\n")
+learnparams_perturb = pfact # correct scaling factors
+quandary2.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learnparams_perturb, maxcores=maxcores, datadir=UDEdatadir+"_scaledtransfer")
+print("learnparams = ", learnparams_perturb, " CHECK: Loss should be zero (small)!\n")
 
 if do_training:
 	print("\nStarting UDE training for UDE model = ", UDEmodel, " initial_params: ", learnparams_identity, "...")
 
 	# Start training, use the unperturbed control parameters in pcof_opt
-	quandary.training(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=learnparams_identity, maxcores=maxcores) # maxcores defaults to 75?
+	quandary2.training(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=learnparams_identity, maxcores=maxcores) # maxcores defaults to 75?
 
 	filename = UDEdatadir + "/params.dat"
 	learnparams_opt = np.loadtxt(filename)
@@ -154,9 +150,5 @@ if do_training:
 
 	# Simulate forward with optimized paramters to write out the Training data evolutions and the learned evolution
 	print("\n -> Eval loss of optimized UDE model.")
-	quandary.UDEsimulate(trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir+"/FWD_opt", T_train=quandary.T, learn_params=learnparams_opt, maxcores=maxcores)
+	quandary2.UDEsimulate(trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir+"/FWD_opt", T_train=quandary2.T, learn_params=learnparams_opt, maxcores=maxcores)
 
-	# Simulate forward the baseline model using identity transfer function
-	identityinit = np.ones(len(learnparams_opt))
-	print("\n -> Eval loss of initial guess UDE model.")
-	quandary.UDEsimulate(trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir+"/FWD_identityinit", T_train=quandary.T, learn_params=identityinit, maxcores=maxcores)
