@@ -6,9 +6,6 @@ from utils import assert_results_equal
 # Mark all tests in this file as regression tests
 pytestmark = pytest.mark.regression
 
-REL_TOL = 1.0e-3
-ABS_TOL = 1.0e-10
-
 EXPECTED_LENGTH = 1222
 EXPECTED_INFIDELITY = 9.579442993001841e-05
 
