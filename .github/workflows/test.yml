@@ -65,4 +65,4 @@ jobs:
         else
           spack -e .spack_env buildcache push --update-index local-buildcache
         fi
-      if: ${{ !cancelled() }}
+      if: ${{ !cancelled() && github.event.pull_request.head.repo.full_name == github.repository }}
