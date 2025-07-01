@@ -4,7 +4,7 @@ from pytest import approx
 from quandary import Quandary
 
 
-def test_evalControls_updates_timestep(tmp_path, request):
+def test_evalControls_updates_timestep(mpi_exec, tmp_path, request):
     """
     Test that evalControls properly updates timestep (dT) to match sampling rate.
     """
@@ -23,7 +23,7 @@ def test_evalControls_updates_timestep(tmp_path, request):
 
     # Test evalControls with different sampling rate
     points_per_ns = 2
-    time, _, _ = quandary.evalControls(points_per_ns=points_per_ns, datadir=datadir_path)
+    time, _, _ = quandary.evalControls(points_per_ns=points_per_ns, datadir=datadir_path, mpi_exec=mpi_exec)
 
     expected_nsteps = int(np.floor(T * points_per_ns))
     expected_dT = T / expected_nsteps
