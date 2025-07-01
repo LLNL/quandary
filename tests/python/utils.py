@@ -41,7 +41,7 @@ def assert_results_equal(
             np.testing.assert_allclose(pop_samples, expected_population[i][j], rtol=REL_TOL, atol=ABS_TOL)
 
 
-def print_expected_values(infidelity, pt, qt, expectedEnergy, population, sample_indices, n_osc):
+def print_expected_values(infidelity, pt, qt, energy, population, sample_indices, n_osc):
     """
     Utility function to print actual values in the format needed for EXPECTED arrays.
     Call this function with actual test results to get copy-pasteable expected values.
@@ -83,8 +83,8 @@ def print_expected_values(infidelity, pt, qt, expectedEnergy, population, sample
     print("EXPECTED_ENERGY = [")
     for i in range(n_osc):
         print("    [")
-        for j in range(len(expectedEnergy[i])):
-            energy_data = expectedEnergy[i][j]
+        for j in range(len(energy[i])):
+            energy_data = energy[i][j]
             energy_samples = [energy_data[idx] for idx in sample_indices]
             print("        [")
             for k in range(0, len(energy_samples), 5):
