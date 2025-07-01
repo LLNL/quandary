@@ -16,11 +16,19 @@ def assert_results_equal(
     assert len(t) == expected_length
     assert infidelity == approx(expected_infidelity, rel=REL_TOL, abs=ABS_TOL)
 
+    assert len(pt) == n_osc
+    assert len(qt) == n_osc
+
     for i in range(n_osc):
         pt_samples = [pt[i][idx] for idx in sample_indices]
         qt_samples = [qt[i][idx] for idx in sample_indices]
         np.testing.assert_allclose(pt_samples, expected_pt[i], rtol=REL_TOL, atol=ABS_TOL)
         np.testing.assert_allclose(qt_samples, expected_qt[i], rtol=REL_TOL, atol=ABS_TOL)
+
+    assert len(energy) == n_osc
+    assert len(population) == n_osc
+    assert len(energy[0]) == n_levels
+    assert len(population[0]) == n_levels
 
     for i in range(n_osc):
         for j in range(n_levels):
