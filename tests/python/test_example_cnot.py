@@ -137,7 +137,7 @@ def test_example_cnot(mpi_exec):
         T=T,
         targetgate=unitary,
         verbose=False,
-        randomize_init_ctrl=False,
+        rand_seed=1234,
     )
 
     t, pt, qt, infidelity, energy, population = quandary.optimize(
