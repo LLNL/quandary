@@ -1,12 +1,14 @@
 import numpy as np
+import os
 from pytest import approx
 from quandary import Quandary
 
 
-def test_evalControls_updates_timestep():
+def test_evalControls_updates_timestep(tmp_path, request):
     """
     Test that evalControls properly updates timestep (dT) to match sampling rate.
     """
+    datadir_path = os.path.join(tmp_path, request.node.name)
 
     T = 5.0
     quandary = Quandary(
@@ -21,7 +23,7 @@ def test_evalControls_updates_timestep():
 
     # Test evalControls with different sampling rate
     points_per_ns = 2
-    time, _, _ = quandary.evalControls(points_per_ns=points_per_ns)
+    time, _, _ = quandary.evalControls(points_per_ns=points_per_ns, datadir=datadir_path)
 
     expected_nsteps = int(np.floor(T * points_per_ns))
     expected_dT = T / expected_nsteps
