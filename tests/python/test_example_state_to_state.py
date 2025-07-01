@@ -1,3 +1,4 @@
+import os
 import pytest
 import numpy as np
 from quandary import Quandary
@@ -46,8 +47,9 @@ NUM_SAMPLES = 10
 SAMPLE_INDICES = [int(i * (EXPECTED_LENGTH - 1) / (NUM_SAMPLES - 1)) for i in range(NUM_SAMPLES)]
 
 
-def test_example_state_to_state(mpi_exec):
+def test_example_state_to_state(mpi_exec, tmp_path, request):
     """Test state-to-state preparation using Python interface."""
+    datadir_path = os.path.join(tmp_path, request.node.name)
 
     Ne = [2]
     Ng = [1]
@@ -76,7 +78,8 @@ def test_example_state_to_state(mpi_exec):
 
     t, pt, qt, infidelity, energy, population = quandary.optimize(
         mpi_exec=mpi_exec,
-        maxcores=1
+        maxcores=1,
+        datadir=datadir_path,
     )
 
     assert_results_equal(

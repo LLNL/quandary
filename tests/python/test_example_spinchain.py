@@ -1,3 +1,4 @@
+import os
 import pytest
 import numpy as np
 from quandary import Quandary
@@ -149,8 +150,9 @@ def mapCoeffs_SpinChainToQuandary(N: int, h: list, U: list, J: list):
     return freq01, crosskerr, Jkl
 
 
-def test_example_spinchain(mpi_exec):
+def test_example_spinchain(mpi_exec, tmp_path, request):
     """Test spin chain simulation using Python interface."""
+    datadir_path = os.path.join(tmp_path, request.node.name)
 
     N = 8
     U_amp = 1.0
@@ -198,6 +200,7 @@ def test_example_spinchain(mpi_exec):
     t, pt, qt, infidelity, energy, population = quandary.simulate(
         mpi_exec=mpi_exec,
         maxcores=1,
+        datadir=datadir_path,
     )
 
     assert_results_equal(

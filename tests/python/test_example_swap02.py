@@ -1,3 +1,4 @@
+import os
 import pytest
 from quandary import Quandary
 from utils import assert_results_equal
@@ -61,8 +62,9 @@ NUM_SAMPLES = 10
 SAMPLE_INDICES = [int(i * (EXPECTED_LENGTH - 1) / (NUM_SAMPLES - 1)) for i in range(NUM_SAMPLES)]
 
 
-def test_example_swap02(mpi_exec):
+def test_example_swap02(mpi_exec, tmp_path, request):
     """Test SWAP 0-2 gate optimization using Python interface."""
+    datadir_path = os.path.join(tmp_path, request.node.name)
 
     Ne = [3]
     Ng = [1]
@@ -88,7 +90,8 @@ def test_example_swap02(mpi_exec):
 
     t, pt, qt, infidelity, energy, population = quandary.optimize(
         mpi_exec=mpi_exec,
-        maxcores=4
+        maxcores=4,
+        datadir=datadir_path,
     )
 
     assert_results_equal(

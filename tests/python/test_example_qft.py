@@ -1,3 +1,4 @@
+import os
 import pytest
 import numpy as np
 from quandary import Quandary
@@ -266,8 +267,9 @@ def get_QFT_gate(dim):
     return gate_Hd
 
 
-def test_example_qft(mpi_exec):
+def test_example_qft(mpi_exec, tmp_path, request):
     """Test 3-qubit QFT gate optimization using Python interface."""
+    datadir_path = os.path.join(tmp_path, request.node.name)
 
     # Parameters for 3-qubit case
     nqubits = 3
@@ -333,7 +335,8 @@ def test_example_qft(mpi_exec):
 
     t, pt, qt, infidelity, energy, population = quandary.optimize(
         mpi_exec=mpi_exec,
-        maxcores=4
+        maxcores=4,
+        datadir=datadir_path,
     )
 
     assert_results_equal(

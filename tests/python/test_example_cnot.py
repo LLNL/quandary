@@ -1,3 +1,4 @@
+import os
 import pytest
 import numpy as np
 from quandary import Quandary
@@ -114,8 +115,9 @@ NUM_SAMPLES = 10
 SAMPLE_INDICES = [int(i * (EXPECTED_LENGTH - 1) / (NUM_SAMPLES - 1)) for i in range(NUM_SAMPLES)]
 
 
-def test_example_cnot(mpi_exec):
+def test_example_cnot(mpi_exec, tmp_path, request):
     """Test CNOT gate optimization using Python interface."""
+    datadir_path = os.path.join(tmp_path, request.node.name)
 
     freq01 = [4.80595, 4.8601]
     favg = sum(freq01)/len(freq01)
@@ -142,7 +144,8 @@ def test_example_cnot(mpi_exec):
 
     t, pt, qt, infidelity, energy, population = quandary.optimize(
         mpi_exec=mpi_exec,
-        maxcores=2
+        maxcores=2,
+        datadir=datadir_path,
     )
 
     assert_results_equal(
