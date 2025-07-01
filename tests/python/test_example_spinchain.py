@@ -127,7 +127,7 @@ def mapCoeffs_SpinChainToQuandary(N: int, h: list, U: list, J: list):
     # 01 transition frequencies [GHz] per site (omega_q)
     freq01 = np.zeros(N)
     for i in range(1, N-1):
-        freq01[i] = (-2*h[i] -2*U[i] -2*U[i-1]) / (2*np.pi)
+        freq01[i] = (-2*h[i] - 2*U[i] - 2*U[i-1]) / (2*np.pi)
     freq01[0] = (-2*h[0] - 2*U[0]) / (2*np.pi)
     freq01[N-1] = (-2*h[N-1] - 2*U[N-2]) / (2*np.pi)
 

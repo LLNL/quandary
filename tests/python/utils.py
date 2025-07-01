@@ -6,9 +6,8 @@ ABS_TOL = 1.0e-10
 
 
 def assert_results_equal(
-        t, pt, qt, infidelity, energy, population, T, n_osc, n_levels, sample_indices, 
-        expected_length, expected_infidelity, expected_pt, expected_qt, expected_energy, expected_population
-    ):
+        t, pt, qt, infidelity, energy, population, T, n_osc, n_levels, sample_indices,
+        expected_length, expected_infidelity, expected_pt, expected_qt, expected_energy, expected_population):
     """
     Utility function to assert that the results of quantum run match the expected values within given tolerances.
     """
