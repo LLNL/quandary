@@ -215,7 +215,8 @@ It is therefore recommended to utilize the python interface only for smaller sys
     -------------------
     _ninit                : int  # number of initial conditions that are propagated
     _lindblad_solver      : bool # Flag to determine whether lindblad solver vs schroedinger solver 
-    _hamiltonian_filename : str 
+    _hamiltonian_filename_Hsys : str 
+    _hamiltonian_filename_Hc : str 
     _gatefilename         : str 
     _initstatefilename    : str 
     _initialstate         : List[complex] = field(default_factory=list)
@@ -226,7 +227,6 @@ It is therefore recommended to utilize the python interface only for smaller sys
     popt         # Optimized control palamters (Bspline coefficients). List[float]
     time         # Vector of discretized time points. List[float]
     optim_hist   # Optimization history: all fields as in Quandary's output file optim_history.dat. Dictionary.
-    uT           # Evolved states at final time T. This is the (unitary) solution operator, if the initial conditions span the full basis. 
 </code></pre></div>
             </div>
         </div>
