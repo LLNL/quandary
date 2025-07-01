@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1750886808099,
+  "lastUpdate": 1751338178537,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -835,6 +835,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4390.86,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "1d4ee6342ef408ecc7aa0beb3971779e3f7fdd6b",
+          "message": "Merge pull request #62 from LLNL/user-guide-docs\n\nUser guide docs",
+          "timestamp": "2025-06-30T20:30:50Z",
+          "url": "https://github.com/LLNL/quandary/commit/1d4ee6342ef408ecc7aa0beb3971779e3f7fdd6b"
+        },
+        "date": 1751338177250,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.9975584235216957,
+            "unit": "seconds",
+            "range": "0.2889184539813559"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 85.88,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 15.290909696021117,
+            "unit": "seconds",
+            "range": "0.19724851000322557"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4361.66,
             "unit": "MB"
           }
         ]
