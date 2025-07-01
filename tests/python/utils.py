@@ -36,6 +36,7 @@ def assert_results_equal(
             energy_samples = [energy_data[idx] for idx in sample_indices]
             np.testing.assert_allclose(energy_samples, expected_energy[i][j], rtol=REL_TOL, atol=ABS_TOL)
 
+            # Note: only comparing population for the first level (index 0)
             pop_data = population[i][j]
             pop_samples = [pop_data[0, idx] for idx in sample_indices]
             np.testing.assert_allclose(pop_samples, expected_population[i][j], rtol=REL_TOL, atol=ABS_TOL)
