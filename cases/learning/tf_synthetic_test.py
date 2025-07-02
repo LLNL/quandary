@@ -57,7 +57,7 @@ print("Optimized pulse with Schroedinger's eqn, dir = ", datadir)
 plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
 
 # Modify quandary options for data generation & training (Use Lindblad's eqn)
-initialcondition = "pure, 0" # Initial condition at t=0: Groundstate
+initialcondition =  "pure, 0" # "diagonal" "basis" # Initial condition at t=0: Groundstate
 T1 = [100.0] # Decoherence times [us]
 T2 = [40.0]
 output_frequency = 1  # write every x-th timestep
@@ -70,13 +70,7 @@ datadir_test = cwd+"/"+dirprefix+"_asmeasured" # NOTE: not an array
 pfact = [0.75, 1.5] # [0.75, 1.25] #
 
 if do_datageneration:
-	# First simulate the unperturbed controls to get the params of the unperturbed controls
-	datadir_orig = cwd+"/"+dirprefix+"_origpulse"
-	# simulate NOTE: how is the simulation distributed?
-	t, pt, qt, infidelity, expectedEnergy, population = quandary2.simulate(pcof0=pcof_opt, maxcores=maxcores, datadir=datadir_orig)
-	print("Optimized pulse with Lindblad's eqn, dir = ", datadir_orig)
-
-	# Now perturb the controls: Scale each carrier wave component
+	# Perturb the controls: Scale each carrier wave component
 	# One system, 2 frequencies in this test
 	Nfirst = round(len(pcof_opt)/2) # Number of elements for the first carrier frequency
 
@@ -86,11 +80,11 @@ if do_datageneration:
 
 	# Generate training data: Simulate perturbed controls
 	t, pt, qt, infidelity_pert, expectedEnergy, population = quandary2.simulate(pcof0=pcof_pert, maxcores=maxcores, datadir=datadir_test)
-	print("Rescaled pulse")
+	print("Rescaled pulse, dir = ", datadir_test)
 	plot_results_1osc(quandary2, pt[0], qt[0], expectedEnergy[0], population[0])
 
 	print("-> Generated trajectory for perturbed pulse amplitude with perturbation factor:", pfact)
-	print("->   Unperturbed pulse trajectory directory:", datadir_orig, " Fidelity:", 1.0 - infidelity)
+	# print("->   Unperturbed pulse trajectory directory:", datadir_orig, " Fidelity:", 1.0 - infidelity)
 	print("->   Perturbed pulse (training data) directory:", datadir_test, " Fidelity:", 1.0 - infidelity_pert,"\n")
  
 ################
@@ -128,15 +122,15 @@ quandary2.gamma_energy = 0.0
 quandary2.gamma_dpdm = 0.0
 quandary2.maxiter = 500
 
-### TEST: Simulate with transfer functions set to the identity -> Loss should be zero!
-learnparams_identity = [1.0, 1.0] # one for each carrier wave
-quandary2.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learnparams_identity, maxcores=maxcores, datadir=UDEdatadir+"_identitytransfer")
-print("learnparams = ", learnparams_identity, " CHECK: Loss should be large!\n")
-
 ### TEST: Simulate with transfer functions set to the exact pertubation from above -> Loss should be large!
 learnparams_perturb = pfact # correct scaling factors
 quandary2.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learnparams_perturb, maxcores=maxcores, datadir=UDEdatadir+"_scaledtransfer")
 print("learnparams = ", learnparams_perturb, " CHECK: Loss should be zero (small)!\n")
+
+## TEST: Simulate with transfer functions set to the identity -> Loss should be zero!
+learnparams_identity = [1.0, 1.0] # one for each carrier wave
+quandary2.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learnparams_identity, maxcores=maxcores, datadir=UDEdatadir+"_identitytransfer")
+print("learnparams = ", learnparams_identity, " CHECK: Loss should be large!\n")
 
 if do_training:
 	print("\nStarting UDE training for UDE model = ", UDEmodel, " initial_params: ", learnparams_identity, "...")
