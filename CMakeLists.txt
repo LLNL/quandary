@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.23)
 
 project(
     Quandary
-    VERSION 4.1
+    VERSION 4.2
     LANGUAGES CXX C
 )
 set(PROJECT_VERSION_SUFFIX "")
