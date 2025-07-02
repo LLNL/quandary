@@ -5,8 +5,9 @@ import pytest
 
 @pytest.fixture
 def mpi_exec(request):
-    """Get MPI executor from pytest option."""
+    """Get MPI executor and options from pytest options."""
     executor = request.config.getoption("--mpi-exec")
+    options = request.config.getoption("--mpi-opt")
     if executor != "mpirun":
-        return f"{executor} -n "
-    return "mpirun -np "
+        return f"{executor} {options} -n"
+    return f"mpirun {options} -np"
