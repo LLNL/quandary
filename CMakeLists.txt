@@ -5,6 +5,8 @@ project(
     VERSION 4.1
     LANGUAGES CXX C
 )
+set(PROJECT_VERSION_SUFFIX "")
+set(FULL_VERSION "${PROJECT_VERSION}${PROJECT_VERSION_SUFFIX}")
 
 option(BUILD_QUANDARY "Build Quandary targets" ON)
 
@@ -42,6 +44,13 @@ if (NOT BLT_LOADED)
   message(STATUS "BLT Source Directory: ${BLT_SOURCE_DIR}")
   include(${BLT_SOURCE_DIR}/SetupBLT.cmake)
 endif()
+
+# Configure version header
+configure_file(
+    ${CMAKE_SOURCE_DIR}/include/version.hpp.in
+    ${CMAKE_BINARY_DIR}/include/version.hpp
+    @ONLY
+)
 
 if(BUILD_QUANDARY)
   add_subdirectory(src)
