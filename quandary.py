@@ -1426,12 +1426,11 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     if not verbose:
         runcommand += " --quiet"
     # If parallel run, specify runcommand. Default is 'mpirun -np ', unless batch args are given, then currently using 'srun -n', see end of this file for changing that to other batch systems.
-    if ncores > 1:
-        if len(batchargs)>0:
-            myrun = batch_run  # currently set to "srun -n"
-        else:
-            myrun = mpi_exec
-        runcommand = f"{myrun} {ncores} " + runcommand
+    if len(batchargs)>0:
+        myrun = batch_run  # currently set to "srun -n"
+    else:
+        myrun = mpi_exec
+    runcommand = f"{myrun} {ncores} " + runcommand
     if verbose:
         print("Running Quandary ... ")
 
