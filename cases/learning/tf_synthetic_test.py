@@ -7,7 +7,7 @@ np.set_printoptions( linewidth=800)
 
 
 do_datageneration = True 
-do_training = True 
+do_training = False # True 
 do_extrapolate = False
 do_analyze = False
 do_prune = False
@@ -48,7 +48,7 @@ rand_seed=1234
 quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, initctrl= initctrl, maxctrl=maxctrl, targetgate=unitary, T=T, verbose=False, rand_seed=rand_seed)
 
 # Execute quandary. Default number of executing cores is the essential Hilbert space dimension. Limit the number of cores by passing ncores=<int>. Use help(quandary.optimize) to see all arguments.
-datadir="./SWAP02_run_dir"
+datadir="./SWAP02_optimize"
 t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize(datadir=datadir, maxcores=maxcores)
 print(f"\nFidelity = {1.0 - infidelity}")
 pcof_opt = quandary.popt # get the optimized control vector
@@ -57,14 +57,14 @@ print("Optimized pulse with Schroedinger's eqn, dir = ", datadir)
 plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
 
 # Modify quandary options for data generation & training (Use Lindblad's eqn)
-initialcondition =  "pure, 0" # "diagonal" "basis" # Initial condition at t=0: Groundstate
+initialcondition =  "diagonal" # "pure, 0" "diagonal" "basis" # Initial condition at t=0: Groundstate
 T1 = [100.0] # Decoherence times [us]
 T2 = [40.0]
 output_frequency = 1  # write every x-th timestep
+dirprefix = "SWAP02_diag" # "SWAP02_pure" # add a prefix for run directories
 
-quandary2 = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl=maxctrl, targetgate=unitary, T=T, pcof0=pcof_opt, verbose=verbose, rand_seed=rand_seed, T1=T1, T2=T2, initialcondition=initialcondition, output_frequency=output_frequency)
+quandary2 = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl=maxctrl, targetgate=unitary, T=T, pcof0=pcof_opt, verbose=verbose, rand_seed=rand_seed,  initialcondition=initialcondition, output_frequency=output_frequency, T1=T1, T2=T2)
 
-dirprefix = "data_out" # add a prefix for run directories
 cwd = os.getcwd()
 datadir_test = cwd+"/"+dirprefix+"_asmeasured" # NOTE: not an array
 pfact = [0.75, 1.5] # [0.75, 1.25] #
@@ -98,8 +98,10 @@ maxcores = 1 # Note: Only have one pulse
 
 # Set the training time domain
 T_train = T	  
-# Add data type specifyier to the first element of the data list
-trainingdatadir = "synthetic, "+datadir_test
+# Add data type specifier to the first element of the data list
+trainingdatadir = [] # needs to be in a list
+trainingdatadir.append("synthetic, " + datadir_test)
+print("trainingdatadir = ", trainingdatadir, " len = ", len(trainingdatadir))
 
 # Switch between tikhonov regularization norms (L1 or L2 norm)
 tik0_onenorm = True 			#  Use L1 for sparsification property
@@ -107,7 +109,7 @@ tik0_onenorm = True 			#  Use L1 for sparsification property
 loss_scaling_factor = 1e3
 
 # Output directory for training
-UDEdatadir = cwd+"/" + dirprefix+ "_UDE"
+UDEdatadir = cwd + "/" + dirprefix+ "_UDE"
 
 # Set training optimization parameters
 quandary2.gamma_tik0 = 1e-9
