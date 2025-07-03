@@ -468,23 +468,71 @@ int main(int argc,char **argv)
     if (mpirank_world == 0) printf("\n TESTING Hessian vector product...\n");
     optimctx->timestepper->writeTrajectoryDataFiles = true;
     Vec v, hessv;
-    // Set up a direction vector v
     VecDuplicate(xinit, &v);
+    VecDuplicate(xinit, &hessv);
+    Vec hessv_fd;
+    VecDuplicate(xinit, &hessv_fd);
+    Vec gplus, gminus;
+    VecDuplicate(xinit, &gplus);
+    VecDuplicate(xinit, &gminus);
+    Vec xplus, xminus;
+    VecDuplicate(xinit, &xplus);
+    VecDuplicate(xinit, &xminus);
 
-    for (int itest=0; itest < optimctx->getNdesign(); itest++){
-    // for (int itest=0; itest < 1; itest++){
+    // double epsilon = 1.0;
+    double epsilon = 1e-7;
 
+    // for (int ieps = 0; ieps < 8; ieps++) {
+    for (int ieps = 0; ieps < 1; ieps++) {
+      epsilon *= 0.1; // Decrease epsilon by factor of 10
+      printf("\nTesting Hessian vector product with epsilon = %1.14e\n", epsilon);
+
+    // Iterate over design variables 
+    // for (int itest=0; itest < optimctx->getNdesign(); itest++){
+    for (int itest=0; itest < 1; itest++){
+
+      // Choose the direction v = e_i
       VecZeroEntries(v);
       const int i = itest;
       VecSetValue(v, i, 1.0, INSERT_ALL_VALUES);
-      // Set up a output Hessian*v
-      VecDuplicate(xinit, &hessv);
-      VecZeroEntries(hessv);
+
       // Evaluate HessianVector product
+      VecZeroEntries(hessv);
       optimctx->evalHessVec(xinit, v, hessv, i);
       // printf("Hessian vector product: \n");
       // VecView(hessv, NULL);
+
+      // Perturb xinit by epsilon in direction v
+      VecCopy(xinit, xplus);
+      VecAXPY(xplus, epsilon, v); // xplus = xinit + EPS * v
+      VecCopy(xinit, xminus);
+      VecAXPY(xminus, -epsilon, v); // xminus = xinit - EPS * v
+
+      // Evaluate gradient at xplus and xminus
+      optimctx->evalGradF(xplus, gplus);
+      optimctx->evalGradF(xminus, gminus);
+
+      // Compute finite differences Hessian vector product
+      VecCopy(gplus, hessv_fd);
+      VecAXPY(hessv_fd, -1.0, gminus); // hessv_fd = gplus - gminus
+      VecScale(hessv_fd, 1.0 / (2.0 * epsilon)); // hessv_fd = (gplus - gminus) / (2*EPS)
+
+      // printf("FD Hessvec: \n");
+      // VecView(hessv_fd, NULL);
+      // printf("New Hessvec: \n");
+      // VecView(hessv, NULL);
+
+      // Compute error 
+      const double* hessv_ptr, *hessv_fd_ptr;
+      VecGetArrayRead(hessv, &hessv_ptr);
+      VecGetArrayRead(hessv_fd, &hessv_fd_ptr);
+      for (int j=0; j<optimctx->getNdesign(); j++) {
+        printf("Diff at i=%d, j=%d: Hv= %1.14e, Hv_FD=%1.14e, rel. err=%1.14e\n", i, j, hessv_ptr[j], hessv_fd_ptr[j], (hessv_ptr[j] - hessv_fd_ptr[j])/hessv_fd_ptr[j]);
+      }
+      VecRestoreArrayRead(hessv, &hessv_ptr);
+      VecRestoreArrayRead(hessv_fd, &hessv_fd_ptr);
     }
+  }
   }
 
   /* --- Solve the optimization  --- */

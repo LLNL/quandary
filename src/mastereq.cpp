@@ -687,6 +687,8 @@ void MasterEq::compute_dRHS_dParams(const double t, const Vec x, const Vec xbar,
 /* Directional derivative of RHS wrt parameters: y = sum_i dRHS/dalpha_i *v_i * xhalf */
 void MasterEq::apply_linearized_RHS(const double t,const Vec v, const Vec xhalf, Vec xout){
 
+  VecZeroEntries(xout);
+
   if (!usematfree) {  // Sparse-matrix application of RHS 
     // Get real and imaginary part from xhalf and xout
     Vec uhalf, vhalf, uout, vout;
@@ -734,6 +736,59 @@ void MasterEq::apply_linearized_RHS(const double t,const Vec v, const Vec xhalf,
     exit(1);
   }
 
+}
+
+
+void MasterEq::apply_linearized_RHS_transpose(const double t,const Vec v,  const Vec xhalf, Vec xout){
+
+  VecZeroEntries(xout);
+
+  if (!usematfree) {  // Sparse-matrix application of RHS 
+    // Get real and imaginary part from xhalf and xout
+    Vec uhalf, vhalf, uout, vout;
+    VecGetSubVector(xhalf, isu, &uhalf);
+    VecGetSubVector(xhalf, isv, &vhalf);
+    VecGetSubVector(xout, isu, &uout);
+    VecGetSubVector(xout, isv, &vout);
+    // Direction v data
+    const double* v_ptr;
+    VecGetArrayRead(v, &v_ptr);
+
+    // Iterate over oscillators 
+    int skip = 0;
+    for (int iosc= 0; iosc < noscillators; iosc++){
+      // Extract v part for this oscillator
+      std::vector<double> vdir(oscil_vec[iosc]->getNParams());
+      for (size_t i=0; i<vdir.size(); i++){
+        vdir[i] = v_ptr[i+skip];
+      }
+
+      // get linearized p(t) and q(t) 
+      double dpv, dqv;
+      oscil_vec[iosc]->evalControl_linearized(t, vdir, &dpv, &dqv);
+      // compute matrix products and add to xout. 
+      // TODO: PLUS OR MINUS??
+      // u += q Ac^T u + p Bc^T v
+      MatMultTranspose(Ac_vec[iosc], uhalf, aux); VecAXPY(uout,  dqv, aux);
+      MatMultTranspose(Bc_vec[iosc], vhalf, aux); VecAXPY(uout,  dpv, aux);
+      // v += q Ac^T v - p Bc^T u
+      MatMultTranspose(Ac_vec[iosc], vhalf, aux); VecAXPY(vout,  dqv, aux);
+      MatMultTranspose(Bc_vec[iosc], uhalf, aux); VecAXPY(vout, -dpv, aux);
+
+      // Skip to the next oscillator
+      skip += oscil_vec[iosc]->getNParams();
+    }
+
+    VecRestoreSubVector(xhalf, isu, &uhalf);
+    VecRestoreSubVector(xhalf, isv, &vhalf);
+    VecRestoreSubVector(xout, isu, &uout);
+    VecRestoreSubVector(xout, isv, &vout);
+    VecRestoreArrayRead(v, &v_ptr);
+  }
+  else {
+    printf("TODO: Matrix-free version of linearized RHS.\n");
+    exit(1);
+  }
 }
 
 void MasterEq::setControlAmplitudes(const Vec x) {

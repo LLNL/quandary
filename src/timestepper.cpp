@@ -62,6 +62,7 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
   VecDuplicate(x, &xadj);
   VecDuplicate(x, &xprimal);
   VecDuplicate(x, &xhalf);
+  VecDuplicate(x, &xadjhalf);
 
   /* Allocate the reduced gradient */
   int ndesign = 0;
@@ -91,6 +92,7 @@ TimeStepper::~TimeStepper() {
   VecDestroy(&xadj);
   VecDestroy(&xprimal);
   VecDestroy(&xhalf);
+  VecDestroy(&xadjhalf);
   VecDestroy(&redgrad);
 }
 
@@ -218,8 +220,14 @@ void TimeStepper::solveAdjointODE(int iinit, Vec rho_t0_bar, Vec finalstate, dou
   /* Set terminal adjoint condition */
   VecCopy(rho_t0_bar, xadj);
 
+  // Store terminal adjoint state
+  if (storeFWD) {
+    VecCopy(xadj, store_adj_states[iinit][ntime]);
+  }
+
   /* Set terminal primal state */
   VecCopy(finalstate, xprimal);
+
 
   /* Store states at N, N-1, N-2 for dpdm penalty */
   if (gamma_penalty_dpdm > 1e-13){
@@ -260,6 +268,10 @@ void TimeStepper::solveAdjointODE(int iinit, Vec rho_t0_bar, Vec finalstate, dou
     /* Take one time step backwards for the adjoint */
     evolveBWD(tstop, tstart, xprimal, xadj, redgrad, true);
 
+    if (storeFWD) {
+      VecCopy(xadj, store_adj_states[iinit][n-1]);
+    }
+
     /* Update dpdm storage */
     if (gamma_penalty_dpdm > 1e-13 ) {
       int k = ntime - n;
@@ -279,13 +291,10 @@ void TimeStepper::solveAdjointODE(int iinit, Vec rho_t0_bar, Vec finalstate, dou
   }
 }
 
-Vec TimeStepper::solveLinearizedAdjointODE(int iinit, const Vec v){
+void TimeStepper::solveLinearizedAdjointODE(int iinit, const Vec rho_t0_bar, const Vec v, Vec hessvec){
 
   /* Set terminal condition */
-  VecCopy(store_lin_states[iinit][ntime], xadj); // w(T)
-  // TODO: adj = -2 \tilde V * w(T)
-  printf("Need terminal linearized adjoint condition.\n");
-  exit(1);
+  VecCopy(rho_t0_bar, xadj); // w(T)
 
   /* Loop over time interval */
   for (int n = ntime; n > 0; n--){
@@ -293,7 +302,7 @@ Vec TimeStepper::solveLinearizedAdjointODE(int iinit, const Vec v){
     double tstart = (n-1) * dt;
 
     /* Take one step backwards for linearized adjoint */
-    evolveLinearizedBWD(iinit, tstop, tstart, v, xadj);
+    evolveLinearizedBWD(iinit, tstop, tstart, v, xadj, hessvec);
   }
 }
 
@@ -788,9 +797,6 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
       break;
   }
 
-  // k_bar = h*k_bar 
-  VecScale(stage_adj, dt);
-
   /* Add to reduced gradient */
   if (compute_gradient) {
     switch (linsolve_type) {
@@ -801,8 +807,11 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
         NeumannSolve(A, rhs, stage, dt/2.0, false);
         break;
     }
-    VecAYPX(stage, dt / 2.0, x);
-    mastereq->compute_dRHS_dParams(thalf, stage, stage_adj, 1.0, grad);
+    VecAYPX(stage, dt / 2.0, x); // stage = x +dt/2 * stage 
+    mastereq->compute_dRHS_dParams(thalf, stage, stage_adj, dt, grad);
+    // Here: Stage   = x^n+1/2 
+    // And Stage_adj = xbar^n+1/2
+    // G += dt* s^T * dRHSdp^T * sadj
   }
 
   /* Revert changes to RHS from above, if gmres solver */
@@ -813,22 +822,23 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
   }
 
   /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
+  VecScale(stage_adj, dt);
   MatMultTransposeAdd(A, stage_adj, x_adj, x_adj);
 
 }
 
-void ImplMidpoint::evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x){
+void ImplMidpoint::evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x, Vec hessvec){
 
   // Prepare the RHS at this time-step
   mastereq->assemble_RHS( (tstart + tstop) / 2.0);
 
-  // Compute rhs = A x - sum_i dRHS(t_n+1/2)/dparam_i * vi * adjoint_state(t_n+1/2)
+  // Compute rhs = A x + sum_i dRHS(t_n+1/2)^T/dparam_i * vi * adjoint_state(t_n+1/2)
   int n = std::round(tstart / dt);
-  VecCopy(store_adj_states[iinit][n], xhalf);
-  VecAXPY(xhalf, 1.0, store_adj_states[iinit][n+1]);
-  VecScale(xhalf, 0.5);
-  mastereq->apply_linearized_RHS((tstart+tstop)/2.0, v, xhalf, rhs); // rhs = sum dRHS/dalpha_i v_i * xhalf
-  MatMultTransposeAdd(mastereq->getRHS(), x, rhs, rhs); // rhs = rhs + RHS*x
+  VecCopy(store_adj_states[iinit][n], xadjhalf);
+  VecAXPY(xadjhalf, 1.0, store_adj_states[iinit][n-1]);
+  VecScale(xadjhalf, 0.5); // xadjhalf = 1/2*(lambda_n + lambda_{n-1})
+  mastereq->apply_linearized_RHS_transpose((tstart+tstop)/2.0, v, xadjhalf, rhs); // rhs = sum dRHS^T/dalpha_i v_i * xadjhalf
+  MatMultTransposeAdd(mastereq->getRHS(), x, rhs, rhs); // rhs = rhs + RHS^T*x
 
   double dt = tstop - tstart;
   Mat A = mastereq->getRHS();
@@ -852,9 +862,31 @@ void ImplMidpoint::evolveLinearizedBWD(const int iinit, const double tstart, con
       NeumannSolve(A, x, stage_adj, dt/2.0, true);
       break;
   }
+  
+  /* --- Update linearized adjoint state x += dt * stage_adj --- */
+  VecAXPY(x, dt, stage_adj); 
 
-  /* --- Update state x += dt * stage --- */
-  VecAXPY(x, dt, stage);
+  /* Add to hessian vector product */
+  // Now compute xhalf = 1/2(x_n + x_n-1) for states (x)
+  VecCopy(store_states[iinit][n], xhalf);
+  VecAXPY(xhalf, 1.0, store_states[iinit][n-1]);
+  VecScale(xhalf, 0.5); // xhalf = 1/2*(x_n + x_{n-1})
+  // and stage = 1/2*(w_n + w_n-1) for linearized states (w)
+  VecCopy(store_lin_states[iinit][n], stage);
+  VecAXPY(stage, 1.0, store_lin_states[iinit][n-1]);
+  VecScale(stage, 0.5); // stage = 1/2*(w_n + w_{n-1})
+  // and stage_adj = 1/2*(p_n + p_n-1) for linearized adjoint states (this) (p)
+  VecAYPX(stage_adj, -dt/2.0, x); // stage_adj = x -dt/2*stage_adj
+
+  // we already have:
+  // xadjhalf = 1/2*(lambda_n + lambda_{n-1}) for adjoint states (lambda)
+
+  // Compute the Hessian-vector product x^T dRHS^T p 
+  // printf("Add to hessian at time t_n+1/2=%1.5e, n=%d\n", (tstart + tstop) / 2.0, n);
+  mastereq->compute_dRHS_dParams((tstart + tstop) / 2.0, xhalf, stage_adj,  1.0*dt, hessvec);
+  // Compute the Hessian-vector product - w^T dRHS^T lambda 
+  mastereq->compute_dRHS_dParams((tstart + tstop) / 2.0, stage, xadjhalf,  -1.0*dt, hessvec);
+
 }
 
 int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose){

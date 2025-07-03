@@ -236,6 +236,7 @@ class MasterEq{
      * @param[out] xout Holds the linearized RHS
      */
     void apply_linearized_RHS(const double t,const Vec v,  const Vec xhalf, Vec xout);
+    void apply_linearized_RHS_transpose(const double t,const Vec v,  const Vec xhalf, Vec xout);
 
     /**
      * @brief Pass control parameters from global design vector to each oscillator.

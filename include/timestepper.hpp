@@ -36,12 +36,14 @@ class TimeStepper{
     Vec x; ///< Auxiliary vector for forward time stepping
     Vec xadj; ///< Auxiliary vector needed for adjoint (backward) time stepping
     Vec xhalf; ///< Auxiliary vector holding x_n+1/2
+    Vec xadjhalf; ///< Auxiliary vector holding xadj_n+1/2
     Vec xprimal; ///< Auxiliary vector for backward time stepping
     std::vector<Vec> dpdm_states; ///< Storage for states needed for second-order derivative penalty
     bool addLeakagePrevent; ///< Flag to include leakage prevention penalty term
     int mpirank_world; ///< MPI rank in global communicator
     int mpirank_init;
     int ninit_local;
+  public:
     std::vector<std::vector<Vec>> store_states; ///< For each initial condition, vector of states at each time-step
     std::vector<std::vector<Vec>> store_lin_states; ///< For each initial condition, vector of linearized states at each time-step
     std::vector<std::vector<Vec>> store_adj_states; ///< For each initial condition, vector of real states at each time-step
@@ -133,13 +135,14 @@ class TimeStepper{
     void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy);
 
     /**
-     * @brief Solves the linearized adjoint ODE backwards in time.
+     * @brief Solves the linearized adjoint ODE backwards in time and adds to hessian vector product
      * 
      * @param initid Initial condition number (local to this processor)
+     * @param rho_t0_bar Terminal condition for the linearized adjoint equation
      * @param v Vector of directions
-     * @return Vec Final state vector at time T
+     * @param hessvec Hessian-vector product to update 
      */
-    Vec solveLinearizedAdjointODE(int initid, const Vec v);
+    void solveLinearizedAdjointODE(int initid, const Vec rho_t0_bar, const Vec v, Vec hessvec);
 
     /**
      * @brief Evaluates the penalty integral term.
@@ -241,7 +244,7 @@ class TimeStepper{
      * @param v Direction of linearization
      * @param x Linearized State vector to evolve
      */
-    virtual void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x)=0;
+    virtual void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x, Vec hessvec)=0;
 
 };
 
@@ -279,7 +282,7 @@ class ExplEuler : public TimeStepper {
      */
     void evolveFWD(const double tstart, const double tstop, Vec x);
     void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) {printf("NOT AVAIL.\n"); exit(1);}
-    void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) {printf("NOT AVAIL.\n"); exit(1);}
+    void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x, Vec hessvec) {printf("NOT AVAIL.\n"); exit(1);}
 
     /**
      * @brief Evolves adjoint backward using explicit Euler method.
@@ -348,7 +351,7 @@ class ImplMidpoint : public TimeStepper {
      */
     virtual void evolveFWD(const double tstart, const double tstop, Vec x);
     virtual void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x);
-    virtual void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x);
+    virtual void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x, Vec hessvec);
 
     /**
      * @brief Evolves adjoint backward using implicit midpoint rule and adds to reduced gradient.
@@ -417,7 +420,7 @@ class CompositionalImplMidpoint : public ImplMidpoint {
      */
     void evolveFWD(const double tstart, const double tstop, Vec x);
     void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) {printf("NOT AVAIL.\n"); exit(1);}
-    void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) {printf("NOT AVAIL.\n"); exit(1);}
+    void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x, Vec hessvec) {printf("NOT AVAIL.\n"); exit(1);}
 
     /**
      * @brief Evolves adjoint backward using compositional implicit midpoint rule and accumulates gradient.

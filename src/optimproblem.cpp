@@ -265,7 +265,7 @@ double OptimProblem::evalF(const Vec x) {
     fidelity_re += 1./ ninit * fidelity_iinit_re;
     fidelity_im += 1./ ninit * fidelity_iinit_im;
 
-    printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
+    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
   }
 
   /* Sum up from initial conditions processors */
@@ -526,7 +526,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 }
 
 
-void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec y, const int itest){
+void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec yout, const int itest){
 
   /* First evaluate the gradient of F(x) */
   Vec G;
@@ -543,56 +543,82 @@ void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec y, const int itest)
     timestepper->solveLinearizedODE(iinit, v);
   }
 
-  // Verify w(t) = sum_i dx(t)/dalpha * v_i using the gradient. 
-  // printf("Verify linearized solution. \n\n");
-  // Get dJdalpha from w(T)
-  double obj_re = 0.0;
-  double obj_im = 0.0;
-  double obj_lin_re = 0.0;
-  double obj_lin_im = 0.0;
-  for (int iinit=0; iinit<ninit_local; iinit++){
+  // // Verify w(t) = sum_i dx(t)/dalpha * v_i using the gradient. 
+  // // printf("Verify linearized solution. \n\n");
+  // // Get dJdalpha from w(T)
+  // double obj_re = 0.0;
+  // double obj_im = 0.0;
+  // double obj_lin_re = 0.0;
+  // double obj_lin_im = 0.0;
+  // for (int iinit=0; iinit<ninit_local; iinit++){
 
+  //   // First compute the target state (which needs the initial state)
+  //   int iinit_global = mpirank_init * ninit_local + iinit;
+  //   optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+  //   optim_target->prepareTargetState(rho_t0);
+
+  //   // Now evaluate evaluate the gradient using w(T) and the objective function
+  //   double obj_iinit_re = 0.0;
+  //   double obj_iinit_im = 0.0;
+  //   double obj_lin_iinit_re = 0.0;
+  //   double obj_lin_iinit_im = 0.0;
+  //   Vec xT = timestepper->getState(iinit, timestepper->getNTimeSteps());
+  //   Vec wT = timestepper->getLinearizedState(iinit, timestepper->getNTimeSteps());
+  //   optim_target->evalJ(xT,  &obj_iinit_re, &obj_iinit_im);
+  //   optim_target->evalJ(wT,  &obj_lin_iinit_re, &obj_lin_iinit_im);
+  //   obj_re     += obj_weights[iinit] * obj_iinit_re;
+  //   obj_im     += obj_weights[iinit] * obj_iinit_im;
+  //   obj_lin_re += obj_weights[iinit] * obj_lin_iinit_re;
+  //   obj_lin_im += obj_weights[iinit] * obj_lin_iinit_im;
+  // }
+  // double my_re = obj_re;
+  // double my_im = obj_im;
+  // double my_lin_re = obj_lin_re;
+  // double my_lin_im = obj_lin_im;
+  // MPI_Allreduce(&my_re, &obj_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  // MPI_Allreduce(&my_im, &obj_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  // MPI_Allreduce(&my_lin_re, &obj_lin_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  // MPI_Allreduce(&my_lin_im, &obj_lin_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  // double dJdu_test = -2*(obj_re*obj_lin_re + obj_im*obj_lin_im);
+
+  // // Get the gradient element from the gradient and compare
+  // double Jgrad;
+  // VecGetValues(G, 1, &itest, &Jgrad);
+
+  // double rel_err = 0.0;
+  // if (fabs(Jgrad) > 1e-18) rel_err = (dJdu_test - Jgrad) / Jgrad;
+  // if (mpirank_world==0) printf("itest %d: gradient= %1.14e  dJ_test= %1.14e rel.error %1.4e\n", itest, Jgrad, dJdu_test, rel_err);
+
+  /* Solve linearized adjoint ODE */
+  // to get the terminal conditions, we need to first the objective function with the linearized state
+  double obj_cost_re = 0.0;
+  double obj_cost_im = 0.0;
+  for (int iinit=0; iinit<ninit_local; iinit++){
     // First compute the target state (which needs the initial state)
     int iinit_global = mpirank_init * ninit_local + iinit;
     optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
     optim_target->prepareTargetState(rho_t0);
-
-    // Now evaluate evaluate the gradient using w(T) and the objective function
-    double obj_iinit_re = 0.0;
-    double obj_iinit_im = 0.0;
+    Vec wT = timestepper->getLinearizedState(iinit, timestepper->getNTimeSteps());
     double obj_lin_iinit_re = 0.0;
     double obj_lin_iinit_im = 0.0;
-    Vec xT = timestepper->getState(iinit, timestepper->getNTimeSteps());
-    Vec wT = timestepper->getLinearizedState(iinit, timestepper->getNTimeSteps());
-    optim_target->evalJ(xT,  &obj_iinit_re, &obj_iinit_im);
     optim_target->evalJ(wT,  &obj_lin_iinit_re, &obj_lin_iinit_im);
-    obj_re     += obj_weights[iinit] * obj_iinit_re;
-    obj_im     += obj_weights[iinit] * obj_iinit_im;
-    obj_lin_re += obj_weights[iinit] * obj_lin_iinit_re;
-    obj_lin_im += obj_weights[iinit] * obj_lin_iinit_im;
+    obj_cost_re += obj_weights[iinit] * obj_lin_iinit_re;
+    obj_cost_im += obj_weights[iinit] * obj_lin_iinit_im;
   }
-  double my_re = obj_re;
-  double my_im = obj_im;
-  double my_lin_re = obj_lin_re;
-  double my_lin_im = obj_lin_im;
-  MPI_Allreduce(&my_re, &obj_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&my_im, &obj_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&my_lin_re, &obj_lin_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(&my_lin_im, &obj_lin_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  double dJdu_test = -2*(obj_re*obj_lin_re + obj_im*obj_lin_im);
-
-  // Get the gradient element from the gradient and compare
-  double Jgrad;
-  VecGetValues(G, 1, &itest, &Jgrad);
-
-  double rel_err = 0.0;
-  if (fabs(Jgrad) > 1e-18) rel_err = (dJdu_test - Jgrad) / Jgrad;
-  if (mpirank_world==0) printf("itest %d: gradient= %1.14e  dJ_test= %1.14e rel.error %1.4e\n", itest, Jgrad, dJdu_test, rel_err);
-
-  /* Solve linearized adjoint ODE */
-  // printf("-> Linearized backward solve\n");
+  // Now solve adjoint backwards for each terminal condition 
   for (int iinit = 0; iinit < ninit_local; iinit++) {
-    timestepper->solveLinearizedAdjointODE(iinit, v);
+    int iinit_global = mpirank_init * ninit_local + iinit;
+    // get the terminal condition 
+    optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+    optim_target->prepareTargetState(rho_t0);
+    VecZeroEntries(rho_t0_bar);
+    double obj_cost_re_bar, obj_cost_im_bar;
+    optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+    Vec wT = timestepper->getLinearizedState(iinit, timestepper->getNTimeSteps());
+    optim_target->evalJ_diff(wT, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
+
+    // solve backwards 
+    timestepper->solveLinearizedAdjointODE(iinit, rho_t0_bar, v, yout);
   }
 
 }
