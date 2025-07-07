@@ -24,7 +24,7 @@
 
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
-#define TEST_FD_HESS 0    // Run Finite Differences Hessian test
+#define TEST_FD_HESS 1    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-5          // Epsilon for Finite Differences
 
@@ -85,7 +85,6 @@ int main(int argc,char **argv)
   std::string runtypestr = config.GetStrParam("runtype", "simulation");
   if      (runtypestr.compare("simulation")      == 0) runtype = RunType::SIMULATION;
   else if (runtypestr.compare("gradient")     == 0)    runtype = RunType::GRADIENT;
-  else if (runtypestr.compare("hessian")     == 0)    runtype = RunType::HESSIAN;
   else if (runtypestr.compare("optimization")== 0)     runtype = RunType::OPTIMIZATION;
   else if (runtypestr.compare("evalcontrols")== 0)     runtype = RunType::EVALCONTROLS;
   else {
@@ -373,7 +372,7 @@ int main(int argc,char **argv)
   /* My time stepper */
   bool storeFWD = true; // TODO: dont store always.
   if (mastereq->lindbladtype != LindbladType::NONE &&   
-     (runtype == RunType::GRADIENT || runtype == RunType::HESSIAN || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
+     (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
 
 
   std::string timesteppertypestr = config.GetStrParam("timestepper", "IMR");
@@ -461,78 +460,6 @@ int main(int argc,char **argv)
     if (mpirank_world == 0 && !quietmode) {
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
-  }
-
-  /* --- TEST HESSIAN --- */
-  if (runtype == RunType::HESSIAN) {
-    if (mpirank_world == 0) printf("\n TESTING Hessian vector product...\n");
-    optimctx->timestepper->writeTrajectoryDataFiles = true;
-    Vec v, hessv;
-    VecDuplicate(xinit, &v);
-    VecDuplicate(xinit, &hessv);
-    Vec hessv_fd;
-    VecDuplicate(xinit, &hessv_fd);
-    Vec gplus, gminus;
-    VecDuplicate(xinit, &gplus);
-    VecDuplicate(xinit, &gminus);
-    Vec xplus, xminus;
-    VecDuplicate(xinit, &xplus);
-    VecDuplicate(xinit, &xminus);
-
-    // double epsilon = 1.0;
-    double epsilon = 1e-7;
-
-    // for (int ieps = 0; ieps < 8; ieps++) {
-    for (int ieps = 0; ieps < 1; ieps++) {
-      epsilon *= 0.1; // Decrease epsilon by factor of 10
-      printf("\nTesting Hessian vector product with epsilon = %1.14e\n", epsilon);
-
-    // Iterate over design variables 
-    // for (int itest=0; itest < optimctx->getNdesign(); itest++){
-    for (int itest=0; itest < 1; itest++){
-
-      // Choose the direction v = e_i
-      VecZeroEntries(v);
-      const int i = itest;
-      VecSetValue(v, i, 1.0, INSERT_ALL_VALUES);
-
-      // Evaluate HessianVector product
-      VecZeroEntries(hessv);
-      optimctx->evalHessVec(xinit, v, hessv, i);
-      // printf("Hessian vector product: \n");
-      // VecView(hessv, NULL);
-
-      // Perturb xinit by epsilon in direction v
-      VecCopy(xinit, xplus);
-      VecAXPY(xplus, epsilon, v); // xplus = xinit + EPS * v
-      VecCopy(xinit, xminus);
-      VecAXPY(xminus, -epsilon, v); // xminus = xinit - EPS * v
-
-      // Evaluate gradient at xplus and xminus
-      optimctx->evalGradF(xplus, gplus);
-      optimctx->evalGradF(xminus, gminus);
-
-      // Compute finite differences Hessian vector product
-      VecCopy(gplus, hessv_fd);
-      VecAXPY(hessv_fd, -1.0, gminus); // hessv_fd = gplus - gminus
-      VecScale(hessv_fd, 1.0 / (2.0 * epsilon)); // hessv_fd = (gplus - gminus) / (2*EPS)
-
-      // printf("FD Hessvec: \n");
-      // VecView(hessv_fd, NULL);
-      // printf("New Hessvec: \n");
-      // VecView(hessv, NULL);
-
-      // Compute error 
-      const double* hessv_ptr, *hessv_fd_ptr;
-      VecGetArrayRead(hessv, &hessv_ptr);
-      VecGetArrayRead(hessv_fd, &hessv_fd_ptr);
-      for (int j=0; j<optimctx->getNdesign(); j++) {
-        printf("Diff at i=%d, j=%d: Hv= %1.14e, Hv_FD=%1.14e, rel. err=%1.14e\n", i, j, hessv_ptr[j], hessv_fd_ptr[j], (hessv_ptr[j] - hessv_fd_ptr[j])/hessv_fd_ptr[j]);
-      }
-      VecRestoreArrayRead(hessv, &hessv_ptr);
-      VecRestoreArrayRead(hessv_fd, &hessv_fd_ptr);
-    }
-  }
   }
 
   /* --- Solve the optimization  --- */
@@ -698,110 +625,63 @@ int main(int argc,char **argv)
   }
   optimctx->getStartingPoint(xinit);
 
-  /* Figure out which parameters are hitting bounds */
-  double bound_tol = 1e-3;
-  std::vector<int> Ihess; // Index set for all elements that do NOT hit a bound
-  for (PetscInt i=0; i<optimctx->getNdesign(); i++){
-    // get x_i and bounds for x_i
-    double xi, blower, bupper;
-    VecGetValues(xinit, 1, &i, &xi);
-    VecGetValues(optimctx->xlower, 1, &i, &blower);
-    VecGetValues(optimctx->xupper, 1, &i, &bupper);
-    // compare 
-    if (fabs(xi - blower) < bound_tol || 
-        fabs(xi - bupper) < bound_tol  ) {
-          printf("Parameter %d hits bound: x=%f\n", i, xi);
-    } else {
-      Ihess.push_back(i);
+  Vec v, hessv;
+  VecDuplicate(xinit, &v);
+  VecDuplicate(xinit, &hessv);
+  Vec hessv_fd;
+  VecDuplicate(xinit, &hessv_fd);
+  Vec gplus, gminus;
+  VecDuplicate(xinit, &gplus);
+  VecDuplicate(xinit, &gminus);
+  Vec xplus, xminus;
+  VecDuplicate(xinit, &xplus);
+  VecDuplicate(xinit, &xminus);
+
+  double epsilon = 1e-7;
+  // for (int ieps = 0; ieps < 8; ieps++) {
+  for (int ieps = 0; ieps < 1; ieps++) {
+    epsilon *= 0.1; // Decrease epsilon by factor of 10
+    printf("\nTesting Hessian vector product with epsilon = %1.14e\n", epsilon);
+
+    // Iterate over design variables (rows of the Hessian)
+    // for (int itest=0; itest < optimctx->getNdesign(); itest++){
+    { int itest = 3; // fixed row
+
+      // Choose the direction v = e_i
+      VecZeroEntries(v);
+      const int i = itest;
+      VecSetValue(v, i, 1.0, INSERT_ALL_VALUES);
+
+      // Evaluate HessianVector product
+      VecZeroEntries(hessv);
+      optimctx->evalHessVec(xinit, v, hessv, i);
+
+      // Perturb xinit by epsilon in direction v
+      VecCopy(xinit, xplus);
+      VecAXPY(xplus, epsilon, v); // xplus = xinit + EPS * v
+      VecCopy(xinit, xminus);
+      VecAXPY(xminus, -epsilon, v); // xminus = xinit - EPS * v
+
+      // Evaluate gradient at xplus and xminus
+      optimctx->evalGradF(xplus, gplus);
+      optimctx->evalGradF(xminus, gminus);
+
+      // Compute finite differences Hessian vector product
+      VecCopy(gplus, hessv_fd);
+      VecAXPY(hessv_fd, -1.0, gminus); // hessv_fd = gplus - gminus
+      VecScale(hessv_fd, 1.0 / (2.0 * epsilon)); // hessv_fd = (gplus - gminus) / (2*EPS)
+
+      // Compute error 
+      const double* hessv_ptr, *hessv_fd_ptr;
+      VecGetArrayRead(hessv, &hessv_ptr);
+      VecGetArrayRead(hessv_fd, &hessv_fd_ptr);
+      for (int j=0; j<optimctx->getNdesign(); j++) {
+        printf("Diff at i=%d, j=%d: Hv= %1.14e, Hv_FD=%1.14e, rel. err=%1.14e\n", i, j, hessv_ptr[j], hessv_fd_ptr[j], (hessv_ptr[j] - hessv_fd_ptr[j])/hessv_fd_ptr[j]);
+      }
+      VecRestoreArrayRead(hessv, &hessv_ptr);
+      VecRestoreArrayRead(hessv_fd, &hessv_fd_ptr);
     }
   }
-
-  double grad_org;
-  double grad_pert1, grad_pert2;
-  Mat Hess;
-  int nhess = Ihess.size();
-  MatCreateSeqDense(PETSC_COMM_SELF, nhess, nhess, NULL, &Hess);
-  MatSetUp(Hess);
-
-  Vec grad1, grad2;
-  VecDuplicate(grad, &grad1);
-  VecDuplicate(grad, &grad2);
-
-
-  /* Iterate over all params that do not hit a bound */
-  for (PetscInt k=0; k< Ihess.size(); k++){
-    PetscInt j = Ihess[k];
-    printf("Computing column %d\n", j);
-
-    /* Evaluate \nabla_x J(x + eps * e_j) */
-    VecSetValue(xinit, j, EPS, ADD_VALUES); 
-    optimctx->evalGradF(xinit, grad);        
-    VecCopy(grad, grad1);
-
-    /* Evaluate \nabla_x J(x - eps * e_j) */
-    VecSetValue(xinit, j, -2.*EPS, ADD_VALUES); 
-    optimctx->evalGradF(xinit, grad);
-    VecCopy(grad, grad2);
-
-    for (PetscInt l=0; l<Ihess.size(); l++){
-      PetscInt i = Ihess[l];
-
-      /* Get the derivative wrt parameter i */
-      VecGetValues(grad1, 1, &i, &grad_pert1);   // \nabla_x_i J(x+eps*e_j)
-      VecGetValues(grad2, 1, &i, &grad_pert2);    // \nabla_x_i J(x-eps*e_j)
-
-      /* Finite difference for element Hess(l,k) */
-      double fd = (grad_pert1 - grad_pert2) / (2.*EPS);
-      MatSetValue(Hess, l, k, fd, INSERT_VALUES);
-    }
-
-    /* Restore parameters xinit */
-    VecSetValue(xinit, j, EPS, ADD_VALUES);
-  }
-  /* Assemble the Hessian */
-  MatAssemblyBegin(Hess, MAT_FINAL_ASSEMBLY);
-  MatAssemblyEnd(Hess, MAT_FINAL_ASSEMBLY);
-  
-  /* Clean up */
-  VecDestroy(&grad1);
-  VecDestroy(&grad2);
-
-
-  /* Epsilon test: compute ||1/2(H-H^T)||_F  */
-  MatScale(Hess, 0.5);
-  Mat HessT, Htest;
-  MatDuplicate(Hess, MAT_COPY_VALUES, &Htest);
-  MatTranspose(Hess, MAT_INITIAL_MATRIX, &HessT);
-  MatAXPY(Htest, -1.0, HessT, SAME_NONZERO_PATTERN);
-  double fnorm;
-  MatNorm(Htest, NORM_FROBENIUS, &fnorm);
-  printf("EPS-test: ||1/2(H-H^T)||= %1.14e\n", fnorm);
-
-  /* symmetrize H_symm = 1/2(H+H^T) */
-  MatAXPY(Hess, 1.0, HessT, SAME_NONZERO_PATTERN);
-
-  /* --- Print Hessian to file */
-  
-  snprintf(filename, 254, "%s/hessian.dat", output->datadir.c_str());
-  printf("File written: %s.\n", filename);
-  PetscViewer viewer;
-  PetscViewerCreate(MPI_COMM_WORLD, &viewer);
-  PetscViewerSetType(viewer, PETSCVIEWERASCII);
-  PetscViewerFileSetMode(viewer, FILE_MODE_WRITE);
-  PetscViewerFileSetName(viewer, filename);
-  // PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_DENSE);
-  MatView(Hess, viewer);
-  PetscViewerPopFormat(viewer);
-  PetscViewerDestroy(&viewer);
-
-  // write again in binary
-  snprintf(filename, 254, "%s/hessian_bin.dat", output->datadir.c_str());
-  printf("File written: %s.\n", filename);
-  PetscViewerBinaryOpen(MPI_COMM_WORLD, filename, FILE_MODE_WRITE, &viewer);
-  MatView(Hess, viewer);
-  PetscViewerDestroy(&viewer);
-
-  MatDestroy(&Hess);
 
 #endif
 
