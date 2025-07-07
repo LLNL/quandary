@@ -526,70 +526,24 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 }
 
 
-void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec yout, const int itest){
+void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec Hv){
+  if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL HESS VEC... " << std::endl;
 
-  /* First evaluate the gradient of F(x) */
   timestepper->mastereq->setControlAmplitudes(x); 
+
+  /* Solve forward and adjoint ODE, storing the (adjoint) states at each timestep and for each initial condition */
   VecZeroEntries(xtmp);
-  // Run forward and backward while storing the state and adjoint states at each timestep and at each initial condition
-  // printf("-> Forward and backward solve\n");
   timestepper->storeFWD = true;
   evalGradF(x, xtmp);
 
-  /* Solve linearized ODE */
-  // printf("-> Linearized forward solve\n");
+  /* Solve linearized ODE forward in time */
   for (int iinit = 0; iinit < ninit_local; iinit++) {
     timestepper->solveLinearizedODE(iinit, v);
   }
 
-  // // Verify w(t) = sum_i dx(t)/dalpha * v_i using the gradient. 
-  // // printf("Verify linearized solution. \n\n");
-  // // Get dJdalpha from w(T)
-  // double obj_re = 0.0;
-  // double obj_im = 0.0;
-  // double obj_lin_re = 0.0;
-  // double obj_lin_im = 0.0;
-  // for (int iinit=0; iinit<ninit_local; iinit++){
+  /* Solve linearized adjoint ODE while accumulating Hessian-vector product */
 
-  //   // First compute the target state (which needs the initial state)
-  //   int iinit_global = mpirank_init * ninit_local + iinit;
-  //   optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
-  //   optim_target->prepareTargetState(rho_t0);
-
-  //   // Now evaluate evaluate the gradient using w(T) and the objective function
-  //   double obj_iinit_re = 0.0;
-  //   double obj_iinit_im = 0.0;
-  //   double obj_lin_iinit_re = 0.0;
-  //   double obj_lin_iinit_im = 0.0;
-  //   Vec xT = timestepper->getState(iinit, timestepper->getNTimeSteps());
-  //   Vec wT = timestepper->getLinearizedState(iinit, timestepper->getNTimeSteps());
-  //   optim_target->evalJ(xT,  &obj_iinit_re, &obj_iinit_im);
-  //   optim_target->evalJ(wT,  &obj_lin_iinit_re, &obj_lin_iinit_im);
-  //   obj_re     += obj_weights[iinit] * obj_iinit_re;
-  //   obj_im     += obj_weights[iinit] * obj_iinit_im;
-  //   obj_lin_re += obj_weights[iinit] * obj_lin_iinit_re;
-  //   obj_lin_im += obj_weights[iinit] * obj_lin_iinit_im;
-  // }
-  // double my_re = obj_re;
-  // double my_im = obj_im;
-  // double my_lin_re = obj_lin_re;
-  // double my_lin_im = obj_lin_im;
-  // MPI_Allreduce(&my_re, &obj_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  // MPI_Allreduce(&my_im, &obj_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  // MPI_Allreduce(&my_lin_re, &obj_lin_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  // MPI_Allreduce(&my_lin_im, &obj_lin_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
-  // double dJdu_test = -2*(obj_re*obj_lin_re + obj_im*obj_lin_im);
-
-  // // Get the gradient element from the gradient and compare
-  // double Jgrad;
-  // VecGetValues(G, 1, &itest, &Jgrad);
-
-  // double rel_err = 0.0;
-  // if (fabs(Jgrad) > 1e-18) rel_err = (dJdu_test - Jgrad) / Jgrad;
-  // if (mpirank_world==0) printf("itest %d: gradient= %1.14e  dJ_test= %1.14e rel.error %1.4e\n", itest, Jgrad, dJdu_test, rel_err);
-
-  /* Solve linearized adjoint ODE */
-  // to get the terminal conditions, we need to first the objective function with the linearized state
+  // First, compute the objective function using the linearized state which is needed for the terminal conditions, 
   double obj_cost_re = 0.0;
   double obj_cost_im = 0.0;
   for (int iinit=0; iinit<ninit_local; iinit++){
@@ -604,6 +558,10 @@ void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec yout, const int ite
     obj_cost_re += obj_weights[iinit] * obj_lin_iinit_re;
     obj_cost_im += obj_weights[iinit] * obj_lin_iinit_im;
   }
+  double mycost_re = obj_cost_re;
+  double mycost_im = obj_cost_im;
+  MPI_Allreduce(&mycost_re, &obj_cost_re, 1, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(&mycost_im, &obj_cost_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
   // Now solve adjoint backwards for each terminal condition 
   for (int iinit = 0; iinit < ninit_local; iinit++) {
     int iinit_global = mpirank_init * ninit_local + iinit;
@@ -617,9 +575,20 @@ void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec yout, const int ite
     optim_target->evalJ_diff(wT, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
     // solve backwards while accumulating hessian-vector product 
-    timestepper->solveLinearizedAdjointODE(iinit, rho_t0_bar, v, yout);
+    timestepper->solveLinearizedAdjointODE(iinit, rho_t0_bar, v, Hv);
   }
+  /* Sum up from all initial condition processors */
+  PetscScalar* hess; 
+  VecGetArray(Hv, &hess);
+  for (int i=0; i<ndesign; i++) {
+    mygrad[i] = hess[i];
+  }
+  MPI_Allreduce(mygrad, hess, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
+  VecRestoreArray(Hv, &hess);
 
+  // double hnorm;
+  // VecNorm(Hv, NORM_2, &(hnorm));
+  // printf("Hessian vector product norm = %1.14e\n", hnorm);
 }
 
 void OptimProblem::solve(Vec xinit) {
@@ -897,15 +866,28 @@ myObjective::~myObjective() {}
 
 double myObjective::value(const ROL::Vector<double> &x, double & /*tol*/) {
 
+  // Cast the input and evalF on the petsc vectors
   const myVec& ex = dynamic_cast<const myVec&>(x); 
   double f = optimctx_->evalF(ex.getVector());
   return f;
 }
 
 void myObjective::gradient(ROL::Vector<double> &g, const ROL::Vector<double> &x, double & /*tol*/) {
+
+  // Cast the input and evalGradF on the petsc vectors 
   const myVec& ex = dynamic_cast<const myVec&>(x); 
   myVec& eg = dynamic_cast<myVec&>(g); 
   optimctx_->evalGradF(ex.getVector(), eg.getVector());
+}
+
+void myObjective::hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ ){
+
+  // Cast the input and evalHessVec on the petsc vectors 
+  const myVec& ev = dynamic_cast<const myVec&>(v); 
+  const myVec& ex = dynamic_cast<const myVec&>(x); 
+  myVec& ehv = dynamic_cast<myVec&>(hv); 
+  int itest = 0;
+  optimctx_->evalHessVec(ex.getVector(), ev.getVector(), ehv.getVector());
 }
 
 void myObjective::update(const ROL::Vector<double> &x, ROL::UpdateType type, int iter){
@@ -939,19 +921,3 @@ void myObjective::update(const ROL::Vector<double> &x, ROL::UpdateType type, int
   }
 }
 
-
-// void myObjective::hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ ){
-//   /* Cast the input and grab the petsc vectors */
-//   const myVec& ev = dynamic_cast<const myVec&>(v); 
-//   const myVec& ex = dynamic_cast<const myVec&>(x); 
-//   myVec& ehv = dynamic_cast<myVec&>(hv); 
-//   Vec myv = ev.getVector();
-//   Vec myx = ex.getVector();
-//   Vec myhv = ehv.getVector();
-
-//   // 1) Forward evolution: store y(t)
-//   // 2) Backward evolution store lambda(t) 
-//   // 3) Forward with source (dH*y), store w(t)
-//   // 4) Backward with source (dH*lambda), 
-//   //                evaluate p^T(dH*y) +- w^T(dH*lambda)
-// }

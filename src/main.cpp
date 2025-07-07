@@ -654,7 +654,13 @@ int main(int argc,char **argv)
 
       // Evaluate HessianVector product
       VecZeroEntries(hessv);
-      optimctx->evalHessVec(xinit, v, hessv, i);
+      optimctx->evalHessVec(xinit, v, hessv);
+
+      // if (mpirank_init==0) {
+      //   printf("Hess vec hv = \n");
+      //   VecView(hessv, NULL);
+      // }
+      // exit(1);
 
       // Perturb xinit by epsilon in direction v
       VecCopy(xinit, xplus);

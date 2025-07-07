@@ -244,7 +244,7 @@ class OptimProblem {
    * @param[in] v Vector to which the Hessian matrix is applied to.
    * @param[out] y Vector to store the Hessian-vector product
    */
-  void evalHessVec(const Vec x, const Vec v, Vec y, const int itest);
+  void evalHessVec(const Vec x, const Vec v, Vec Hv);
 
   /**
    * @brief Runs the optimization solver.
@@ -368,6 +368,6 @@ class myObjective : public ROL::Objective<double> {
 
   void update(const ROL::Vector<double> &x, ROL::UpdateType type, int iter);
 
-  // void hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ );
+  void hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ );
 
 };
