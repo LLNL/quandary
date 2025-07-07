@@ -118,6 +118,7 @@ SAMPLE_INDICES = [int(i * (EXPECTED_LENGTH - 1) / (NUM_SAMPLES - 1)) for i in ra
 def test_example_cnot(mpi_exec, tmp_path, request):
     """Test CNOT gate optimization using Python interface."""
     datadir_path = os.path.join(tmp_path, request.node.name)
+    print(f"datadir is {datadir_path}")
 
     freq01 = [4.80595, 4.8601]
     favg = sum(freq01)/len(freq01)
