@@ -23,7 +23,7 @@
 #include "ROL_Bounds.hpp"
 
 
-#define TEST_FD_GRAD 0    // Run Finite Differences gradient test
+#define TEST_FD_GRAD 1    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-5          // Epsilon for Finite Differences
@@ -646,6 +646,11 @@ int main(int argc,char **argv)
   if (mpirank_world == 0) printf("\nRunning optimizer eval_f... ");
   obj_org = optimctx->evalF(xinit);
   if (mpirank_world == 0) printf(" Obj_orig %1.14e\n", obj_org);
+
+
+  // Run once without testing to store all adjoint states, then set testnow to true so that the next evalGradF will compare to the stored adjoint states.
+  optimctx->evalGradF(xinit, grad);
+  mytimestepper->testnow = true;
 
   /* --- Solve adjoint --- */
   if (mpirank_world == 0) printf("\nRunning optimizer eval_grad_f...\n");

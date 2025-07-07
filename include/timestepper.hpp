@@ -44,6 +44,7 @@ class TimeStepper{
     int mpirank_init;
     int ninit_local;
   public:
+    bool testnow;
     std::vector<std::vector<Vec>> store_states; ///< For each initial condition, vector of states at each time-step
     std::vector<std::vector<Vec>> store_lin_states; ///< For each initial condition, vector of linearized states at each time-step
     std::vector<std::vector<Vec>> store_adj_states; ///< For each initial condition, vector of real states at each time-step
@@ -233,7 +234,7 @@ class TimeStepper{
      * @param grad Gradient vector to update
      * @param compute_gradient Flag to compute gradient
      */
-    virtual void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    virtual void evolveBWD(const int iinit, const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
 
     /**
      * @brief Evolves the linearized adjoint equation (in direction v) backwards by one time-step from tstop to start
@@ -244,7 +245,7 @@ class TimeStepper{
      * @param v Direction of linearization
      * @param x Linearized State vector to evolve
      */
-    virtual void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x, Vec hessvec)=0;
+    virtual void evolveLinearizedBWD(const int iinit, const double tstop, const double tstart, const Vec v, Vec x, Vec hessvec)=0;
 
 };
 
@@ -282,7 +283,7 @@ class ExplEuler : public TimeStepper {
      */
     void evolveFWD(const double tstart, const double tstop, Vec x);
     void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) {printf("NOT AVAIL.\n"); exit(1);}
-    void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x, Vec hessvec) {printf("NOT AVAIL.\n"); exit(1);}
+    void evolveLinearizedBWD(const int iinit, const double tstop, const double tstart, const Vec v, Vec x, Vec hessvec) {printf("NOT AVAIL.\n"); exit(1);}
 
     /**
      * @brief Evolves adjoint backward using explicit Euler method.
@@ -294,7 +295,7 @@ class ExplEuler : public TimeStepper {
      * @param grad Gradient vector to update
      * @param compute_gradient Flag to compute gradient
      */
-    void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    void evolveBWD(const int iinit, const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
 };
 
 /**
@@ -351,7 +352,7 @@ class ImplMidpoint : public TimeStepper {
      */
     virtual void evolveFWD(const double tstart, const double tstop, Vec x);
     virtual void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x);
-    virtual void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x, Vec hessvec);
+    virtual void evolveLinearizedBWD(const int iinit, const double tstop, const double tstart, const Vec v, Vec x, Vec hessvec);
 
     /**
      * @brief Evolves adjoint backward using implicit midpoint rule and adds to reduced gradient.
@@ -363,7 +364,7 @@ class ImplMidpoint : public TimeStepper {
      * @param grad Gradient vector to update
      * @param compute_gradient Flag to compute gradient
      */
-    virtual void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    virtual void evolveBWD(const int iinit, const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
 
     /**
      * @brief Solves (I - alpha*A) * x = b using Neumann iterations.
@@ -420,7 +421,7 @@ class CompositionalImplMidpoint : public ImplMidpoint {
      */
     void evolveFWD(const double tstart, const double tstop, Vec x);
     void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) {printf("NOT AVAIL.\n"); exit(1);}
-    void evolveLinearizedBWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x, Vec hessvec) {printf("NOT AVAIL.\n"); exit(1);}
+    void evolveLinearizedBWD(const int iinit, const double tstop, const double tstart, const Vec v, Vec x, Vec hessvec) {printf("NOT AVAIL.\n"); exit(1);}
 
     /**
      * @brief Evolves adjoint backward using compositional implicit midpoint rule and accumulates gradient.
@@ -432,5 +433,5 @@ class CompositionalImplMidpoint : public ImplMidpoint {
      * @param grad Gradient vector to update
      * @param compute_gradient Flag to compute gradient
      */
-    void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    void evolveBWD(const int iinit, const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
 };
