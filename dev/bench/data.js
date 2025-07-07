@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1751487660759,
+  "lastUpdate": 1751917811050,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -923,6 +923,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4366.36,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "da7c7ffc1582df2ddb9141bb509af0c7384a732e",
+          "message": "Merge pull request #66 from LLNL/add-python-tests\n\nAdd python interface tests",
+          "timestamp": "2025-07-07T19:21:42Z",
+          "url": "https://github.com/LLNL/quandary/commit/da7c7ffc1582df2ddb9141bb509af0c7384a732e"
+        },
+        "date": 1751917809041,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.9928182819858193,
+            "unit": "seconds",
+            "range": "0.3365738311296385"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 85.95,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 15.231006296118721,
+            "unit": "seconds",
+            "range": "0.17413491354152683"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4362.5,
             "unit": "MB"
           }
         ]
