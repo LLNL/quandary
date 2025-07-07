@@ -529,13 +529,12 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec yout, const int itest){
 
   /* First evaluate the gradient of F(x) */
-  Vec G;
-  VecDuplicate(x, &G);
-  VecZeroEntries(G);
+  timestepper->mastereq->setControlAmplitudes(x); 
+  VecZeroEntries(xtmp);
   // Run forward and backward while storing the state and adjoint states at each timestep and at each initial condition
   // printf("-> Forward and backward solve\n");
   timestepper->storeFWD = true;
-  evalGradF(x, G);
+  evalGradF(x, xtmp);
 
   /* Solve linearized ODE */
   // printf("-> Linearized forward solve\n");
@@ -617,7 +616,7 @@ void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec yout, const int ite
     Vec wT = timestepper->getLinearizedState(iinit, timestepper->getNTimeSteps());
     optim_target->evalJ_diff(wT, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
-    // solve backwards 
+    // solve backwards while accumulating hessian-vector product 
     timestepper->solveLinearizedAdjointODE(iinit, rho_t0_bar, v, yout);
   }
 

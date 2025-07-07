@@ -44,7 +44,6 @@ class TimeStepper{
     int mpirank_init;
     int ninit_local;
   public:
-    bool testnow;
     std::vector<std::vector<Vec>> store_states; ///< For each initial condition, vector of states at each time-step
     std::vector<std::vector<Vec>> store_lin_states; ///< For each initial condition, vector of linearized states at each time-step
     std::vector<std::vector<Vec>> store_adj_states; ///< For each initial condition, vector of real states at each time-step
@@ -234,7 +233,7 @@ class TimeStepper{
      * @param grad Gradient vector to update
      * @param compute_gradient Flag to compute gradient
      */
-    virtual void evolveBWD(const int iinit, const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    virtual void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
 
     /**
      * @brief Evolves the linearized adjoint equation (in direction v) backwards by one time-step from tstop to start
@@ -295,7 +294,7 @@ class ExplEuler : public TimeStepper {
      * @param grad Gradient vector to update
      * @param compute_gradient Flag to compute gradient
      */
-    void evolveBWD(const int iinit, const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
 };
 
 /**
@@ -364,7 +363,7 @@ class ImplMidpoint : public TimeStepper {
      * @param grad Gradient vector to update
      * @param compute_gradient Flag to compute gradient
      */
-    virtual void evolveBWD(const int iinit, const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    virtual void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
 
     /**
      * @brief Solves (I - alpha*A) * x = b using Neumann iterations.
@@ -433,5 +432,5 @@ class CompositionalImplMidpoint : public ImplMidpoint {
      * @param grad Gradient vector to update
      * @param compute_gradient Flag to compute gradient
      */
-    void evolveBWD(const int iinit, const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+    void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
 };

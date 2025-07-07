@@ -8,7 +8,6 @@ TimeStepper::TimeStepper() {
   total_time = 0.0;
   dt = 0.0;
   storeFWD = false;
-  testnow = false;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   writeTrajectoryDataFiles = false;
 }
@@ -267,7 +266,7 @@ void TimeStepper::solveAdjointODE(int iinit, Vec rho_t0_bar, Vec finalstate, dou
     else evolveFWD(tstop, tstart, xprimal);
 
     /* Take one time step backwards for the adjoint */
-    evolveBWD(iinit, tstop, tstart, xprimal, xadj, redgrad, true);
+    evolveBWD(tstop, tstart, xprimal, xadj, redgrad, true);
 
     if (storeFWD) {
       VecCopy(xadj, store_adj_states[iinit][n-1]);
@@ -567,7 +566,7 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
   VecRestoreArray(redgrad, &grad_ptr);
 }
 
-void TimeStepper::evolveBWD(const int iinit, const double /*tstart*/, const double /*tstop*/, const Vec /*x_stop*/, Vec /*x_adj*/, Vec /*grad*/, bool /*compute_gradient*/){}
+void TimeStepper::evolveBWD(const double /*tstart*/, const double /*tstop*/, const Vec /*x_stop*/, Vec /*x_adj*/, Vec /*grad*/, bool /*compute_gradient*/){}
 
 ExplEuler::ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local_, MPI_Comm comm_init) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_, ninit_local_, comm_init) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
@@ -591,7 +590,7 @@ void ExplEuler::evolveFWD(const double tstart,const  double tstop, Vec x) {
   VecAXPY(x, dt, stage);
 }
 
-void ExplEuler::evolveBWD(const int iinit, const double tstop,const  double tstart,const  Vec x, Vec x_adj, Vec grad, bool compute_gradient){
+void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, Vec x_adj, Vec grad, bool compute_gradient){
   double dt = tstop - tstart;
 
   /* Add to reduced gradient */
@@ -762,7 +761,7 @@ void ImplMidpoint::evolveLinearizedFWD(const int iinit, const double tstart, con
   VecAXPY(x, dt, stage);
 }
 
-void ImplMidpoint::evolveBWD(const int iinit, const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient){
+void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient){
   Mat A;
 
   /* Compute time step size */
@@ -809,24 +808,11 @@ void ImplMidpoint::evolveBWD(const int iinit, const double tstop, const double t
         break;
     }
     
+    // G += dt* stage^T * dRHSdp^T * stage_adj
     VecAYPX(stage, dt / 2.0, x); // stage = x +dt/2 * stage 
+    mastereq->compute_dRHS_dParams(thalf, stage, stage_adj, dt, grad);
     // Here: stage == x^n+1/2 = 1/2(x^n + x^n+1)
     // Here: stage_adj == lambda^n+1/2 = 1/2(lambda^n + lambda^n+1)
-    // Thus G += dt* stage^T * dRHSdp^T * stage_adj
-    if (!testnow) {
-      mastereq->compute_dRHS_dParams(thalf, stage, stage_adj, dt, grad);
-    } else {
-      // TEST G += dt* xhalf^T * dRHSdp^T *lambdahalf 
-      int n = std::round(tstart / dt);
-      VecCopy(store_states[iinit][n], xhalf);
-      VecAXPY(xhalf, 1.0, store_states[iinit][n+1]);
-      VecScale(xhalf, 0.5);
-      VecCopy(store_adj_states[iinit][n], xadjhalf);
-      VecAXPY(xadjhalf, 1.0, store_adj_states[iinit][n+1]);
-      VecScale(xadjhalf, 0.5);
-      mastereq->compute_dRHS_dParams(thalf, xhalf, xadjhalf, dt, grad);
-    }
-
   }
 
   /* Revert changes to RHS from above, if gmres solver */
@@ -840,49 +826,6 @@ void ImplMidpoint::evolveBWD(const int iinit, const double tstop, const double t
   VecScale(stage_adj, dt);
   MatMultTransposeAdd(A, stage_adj, x_adj, x_adj);
 
-  if (testnow){
-    int n = std::round(tstart / dt);
-    double norm = 0.0;
-
-    // TEST: Stage == x^n+1/2 
-    VecCopy(store_states[iinit][n], xhalf);
-    VecAXPY(xhalf, 1.0, store_states[iinit][n+1]);
-    VecScale(xhalf, 0.5);
-    VecAXPY(xhalf, -1.0, stage);
-    VecNorm(xhalf, NORM_2, &norm);
-    if (norm > 1e-10) {
-      printf("WARNING: Stage variable not equal to x^n+1/2 at time %1.5e, norm = %1.5e\n", thalf, norm);
-      VecView(xhalf, NULL);
-      VecView(stage, NULL);
-      exit(1);
-    }
-
-    // TEST: Stage_adj == xbar^n+1/2 
-    VecCopy(store_adj_states[iinit][n], xadjhalf);
-    VecAXPY(xadjhalf, 1.0, store_adj_states[iinit][n+1]);
-    VecScale(xadjhalf, 0.5);
-    VecScale(stage_adj, 1.0/dt); // reverting from above update of x_adj
-    VecAXPY(xadjhalf, -1.0, stage_adj);
-    VecNorm(xadjhalf, NORM_2, &norm);
-    if (norm > 1e-10) {
-      printf("WARNING: Stage adjoint not equal to xbar^n+1/2 at time %1.5e, n=%d. norm = %1.5e\n", thalf, n, norm);
-      VecView(xadjhalf, NULL);
-      VecView(stage_adj, NULL);
-      exit(1);
-    }
-
-    // // TEST store_adj_states[iinit][n] == x_adj
-    // VecCopy(store_adj_states[iinit][n], xadjhalf);
-    // VecAXPY(xadjhalf, -1.0, x_adj);
-    // VecNorm(xadjhalf, NORM_2, &norm);
-    // if (norm > 1e-10) {
-    //   printf("WARNING: Adjoint state not equal to lambda^n at time %1.5e, n=%d, norm = %1.5e\n", tstart, n, norm);
-    //   VecView(xadjhalf, NULL);
-    //   VecView(x_adj, NULL);
-    //   exit(1);
-    // }
-
-  }
 }
 
 void ImplMidpoint::evolveLinearizedBWD(const int iinit, const double tstop, const double tstart, const Vec v, Vec x, Vec hessvec){
@@ -1051,7 +994,7 @@ void CompositionalImplMidpoint::evolveFWD(const double tstart,const  double tsto
 
 }
 
-void CompositionalImplMidpoint::evolveBWD(const int iinit, const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient){
+void CompositionalImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec x, Vec x_adj, Vec grad, bool compute_gradient){
   
   double dt = tstop - tstart;
 
@@ -1069,7 +1012,7 @@ void CompositionalImplMidpoint::evolveBWD(const int iinit, const double tstop, c
   // Run backwards while updating adjoint and gradient
   for (int istage = gamma.size()-1; istage >=0; istage--){
     double dt_stage = gamma[istage] * dt;
-    ImplMidpoint::evolveBWD(iinit, tcurr, tcurr-dt_stage, x_stage[istage], x_adj, grad, compute_gradient);
+    ImplMidpoint::evolveBWD(tcurr, tcurr-dt_stage, x_stage[istage], x_adj, grad, compute_gradient);
     tcurr = tcurr - gamma[istage]*dt;
   }
   assert(fabs(tcurr - tstart) < 1e-12);
