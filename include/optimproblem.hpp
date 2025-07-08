@@ -93,10 +93,10 @@ class OptimProblem {
   Tao tao; ///< PETSc's TAO optimization solver
   std::vector<double> initguess_fromfile; ///< Initial guess read from file
   double* mygrad; ///< Auxiliary gradient storage
-    
   Vec xtmp; ///< Temporary vector storage
   
   public: 
+    bool lastIter; ///< Flag to indicate last iteration in optimization 
     Output* output; ///< Pointer to output handler
     TimeStepper* timestepper; ///< Pointer to time-stepping scheme
     Vec xlower, xupper; ///< Lower and upper bounds for optimization variables
@@ -214,7 +214,7 @@ class OptimProblem {
    *
    * @return int Maximum iteration limit
    */
-  int getMaxIter()     { return maxiter; };
+  int getMaxIter() { return maxiter; };
 
   /**
    * @brief Evaluates the objective function F(x).

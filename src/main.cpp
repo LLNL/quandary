@@ -425,7 +425,18 @@ int main(int argc,char **argv)
   }
   // Create solver from ROL parameter file
   std::string ROLfilename = config.GetStrParam("rol_xml", "./rolinput.xml", true, false);
-  auto parlist = ROL::getParametersFromXmlFile(ROLfilename);
+  // auto parlist = ROL::getParametersFromXmlFile(ROLfilename);
+  ROL::Ptr<ROL::ParameterList> parlist;
+  if (std::filesystem::exists(ROLfilename)) {
+      parlist = ROL::getParametersFromXmlFile(ROLfilename);
+  } else {
+      // Create default parameter list
+      parlist = ROL::makePtr<ROL::ParameterList>();
+  }
+  // // Pass maxiterations to optimproblem
+  // int ROLmaxiter = parlist->sublist("Status Test").get<int>("Iteration Limit", 100);
+  // optimctx->setMaxIter(ROLmaxiter);
+
   ROL::Solver<double> rolSolver(optProb,*parlist);
   // Set ROL output stream
   std::ofstream rolFileStream(output->datadir + "/roloutput.txt");
@@ -502,6 +513,13 @@ int main(int argc,char **argv)
       StartTime = MPI_Wtime();
       rolSolver.solve(*outStream); 
       rolFileStream.close();
+
+      // write optimal controls 
+      const myVec& ex = dynamic_cast<const myVec&>(*x); 
+      output->writeControls(ex.getVector(), mytimestepper->mastereq, mytimestepper->ntime, mytimestepper->dt);
+      // one last forward evaluation while writing trajectory data
+      mytimestepper->writeTrajectoryDataFiles = true;
+      optimctx->evalF(ex.getVector()); 
     }
   }
 

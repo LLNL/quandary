@@ -8,6 +8,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   quietmode = quietmode_;
   /* Reset */
   objective = 0.0;
+  lastIter = false;
 
   /* Store communicators */
   comm_init = comm_init_;
@@ -660,7 +661,6 @@ bool OptimProblem::monitor(int iter, double deltax, Vec params){
   double F_avg = getFidelity();
 
   /* Additional Stopping criteria */
-  bool lastIter = false;
   bool TAOCONVERGED = false;
   std::string finalReason_str = "";
   if (1.0 - F_avg <= getInfTol()) {
@@ -883,6 +883,12 @@ double myObjective::value(const ROL::Vector<double> &x, double & /*tol*/) {
 }
 
 void myObjective::gradient(ROL::Vector<double> &g, const ROL::Vector<double> &x, double & /*tol*/) {
+
+  // Hack: If last iter, set gradient to zero so that ROL stops.
+  if (optimctx_->lastIter) {
+    g.zero();
+    return;
+  }
 
   // Cast the input and evalGradF on the petsc vectors 
   const myVec& ex = dynamic_cast<const myVec&>(x); 
