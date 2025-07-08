@@ -652,3 +652,9 @@ bool isUnitary(const Mat V_re, const Mat V_im){
 
   return isunitary;
 }
+
+void logErrorToRank0(int mpi_rank, const std::string& message) {
+  if (mpi_rank == 0) {
+    std::cerr << message << std::endl;
+  }
+}
