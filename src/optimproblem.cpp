@@ -580,6 +580,13 @@ void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec Hv){
     // solve backwards while accumulating hessian-vector product 
     timestepper->solveLinearizedAdjointODE(iinit, rho_t0_bar, v, Hv);
   }
+
+  /* Hessian of Tikhonov regularization */
+  if (mpirank_init == 0) { // ADD ON ONE PROC ONLY!
+    // Hessian of Tikhonov 0.5*gamma * ||x||^2 : H = gamma_tik I
+    VecAXPY(Hv, gamma_tik, v);   // hv += gamma_tik v
+  }
+
   /* Sum up from all initial condition processors */
   PetscScalar* hess; 
   VecGetArray(Hv, &hess);
