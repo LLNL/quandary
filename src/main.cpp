@@ -473,12 +473,19 @@ int main(int argc,char **argv)
       optimctx->solve(xinit);
     } else {
 
-      /* Set up ROL optimization problem with bound constraints */
+      /* Set up ROL optimization problem  */
       ROL::Ptr<ROL::Problem<double>> optProb = ROL::makePtr<ROL::Problem<double>>(obj,x);
-      ROL::Ptr<myVec> xlo = ROL::makePtr<myVec>(optimctx->xlower);
-      ROL::Ptr<myVec> xup = ROL::makePtr<myVec>(optimctx->xupper);
-      ROL::Ptr<ROL::BoundConstraint<double>> bnd = ROL::makePtr<ROL::Bounds<double>>(xlo, xup);
-      optProb->addBoundConstraint(bnd); 
+       
+      // Add bounds
+      double bnorm = 0.0;
+      VecNorm(optimctx->xupper, NORM_2, &bnorm);
+      if (bnorm < 1e10) {
+        if (mpirank_world==0 && !quietmode) printf("Adding bounds\n");
+        ROL::Ptr<myVec> xlo = ROL::makePtr<myVec>(optimctx->xlower);
+        ROL::Ptr<myVec> xup = ROL::makePtr<myVec>(optimctx->xupper);
+        ROL::Ptr<ROL::BoundConstraint<double>> bnd = ROL::makePtr<ROL::Bounds<double>>(xlo, xup);
+        optProb->addBoundConstraint(bnd); 
+      }
 
       // /* Check the ROL problem setup */
       // ROL::Ptr<std::ostream> outStr = ROL::makePtrFromRef(std::cout);
