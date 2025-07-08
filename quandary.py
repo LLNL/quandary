@@ -869,14 +869,11 @@ def estimate_timesteps(*, T=1.0, Hsys=[], Hc_re=[], Hc_im=[], maxctrl_MHz=[], Pm
     Helper function to estimate the number of time steps based on eigenvalues of the system Hamiltonian and maximum control Hamiltonians. Note: The estimate does not account for quickly varying signals or a large number of splines. Double check that at least 2-3 points per spline are present to resolve control function. #TODO: Automate this.
     """
 
-    # Get estimated control pulse amplitude
-    est_ctrl_MHz = maxctrl_MHz[:]
-    if len(maxctrl_MHz) == 0:
-        est_ctrl_MHz = [10.0 for _ in range(max(len(Hc_re), len(Hc_im)))] 
+    # Estimate control pulse amplitude at 10MHz
+    est_ctrl_MHz = [10.0 for _ in range(max(len(Hc_re), len(Hc_im)))] 
 
     # Set up Hsys +  maxctrl*Hcontrol
     K1 = np.copy(Hsys) 
-
     for i in range(len(Hc_re)):
         est_radns = est_ctrl_MHz[i]*2.0*np.pi/1e+3
         if len(Hc_re[i])>0:
