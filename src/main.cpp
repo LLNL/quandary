@@ -27,7 +27,6 @@
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-5          // Epsilon for Finite Differences
-#define ROL_WITH_HESSIAN 0 // Use ROL Hessian in optimization problem
 
 int main(int argc,char **argv)
 {

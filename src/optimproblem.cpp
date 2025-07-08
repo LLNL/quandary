@@ -883,7 +883,6 @@ void myObjective::gradient(ROL::Vector<double> &g, const ROL::Vector<double> &x,
   optimctx_->evalGradF(ex.getVector(), eg.getVector());
 }
 
-#ifdef ROL_WITH_HESSIAN
 void myObjective::hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ ){
 
   // Cast the input and evalHessVec on the petsc vectors 
@@ -893,7 +892,6 @@ void myObjective::hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v
   int itest = 0;
   optimctx_->evalHessVec(ex.getVector(), ev.getVector(), ehv.getVector());
 }
-#endif
 
 void myObjective::update(const ROL::Vector<double> &x, ROL::UpdateType type, int iter){
   std::string out; 
