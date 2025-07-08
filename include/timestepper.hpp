@@ -281,8 +281,8 @@ class ExplEuler : public TimeStepper {
      * @param x State vector to evolve
      */
     void evolveFWD(const double tstart, const double tstop, Vec x);
-    void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) {printf("NOT AVAIL.\n"); exit(1);}
-    void evolveLinearizedBWD(const int iinit, const double tstop, const double tstart, const Vec v, Vec x, Vec hessvec) {printf("NOT AVAIL.\n"); exit(1);}
+    void evolveLinearizedFWD(const int /*iinit*/, const double /*tstart*/, const double /*tstop*/, const Vec /*v*/, Vec /*x*/) {printf("NOT AVAIL.\n"); exit(1);}
+    void evolveLinearizedBWD(const int /*iinit*/, const double /*tstop*/, const double /*tstart*/, const Vec /*v*/, Vec /*x*/, Vec /*hessvec*/) {printf("NOT AVAIL.\n"); exit(1);}
 
     /**
      * @brief Evolves adjoint backward using explicit Euler method.
@@ -419,8 +419,8 @@ class CompositionalImplMidpoint : public ImplMidpoint {
      * @param x State vector to evolve
      */
     void evolveFWD(const double tstart, const double tstop, Vec x);
-    void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) {printf("NOT AVAIL.\n"); exit(1);}
-    void evolveLinearizedBWD(const int iinit, const double tstop, const double tstart, const Vec v, Vec x, Vec hessvec) {printf("NOT AVAIL.\n"); exit(1);}
+    void evolveLinearizedFWD(const int /*iinit*/, const double /*tstart*/, const double /*tstop*/, const Vec /*v*/, Vec /*x*/) {printf("NOT AVAIL.\n"); exit(1);}
+    void evolveLinearizedBWD(const int /*iinit*/, const double /*tstop*/, const double /*tstart*/, const Vec /*v*/, Vec /*x*/, Vec /*hessvec*/) {printf("NOT AVAIL.\n"); exit(1);}
 
     /**
      * @brief Evolves adjoint backward using compositional implicit midpoint rule and accumulates gradient.

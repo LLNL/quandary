@@ -406,13 +406,37 @@ int main(int argc,char **argv)
   VecZeroEntries(grad);
   // Vec opt;
 
-  /* Set ROL initial Vector, gradient and Objective function */
+  /* ROL optimization setup 
+  // Initial Vector, gradient and Objective function */
   ROL::Ptr<ROL::Objective<double>> obj = ROL::makePtr<myObjective>(optimctx);
   ROL::Ptr<ROL::Vector<double>>      x = ROL::makePtr<myVec>(xinit);
   ROL::Ptr<ROL::Vector<double>>      g = ROL::makePtr<myVec>(grad);
+  // Optimization problem 
+  ROL::Ptr<ROL::Problem<double>> optProb = ROL::makePtr<ROL::Problem<double>>(obj,x);
+  // Add bounds
+  double bnorm = 0.0;
+  VecNorm(optimctx->xupper, NORM_2, &bnorm);
+  if (bnorm < 1e10) {
+    if (mpirank_world==0 && !quietmode) printf("Adding bounds\n");
+    ROL::Ptr<myVec> xlo = ROL::makePtr<myVec>(optimctx->xlower);
+    ROL::Ptr<myVec> xup = ROL::makePtr<myVec>(optimctx->xupper);
+    ROL::Ptr<ROL::BoundConstraint<double>> bnd = ROL::makePtr<ROL::Bounds<double>>(xlo, xup);
+    optProb->addBoundConstraint(bnd); 
+  }
+  // Create solver from ROL parameter file
+  std::string ROLfilename = config.GetStrParam("rol_xml", "./rolinput.xml", true, false);
+  auto parlist = ROL::getParametersFromXmlFile(ROLfilename);
+  ROL::Solver<double> rolSolver(optProb,*parlist);
+  // Set ROL output stream
+  std::ofstream rolFileStream(output->datadir + "/roloutput.txt");
+  ROL::Ptr<std::ostream> outStream = ROL::makePtrFromRef(rolFileStream);
+  // // Check the ROL problem setup 
+  // ROL::Ptr<std::ostream> outStr = ROL::makePtrFromRef(std::cout);
+  // bool printtoscreen = true;
+  // optProb->check(printtoscreen, *outStr);
 
 
-  /* Some output */
+  /* Some screen output */
   if (mpirank_world == 0)
   {
     /* Print parameters to file */
@@ -468,41 +492,12 @@ int main(int argc,char **argv)
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
     optimctx->timestepper->writeTrajectoryDataFiles = false;
 
-    if (optimsolvertype==OptimSolverType::TAO) {
+    if (optimsolvertype==OptimSolverType::TAO) { // TAO optimizer 
       if (mpirank_world==0) printf("Optimizing with TAO...\n");
+      StartTime = MPI_Wtime();
       optimctx->solve(xinit);
-    } else {
 
-      /* Set up ROL optimization problem  */
-      ROL::Ptr<ROL::Problem<double>> optProb = ROL::makePtr<ROL::Problem<double>>(obj,x);
-       
-      // Add bounds
-      double bnorm = 0.0;
-      VecNorm(optimctx->xupper, NORM_2, &bnorm);
-      if (bnorm < 1e10) {
-        if (mpirank_world==0 && !quietmode) printf("Adding bounds\n");
-        ROL::Ptr<myVec> xlo = ROL::makePtr<myVec>(optimctx->xlower);
-        ROL::Ptr<myVec> xup = ROL::makePtr<myVec>(optimctx->xupper);
-        ROL::Ptr<ROL::BoundConstraint<double>> bnd = ROL::makePtr<ROL::Bounds<double>>(xlo, xup);
-        optProb->addBoundConstraint(bnd); 
-      }
-
-      // /* Check the ROL problem setup */
-      // ROL::Ptr<std::ostream> outStr = ROL::makePtrFromRef(std::cout);
-      // bool printtoscreen = true;
-      // optProb->check(printtoscreen, *outStr);
-
-      /* Create ROL optimization solver from parameter file */
-      std::string ROLfilename = config.GetStrParam("rol_xml", "./rolinput.xml", true, false);
-      auto parlist = ROL::getParametersFromXmlFile(ROLfilename);
-      ROL::Solver<double> rolSolver(optProb,*parlist);
-
-      /* Set ROL output */
-      std::ofstream rolFileStream(output->datadir + "/roloutput.txt");
-      ROL::Ptr<std::ostream> outStream = ROL::makePtrFromRef(rolFileStream);
-      // ROL::Ptr<std::ostream> outStream = ROL::makePtrFromRef(std::cout);
-
-      /* Optimize with ROL */
+    } else { // ROL optimizer 
       if (mpirank_world==0) printf("Optimizing with ROL...\n");
       StartTime = MPI_Wtime();
       rolSolver.solve(*outStream); 

@@ -337,9 +337,9 @@ class myVec : public ROL::Vector<double> {
   double norm() const override;  //Compute the 2-norm of the vector
   void scale(double alpha) override ; // Scale the vector by a scalar
   ROL::Ptr<ROL::Vector<double>> clone (void) const override; // Create a new empty myVec
-  void applyUnary(const ROL::Elementwise::UnaryFunction<double> &f ) ; // Apply function f to each element of the vector 
-  void applyBinary(const ROL::Elementwise::BinaryFunction<double> &f, const ROL::Vector<double> &x ) ; // Apply f to each element of the vector and another vector
-  double reduce(const ROL::Elementwise::ReductionOp<double> &r) const ; 
+  void applyUnary(const ROL::Elementwise::UnaryFunction<double> &f ) override ; // Apply function f to each element of the vector 
+  void applyBinary(const ROL::Elementwise::BinaryFunction<double> &f, const ROL::Vector<double> &x ) override; // Apply f to each element of the vector and another vector
+  double reduce(const ROL::Elementwise::ReductionOp<double> &r) const override; 
   void set(const ROL::Vector<double> &x) override; // Copy data from another ROL vector to this Petsc Vector
   Vec getVector() const ; // Get the underlying Petsc vector
   void axpy(double alpha, const ROL::Vector<double> &x) override ; // y = alpha*x + y 
@@ -366,8 +366,8 @@ class myObjective : public ROL::Objective<double> {
   double value(const ROL::Vector<double> &x, double & /*tol*/) override;
   void gradient(ROL::Vector<double> &g, const ROL::Vector<double> &x, double & /*tol*/) override;
 
-  void update(const ROL::Vector<double> &x, ROL::UpdateType type, int iter);
+  void update(const ROL::Vector<double> &x, ROL::UpdateType type, int /*iter*/) override;
 
-  void hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ );
+  void hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ ) override;
 
 };

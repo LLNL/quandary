@@ -896,11 +896,10 @@ void myObjective::hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v
   const myVec& ev = dynamic_cast<const myVec&>(v); 
   const myVec& ex = dynamic_cast<const myVec&>(x); 
   myVec& ehv = dynamic_cast<myVec&>(hv); 
-  int itest = 0;
   optimctx_->evalHessVec(ex.getVector(), ev.getVector(), ehv.getVector());
 }
 
-void myObjective::update(const ROL::Vector<double> &x, ROL::UpdateType type, int iter){
+void myObjective::update(const ROL::Vector<double> &x, ROL::UpdateType type, int /*iter*/){
   std::string out; 
   if (type == ROL::UpdateType::Initial)  {
     // This is the first call to update
