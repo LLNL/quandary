@@ -1,5 +1,7 @@
 #include "config.hpp"
 
+#include <algorithm>
+#include <cctype>
 
 
 Config::Config() { 
@@ -18,21 +20,8 @@ Config::~Config(){}
 
 void StringTrim(std::string &s)
 {
-  std::string s2(s);
-  int nb = 0;
-  for (size_t i = 0; i < s2.size(); i++){
-    if ((s2[i] != ' ') && (s2[i] != '\t')){
-      nb++;
-    }
-  }
-
-  s.resize(nb);
-  nb = 0;
-  for (size_t i = 0; i < s2.size(); i++) {
-    if ((s2[i] != ' ') && (s2[i] != '\t')) {
-      s[nb++] = s2[i];
-    }
-  }
+  s.erase(std::remove_if(s.begin(), s.end(),
+    [](unsigned char c) { return std::isspace(c); }), s.end());
 }
 
 void Config::ReadFile(std::string filename)
