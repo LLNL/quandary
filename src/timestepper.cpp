@@ -885,6 +885,7 @@ void ImplMidpoint::evolveLinearizedBWD(const int iinit, const double tstop, cons
   // printf("Add to hessian at time t_n+1/2=%1.5e, n=%d\n", (tstart + tstop) / 2.0, n);
   mastereq->compute_dRHS_dParams((tstart + tstop) / 2.0, xhalf, stage_adj,  1.0*dt, hessvec);
   // Compute the Hessian-vector product + w^T dRHS^T lambda 
+  // TODO: Why + not - ?
   mastereq->compute_dRHS_dParams((tstart + tstop) / 2.0, stage, xadjhalf,  1.0*dt, hessvec);
 
 }

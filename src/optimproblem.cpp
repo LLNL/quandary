@@ -330,7 +330,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   MasterEq* mastereq = timestepper->mastereq;
 
-  // if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
+  if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
 
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
@@ -530,6 +530,9 @@ void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec Hv){
   if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL HESS VEC... " << std::endl;
 
   timestepper->mastereq->setControlAmplitudes(x); 
+
+  // Reset
+  VecZeroEntries(Hv);
 
   /* Solve forward and adjoint ODE, storing the (adjoint) states at each timestep and for each initial condition */
   VecZeroEntries(xtmp);
