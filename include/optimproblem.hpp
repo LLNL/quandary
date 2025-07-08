@@ -368,6 +368,8 @@ class myObjective : public ROL::Objective<double> {
 
   void update(const ROL::Vector<double> &x, ROL::UpdateType type, int iter);
 
+#ifdef ROL_WITH_HESSIAN
   void hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ );
+#endif
 
 };
