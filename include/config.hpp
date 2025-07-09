@@ -1,3 +1,4 @@
+#include "defs.hpp"
 #include <vector>
 #include <string>
 #include <petsc.h>
@@ -32,22 +33,21 @@ class Config {
     std::vector<double> crosskerr;  ///< Cross-kerr coupling frequencies for each oscillator coupling (GHz)
     std::vector<double> Jkl;  ///< Dipole-dipole coupling frequencies for each oscillator coupling (GHz)
     std::vector<double> rotfreq;  ///< Rotational wave approximation frequencies for each subsystem (GHz)
-    std::string collapse_type = "none";  ///< Switch between Schroedinger and Lindblad solver
+    LindbladType collapse_type = LindbladType::NONE;  ///< Switch between Schroedinger and Lindblad solver
     std::vector<double> decay_time;  ///< Time of decay collapse operation (T1) per oscillator (for Lindblad solver)
     std::vector<double> dephase_time;  ///< Time of dephase collapse operation (T2) per oscillator (for Lindblad solver)
-    std::string initialcondition = "none";  ///< Specify the initial conditions that are to be propagated
+    InitialConditionType initialcondition = InitialConditionType::BASIS;  ///< Specify the initial conditions that are to be propagated
     std::vector<double> apply_pipulse;  ///< Apply a pi-pulse to oscillator with specified parameters
 
     // Optimization options
-    // TODO parse control_segments and control_initialization  and optim_target all the way
     std::vector<std::string> control_segments;  ///< Define the control segments for each oscillator
     bool control_enforceBC = false;  ///< Decide whether control pulses should start and end at zero
     std::vector<std::string> control_initialization;  ///< Set the initial control pulse parameters for each oscillator
     std::vector<double> control_bounds;  ///< Maximum amplitude bound for the control pulses for each oscillator (GHz)
     std::vector<std::vector<double>> carrier_frequencies;  ///< Carrier wave frequencies for each oscillator (GHz)
-    std::vector<std::string> optim_target = {"pure"};  ///< Optimization target
+    std::vector<TargetType> optim_target = {TargetType::PURE};  ///< Optimization target
     std::vector<double> gate_rot_freq;  ///< Frequency of rotation of the target gate, for each oscillator (GHz)
-    std::string optim_objective = "Jfrobenius";  ///< Objective function measure
+    ObjectiveType optim_objective = ObjectiveType::JFROBENIUS;  ///< Objective function measure
     std::vector<double> optim_weights;  ///< Weights for summing up the objective function
     double optim_atol = 1e-8;  ///< Optimization stopping tolerance based on gradient norm (absolute)
     double optim_rtol = 1e-4;  ///< Optimization stopping tolerance based on gradient norm (relative)
@@ -68,7 +68,7 @@ class Config {
     std::vector<std::vector<std::string>> output;  ///< Specify the desired output for each oscillator
     int output_frequency = 1;  ///< Output frequency in the time domain: write output every <num> time-step
     int optim_monitor_frequency = 10;  ///< Frequency of writing output during optimization iterations
-    std::string runtype = "simulation";  ///< Runtype options: simulation, gradient, or optimization
+    RunType runtype = RunType::SIMULATION;  ///< Runtype options: simulation, gradient, or optimization
     bool usematfree = false;  ///< Use matrix free solver, instead of sparse matrix implementation
     std::string linearsolver_type = "gmres";  ///< Solver type for solving the linear system at each time step
     int linearsolver_maxiter = 10;  ///< Set maximum number of iterations for the linear solver
@@ -92,10 +92,10 @@ class Config {
     const std::vector<double>& getCrossKerr() const { return crosskerr; }
     const std::vector<double>& getJkl() const { return Jkl; }
     const std::vector<double>& getRotFreq() const { return rotfreq; }
-    const std::string& getCollapseType() const { return collapse_type; }
+    LindbladType getCollapseType() const { return collapse_type; }
     const std::vector<double>& getDecayTime() const { return decay_time; }
     const std::vector<double>& getDephaseTime() const { return dephase_time; }
-    const std::string& getInitialCondition() const { return initialcondition; }
+    InitialConditionType getInitialCondition() const { return initialcondition; }
     const std::vector<double>& getApplyPiPulse() const { return apply_pipulse; }
 
     const std::vector<std::string>& getControlSegments() const { return control_segments; }
@@ -103,9 +103,9 @@ class Config {
     const std::vector<std::string>& getControlInitialization() const { return control_initialization; }
     const std::vector<double>& getControlBounds() const { return control_bounds; }
     const std::vector<std::vector<double>>& getCarrierFrequency0() const { return carrier_frequencies; }
-    const std::vector<std::string>& getOptimTarget() const { return optim_target; }
+    const std::vector<TargetType>& getOptimTarget() const { return optim_target; }
     const std::vector<double>& getGateRotFreq() const { return gate_rot_freq; }
-    const std::string& getOptimObjective() const { return optim_objective; }
+    ObjectiveType getOptimObjective() const { return optim_objective; }
     const std::vector<double>& getOptimWeights() const { return optim_weights; }
     double getOptimAtol() const { return optim_atol; }
     double getOptimRtol() const { return optim_rtol; }
@@ -124,7 +124,7 @@ class Config {
     const std::vector<std::vector<std::string>>& getOutput() const { return output; }
     int getOutputFrequency() const { return output_frequency; }
     int getOptimMonitorFrequency() const { return optim_monitor_frequency; }
-    const std::string& getRuntype() const { return runtype; }
+    RunType getRuntype() const { return runtype; }
     bool getUseMatFree() const { return usematfree; }
     const std::string& getLinearSolverType() const { return linearsolver_type; }
     int getLinearSolverMaxiter() const { return linearsolver_maxiter; }
