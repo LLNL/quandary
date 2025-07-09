@@ -40,7 +40,7 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
   iupp = ilow + localsize_u;         
 
   /* Check if boundary conditions for controls should be enfored (default: yes). */
-  control_enforceBC = config.GetBoolParam("control_enforceBC", true);
+  // control_enforceBC = config.GetBoolParam("control_enforceBC", true);
 
   // Parse for control segments
   size_t idstr = 0;

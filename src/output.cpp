@@ -21,14 +21,14 @@ Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nosc
 
 
   /* Create Data directory */
-  datadir = config.GetStrParam("datadir", "./data_out");
+  // datadir = config.GetStrParam("datadir", "./data_out");
   if (mpirank_world == 0) {
     mkdir(datadir.c_str(), 0777);
   }
 
   /* Prepare output for optimizer */
-  optim_monitor_freq = config.GetIntParam("optim_monitor_frequency", 10);
-  output_frequency = config.GetIntParam("output_frequency", 1);
+  // optim_monitor_freq = config.GetIntParam("optim_monitor_frequency", 10);
+  // output_frequency = config.GetIntParam("output_frequency", 1);
   if (mpirank_world == 0) {
     char filename[255];
     snprintf(filename, 254, "%s/optim_history.dat", datadir.c_str());
@@ -52,7 +52,7 @@ Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nosc
   /* Parse configuration output strings for each oscillator and set defaults. */
   for (int i = 0; i < noscillators; i++){
     std::vector<std::string> fillme;
-    config.GetVecStrParam("output" + std::to_string(i), fillme, "none");
+    // config.GetVecStrParam("output" + std::to_string(i), fillme, "none");
     outputstr.push_back(fillme);
   }
 

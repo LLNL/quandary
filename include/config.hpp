@@ -17,8 +17,10 @@ class Config {
   public:
     std::stringstream* log; ///< Pointer to log stream for output messages.
     bool quietmode; ///< Flag to control verbose output.
-    
+
   private:
+    std::unordered_map<std::string, std::function<void(const std::string&)>> setters; ///< Setters from config string
+
     // MPI and logging
     MPI_Comm comm; ///< MPI communicator for parallel operations.
     int mpi_rank; ///< MPI rank of the current process.
@@ -73,7 +75,7 @@ class Config {
     std::string linearsolver_type = "gmres";  ///< Solver type for solving the linear system at each time step
     int linearsolver_maxiter = 10;  ///< Set maximum number of iterations for the linear solver
     std::string timestepper = "IMR";  ///< Switch the time-stepping algorithm (IMR, IMR4, IMR8)
-    int rand_seed = -1;  ///< Fixed seed for the random number generator for reproducability
+    int rand_seed;  ///< Fixed seed for the random number generator for reproducability
 
   public:
     // Constructors
@@ -81,8 +83,12 @@ class Config {
     Config(MPI_Comm comm_, std::stringstream& logstream, bool quietmode=false);
     ~Config();
 
-    Config createFromFile(const std::string& filename, MPI_Comm comm, std::stringstream& logstream, bool quietmode = false);
+    static Config createFromFile(const std::string& filename, MPI_Comm comm, std::stringstream& logstream, bool quietmode = false);
+    void loadFromFile(const std::string& filename);
+    void applyConfigLine(const std::string& line);
+    void printConfig() const;
 
+    // getters
     const std::vector<int>& getNLevels() const { return nlevels; }
     const std::vector<int>& getNEssential() const { return nessential; }
     int getNTime() const { return ntime; }
@@ -130,3 +136,50 @@ class Config {
     int getLinearSolverMaxiter() const { return linearsolver_maxiter; }
     const std::string& getTimestepper() const { return timestepper; }
     int getRandSeed() const { return rand_seed; }
+
+    // setters
+    void setNLevels(const std::vector<int>& nelevels_);
+    void setRandSeed(int rand_seed_);
+
+  private:
+    std::vector<std::string> split(const std::string& str, char delimiter = ',');
+
+    template<typename T>
+    T convertFromString(const std::string& str) {
+      return str;
+    }
+
+    template<>
+    int convertFromString<int>(const std::string& str) {
+      return std::stoi(str);
+    }
+
+    template<>
+    double convertFromString<double>(const std::string& str) {
+      return std::stod(str);
+    }
+
+    template<typename T>
+    void registerScalar(const std::string& key, T& member, void (Config::*setter)(T) = nullptr) {
+      setters[key] = [this, &member, setter](const std::string& val) {
+        T converted_val = convertFromString<T>(val);
+
+        if (setter != nullptr) {
+          (this->*setter)(converted_val);
+        } else {
+          member = converted_val;
+        }
+      };
+    }
+
+    template<typename T>
+    void registerVector(const std::string& key, std::vector<T>& member) {
+        setters[key] = [this, &member](const std::string& val) {
+            auto parts = split(val);
+            member.clear();
+            for (const auto& part : parts) {
+                member.push_back(convertFromString<T>(part));
+            }
+        };
+    }
+  };
