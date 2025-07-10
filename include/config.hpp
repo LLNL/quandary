@@ -7,6 +7,17 @@
 #pragma once
 
 /**
+ * @brief Structure for storing pi-pulse parameters.
+ *
+ * Stores timing and amplitude information for pi-pulse sequences.
+ */
+struct PiPulse {
+  std::vector<double> tstart; ///< Start times for each pulse segment
+  std::vector<double> tstop; ///< Stop times for each pulse segment
+  std::vector<double> amp; ///< Amplitudes for each pulse segment
+};
+
+/**
  * @brief Configuration parameter management class with typed member variables.
  *
  * The `Config` class provides a type-safe way to manage Quandary configuration

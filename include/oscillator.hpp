@@ -15,17 +15,6 @@
 #pragma once
 
 /**
- * @brief Structure for storing pi-pulse parameters.
- *
- * Stores timing and amplitude information for pi-pulse sequences.
- */
-struct PiPulse {
-  std::vector<double> tstart; ///< Start times for each pulse segment
-  std::vector<double> tstop; ///< Stop times for each pulse segment
-  std::vector<double> amp; ///< Amplitudes for each pulse segment
-};
-
-/**
  * @brief Quantum oscillator (multi-level qubit) with control capabilities.
  *
  * This class represents a single quantum oscillator that is controlled by external 
