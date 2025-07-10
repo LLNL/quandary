@@ -1,4 +1,6 @@
 #include "output.hpp"
+#include "defs.hpp"
+#include <vector>
 
 Output::Output(){
   mpirank_world = -1;
@@ -21,14 +23,14 @@ Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nosc
 
 
   /* Create Data directory */
-  // datadir = config.GetStrParam("datadir", "./data_out");
+  datadir = config.getDataDir();
   if (mpirank_world == 0) {
     mkdir(datadir.c_str(), 0777);
   }
 
   /* Prepare output for optimizer */
-  // optim_monitor_freq = config.GetIntParam("optim_monitor_frequency", 10);
-  // output_frequency = config.GetIntParam("output_frequency", 1);
+  optim_monitor_freq = config.getOptimMonitorFrequency();
+  output_frequency = config.getOutputFrequency();
   if (mpirank_world == 0) {
     char filename[255];
     snprintf(filename, 254, "%s/optim_history.dat", datadir.c_str());
@@ -49,21 +51,17 @@ Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nosc
   for (int i=0; i<noscillators; i++) writeExpectedEnergy.push_back(false);
   for (int i=0; i<noscillators; i++) writePopulation.push_back(false);
 
-  /* Parse configuration output strings for each oscillator and set defaults. */
-  for (int i = 0; i < noscillators; i++){
-    std::vector<std::string> fillme;
-    // config.GetVecStrParam("output" + std::to_string(i), fillme, "none");
-    outputstr.push_back(fillme);
-  }
-
   /* Check the output strings for each oscillator to determine which files should be written */
+  const std::vector<std::vector<OutputType>>& output = config.getOutput();
   for (int i=0; i<noscillators; i++) { // iterates over oscillators
     for (size_t j=0; j<outputstr[i].size(); j++) { // iterates over output stings for this oscillator
-      if (outputstr[i][j].compare("expectedEnergy") == 0) writeExpectedEnergy[i] = true;
-      if (outputstr[i][j].compare("expectedEnergyComposite") == 0) writeExpectedEnergy_comp = true;
-      if (outputstr[i][j].compare("population") == 0) writePopulation[i] = true;
-      if (outputstr[i][j].compare("populationComposite") == 0) writePopulation_comp = true;
-      if (outputstr[i][j].compare("fullstate") == 0 ) writeFullState = true;
+      switch (output[i][j]) {
+        case OutputType::EXPECTED_ENERGY: writeExpectedEnergy[i] = true;
+        case OutputType::EXPECTED_ENERGY_COMPOSITE: writeExpectedEnergy_comp = true;
+        case OutputType::POPULATION: writePopulation[i] = true;
+        case OutputType::POPULATION_COMPOSITE: writePopulation_comp = true;
+        case OutputType::FULLSTATE: writeFullState = true;
+      }
     }
   }
 }

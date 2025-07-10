@@ -1,4 +1,6 @@
 #include "optimtarget.hpp"
+#include "defs.hpp"
+#include <string>
 
 OptimTarget::OptimTarget(){
   dim = 0;
@@ -19,7 +21,7 @@ OptimTarget::OptimTarget(){
 }
 
 
-OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string& objective_str, std::vector<std::string> initcond_str, MasterEq* mastereq, double total_time, std::vector<double> read_gate_rot, Vec rho_t0, bool quietmode_) : OptimTarget() {
+OptimTarget::OptimTarget(const Config& config, MasterEq* mastereq, double total_time, Vec rho_t0, bool quietmode_) : OptimTarget() {
 
   // initialize
   dim = mastereq->getDim();
@@ -38,53 +40,15 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
   ilow = mpirank_petsc * localsize_u;
   iupp = ilow + localsize_u;         
 
-  /* Get initial condition type */
-  if (initcond_str[0].compare("file") == 0)              initcond_type = InitialConditionType::FROMFILE;
-  else if  (initcond_str[0].compare("pure") == 0)        initcond_type = InitialConditionType::PURE;
-  else if  (initcond_str[0].compare("ensemble") == 0)    initcond_type = InitialConditionType::ENSEMBLE;
-  else if  (initcond_str[0].compare("performance") == 0) initcond_type = InitialConditionType::PERFORMANCE;
-  else if  (initcond_str[0].compare("3states") == 0)     initcond_type = InitialConditionType::THREESTATES;
-  else if  (initcond_str[0].compare("Nplus1") == 0)      initcond_type = InitialConditionType::NPLUSONE;
-  else if  (initcond_str[0].compare("diagonal") == 0)    initcond_type = InitialConditionType::DIAGONAL;
-  else if  (initcond_str[0].compare("basis") == 0)       initcond_type = InitialConditionType::BASIS;
-  else {
-    printf("ERROR: Unknown initial condition type %s!\n", initcond_str[0].c_str());
-    exit(1);
-  }
-  /* Sanity check for Schrodinger solver initial conditions */
-  if (lindbladtype == LindbladType::NONE){
-    if (initcond_type == InitialConditionType::ENSEMBLE ||
-        initcond_type == InitialConditionType::THREESTATES ||
-        initcond_type == InitialConditionType::NPLUSONE ){
-          printf("\n\n ERROR for initial condition setting: \n When running Schroedingers solver (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'. Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
-          exit(1);
-    } else if (initcond_type == InitialConditionType::BASIS) {
-      // DIAGONAL and BASIS initial conditions in the Schroedinger case are the same. Overwrite it to DIAGONAL
-      initcond_type = InitialConditionType::DIAGONAL;  
-    }
-  }
-  /* Get list of involved oscillators */
-  if (initcond_str.size() < 2) 
-    for (size_t j=0; j<mastereq->getNOscillators(); j++)   
-      initcond_str.push_back(std::to_string(j)); // Default: all oscillators
-  for (size_t i=1; i<initcond_str.size(); i++) 
-    initcond_IDs.push_back(atoi(initcond_str[i].c_str())); // Overwrite with config option, if given.
+  /* Get initial condition type and IDs */
+  initcond_type = config.getInitialConditionType();
+  initcond_IDs = config.getInitialConditionIDs();
 
   /* Prepare initial state rho_t0 if PURE or FROMFILE or ENSEMBLE initialization. Otherwise they are set within prepareInitialState during evalF. */
   if (initcond_type == InitialConditionType::PURE) { 
-    /* Initialize with tensor product of unit vectors. */
-    if (initcond_IDs.size() != mastereq->getNOscillators()) {
-      printf("ERROR during pure-state initialization: List of IDs must contain %zu elements!\n", mastereq->getNOscillators());
-      exit(1);
-    }
     // Find the id within the global composite system 
     PetscInt diag_id = 0;
     for (size_t k=0; k < initcond_IDs.size(); k++) {
-      if (initcond_IDs[k] > mastereq->getOscillator(k)->getNLevels()-1){
-        printf("ERROR in config setting. The requested pure state initialization |%zu> exceeds the number of allowed levels for that oscillator (%zu).\n", initcond_IDs[k], mastereq->getOscillator(k)->getNLevels());
-        exit(1);
-      }
-      assert (initcond_IDs[k] < mastereq->getOscillator(k)->getNLevels());
       PetscInt dim_postkron = 1;
       for (size_t m=k+1; m < initcond_IDs.size(); m++) {
         dim_postkron *= mastereq->getOscillator(m)->getNLevels();
@@ -107,8 +71,7 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
     else nelems = 2 * dim_ess;
     double * vec = new double[nelems];
     if (mpirank_world == 0) {
-      assert (initcond_str.size()==2);
-      std::string filename = initcond_str[1];
+      std::string filename = config.getInitialConditionFile();
       read_vector(filename.c_str(), vec, nelems, quietmode);
     }
     MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -142,15 +105,6 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
     }
     delete [] vec;
   } else if (initcond_type == InitialConditionType::ENSEMBLE) {
-    // Sanity check for the list in initcond_IDs!
-    assert(initcond_IDs.size() >= 1); // at least one element 
-    assert(initcond_IDs[initcond_IDs.size()-1] < mastereq->getNOscillators()); // last element can't exceed total number of oscillators
-    for (size_t i=0; i < initcond_IDs.size()-1; i++){ // list should be consecutive!
-      if (initcond_IDs[i]+1 != initcond_IDs[i+1]) {
-        printf("ERROR: List of oscillators for ensemble initialization should be consecutive!\n");
-        exit(1);
-      }
-    }
     // get dimension of subsystems defined by initcond_IDs, as well as the one before and after. Span in essential levels only.
     PetscInt dimpost = 1;
     PetscInt dimsub = 1;
@@ -198,62 +152,34 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
 
   /* Get target type */  
   purestateID = -1;
-  target_filename = "";
-  if ( target_str[0].compare("gate") ==0 ) {
-    target_type = TargetType::GATE;
+  target_type = config.getOptimTargetType();
+  target_filename = config.getOptimTargetFile();
 
-    /* Get gate rotation frequencies. */
-    int noscillators = mastereq->nlevels.size();
-    copyLast(read_gate_rot, noscillators);
-    std::vector<double> gate_rot_freq(noscillators); 
-    for (int iosc=0; iosc<noscillators; iosc++) {
-      if (read_gate_rot[0] < 1e20) // the config option exists, use it, else use default 0.0 
-        gate_rot_freq[iosc] = read_gate_rot[iosc];
-      else
-        gate_rot_freq[iosc] = 0.0;
+  switch (target_type) {
+    case TargetType::GATE: {
+      const std::vector<double>& gate_rot_freq = config.getGateRotFreq(); 
+      GateType target_gate = config.getOptimTargetGateType();
+      const std::string& target_gate_file = config.getOptimTargetGateFile();
+
+      /* Initialize the targetgate */
+      targetgate = initTargetGate(target_gate, target_gate_file, mastereq->nlevels, mastereq->nessential, total_time, lindbladtype, gate_rot_freq, quietmode);
+      break;
     }
-    /* Initialize the targetgate */
-    targetgate = initTargetGate(target_str, mastereq->nlevels, mastereq->nessential, total_time, lindbladtype, gate_rot_freq, quietmode);
-  }  
-  else if (target_str[0].compare("pure")==0) {
-    target_type = TargetType::PURE;
-    purestateID = 0;
-    if (target_str.size() < 2) {
-      printf("# Warning: You want to prepare a pure state, but didn't specify which one. Taking default: ground-state |0...0> \n");
-    } else {
-      /* Compute the index m for preparing e_m e_m^\dagger. Note that the input is given for pure states PER OSCILLATOR such as |m_1 m_2 ... m_Q> and hence m = m_1 * dimPost(oscil 1) + m_2 * dimPost(oscil 2) + ... + m_Q */
-      if (target_str.size() - 1 < mastereq->getNOscillators()) {
-        copyLast(target_str, mastereq->getNOscillators()+1);
-      }
+    case TargetType::PURE: {
+      target_type = TargetType::PURE;
+      purestateID = 0;
+      const std::vector<size_t>& purestate_levels = config.getOptimTargetPurestateLevels();
       for (size_t i=0; i < mastereq->getNOscillators(); i++) {
-        size_t Qi_state = atoi(target_str[i+1].c_str());
-        if (Qi_state >= mastereq->getOscillator(i)->getNLevels()) {
-          printf("ERROR in config setting. The requested pure state target |%zu> exceeds the number of modeled levels for that oscillator (%zu).\n", Qi_state, mastereq->getOscillator(i)->getNLevels());
-          exit(1);
-        }
-        purestateID += Qi_state * mastereq->getOscillator(i)->dim_postOsc;
+        purestateID += purestate_levels[i] * mastereq->getOscillator(i)->dim_postOsc;
       }
+      break;
     }
-  } 
-  else if (target_str[0].compare("file")==0) { 
-    // Get the name of the file and pass it to the OptimTarget type later.
-    target_type = TargetType::FROMFILE;
-    assert(target_str.size() >= 2);
-    target_filename = target_str[1];
-  }
-  else {
-      printf("\n\n ERROR: Unknown optimization target: %s\n", target_str[0].c_str());
-      exit(1);
+    case TargetType::FROMFILE: {
+      break;
+    }
   }
 
-  /* Get the objective function */
-  if (objective_str.compare("Jfrobenius")==0)     objective_type = ObjectiveType::JFROBENIUS;
-  else if (objective_str.compare("Jtrace")==0)    objective_type = ObjectiveType::JTRACE;
-  else if (objective_str.compare("Jmeasure")==0)  objective_type = ObjectiveType::JMEASURE;
-  else  {
-    printf("\n\n ERROR: Unknown objective function: %s\n", objective_str.c_str());
-    exit(1);
-  }
+  objective_type = config.getOptimObjective();
 
   /* Allocate target state, if it is read from file, or if target is a gate transformation VrhoV. If pure target, only store the ID. */
   if (target_type == TargetType::GATE || target_type == TargetType::FROMFILE) {

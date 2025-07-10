@@ -1,4 +1,5 @@
 #include "oscillator.hpp"
+#include "config.hpp"
 
 Oscillator::Oscillator(){
   nlevels = 0;
@@ -40,11 +41,12 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
   iupp = ilow + localsize_u;         
 
   /* Check if boundary conditions for controls should be enfored (default: yes). */
-  // control_enforceBC = config.GetBoolParam("control_enforceBC", true);
+  control_enforceBC = config.getControlEnforceBC();
 
   // Parse for control segments
   size_t idstr = 0;
   int nparams_per_seg = 0;
+  // TODO move this to config file?
   while (idstr < controlsegments.size()) {
 
     if (controlsegments[idstr].compare("step") == 0) {

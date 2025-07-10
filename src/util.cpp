@@ -658,3 +658,14 @@ void logErrorToRank0(int mpi_rank, const std::string& message) {
     std::cerr << message << std::endl;
   }
 }
+
+void logOutputToRank0(int mpi_rank, const std::string& message) {
+  if (mpi_rank == 0) {
+    std::cout << message << std::endl;
+  }
+}
+
+std::string toLower(std::string str) {
+  std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+  return str;
+}

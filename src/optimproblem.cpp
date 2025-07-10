@@ -59,25 +59,10 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
 
   /* Initialize the optimization target, including setting of initial state rho_t0 if read from file or pure state or ensemble */
-  std::vector<std::string> target_str;
-  // config.GetVecStrParam("optim_target", target_str, "pure");
-  std::string objective_str;// = config.GetStrParam("optim_objective", "Jfrobenius");
-  std::vector<double> read_gate_rot;
-  // config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20, true, false); 
-  std::vector<std::string> initcond_str;
-  // config.GetVecStrParam("initialcondition", initcond_str, "none", false);
-  optim_target = new OptimTarget(target_str, objective_str, initcond_str, timestepper->mastereq, timestepper->total_time, read_gate_rot, rho_t0, quietmode);
+  optim_target = new OptimTarget(config, timestepper->mastereq, timestepper->total_time, rho_t0, quietmode);
 
   /* Get weights for the objective function (weighting the different initial conditions */
-  // config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
-  int nfill = 0;
-  if (obj_weights.size() < ninit) nfill = ninit - obj_weights.size();
-  double val = obj_weights[obj_weights.size()-1];
-  if (obj_weights.size() < ninit){
-    for (int i = 0; i < nfill; i++) 
-      obj_weights.push_back(val);
-  }
-  assert(obj_weights.size() >= ninit);
+  obj_weights = config.getOptimWeights();
   // Scale the weights such that they sum up to one: beta_i <- beta_i / (\sum_i beta_i)
   double scaleweights = 0.0;
   for (size_t i=0; i<ninit; i++) scaleweights += obj_weights[i];
@@ -92,18 +77,18 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
 
 
   /* Store other optimization parameters */
-  // gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
-  // gatol = config.GetDoubleParam("optim_atol", 1e-8);
-  // fatol = config.GetDoubleParam("optim_ftol", 1e-8);
-  // inftol = config.GetDoubleParam("optim_inftol", 1e-5);
-  // grtol = config.GetDoubleParam("optim_rtol", 1e-4);
-  // maxiter = config.GetIntParam("optim_maxiter", 200);
-  // gamma_penalty = config.GetDoubleParam("optim_penalty", 0.0);
-  // penalty_param = config.GetDoubleParam("optim_penalty_param", 0.5);
-  // gamma_penalty_energy = config.GetDoubleParam("optim_penalty_energy", 0.0);
-  // gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
-  // gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
-  // gamma_penalty_variation = config.GetDoubleParam("optim_penalty_variation", 0.01); 
+  gamma_tik = config.getOptimRegul();
+  gatol = config.getOptimAtol();
+  fatol = config.getOptimFtol();
+  inftol = config.getOptimInftol();
+  grtol = config.getOptimRtol();
+  maxiter = config.getOptimMaxiter();
+  gamma_penalty = config.getOptimPenalty();
+  penalty_param = config.getOptimPenaltyParam();
+  gamma_penalty_energy = config.getOptimPenaltyEnergy();
+  gamma_tik_interpolate = config.getOptimRegulInterpolate();
+  gamma_penalty_dpdm = config.getOptimPenaltyDpdm();
+  gamma_penalty_variation = config.getOptimPenaltyVariation();
   
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
@@ -127,7 +112,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   int col = 0;
   for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     std::vector<std::string> bound_str;
-    // config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "10000.0");
+    config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "10000.0");
     for (size_t iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
       double boundval = 0.0;
       if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
@@ -156,7 +141,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
 
   /* Store the initial guess if read from file */
   std::vector<std::string> controlinit_str;
-  // config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0");
+  config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0");
   if ( controlinit_str.size() > 0 && controlinit_str[0].compare("file") == 0 ) {
     assert(controlinit_str.size() >=2);
     for (int i=0; i<ndesign; i++) initguess_fromfile.push_back(0.0);

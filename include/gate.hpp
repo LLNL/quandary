@@ -244,7 +244,8 @@ class FromFile: public Gate {
  * Creates and returns a pointer to the appropriate Gate subclass based on
  * the target specification string.
  *
- * @param target_str Vector of strings specifying the target gate type and parameters.
+ * @param GateType target_gate Type of gate to initialize.
+ * @param file Path to the file containing gate matrix data (if applicable).
  * @param nlevels Number of levels per oscillator.
  * @param nessential Number of essential levels per oscillator.
  * @param total_time Total time for gate operation.
@@ -253,4 +254,4 @@ class FromFile: public Gate {
  * @param quietmode Flag to suppress output messages.
  * @return Gate* Pointer to the initialized gate object.
  */
-Gate* initTargetGate(const std::vector<std::string>& target_str, const std::vector<size_t>& nlevels, const std::vector<size_t>& nessential, double total_time, LindbladType lindbladtype, const std::vector<double>& gate_rot_freq, bool quietmode);
+Gate* initTargetGate(GateType target_gate, const std::string& file, const std::vector<size_t>& nlevels, const std::vector<size_t>& nessential, double total_time, LindbladType lindbladtype, const std::vector<double>& gate_rot_freq, bool quietmode);

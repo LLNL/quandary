@@ -278,3 +278,19 @@ void export_param(int mpi_rank, std::stringstream& log, std::string key, T value
  * @param message Error message to log.
  */
 void logErrorToRank0(int mpi_rank, const std::string& message);
+
+/**
+ * @brief Prints output message to rank 0 cout stream.
+ *
+ * @param mpi_rank MPI rank of the current process.
+ * @param message Error message to log.
+ */
+void logOutputToRank0(int mpi_rank, const std::string& message);
+
+/**
+ * @brief Returns a lowercase version of the input string.
+ *
+ * @param str String to convert to lowercase.
+ * @return std::string Lowercase string
+ */
+std::string toLower(std::string str);
