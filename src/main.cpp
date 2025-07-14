@@ -8,6 +8,7 @@
 #include <sys/resource.h>
 #include <cassert>
 #include "optimproblem.hpp"
+#include <filesystem>
 #include "output.hpp"
 #include "petsc.h"
 #include <random>
