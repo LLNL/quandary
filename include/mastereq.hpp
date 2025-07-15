@@ -18,6 +18,7 @@
  * and vectorized system matrix to a state vector.
  */
 typedef struct {
+  PetscInt dim; ///< Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
   std::vector<int> nlevels; ///< Number of levels per oscillator
   IS *isu, *isv; ///< Vector strides for accessing real and imaginary parts
   Oscillator** oscil_vec; ///< Array of pointers to the oscillators
@@ -291,7 +292,7 @@ void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec x_bar, 
  * @param[in] lindbladtype Type of Lindblad decoherence operators, or NONE
  * @param[in] oscil_vec Vector of quantum oscillators 
  */
-void compute_dRHS_dParams_matfree(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad, std::vector<int>& nlevels, LindbladType lindbladtype, Oscillator** oscil_vec);
+void compute_dRHS_dParams_matfree(const PetscInt dim, const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad, std::vector<int>& nlevels, LindbladType lindbladtype, Oscillator** oscil_vec);
 
 
 
@@ -540,7 +541,7 @@ inline int TensorGetIndex(const int nlevels0, const int nlevels1, const int nlev
  * @param res_q_re Pointer to store real part of q result
  * @param res_q_im Pointer to store imaginary part of q result
  */
-inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int i, const int ip, const int stridei, const int strideip, const double* xptr, double* res_p_re, double* res_p_im, double* res_q_re, double* res_q_im) {
+inline void dRHSdp_getcoeffs(const PetscInt dim, const int it, const int n, const int np, const int i, const int ip, const int stridei, const int strideip, const double* xptr, double* res_p_re, double* res_p_im, double* res_q_re, double* res_q_im) {
 
   *res_p_re = 0.0;
   *res_p_im = 0.0;
@@ -550,8 +551,8 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int 
   /* ik+1..,ik'.. term */
   if (i < n-1) {
     int itx = it + stridei;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[getIndexReal(itx)];
+    double xim = xptr[getIndexImag(itx, dim)];
     double sq = sqrt(i + 1);
     *res_p_re +=   sq * xim;
     *res_p_im += - sq * xre;
@@ -561,8 +562,8 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int 
   /* \rho(ik..,ik'+1..) */
   if (ip < np-1) {
     int itx = it + strideip;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[getIndexReal(itx)];
+    double xim = xptr[getIndexImag(itx, dim)];
     double sq = sqrt(ip + 1);
     *res_p_re += - sq * xim;
     *res_p_im += + sq * xre;
@@ -572,8 +573,8 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int 
   /* \rho(ik-1..,ik'..) */
   if (i > 0) {
     int itx = it - stridei;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[getIndexReal(itx)];
+    double xim = xptr[getIndexImag(itx, dim)];
     double sq = sqrt(i);
     *res_p_re += + sq * xim;
     *res_p_im += - sq * xre;
@@ -583,8 +584,8 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int 
   /* \rho(ik..,ik'-1..) */
   if (ip > 0) {
     int itx = it - strideip;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[getIndexReal(itx)];
+    double xim = xptr[getIndexImag(itx, dim)];
     double sq = sqrt(ip);
     *res_p_re += - sq * xim;
     *res_p_im += + sq * xre;
@@ -619,6 +620,8 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int 
  * @param yim Pointer to store imaginary part of result
  */
 inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
+  printf("TODO Jkl coupling with blocked vectors\n");
+  exit(1);
   if (fabs(Jij)>1e-10) {
     //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
     if (i > 0 && j < nj-1) {
@@ -742,13 +745,13 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int n
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void L1decay(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
+inline void L1decay(const PetscInt dim, const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
   if  (fabs(decayi) > 1e-12) {
     if (i < n-1 && ip < n-1) {
       double l1off = decayi * sqrt((i+1)*(ip+1));
       int itx = it + stridei + strideip;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       *yre += l1off * xre;
       *yim += l1off * xim;
     }
@@ -769,13 +772,13 @@ inline void L1decay(const int it, const int n, const int i, const int ip, const 
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void L1decay_T(const int it, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
+inline void L1decay_T(const PetscInt dim, const int it, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
   if (fabs(decayi) > 1e-12) {
       if (i > 0 && ip > 0) {
         double l1off = decayi * sqrt(i*ip);
         int itx = it - stridei - strideip;
-        double xre = xptr[2 * itx];
-        double xim = xptr[2 * itx + 1];
+        double xre = xptr[getIndexReal(itx)];
+        double xim = xptr[getIndexImag(itx, dim)];
         *yre += l1off * xre;
         *yim += l1off * xim;
       }
@@ -800,12 +803,12 @@ inline void L1decay_T(const int it, const int i, const int ip, const int stridei
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void control(const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
+inline void control(const PetscInt dim, const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
   /* \rho(ik+1..,ik'..) term */
   if (i < n-1) {
       int itx = it + stridei;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(i + 1);
       *yre += sq * (   pt * xim + qt * xre);
       *yim += sq * ( - pt * xre + qt * xim);
@@ -813,8 +816,8 @@ inline void control(const int it, const int n, const int i, const int np, const 
     /* \rho(ik..,ik'+1..) */
     if (ip < np-1) {
       int itx = it + strideip;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(ip + 1);
       *yre += sq * ( -pt * xim + qt * xre);
       *yim += sq * (  pt * xre + qt * xim);
@@ -822,8 +825,8 @@ inline void control(const int it, const int n, const int i, const int np, const 
     /* \rho(ik-1..,ik'..) */
     if (i > 0) {
       int itx = it - stridei;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(i);
       *yre += sq * (  pt * xim - qt * xre);
       *yim += sq * (- pt * xre - qt * xim);
@@ -831,8 +834,8 @@ inline void control(const int it, const int n, const int i, const int np, const 
     /* \rho(ik..,ik'-1..) */
     if (ip > 0) {
       int itx = it - strideip;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(ip);
       *yre += sq * (- pt * xim - qt * xre);
       *yim += sq * (  pt * xre - qt * xim);
@@ -856,12 +859,12 @@ inline void control(const int it, const int n, const int i, const int np, const 
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void control_T(const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
+inline void control_T(const PetscInt dim, const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
   /* \rho(ik+1..,ik'..) term */
   if (i > 0) {
     int itx = it - stridei;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[getIndexReal(itx)];
+    double xim = xptr[getIndexImag(itx, dim)];
     double sq = sqrt(i);
     *yre += sq * ( - pt * xim + qt * xre);
     *yim += sq * (   pt * xre + qt * xim);
@@ -869,8 +872,8 @@ inline void control_T(const int it, const int n, const int i, const int np, cons
   /* \rho(ik..,ik'+1..) */
   if (ip > 0) {
     int itx = it - strideip;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[getIndexReal(itx)];
+    double xim = xptr[getIndexImag(itx, dim)];
     double sq = sqrt(ip);
     *yre += sq * (  pt * xim + qt * xre);
     *yim += sq * ( -pt * xre + qt * xim);
@@ -878,8 +881,8 @@ inline void control_T(const int it, const int n, const int i, const int np, cons
   /* \rho(ik-1..,ik'..) */
   if (i < n-1) {
     int itx = it + stridei;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[getIndexReal(itx)];
+    double xim = xptr[getIndexImag(itx, dim)];
     double sq = sqrt(i+1);
     *yre += sq * (- pt * xim - qt * xre);
     *yim += sq * (  pt * xre - qt * xim);
@@ -887,8 +890,8 @@ inline void control_T(const int it, const int n, const int i, const int np, cons
   /* \rho(ik..,ik'-1..) */
   if (ip < np-1) {
     int itx = it + strideip;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[getIndexReal(itx)];
+    double xim = xptr[getIndexImag(itx, dim)];
     double sq = sqrt(ip+1);
     *yre += sq * (+ pt * xim - qt * xre);
     *yim += sq * (- pt * xre - qt * xim);

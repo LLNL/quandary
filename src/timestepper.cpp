@@ -267,10 +267,10 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
           // printf("%f: isGuard: %d / %d\n", time, i, dim_rho);
         if (mastereq->lindbladtype != LindbladType::NONE) {
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+          vecID_im = getIndexImag(getVecID(i,i,dim_rho), mastereq->getDim());
         } else {
           vecID_re = getIndexReal(i);
-          vecID_im = getIndexImag(i);
+          vecID_im = getIndexImag(i, mastereq->getDim());
         }
         x_re = 0.0; x_im = 0.0;
         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
@@ -313,10 +313,10 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
         if (mastereq->lindbladtype != LindbladType::NONE){ 
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+          vecID_im = getIndexImag(getVecID(i,i,dim_rho), mastereq->getDim());
         } else {
           vecID_re = getIndexReal(i);
-          vecID_im = getIndexImag(i);
+          vecID_im = getIndexImag(i, mastereq->getDim());
         }
         x_re = 0.0; x_im = 0.0;
         if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
@@ -353,10 +353,10 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
     for (PetscInt i=0; i<dim_rho; i++) {
         if (mastereq->lindbladtype != LindbladType::NONE) { 
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+          vecID_im = getIndexImag(getVecID(i,i,dim_rho), mastereq->getDim());
         } else {
           vecID_re = getIndexReal(i);
-          vecID_im = getIndexImag(i);
+          vecID_im = getIndexImag(i, mastereq->getDim());
         }
 
         if (ilow <= vecID_re && vecID_re < iupp) tmp1 = xptr[vecID_re]*xptr[vecID_re] - 2.0*xm1ptr[vecID_re]*xm1ptr[vecID_re] + xm2ptr[vecID_re]*xm2ptr[vecID_re];
@@ -403,10 +403,10 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
     for (PetscInt i=0; i<dim_rho; i++) {
         if (mastereq->lindbladtype != LindbladType::NONE) { 
           vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
+          vecID_im = getIndexImag(getVecID(i,i,dim_rho), mastereq->getDim());
         } else {
           vecID_re = getIndexReal(i);
-          vecID_im = getIndexImag(i);
+          vecID_im = getIndexImag(i, mastereq->getDim());
         }
 
         // first term

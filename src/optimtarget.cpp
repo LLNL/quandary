@@ -111,7 +111,7 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
           j = mapEssToFull(j, mastereq->nlevels, mastereq->nessential);
         }
         PetscInt elemid_re = getIndexReal(getVecID(k,j,dim_rho));
-        PetscInt elemid_im = getIndexImag(getVecID(k,j,dim_rho));
+        PetscInt elemid_im = getIndexImag(getVecID(k,j,dim_rho), dim);
         if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
         if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
       }
@@ -121,7 +121,7 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
         if (dim_ess < mastereq->getDim()) 
           k = mapEssToFull(i, mastereq->nlevels, mastereq->nessential);
         PetscInt elemid_re = getIndexReal(k);
-        PetscInt elemid_im = getIndexImag(k);
+        PetscInt elemid_im = getIndexImag(k, dim);
         if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, vec[i], INSERT_VALUES);        // RealPart
         if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, vec[i + dim_ess], INSERT_VALUES); // Imaginary Part
       }
@@ -161,12 +161,12 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
         } else {
           // upper diagonal (0.5 + 0.5*i) / (N_sub^2)
           PetscInt elemid_re = getIndexReal(getVecID(ifull, jfull, dimrho));
-          PetscInt elemid_im = getIndexImag(getVecID(ifull, jfull, dimrho));
+          PetscInt elemid_im = getIndexImag(getVecID(ifull, jfull, dimrho), dim);
           if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re, 0.5/(dimsub*dimsub), INSERT_VALUES);
           if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, 0.5/(dimsub*dimsub), INSERT_VALUES);
           // lower diagonal (0.5 - 0.5*i) / (N_sub^2)
           elemid_re = getIndexReal(getVecID(jfull, ifull, dimrho));
-          elemid_im = getIndexImag(getVecID(jfull, ifull, dimrho));
+          elemid_im = getIndexImag(getVecID(jfull, ifull, dimrho), dim);
           if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(rho_t0, elemid_re,  0.5/(dimsub*dimsub), INSERT_VALUES);
           if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(rho_t0, elemid_im, -0.5/(dimsub*dimsub), INSERT_VALUES);
         } 
@@ -259,7 +259,7 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
           j = mapEssToFull(j, mastereq->nlevels, mastereq->nessential);
         }
         PetscInt elemid_re = getIndexReal(getVecID(k,j,dim_rho));
-        PetscInt elemid_im = getIndexImag(getVecID(k,j,dim_rho));
+        PetscInt elemid_im = getIndexImag(getVecID(k,j,dim_rho), dim);
         if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(targetstate, elemid_re, vec[i],       INSERT_VALUES); // RealPart
         if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(targetstate, elemid_im, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
       }
@@ -269,7 +269,7 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
         if (dim_ess < mastereq->getDim()) 
           k = mapEssToFull(i, mastereq->nlevels, mastereq->nessential);
         PetscInt elemid_re = getIndexReal(k);
-        PetscInt elemid_im = getIndexImag(k);
+        PetscInt elemid_im = getIndexImag(k, dim);
         if (ilow <= elemid_re && elemid_re < iupp) VecSetValue(targetstate, elemid_re, vec[i], INSERT_VALUES);        // RealPart
         if (ilow <= elemid_im && elemid_im < iupp) VecSetValue(targetstate, elemid_im, vec[i + dim_ess], INSERT_VALUES); // Imaginary Part
       }
@@ -326,7 +326,7 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
     PetscInt idm = purestateID;
     if (lindbladtype != LindbladType::NONE) idm = getVecID(purestateID, purestateID, (PetscInt)sqrt(dim));
     PetscInt idm_re = getIndexReal(idm);
-    PetscInt idm_im = getIndexImag(idm);
+    PetscInt idm_im = getIndexImag(idm, dim);
     if (ilo <= idm_re && idm_re < ihi) VecGetValues(state, 1, &idm_re, &HS_re); // local!
     if (ilo <= idm_im && idm_im < ihi) VecGetValues(state, 1, &idm_im, &HS_im); // local! Should be 0.0 if Lindblad!
     if (lindbladtype != LindbladType::NONE) assert(fabs(HS_im) <= 1e-14);
@@ -350,7 +350,7 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
       VecGetOwnershipRange(state, &ilo, &ihi);
       for (PetscInt i=0; i<dim; i++){
         PetscInt ia = getIndexReal(i);
-        PetscInt ib = getIndexImag(i);
+        PetscInt ib = getIndexImag(i, dim);
         if (ilo <= ia && ia < ihi) {
           PetscInt idre = ia - ilo;
           PetscInt idim = ib - ilo;
@@ -392,7 +392,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
     PetscInt idm = purestateID;
     if (lindbladtype != LindbladType::NONE) idm = getVecID(purestateID, purestateID, (PetscInt)sqrt(dim));
     PetscInt idm_re = getIndexReal(idm);
-    PetscInt idm_im = getIndexImag(idm);
+    PetscInt idm_im = getIndexImag(idm, dim);
     if (ilo <= idm_re && idm_re < ihi) VecSetValue(statebar, idm_re, HS_re_bar*scale, ADD_VALUES);
     if (ilo <= idm_im && idm_im < ihi) VecSetValue(statebar, idm_im, HS_im_bar, ADD_VALUES);
 
@@ -409,7 +409,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
       VecGetOwnershipRange(state, &ilo, &ihi);
       for (PetscInt i=0; i<dim; i++){
         PetscInt ia = getIndexReal(i);
-        PetscInt ib = getIndexImag(i);
+        PetscInt ib = getIndexImag(i, dim);
         if (ilo <= ia && ia < ihi) {
           PetscInt idre = ia - ilo;
           PetscInt idim = ib - ilo;
@@ -442,7 +442,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
       for (PetscInt i=0; i<dim_rho; i++){
         if (lindbladtype == LindbladType::NONE) {
           PetscInt elem_re = getIndexReal(i);
-          PetscInt elem_im = getIndexImag(i);
+          PetscInt elem_im = getIndexImag(i, dim);
           double val = 1./ sqrt(2.*dim_rho);
           if (ilow <= elem_re && elem_re < iupp) VecSetValue(rho0, elem_re, val, INSERT_VALUES);
           if (ilow <= elem_im && elem_im < iupp) VecSetValue(rho0, elem_im, val, INSERT_VALUES);
@@ -624,8 +624,8 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
           }
           vals[2] = -0.5;
           vals[3] = 0.5;
-          rows[2] = getIndexImag(getVecID(k, j, dim_rho)); // (k,j)
-          rows[3] = getIndexImag(getVecID(j, k, dim_rho)); // (j,k)
+          rows[2] = getIndexImag(getVecID(k, j, dim_rho), dim); // (k,j)
+          rows[3] = getIndexImag(getVecID(j, k, dim_rho), dim); // (j,k)
           for (int i=2; i<4; i++) {
             if (ilow <= rows[i] && rows[i] < iupp) VecSetValues(rho0, 1, &(rows[i]), &(vals[i]), INSERT_VALUES);
           }
@@ -719,7 +719,7 @@ void OptimTarget::evalJ(const Vec state, double* J_re_ptr, double* J_im_ptr){
           if (ilo <= diagID && diagID < ihi) VecGetValues(state, 1, &diagID, &rhoii);
         } else  {
           diagID_re = getIndexReal(i);
-          diagID_im = getIndexImag(i);
+          diagID_im = getIndexImag(i, dim);
           rhoii_re = 0.0;
           rhoii_im = 0.0;
           if (ilo <= diagID_re && diagID_re < ihi) VecGetValues(state, 1, &diagID_re, &rhoii_re);
@@ -783,7 +783,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
           if (ilo <= diagID && diagID < ihi) VecSetValue(statebar, diagID, val, ADD_VALUES);
         } else {
           diagID_re = getIndexReal(i);
-          diagID_im = getIndexImag(i);
+          diagID_im = getIndexImag(i, dim);
           rhoii_re = 0.0;
           rhoii_im = 0.0;
           if (ilo <= diagID_re && diagID_re < ihi) VecGetValues(state, 1, &diagID_re, &rhoii_re);

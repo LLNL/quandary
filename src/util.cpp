@@ -69,11 +69,13 @@ double getRampFactor_diff(const double time, const double tstart, const double t
 }
 
 PetscInt getIndexReal(const PetscInt i) {
-  return 2*i;
+  // return 2*i; // colocated
+  return i;     // blocked
 }
 
-PetscInt getIndexImag(const PetscInt i) {
-  return 2*i + 1;
+PetscInt getIndexImag(const PetscInt i, const PetscInt size) {
+  // return 2*i + 1; // colocated
+  return i + size;  // blocked
 }
 
 PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim){

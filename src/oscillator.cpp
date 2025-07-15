@@ -437,7 +437,7 @@ double Oscillator::expectedEnergy(const Vec x) {
     if (lindbladtype != LindbladType::NONE) idx_diag_re = getIndexReal(getVecID(i,i,dimmat));
     else {
       idx_diag_re = getIndexReal(i);
-      idx_diag_im = getIndexImag(i);
+      idx_diag_im = getIndexImag(i, dim/2);
     }
     
     double xdiag = 0.0;
@@ -490,7 +490,7 @@ void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_ba
       val = num_diag * xdiag * obj_bar;
       if (ilow <= idx_diag_re && idx_diag_re < iupp) VecSetValues(x_bar, 1, &idx_diag_re, &val, ADD_VALUES);
       // Imaginary part
-      idx_diag_im = getIndexImag(i);
+      idx_diag_im = getIndexImag(i, dim/2);
       xdiag = 0.0;
       if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
       val = - num_diag * xdiag * obj_bar; // TODO: Is this a minus or a plus?? 
@@ -533,7 +533,7 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
           sum += val;
         } else {
           PetscInt diagID_re = getIndexReal(rhoID);
-          PetscInt diagID_im = getIndexImag(rhoID);
+          PetscInt diagID_im = getIndexImag(rhoID, dimN);
           val = 0.0;
           if (ilow <= diagID_re && diagID_re < iupp)  VecGetValues(x, 1, &diagID_re, &val);
           sum += val * val;

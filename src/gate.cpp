@@ -68,10 +68,12 @@ Gate::Gate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_
   /* Create vector strides for accessing real and imaginary part of co-located state */
   PetscInt ilow, iupp;
   MatGetOwnershipRange(VxV_re, &ilow, &iupp);
+  // PetscInt dimis = iupp - ilow;
+  // ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow, 2, &isu);
+  // ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow+1, 2, &isv);
   PetscInt dimis = iupp - ilow;
-  ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow, 2, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow+1, 2, &isv);
- 
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 1, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+dim_gate, 1, &isv);
 }
 
 Gate::~Gate(){
