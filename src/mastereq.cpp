@@ -1556,7 +1556,7 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
           /* --- Offdiagonal: Jkl coupling term --- */
           // oscillator 0<->1 
-          Jkl_coupling(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+          Jkl_coupling(shellctx->dim, it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
 
           /* --- Offdiagonal part of decay L1 */
           if (shellctx->lindbladtype != LindbladType::NONE) {
@@ -1680,7 +1680,7 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
           /* --- Offdiagonal coupling term J_kl --- */
           // oscillator 0<->1
-          Jkl_coupling_T(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+          Jkl_coupling_T(shellctx->dim, it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
  
           /* --- Offdiagonal part of decay L1^T */
           if (shellctx->lindbladtype != LindbladType::NONE) {
@@ -1823,11 +1823,11 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
               /* --- Offdiagonal: Jkl coupling  --- */
               // oscillator 0<->1 
-              Jkl_coupling(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+              Jkl_coupling(shellctx->dim, it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
               // oscillator 0<->2
-              Jkl_coupling(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+              Jkl_coupling(shellctx->dim, it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
               // oscillator 1<->2
-              Jkl_coupling(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+              Jkl_coupling(shellctx->dim, it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
 
               /* --- Offdiagonal part of decay L1 */
               if (shellctx->lindbladtype != LindbladType::NONE) {
@@ -1977,11 +1977,11 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
               /* --- Offdiagonal coupling term J_kl --- */
               // oscillator 0<->1
-              Jkl_coupling_T(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+              Jkl_coupling_T(shellctx->dim, it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
               // oscillator 0<->2
-              Jkl_coupling_T(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+              Jkl_coupling_T(shellctx->dim, it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
               // oscillator 1<->2
-              Jkl_coupling_T(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+              Jkl_coupling_T(shellctx->dim, it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
               
 
               /* --- Offdiagonal part of decay L1^T */
@@ -2161,17 +2161,17 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
                   /* --- Offdiagonal: Jkl coupling  --- */
                   // oscillator 0<->1 
-                  Jkl_coupling(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+                  Jkl_coupling(shellctx->dim, it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
                   // oscillator 0<->2
-                  Jkl_coupling(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+                  Jkl_coupling(shellctx->dim, it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
                   // oscillator 0<->3
-                  Jkl_coupling(it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
+                  Jkl_coupling(shellctx->dim, it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
                   // oscillator 1<->2
-                  Jkl_coupling(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+                  Jkl_coupling(shellctx->dim, it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
                   // oscillator 1<->3
-                  Jkl_coupling(it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
+                  Jkl_coupling(shellctx->dim, it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
                   // oscillator 2<->3
-                  Jkl_coupling(it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
+                  Jkl_coupling(shellctx->dim, it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
 
                   /* --- Offdiagonal part of decay L1 */
                   if (shellctx->lindbladtype != LindbladType::NONE) {
@@ -2356,17 +2356,17 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
                   /* --- Offdiagonal coupling term J_kl --- */
                   // oscillator 0<->1
-                  Jkl_coupling_T(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+                  Jkl_coupling_T(shellctx->dim, it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
                   // oscillator 0<->2
-                  Jkl_coupling_T(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+                  Jkl_coupling_T(shellctx->dim, it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
                   // oscillator 0<->3
-                  Jkl_coupling_T(it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
+                  Jkl_coupling_T(shellctx->dim, it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
                   // oscillator 1<->2
-                  Jkl_coupling_T(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+                  Jkl_coupling_T(shellctx->dim, it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
                   // oscillator 1<->3
-                  Jkl_coupling_T(it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
+                  Jkl_coupling_T(shellctx->dim, it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
                   // oscillator 2<->3
-                  Jkl_coupling_T(it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
+                  Jkl_coupling_T(shellctx->dim, it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
               
 
                   /* --- Offdiagonal part of decay L1^T */
@@ -2585,25 +2585,25 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
                       /* --- Offdiagonal: Jkl coupling  --- */
                       // oscillator 0<->1 
-                      Jkl_coupling(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+                      Jkl_coupling(shellctx->dim, it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
                       // oscillator 0<->2
-                      Jkl_coupling(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+                      Jkl_coupling(shellctx->dim, it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
                       // oscillator 0<->3
-                      Jkl_coupling(it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
+                      Jkl_coupling(shellctx->dim, it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
                       // oscillator 0<->4
-                      Jkl_coupling(it, n0, n4, n0p, n4p, i0, i0p, i4, i4p, stridei0, stridei0p, stridei4, stridei4p, xptr, J04, cos04, sin04, &yre, &yim);
+                      Jkl_coupling(shellctx->dim, it, n0, n4, n0p, n4p, i0, i0p, i4, i4p, stridei0, stridei0p, stridei4, stridei4p, xptr, J04, cos04, sin04, &yre, &yim);
                       // oscillator 1<->2
-                      Jkl_coupling(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+                      Jkl_coupling(shellctx->dim, it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
                       // oscillator 1<->3
-                      Jkl_coupling(it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
+                      Jkl_coupling(shellctx->dim, it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
                       // oscillator 1<->4
-                      Jkl_coupling(it, n1, n4, n1p, n4p, i1, i1p, i4, i4p, stridei1, stridei1p, stridei4, stridei4p, xptr, J14, cos14, sin14, &yre, &yim);
+                      Jkl_coupling(shellctx->dim, it, n1, n4, n1p, n4p, i1, i1p, i4, i4p, stridei1, stridei1p, stridei4, stridei4p, xptr, J14, cos14, sin14, &yre, &yim);
                       // oscillator 2<->3
-                      Jkl_coupling(it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
+                      Jkl_coupling(shellctx->dim, it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
                       // oscillator 2<->4
-                      Jkl_coupling(it, n2, n4, n2p, n4p, i2, i2p, i4, i4p, stridei2, stridei2p, stridei4, stridei4p, xptr, J24, cos24, sin24, &yre, &yim);
+                      Jkl_coupling(shellctx->dim, it, n2, n4, n2p, n4p, i2, i2p, i4, i4p, stridei2, stridei2p, stridei4, stridei4p, xptr, J24, cos24, sin24, &yre, &yim);
                       // oscillator 3<->4
-                      Jkl_coupling(it, n3, n4, n3p, n4p, i3, i3p, i4, i4p, stridei3, stridei3p, stridei4, stridei4p, xptr, J34, cos34, sin34, &yre, &yim);
+                      Jkl_coupling(shellctx->dim, it, n3, n4, n3p, n4p, i3, i3p, i4, i4p, stridei3, stridei3p, stridei4, stridei4p, xptr, J34, cos34, sin34, &yre, &yim);
 
                       /* --- Offdiagonal part of decay L1 */
                       if (shellctx->lindbladtype != LindbladType::NONE) {
@@ -2828,25 +2828,25 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
                       /* --- Offdiagonal coupling term J_kl --- */
                       // oscillator 0<->1
-                      Jkl_coupling_T(it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
+                      Jkl_coupling_T(shellctx->dim, it, n0, n1, n0p, n1p, i0, i0p, i1, i1p, stridei0, stridei0p, stridei1, stridei1p, xptr, J01, cos01, sin01, &yre, &yim);
                       // oscillator 0<->2
-                      Jkl_coupling_T(it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
+                      Jkl_coupling_T(shellctx->dim, it, n0, n2, n0p, n2p, i0, i0p, i2, i2p, stridei0, stridei0p, stridei2, stridei2p, xptr, J02, cos02, sin02, &yre, &yim);
                       // oscillator 0<->3
-                      Jkl_coupling_T(it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
+                      Jkl_coupling_T(shellctx->dim, it, n0, n3, n0p, n3p, i0, i0p, i3, i3p, stridei0, stridei0p, stridei3, stridei3p, xptr, J03, cos03, sin03, &yre, &yim);
                       // oscillator 0<->4
-                      Jkl_coupling_T(it, n0, n4, n0p, n4p, i0, i0p, i4, i4p, stridei0, stridei0p, stridei4, stridei4p, xptr, J04, cos04, sin04, &yre, &yim);
+                      Jkl_coupling_T(shellctx->dim, it, n0, n4, n0p, n4p, i0, i0p, i4, i4p, stridei0, stridei0p, stridei4, stridei4p, xptr, J04, cos04, sin04, &yre, &yim);
                       // oscillator 1<->2
-                      Jkl_coupling_T(it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
+                      Jkl_coupling_T(shellctx->dim, it, n1, n2, n1p, n2p, i1, i1p, i2, i2p, stridei1, stridei1p, stridei2, stridei2p, xptr, J12, cos12, sin12, &yre, &yim);
                       // oscillator 1<->3
-                      Jkl_coupling_T(it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
+                      Jkl_coupling_T(shellctx->dim, it, n1, n3, n1p, n3p, i1, i1p, i3, i3p, stridei1, stridei1p, stridei3, stridei3p, xptr, J13, cos13, sin13, &yre, &yim);
                       // oscillator 1<->4
-                      Jkl_coupling_T(it, n1, n4, n1p, n4p, i1, i1p, i4, i4p, stridei1, stridei1p, stridei4, stridei4p, xptr, J14, cos14, sin14, &yre, &yim);
+                      Jkl_coupling_T(shellctx->dim, it, n1, n4, n1p, n4p, i1, i1p, i4, i4p, stridei1, stridei1p, stridei4, stridei4p, xptr, J14, cos14, sin14, &yre, &yim);
                       // oscillator 2<->3
-                      Jkl_coupling_T(it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
+                      Jkl_coupling_T(shellctx->dim, it, n2, n3, n2p, n3p, i2, i2p, i3, i3p, stridei2, stridei2p, stridei3, stridei3p, xptr, J23, cos23, sin23, &yre, &yim);
                       // oscillator 2<->4
-                      Jkl_coupling_T(it, n2, n4, n2p, n4p, i2, i2p, i4, i4p, stridei2, stridei2p, stridei4, stridei4p, xptr, J24, cos24, sin24, &yre, &yim);
+                      Jkl_coupling_T(shellctx->dim, it, n2, n4, n2p, n4p, i2, i2p, i4, i4p, stridei2, stridei2p, stridei4, stridei4p, xptr, J24, cos24, sin24, &yre, &yim);
                       // oscillator 3<->4
-                      Jkl_coupling_T(it, n3, n4, n3p, n4p, i3, i3p, i4, i4p, stridei3, stridei3p, stridei4, stridei4p, xptr, J34, cos34, sin34, &yre, &yim);
+                      Jkl_coupling_T(shellctx->dim, it, n3, n4, n3p, n4p, i3, i3p, i4, i4p, stridei3, stridei3p, stridei4, stridei4p, xptr, J34, cos34, sin34, &yre, &yim);
               
                       /* --- Offdiagonal part of decay L1^T */
                       if (shellctx->lindbladtype != LindbladType::NONE) { 

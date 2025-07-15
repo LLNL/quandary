@@ -619,15 +619,13 @@ inline void dRHSdp_getcoeffs(const PetscInt dim, const int it, const int n, cons
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
-  printf("TODO Jkl coupling with blocked vectors\n");
-  exit(1);
+inline void Jkl_coupling(const PetscInt dim, const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
   if (fabs(Jij)>1e-10) {
     //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
     if (i > 0 && j < nj-1) {
       int itx = it - stridei + stridej;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(i * (j + 1));
       // sin u + cos v + i ( -cos u + sin v)
       *yre += Jij * sq * (   cosij * xim + sinij * xre);
@@ -636,8 +634,8 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip
     // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
     if (i < ni-1 && j > 0) {
       int itx = it + stridei - stridej;  // E+k-l i, i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(j * (i + 1)); // sqrt( il*(ik+1))
       // -sin u + cos v + i (-cos u - sin v)
       *yre += Jij * sq * (   cosij * xim - sinij * xre);
@@ -646,8 +644,8 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip
     // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
     if (ip > 0 && jp < njp-1) {
       int itx = it - strideip + stridejp;  // i, E-k+l i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(ip * (jp + 1)); // sqrt( ik'*(il'+1))
       //  sin u - cos v + i ( cos u + sin v)
       *yre += Jij * sq * ( - cosij * xim + sinij * xre);
@@ -656,8 +654,8 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip
     // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
     if (ip < nip-1 && jp > 0) {
       int itx = it + strideip - stridejp;  // i, E+k-l i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(jp * (ip + 1)); // sqrt( il'*(ik'+1))
       // - sin u - cos v + i ( cos u - sin v)
       *yre += Jij * sq * ( - cosij * xim - sinij * xre);
@@ -689,13 +687,13 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
+inline void Jkl_coupling_T(const PetscInt dim, const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
   if (fabs(Jij)>1e-10) {
     //  1) [...] * \bar y_{E+k-l i, i′}
     if (i < ni-1 && j > 0) {
       int itx = it + stridei - stridej;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(j * (i + 1));
       *yre += Jij * sq * ( - cosij * xim + sinij * xre);
       *yim += Jij * sq * ( + cosij * xre + sinij * xim);
@@ -703,8 +701,8 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int n
     // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
     if (i > 0 && j < nj-1) {
       int itx = it - stridei + stridej;  // E-k+l i, i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(i * (j + 1)); // sqrt( ik*(il+1))
       *yre += Jij * sq * ( - cosij * xim - sinij * xre);
       *yim += Jij * sq * ( + cosij * xre - sinij * xim);
@@ -712,8 +710,8 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int n
     // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
     if (ip < nip-1 && jp > 0) {
       int itx = it + strideip - stridejp;  // i, E+k-l i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(jp * (ip + 1)); // sqrt( il'*(ik'+1))
       *yre += Jij * sq * (   cosij * xim + sinij * xre);
       *yim += Jij * sq * ( - cosij * xre + sinij * xim);
@@ -721,8 +719,8 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int n
     // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
     if (ip > 0 && jp < njp-1) {
       int itx = it - strideip + stridejp;  // i, E-k+l i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[getIndexReal(itx)];
+      double xim = xptr[getIndexImag(itx, dim)];
       double sq = sqrt(ip * (jp + 1)); // sqrt( ik'*(il'+1))
       *yre += Jij * sq * (   cosij * xim - sinij * xre);
       *yim += Jij * sq * ( - cosij * xre - sinij * xim);
