@@ -545,7 +545,9 @@ class Quandary:
         """
         Internal helper function that dumps all configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary C++ runs. Returns the name of the configuration file needed for executing Quandary. 
         """
-
+        print("python **************************")
+        print("Entering __dump(), runtype = ", runtype)
+        print("")
         # If given, write the target gate to file
         if len(self.targetgate) > 0:
             gate_vectorized = np.concatenate((np.real(self.targetgate).ravel(order='F'), np.imag(self.targetgate).ravel(order='F')))
@@ -687,23 +689,42 @@ class Quandary:
         # Stuff for Training
         if len(trainingdatadir) > 0:
             # Figure out if multiple directories are passed (multiple pulses )
+            # Also need to consider several initial conditions per pulse!
+            # trying to figure out the logic
+            print("In __dump(), trainingdatadir = ", trainingdatadir, " initialcondition = ", self.initialcondition)
             if isinstance(trainingdatadir, str): # One pulse directory only
+                print("__dump(): special case data_npulses = 1")
                 mystring += "data_npulses = 1\n"
                 mydir = [x.strip() for x in trainingdatadir.split(',')]
                 mystring += "data_name = " + mydir[0] +", "
-                if mydir[0] == "synthetic":
-                    mystring += mydir[1]+"/rho_Re.iinit0000.dat, " + mydir[1]+"/rho_Im.iinit0000.dat\n"
+                if mydir[0] == "syntheticRho":
+                    mystring += mydir[1]+ ", " + "rho_Re.iinit0000.dat, rho_Im.iinit0000.dat\n"
                 else:
                     if trainingdata_corrected:
                         mystring += "corrected, " 
                     mystring += mydir[1]+"\n"
-            else: # multiple pulses, received a list of trainingdatadirs
+            else: # multiple pulses / initial conditions, received a list of trainingdatadirs
+                # Trying to figure out the logic
+                n_pulses = len(trainingdatadir)
+                print("__dump(): general case data_npulses = ", n_pulses)
+                
                 mystring += "data_npulses = " + str(len(trainingdatadir))+"\n"
                 # First element contains the data type specifyier:
                 mydir = [x.strip() for x in trainingdatadir[0].split(',')]
-                mystring += "data_name = " + mydir[0]+", "
-                if mydir[0] == "synthetic":
-                    mystring += mydir[1]+"/rho_Re.iinit0000.dat, " + mydir[1]+"/rho_Im.iinit0000.dat\n"
+                mystring += "data_name = " + mydir[0] + ", " + mydir[1] + ", "
+                if mydir[0] == "syntheticRho":
+                    # how many initial conditions are there?
+                    if self.initialcondition == "basis":
+                        Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
+                        bdim = np.prod(Ntot) if not self._lindblad_solver else np.prod(Ntot)**2
+                        print("__dump(): case 'basis', number of elements: ", bdim)
+                        for q in range(bdim):
+                            mystring += "rho_Re.iinit%04d.dat, " % q
+                            mystring += "rho_Im.iinit%04d.dat, " % q
+                        mystring += "\n"
+                    else:
+                        print("__dump() default case, rho_Re and rho_Im for one initial condition")
+                        mystring += "rho_Re.iinit0000.dat, rho_Im.iinit0000.dat\n"
                 else:
                     if trainingdata_corrected:
                         mystring += "corrected, " 

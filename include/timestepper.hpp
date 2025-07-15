@@ -100,7 +100,7 @@ class TimeStepper{
      * @param pulse_num Number of pulse
      * @return Vec Final state vector at time T
      */
-    Vec solveODE(int initid, Vec rho_t0, int pulse_num);
+    Vec solveODE(int initid, Vec rho_t0, int pulse_num, int init_num);
 
     /**
      * @brief Solves the adjoint ODE backward in time.
@@ -116,7 +116,7 @@ class TimeStepper{
      * @param Jbar_loss Adjoint of loss term
      * @param pulse_num pulse id
      */
-    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy, double Jbar_loss, int pulse_num);
+    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy, double Jbar_loss, int pulse_num, int init_num);
 
     /**
      * @brief Evaluates the penalty integral term.

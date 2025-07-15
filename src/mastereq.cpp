@@ -742,6 +742,10 @@ void MasterEq::set_RHS_MatMult_operation(){
     std::vector<double> datacontrols = learning->data->getControls(pulse_num);
     std::vector<double> controls = datacontrols; // does a deep copy
     // Note: assumes format to be either two values (constant p & q), or a list of bspline parameters
+    
+    // Trying to figure out the logic here
+    // std::cout << "MasterEq::setControlFromData, datacontrols.size() = " << datacontrols.size() << std::endl;
+    // end
 
     if (datacontrols.size() > 0){ // if exists
       for (int ioscil=0; ioscil<noscillators; ioscil++){
@@ -770,6 +774,8 @@ void MasterEq::set_RHS_MatMult_operation(){
         // for (int i=0; i<controls.size(); i++) printf("%1.7f\n", controls[i]);
       }
     }
+    // else
+    //   std::cout << "MasterEq::setControlFromData, do nothing!" << std::endl;
   }
 }
 

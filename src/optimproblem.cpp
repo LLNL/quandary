@@ -25,6 +25,9 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
 
+  // Figuring out the logic here
+  std::cout << "In OptimProblem constructor: ninit = " << ninit << std::endl;
+
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
     for (int i = 0; i < ninit_local; i++) {
@@ -47,6 +50,9 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   } else { // Optimizing on the learnable parameters
     ndesign = timestepper->mastereq->learning->getNParams();
   }
+
+  // Figuring out the logic here
+  std::cout << "In OptimProblem constructor: ndesign = " << ndesign << std::endl;
 
   /* Allocate the initial condition vector and adjoint terminal state */
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
@@ -78,10 +84,24 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
       obj_weights.push_back(val);
   }
   assert(obj_weights.size() >= ninit);
+
+  // check obj_weights
+  // std::cout << "OptimProblem constructor, ninit = " << ninit << std::endl;
+  // std::cout << "After obj_weights.size() = " << obj_weights.size() << std::endl;
+  // for (int q=0; q<obj_weights.size(); q++){
+  //   std::cout << "obj_weight = " << obj_weights[q] << std::endl;
+  // }
+
   // Scale the weights such that they sum up to one: beta_i <- beta_i / (\sum_i beta_i)
   double scaleweights = 0.0;
   for (size_t i=0; i<ninit; i++) scaleweights += obj_weights[i];
   for (size_t i=0; i<ninit; i++) obj_weights[i] = obj_weights[i] / scaleweights;
+
+  // tmp
+  for (int q=0; q<obj_weights.size(); q++){
+    std::cout << "scaled obj_weight = " << obj_weights[q] << std::endl;
+  }
+
   // Distribute over mpi_init processes 
   double sendbuf[obj_weights.size()];
   double recvbuf[obj_weights.size()];
@@ -159,6 +179,9 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
     int nparamsH = timestepper->mastereq->learning->getNParamsHamiltonian();
     int nparamsL = timestepper->mastereq->learning->getNParamsLindblad();
     int nparamsT = timestepper->mastereq->learning->getNParamsTransfer();
+    // Figuring out the logic here
+    std::cout << "In OptimProblem constructor: nparamsT = " << nparamsT << std::endl;
+
     assert(ndesign = nparamsH + nparamsL + nparamsT);
     for (int i=0; i<nparamsH; i++) {
       double boundval = 1e6;
@@ -171,6 +194,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
       VecSetValue(xlower, i, 0.0, INSERT_VALUES);
     }
     for (int i=nparamsH+nparamsL; i<nparamsH+nparamsL+nparamsT; i++) {
+      // bounds on transfer function parameters
       double boundval = 1e6;
       VecSetValue(xupper, i, boundval, INSERT_VALUES);
       VecSetValue(xlower, i, 0.0, INSERT_VALUES);
@@ -252,10 +276,12 @@ double OptimProblem::evalF(const Vec x) {
 
   /* Iterate over control pulses */
   int npulseiters = 1;
+  // Note: data->getNpulses_local returns (npulses / mpisize_optim)
+  // TODO: generalize for ninit > 1
   if (!x_is_control) npulseiters = mastereq->learning->data->getNPulses_local();
   for (int ipulse_local = 0; ipulse_local < npulseiters; ipulse_local++){
 
-    /* Get global id if the pulse */
+    /* Get global id of the pulse */
     int ipulse = mpirank_optim * npulseiters + ipulse_local;
     // if (!quietmode) printf("%dx%d: evalF: Pulse number ipulse=%d ...\n", mpirank_optim, mpirank_init, ipulse);
 
@@ -266,16 +292,18 @@ double OptimProblem::evalF(const Vec x) {
       mastereq->learning->setLearnParams(x); 
 
       /* Make sure the control pulse matches the data, if given */
+      // When learning a transfer function, this doesn't do anything
       mastereq->setControlFromData(ipulse);
 
       // TEST: write expected energy of the Training data.
       for (int iosc=0; iosc<mastereq->nlevels.size(); iosc++){
         std::string filename_expEnergy = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_expectedEnergy"+std::to_string(iosc)+".dat"; 
-        mastereq->learning->data->writeExpectedEnergy(filename_expEnergy.c_str(), ipulse, iosc);
+        mastereq->learning->data->writeExpectedEnergy(filename_expEnergy.c_str(), ipulse, 0,  iosc); // NOTE: writing data for init_num =0 FIX ME!
       }
+      // TODO: what happens when solving Schroedinger's equation?
       std::string filename_rho_Re = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_rho_Re.dat"; 
       std::string filename_rho_Im = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_rho_Im.dat"; 
-      mastereq->learning->data->writeFullstate(filename_rho_Re.c_str(), filename_rho_Im.c_str(), ipulse);
+      mastereq->learning->data->writeFullstate(filename_rho_Re.c_str(), filename_rho_Im.c_str(), ipulse, 0); // NOTE: writing data for init_num =0 FIX ME!
     }
 
     /*  Iterate over initial condition */
@@ -283,20 +311,27 @@ double OptimProblem::evalF(const Vec x) {
     double obj_cost_im = 0.0;
     double fidelity_re = 0.0;
     double fidelity_im = 0.0;
+
+    // trying to figure out the logic
+    std::cout << "In evalF: ninit_local = " << ninit_local << std::endl;
+
     for (int iinit = 0; iinit < ninit_local; iinit++) {
       /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
       int iinit_global = mpirank_init * ninit_local + iinit;
       int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+      // tmp
       // if (!quietmode) printf("%dx%d:    -> Initial condition id=%d ...\n",mpirank_optim, mpirank_init, initid);
 
       /* Run forward with initial condition initid */
       optim_target->prepareTargetState(rho_t0);
-      Vec finalstate = timestepper->solveODE(initid, rho_t0, ipulse);
+      // NOTE: solveODE computes the loss
+      Vec finalstate = timestepper->solveODE(initid, rho_t0, ipulse, iinit);
 
       /* If learning: add to loss function */
+      // NOTE: getLoss() only returns a pre-computed value
       double loss_local = mastereq->learning->getLoss();
       if (!x_is_control)
-        printf("%dx%d: Local loss for pulse %d = %1.14e\n", mpirank_optim, mpirank_init, ipulse, loss_local);
+        printf("%dx%d: Local loss for pulse %d, init.cond. %d: %1.14e\n", mpirank_optim, mpirank_init, ipulse, iinit, loss_local);
       obj_loss += obj_weights[iinit] * loss_local;
 
       /* Add to integral penalty terms */
@@ -399,7 +434,7 @@ double OptimProblem::evalF(const Vec x) {
       std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << std::endl;
       std::cout<< "Fidelity = " << fidelity  << std::endl;
     } else {
-      std::cout<< "Learning loss = " << std::scientific<<std::setprecision(14) << obj_loss << " + " << obj_regul << std::endl;
+      std::cout<< "Learning loss = " << std::scientific<<std::setprecision(14) << obj_loss << " + regularization = " << obj_regul << std::endl;
     }
   }
 
@@ -503,7 +538,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
       /* Run forward with initial condition rho_t0 */
       optim_target->prepareTargetState(rho_t0);
-      Vec finalstate = timestepper->solveODE(initid, rho_t0, ipulse);
+      Vec finalstate = timestepper->solveODE(initid, rho_t0, ipulse, iinit);
 
       /* Store the final state for the Schroedinger solver */
       if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
@@ -547,7 +582,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
         }
 
         /* Derivative of time-stepping */
-        timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss, ipulse);
+        timestepper->solveAdjointODE(initid, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss, ipulse, iinit);
 
         /* Add to optimizers's gradient */
         VecAXPY(G, 1.0, timestepper->redgrad);
@@ -659,7 +694,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
         exit(1);
       }
 
-      timestepper->solveAdjointODE(0, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss, 0);
+      timestepper->solveAdjointODE(0, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss, 0, iinit);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);

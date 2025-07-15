@@ -30,6 +30,9 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
   int mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
+  // Figuring out the logic here
+  std::cout << "In OptimTarget constructor: initcond_str[0] = " << initcond_str[0] << std::endl;
+
   /* Get initial condition type */
   if (initcond_str[0].compare("file") == 0)              initcond_type = InitialConditionType::FROMFILE;
   else if  (initcond_str[0].compare("pure") == 0)        initcond_type = InitialConditionType::PURE;
@@ -432,6 +435,9 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
   int dim_post;
   int initID = 0;    // Output: ID for this initial condition */
 
+  // tmp
+  //std::cout << "In prepareInitialState, iinit = " << iinit << std::endl;
+
   /* Switch over type of initial condition */
   switch (initcond_type) {
 
@@ -562,6 +568,9 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
       break;
 
     case InitialConditionType::BASIS:
+      // tmp
+      //std::cout << "In prepareInitialState,  InitialConditionType::BASIS" << std::endl;
+
       assert(lindbladtype != LindbladType::NONE); // should never happen. For Schroedinger: BASIS equals DIAGONAL, and should go into the above switch case. 
 
       /* Reset the initial conditions */

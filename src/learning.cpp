@@ -290,14 +290,15 @@ void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_s
   }
 }
 
-
-void Learning::addToLoss(double time, Vec x, int pulse_num){
+// ************************ addToLoss ******************* 
+void Learning::addToLoss(double time, Vec x, int pulse_num, int init_num){
 
   current_err = 0.0;
   if (dim_rho <= 0) return;
 
   // If data point exists at this time, compute frobenius norm (x-xdata)
-  Vec xdata = data->getData(time, pulse_num);
+  // NOTE: need to pass in the initial condition
+  Vec xdata = data->getData(time, pulse_num, init_num);
   if (xdata != NULL) {
     // printf("Add to loss at time %1.8f \n", time);
     // VecView(xdata,NULL);
@@ -310,12 +311,12 @@ void Learning::addToLoss(double time, Vec x, int pulse_num){
   }
 }
 
-
-void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num, double Jbar_loss){
+// ************************ addToLoss_diff ******************* 
+void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num, int init_num, double Jbar_loss){
 
   if (dim_rho <= 0) return;
 
-  Vec xdata = data->getData(time, pulse_num);
+  Vec xdata = data->getData(time, pulse_num, init_num);
   if (xdata != NULL) {
     // printf("loss_DIFF at time %1.8f \n", time);
     // VecView(xprimal,NULL);

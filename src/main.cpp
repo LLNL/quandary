@@ -254,10 +254,17 @@ int main(int argc,char **argv)
     if (!x_is_control){
       std::vector<std::string> data_name;
       config.GetVecStrParam("data_name", data_name, "data");
-      std::string identifyer = data_name[0];
-      data_name.erase(data_name.begin());
-      if (identifyer.compare("synthetic") == 0) { 
-        data = new SyntheticQuandaryData(config, comm_optim, data_name, nlevels, lindbladtype);
+      // AP: trying to understand the logic
+      // std::cout << "In main, UDEmodel_str[0] = " << UDEmodel_str[0] << " reading the 'data_name' line: " << std::endl;
+      // for (int q=0; q< data_name.size(); q++)
+      //   std::cout << data_name[q] << std::endl;
+      // std::cout << "end of 'data_name'" << std::endl;
+      // AP: end
+      std::string identifyer = data_name[0]; // Copy element [0] of the data_name vector 
+      data_name.erase(data_name.begin()); // remove element [0] from the data_name vector
+
+      if (identifyer.compare("syntheticRho") == 0) { 
+        data = new SyntheticRhoQuandaryData(config, comm_optim, data_name, nlevels, lindbladtype);
       } else if (identifyer.compare("Tant2level") == 0) { 
         data = new Tant2levelData(config, comm_optim, data_name, nlevels, lindbladtype);
       } else if (identifyer.compare("Tant3level") == 0) {
@@ -475,7 +482,7 @@ int main(int argc,char **argv)
   /* --- Initialize optimization --- */
   OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, x_is_control, output, quietmode);
 
-  /* Set upt solution and gradient vector */
+  /* Set up solution and gradient vector */
   Vec xinit;
   VecCreateSeq(PETSC_COMM_SELF, optimctx->getNdesign(), &xinit);
   VecSetFromOptions(xinit);

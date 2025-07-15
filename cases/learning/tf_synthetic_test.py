@@ -7,7 +7,7 @@ np.set_printoptions( linewidth=800)
 
 
 do_datageneration = True 
-do_training = False # True 
+do_training = True # False 
 do_extrapolate = False
 do_analyze = False
 do_prune = False
@@ -57,17 +57,17 @@ print("Optimized pulse with Schroedinger's eqn, dir = ", datadir)
 plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
 
 # Modify quandary options for data generation & training (Use Lindblad's eqn)
-initialcondition =  "diagonal" # "pure, 0" "diagonal" "basis" # Initial condition at t=0: Groundstate
+initialcondition =  "basis" # "pure, 0" "diagonal" "basis" # Initial condition at t=0: Groundstate
 T1 = [100.0] # Decoherence times [us]
 T2 = [40.0]
 output_frequency = 1  # write every x-th timestep
-dirprefix = "SWAP02_diag" # "SWAP02_pure" # add a prefix for run directories
+dirprefix = "SWAP02_basis" # "SWAP02_diag" "SWAP02_pure" # add a prefix for run directories
 
 quandary2 = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl=maxctrl, targetgate=unitary, T=T, pcof0=pcof_opt, verbose=verbose, rand_seed=rand_seed,  initialcondition=initialcondition, output_frequency=output_frequency, T1=T1, T2=T2)
 
 cwd = os.getcwd()
 datadir_test = cwd+"/"+dirprefix+"_asmeasured" # NOTE: not an array
-pfact = [0.75, 1.5] # [0.75, 1.25] #
+pfact = [0.8, 1.2] # [0.75, 1.5] #
 
 if do_datageneration:
 	# Perturb the controls: Scale each carrier wave component
@@ -100,7 +100,7 @@ maxcores = 1 # Note: Only have one pulse
 T_train = T	  
 # Add data type specifier to the first element of the data list
 trainingdatadir = [] # needs to be in a list
-trainingdatadir.append("synthetic, " + datadir_test)
+trainingdatadir.append("syntheticRho, " + datadir_test)
 print("trainingdatadir = ", trainingdatadir, " len = ", len(trainingdatadir))
 
 # Switch between tikhonov regularization norms (L1 or L2 norm)
@@ -124,15 +124,16 @@ quandary2.gamma_energy = 0.0
 quandary2.gamma_dpdm = 0.0
 quandary2.maxiter = 500
 
-### TEST: Simulate with transfer functions set to the exact pertubation from above -> Loss should be large!
 learnparams_perturb = pfact # correct scaling factors
+learnparams_identity = [1.0, 1.0] # factor of one for each carrier wave
+
+### TEST: Simulate with transfer functions set to the exact pertubation from above -> Loss should be large!
 quandary2.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learnparams_perturb, maxcores=maxcores, datadir=UDEdatadir+"_scaledtransfer")
 print("learnparams = ", learnparams_perturb, " CHECK: Loss should be zero (small)!\n")
 
 ## TEST: Simulate with transfer functions set to the identity -> Loss should be zero!
-learnparams_identity = [1.0, 1.0] # one for each carrier wave
-quandary2.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learnparams_identity, maxcores=maxcores, datadir=UDEdatadir+"_identitytransfer")
-print("learnparams = ", learnparams_identity, " CHECK: Loss should be large!\n")
+# quandary2.UDEsimulate(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, learn_params=learnparams_identity, maxcores=maxcores, datadir=UDEdatadir+"_identitytransfer")
+# print("learnparams = ", learnparams_identity, " CHECK: Loss should be large!\n")
 
 if do_training:
 	print("\nStarting UDE training for UDE model = ", UDEmodel, " initial_params: ", learnparams_identity, "...")
