@@ -33,13 +33,10 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
   int mpisize_petsc;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
-  // Get locally owned portion of state vector
-  localsize_u = dim / mpisize_petsc;
-  VecGetOwnershipRange(rho_t0, &ilow, &iupp);
-  ilow = ilow / 2;
-  iupp = ilow + localsize_u;
-
- 
+  // Set local sizes of subvectors u,v in state x=[u,v]
+  localsize_u = dim / mpisize_petsc; 
+  ilow = mpirank_petsc * localsize_u;
+  iupp = ilow + localsize_u;         
 
   /* Get initial condition type */
   if (initcond_str[0].compare("file") == 0)              initcond_type = InitialConditionType::FROMFILE;
@@ -98,7 +95,6 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
     PetscInt vec_id = diag_id;
     if (lindbladtype != LindbladType::NONE) vec_id = getVecID( diag_id, diag_id, dim_rho); 
     // Set 1.0 on the processor who owns this index
-    printf("ilow %d, iupp %d, vec_id %d\n", ilow, iupp, vec_id);
     if (ilow <= vec_id && vec_id < iupp) {
       PetscInt id_global_x =  vec_id + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
       VecSetValue(rho_t0, id_global_x, 1.0, INSERT_VALUES);

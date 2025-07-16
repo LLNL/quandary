@@ -39,9 +39,9 @@ class OptimTarget{
     LindbladType lindbladtype; ///< Type of Lindblad decoherence operators, or NONE for Schroedinger solver
     int mpisize_petsc; ///< Size of PETSc communicator
     int mpirank_petsc; ///< Rank of PETSc communicator
-    PetscInt ilow; 
-    PetscInt iupp; 
-    PetscInt localsize_u;
+    PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
+    PetscInt ilow; ///< First index of the local sub vector u,v
+    PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
 
     Vec aux; ///< Auxiliary vector for gate optimization objective computation
     bool quietmode; ///< Flag for quiet mode operation

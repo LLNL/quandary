@@ -74,9 +74,13 @@ MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nes
     exit(1);
   }
 
+  // Set local sizes of subvectors u,v in state x=[u,v]
+  localsize_u = dim / mpisize_petsc; 
+  ilow = mpirank_petsc * localsize_u;
+  iupp = ilow + localsize_u;         
+
   /* Create matrix shell for applying system matrix (RHS), */
   /* dimension: 2*dim x 2*dim for the real-valued system */
-
   PetscInt globalsize_x = 2 * dim;  // size of global state vector x=[u,v]
   PetscInt localsize_x  = 2 * dim / mpisize_petsc;  // local size of state vector x=[u,v]
   MatCreateShell(PETSC_COMM_WORLD, localsize_x, localsize_x, globalsize_x, globalsize_x, (void**) &RHSctx, &RHS);
@@ -113,10 +117,8 @@ MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nes
   } 
 
   /* Create vector strides for accessing Re and Im part in x */
-  PetscInt ilow = mpirank_petsc * localsize_x;  // local index of first element in global x=[u,v];
-  PetscInt localsize_u = localsize_x / 2; // local size of subvectors u=Re(x), v=Im(x)
-  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow, 1, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow+localsize_u, 1, &isv);
+  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow*2, 1, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow*2+localsize_u, 1, &isv);
 
   /* Allocate MatShell context for applying RHS */
   RHSctx.dim = dim;
@@ -2901,13 +2903,6 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
 double MasterEq::expectedEnergy(const Vec x){
 
-  /* Get locally owned portion of x */
-  PetscInt localsize_u = dim / mpisize_petsc;
-  PetscInt ilow, iupp;
-  VecGetOwnershipRange(x, &ilow, &iupp);
-  ilow = ilow / 2;
-  iupp = ilow + localsize_u;
-
   /* Iterate over diagonal elements (N) to add up expected energy level */
   PetscInt  id_global_x; 
   double expected = 0.0;
@@ -2954,13 +2949,6 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
   assert (pop.size() == static_cast<size_t>(dim_rho));
 
   std::vector<double> mypop(dim_rho, 0.0);
-
-  /* Get locally owned portion of x */
-  PetscInt localsize_u = dim / mpisize_petsc;
-  PetscInt ilow, iupp;
-  VecGetOwnershipRange(x, &ilow, &iupp);
-  ilow = ilow / 2;
-  iupp = ilow + localsize_u;
 
   /* Iterate over diagonal elements of the density matrix */
   PetscInt id_global_x;

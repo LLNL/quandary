@@ -20,6 +20,11 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
   output = output_;
   storeFWD = storeFWD_;
 
+  // Set local sizes of subvectors u,v in state x=[u,v]
+  localsize_u = mastereq->getDim() / mpisize_petsc; 
+  ilow = mpirank_petsc * localsize_u;
+  iupp = ilow + localsize_u;         
+
   /* Check if leakage term is added: Only if nessential is smaller than nlevels for at least one oscillator */
   addLeakagePrevent = false; 
   for (size_t i=0; i<mastereq->getNOscillators(); i++){
@@ -253,13 +258,6 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   PetscInt dim_rho = mastereq->getDimRho(); // N
   double x_re, x_im;
 
-  /* Get locally owned portion of x */
-  PetscInt localsize_u = mastereq->getDim() / mpisize_petsc;
-  PetscInt ilow, iupp;
-  VecGetOwnershipRange(x, &ilow, &iupp);
-  ilow = ilow / 2;
-  iupp = ilow + localsize_u;
-
   /* weighted integral of the objective function */
   if (penalty_param > 1e-13) {
     double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
@@ -302,13 +300,6 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
 void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, double penaltybar){
   PetscInt dim_rho = mastereq->getDimRho();  // N
 
-  /* Get locally owned portion of x */
-  PetscInt localsize_u = mastereq->getDim()/ mpisize_petsc;
-  PetscInt ilow, iupp;
-  VecGetOwnershipRange(x, &ilow, &iupp);
-  ilow = ilow / 2;
-  iupp = ilow + localsize_u;
-
   /* Derivative of weighted integral of the objective function */
   if (penalty_param > 1e-13){
     double weight = 1./penalty_param * exp(- pow((time - total_time)/penalty_param, 2));
@@ -350,13 +341,6 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
 double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
 
-    /* Get locally owned portion of x */
-    PetscInt localsize_u = mastereq->getDim() / mpisize_petsc;
-    PetscInt ilow, iupp;
-    VecGetOwnershipRange(x, &ilow, &iupp);
-    ilow = ilow / 2;
-    iupp = ilow + localsize_u;
-
     // Get local data pointers
     const PetscScalar *xptr, *xm1ptr, *xm2ptr;
     VecGetArrayRead(x, &xptr);
@@ -386,13 +370,6 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
 
 
 void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
-
-    /* Get locally owned portion of x */
-    PetscInt localsize_u = mastereq->getDim() / mpisize_petsc;
-    PetscInt ilow, iupp;
-    VecGetOwnershipRange(x, &ilow, &iupp);
-    ilow = ilow / 2;
-    iupp = ilow + localsize_u;
 
     const PetscScalar *xptr, *xm1ptr, *xm2ptr, *xp1ptr, *xp2ptr;
     Vec x, xm1, xm2, xp1, xp2;

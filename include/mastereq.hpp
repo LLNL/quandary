@@ -111,9 +111,13 @@ class MasterEq{
     std::vector<double> eta; ///< Frequency differences in rotating frame (rad/time) for dipole-dipole coupling
     bool addT1, addT2; ///< Flags for including T1 decay and T2 dephasing Lindblad operators
 
-    int mpirank_petsc; ///< Rank of PETSc's communicator
-    int mpisize_petsc;
     int mpirank_world; ///< Rank of global MPI communicator
+    int mpirank_petsc; ///< Rank of PETSc's communicator
+    int mpisize_petsc; ///< Size of PETSc's communicator
+    PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
+    PetscInt ilow; ///< First index of the local sub vector u,v
+    PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
+
     IS isu, isv; ///< Vector strides for accessing real and imaginary parts u=Re(x), v=Im(x)
     Vec aux; ///< Auxiliary vector for computations
     bool quietmode; ///< Flag for quiet mode operation

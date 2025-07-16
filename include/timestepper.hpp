@@ -41,6 +41,9 @@ class TimeStepper{
     int mpirank_world; ///< MPI rank in global communicator
     int mpisize_petsc; ///< MPI size in Petsc communicator
     int mpirank_petsc; ///< MPI rank in Petsc communicator
+    PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
+    PetscInt ilow; ///< First index of the local sub vector u,v
+    PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
 
   public:
     MasterEq* mastereq; ///< Pointer to master equation solver

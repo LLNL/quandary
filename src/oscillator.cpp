@@ -27,6 +27,18 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<int>& nlevels
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
+  // Get system dimension N (Schroedinger) or N^2 (Lindblad)
+  PetscInt dim = 1;
+  for (size_t ioscil = 0; ioscil < nlevels_all_.size(); ioscil++) {
+    dim *= nlevels_all_[ioscil];
+  }
+  if (lindbladtype != LindbladType::NONE) dim *= dim; // Lindblad: N^2
+
+  // Set local sizes of subvectors u,v in state x=[u,v]
+  localsize_u = dim / mpisize_petsc; 
+  ilow = mpirank_petsc * localsize_u;
+  iupp = ilow + localsize_u;         
+
   /* Check if boundary conditions for controls should be enfored (default: yes). */
   control_enforceBC = config.GetBoolParam("control_enforceBC", true);
 
@@ -423,13 +435,6 @@ double Oscillator::expectedEnergy(const Vec x) {
   if (lindbladtype != LindbladType::NONE)  dimmat = (PetscInt) sqrt(dim/2);
   else dimmat = (PetscInt) dim/2;
 
-  /* Get locally owned portion of x */
-  PetscInt localsize_u = dim / 2 / mpisize_petsc;
-  PetscInt ilow, iupp;
-  VecGetOwnershipRange(x, &ilow, &iupp);
-  ilow = ilow / 2;
-  iupp = ilow + localsize_u;
-
   /* Iterate over diagonal elements to add up expected energy level */
   double expected = 0.0;
   for (PetscInt i=0; i<dimmat; i++) {
@@ -476,13 +481,6 @@ void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_ba
   else dimmat = dim/2;
   double xdiag, val;
 
-  /* Get locally owned portion of x */
-  PetscInt localsize_u = dim /2 / mpisize_petsc;
-  PetscInt ilow, iupp;
-  VecGetOwnershipRange(x, &ilow, &iupp);
-  ilow = ilow / 2;
-  iupp = ilow + localsize_u;
-
   /* Derivative of projective measure */
   for (PetscInt i=0; i<dimmat; i++) {
     PetscInt num_diag = i % (nlevels*dim_postOsc);
@@ -525,15 +523,6 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
   assert (pop.size() == static_cast<size_t>(nlevels));
 
   std::vector<double> mypop(nlevels, 0.0);
-
-  /* Get locally owned portion of x */
-  PetscInt dim;
-  VecGetSize(x, &dim);
-  PetscInt localsize_u = dim /2 / mpisize_petsc;
-  PetscInt ilow, iupp;
-  VecGetOwnershipRange(x, &ilow, &iupp);
-  ilow = ilow / 2;
-  iupp = ilow + localsize_u;
 
   /* Iterate over diagonal elements of the reduced density matrix for this oscillator */
   for (int i=0; i < nlevels; i++) {
