@@ -2,7 +2,6 @@
 #include "petscvec.h"
 
 TimeStepper::TimeStepper() {
-  dim = 0;
   mastereq = NULL;
   ntime = 0;
   total_time = 0.0;
@@ -16,7 +15,6 @@ TimeStepper::TimeStepper() {
 
 TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_) : TimeStepper() {
   mastereq = mastereq_;
-  dim = 2*mastereq->getDim(); // will be either N^2 (Lindblad) or N (Schroedinger)
   ntime = ntime_;
   total_time = total_time_;
   output = output_;
@@ -256,7 +254,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   double x_re, x_im;
 
   /* Get locally owned portion of x */
-  PetscInt localsize_u = dim / mpisize_petsc;
+  PetscInt localsize_u = mastereq->getDim() / mpisize_petsc;
   PetscInt ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
   ilow = ilow / 2;
@@ -305,7 +303,7 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
   PetscInt dim_rho = mastereq->getDimRho();  // N
 
   /* Get locally owned portion of x */
-  PetscInt localsize_u = dim / mpisize_petsc;
+  PetscInt localsize_u = mastereq->getDim()/ mpisize_petsc;
   PetscInt ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
   ilow = ilow / 2;
@@ -351,10 +349,9 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
 
 double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
-    PetscInt dim_rho = mastereq->getDimRho(); // N
 
     /* Get locally owned portion of x */
-    PetscInt localsize_u = dim / mpisize_petsc;
+    PetscInt localsize_u = mastereq->getDim() / mpisize_petsc;
     PetscInt ilow, iupp;
     VecGetOwnershipRange(x, &ilow, &iupp);
     ilow = ilow / 2;
@@ -389,10 +386,9 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
 
 
 void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
-    PetscInt dim_rho = mastereq->getDimRho(); // N
 
     /* Get locally owned portion of x */
-    PetscInt localsize_u = dim / mpisize_petsc;
+    PetscInt localsize_u = mastereq->getDim() / mpisize_petsc;
     PetscInt ilow, iupp;
     VecGetOwnershipRange(x, &ilow, &iupp);
     ilow = ilow / 2;
