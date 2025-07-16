@@ -37,6 +37,11 @@ class OptimTarget{
     InitialConditionType initcond_type; ///< Type of initial conditions
     std::vector<size_t> initcond_IDs; ///< Integer list for pure-state initialization
     LindbladType lindbladtype; ///< Type of Lindblad decoherence operators, or NONE for Schroedinger solver
+    int mpisize_petsc; ///< Size of PETSc communicator
+    int mpirank_petsc; ///< Rank of PETSc communicator
+    PetscInt ilow; 
+    PetscInt iupp; 
+    PetscInt localsize_u;
 
     Vec aux; ///< Auxiliary vector for gate optimization objective computation
     bool quietmode; ///< Flag for quiet mode operation

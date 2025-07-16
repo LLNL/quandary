@@ -36,7 +36,6 @@ MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nes
     eta[i] *= 2.*M_PI;
   }
 
-  int mpisize_petsc;
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -77,7 +76,10 @@ MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nes
 
   /* Create matrix shell for applying system matrix (RHS), */
   /* dimension: 2*dim x 2*dim for the real-valued system */
-  MatCreateShell(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, 2*dim, 2*dim, (void**) &RHSctx, &RHS);
+
+  PetscInt globalsize_x = 2 * dim;  // size of global state vector x=[u,v]
+  PetscInt localsize_x  = 2 * dim / mpisize_petsc;  // local size of state vector x=[u,v]
+  MatCreateShell(PETSC_COMM_WORLD, localsize_x, localsize_x, globalsize_x, globalsize_x, (void**) &RHSctx, &RHS);
   MatSetOptionsPrefix(RHS, "system");
   MatSetFromOptions(RHS); MatSetUp(RHS);
   MatAssemblyBegin(RHS,MAT_FINAL_ASSEMBLY); MatAssemblyEnd(RHS,MAT_FINAL_ASSEMBLY);
@@ -111,13 +113,10 @@ MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nes
   } 
 
   /* Create vector strides for accessing Re and Im part in x */
-  PetscInt ilow, iupp;
-  MatGetOwnershipRange(RHS, &ilow, &iupp);
-  PetscInt dimis = (iupp - ilow)/2;
-  // ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 2, &isu);
-  // ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+1, 2, &isv);
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 1, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+dimis, 1, &isv);
+  PetscInt ilow = mpirank_petsc * localsize_x;  // local index of first element in global x=[u,v];
+  PetscInt localsize_u = localsize_x / 2; // local size of subvectors u=Re(x), v=Im(x)
+  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow, 1, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow+localsize_u, 1, &isv);
 
   /* Allocate MatShell context for applying RHS */
   RHSctx.dim = dim;
@@ -190,14 +189,16 @@ MasterEq::~MasterEq(){
 
 void MasterEq::initSparseMatSolver(){
 
-  /* Allocate all system matrices */
+  /* Allocate system matrices. Those will be applied to subvectors u and v */
+  PetscInt globalsize = dim; // Global size of subvectors u or v 
+  PetscInt localsize = globalsize / mpisize_petsc;   // local subvector size
 
   // Time-independent system Hamiltonian
   // Ad = real(-i Hsys) and Bd = imag(-i Hsys)
   MatCreate(PETSC_COMM_WORLD, &Ad);
   MatCreate(PETSC_COMM_WORLD, &Bd);
-  MatSetSizes(Ad, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-  MatSetSizes(Bd, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+  MatSetSizes(Ad, localsize, localsize, globalsize, globalsize);
+  MatSetSizes(Bd, localsize, localsize, globalsize, globalsize);
   MatSetType(Ad, MATMPIAIJ);
   MatSetType(Bd, MATMPIAIJ);
   if (addT1 || addT2) MatMPIAIJSetPreallocation(Ad, noscillators+5, NULL, noscillators+5, NULL);
@@ -217,8 +218,8 @@ void MasterEq::initSparseMatSolver(){
     MatCreate(PETSC_COMM_WORLD, &myBcMatk);
     MatSetType(myAcMatk, MATMPIAIJ);
     MatSetType(myBcMatk, MATMPIAIJ);
-    MatSetSizes(myAcMatk, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-    MatSetSizes(myBcMatk, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+    MatSetSizes(myAcMatk, localsize, localsize, globalsize, globalsize);
+    MatSetSizes(myBcMatk, localsize, localsize, globalsize, globalsize);
     if (lindbladtype != LindbladType::NONE) {
       MatMPIAIJSetPreallocation(myAcMatk, 4, NULL, 4, NULL);
       MatMPIAIJSetPreallocation(myBcMatk, 4, NULL, 4, NULL);
@@ -244,8 +245,8 @@ void MasterEq::initSparseMatSolver(){
         MatCreate(PETSC_COMM_WORLD, &myBdkl);
         MatSetType(myAdkl, MATMPIAIJ);
         MatSetType(myBdkl, MATMPIAIJ);
-        MatSetSizes(myAdkl, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
-        MatSetSizes(myBdkl, PETSC_DECIDE, PETSC_DECIDE, dim, dim);
+        MatSetSizes(myAdkl, localsize, localsize, globalsize, globalsize);
+        MatSetSizes(myBdkl, localsize, localsize, globalsize, globalsize);
         if (lindbladtype != LindbladType::NONE) {
           MatMPIAIJSetPreallocation(myAdkl, 4, NULL, 4, NULL);
           MatMPIAIJSetPreallocation(myBdkl, 4, NULL, 4, NULL);
@@ -1004,8 +1005,8 @@ void compute_dRHS_dParams_matfree(const PetscInt dim, const double t,const Vec x
     for (int i0p = 0; i0p < n0p; i0p++)  {
         for (int i0 = 0; i0 < n0; i0++)  {
             /* Get xbar */
-            double xbarre = xbarptr[getIndexReal(it)];
-            double xbarim = xbarptr[getIndexImag(it, dim)];
+            double xbarre = xbarptr[it];
+            double xbarim = xbarptr[it + dim];
 
             /* --- Oscillator 0 --- */
             dRHSdp_getcoeffs(dim, it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
@@ -1040,8 +1041,8 @@ void compute_dRHS_dParams_matfree(const PetscInt dim, const double t,const Vec x
         for (int i0 = 0; i0 < n0; i0++)  {
           for (int i1 = 0; i1 < n1; i1++)  {
             /* Get xbar */
-            double xbarre = xbarptr[getIndexReal(it)];
-            double xbarim = xbarptr[getIndexImag(it, dim)];
+            double xbarre = xbarptr[it];
+            double xbarim = xbarptr[it + dim];
 
             /* --- Oscillator 0 --- */
             dRHSdp_getcoeffs(dim, it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
@@ -1087,8 +1088,8 @@ void compute_dRHS_dParams_matfree(const PetscInt dim, const double t,const Vec x
             for (int i1 = 0; i1 < n1; i1++)  {
               for (int i2 = 0; i2 < n2; i2++)  {
                 /* Get xbar */
-                double xbarre = xbarptr[getIndexReal(it)];
-                double xbarim = xbarptr[getIndexImag(it, dim)];
+                double xbarre = xbarptr[it];
+                double xbarim = xbarptr[it + dim];
 
                 /* --- Oscillator 0 --- */
                 dRHSdp_getcoeffs(dim, it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
@@ -1147,8 +1148,8 @@ void compute_dRHS_dParams_matfree(const PetscInt dim, const double t,const Vec x
                 for (int i2 = 0; i2 < n2; i2++)  {
                   for (int i3 = 0; i3 < n3; i3++)  {
                     /* Get xbar */
-                    double xbarre = xbarptr[getIndexReal(it)];
-                    double xbarim = xbarptr[getIndexImag(it, dim)];
+                    double xbarre = xbarptr[it];
+                    double xbarim = xbarptr[it + dim];
 
                     /* --- Oscillator 0 --- */
                     dRHSdp_getcoeffs(dim, it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
@@ -1220,8 +1221,8 @@ void compute_dRHS_dParams_matfree(const PetscInt dim, const double t,const Vec x
                     for (int i3 = 0; i3 < n3; i3++)  {
                       for (int i4 = 0; i4 < n4; i4++)  {
                         /* Get xbar */
-                        double xbarre = xbarptr[getIndexReal(it)];
-                        double xbarim = xbarptr[getIndexImag(it, dim)];
+                        double xbarre = xbarptr[it];
+                        double xbarim = xbarptr[it + dim];
 
                         /* --- Oscillator 0 --- */
                         dRHSdp_getcoeffs(dim, it, n0, n0p, i0, i0p, stridei0, stridei0p, xptr, &res_p_re, &res_p_im, &res_q_re, &res_q_im);
@@ -1323,8 +1324,8 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
           /* --- Diagonal part ---*/
           //Get input x values
-          double xre = xptr[getIndexReal(it)];
-          double xim = xptr[getIndexImag(it, shellctx->dim)];
+          double xre = xptr[it];
+          double xim = xptr[it + shellctx->dim];
           // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
           //                    vout = (-hd(ik) + hd(ik'))*uin
           double hd  = H_detune(detuning_freq0, i0)
@@ -1358,8 +1359,8 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
           control(shellctx->dim, it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
 
           /* Update */
-          yptr[getIndexReal(it)]   = yre;
-          yptr[getIndexImag(it, shellctx->dim)] = yim;
+          yptr[it]   = yre;
+          yptr[it + shellctx->dim] = yim;
           it++;
       }
   }
@@ -1414,8 +1415,8 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
           /* --- Diagonal part ---*/
           //Get input x values
-          double xre = xptr[getIndexReal(it)];
-          double xim = xptr[getIndexImag(it, shellctx->dim)];
+          double xre = xptr[it];
+          double xim = xptr[it + shellctx->dim];
           // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
           //                         vout = (-hd(ik) + hd(ik'))*uin
           double hd  = H_detune(detuning_freq0, i0)
@@ -1450,8 +1451,8 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
           control_T(shellctx->dim, it, n0, i0, n0p, i0p, stridei0, stridei0p, xptr, pt0, qt0, &yre, &yim);
 
           /* Update */
-          yptr[getIndexReal(it)]   = yre;
-          yptr[getIndexImag(it, shellctx->dim)] = yim;
+          yptr[it]   = yre;
+          yptr[it + shellctx->dim] = yim;
           it++;
       }
   }
@@ -1529,8 +1530,8 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
           /* --- Diagonal part ---*/
           //Get input x values
-          double xre = xptr[getIndexReal(it)];
-          double xim = xptr[getIndexImag(it, shellctx->dim)];
+          double xre = xptr[it];
+          double xim = xptr[it + shellctx->dim];
           // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
           //                    vout = (-hd(ik) + hd(ik'))*uin
           double hd  = H_detune(detuning_freq0, detuning_freq1, i0, i1)
@@ -1573,8 +1574,8 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
           control(shellctx->dim, it, n1, i1, n1p, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
 
           /* Update */
-          yptr[getIndexReal(it)]   = yre;
-          yptr[getIndexImag(it, shellctx->dim)] = yim;
+          yptr[it]   = yre;
+          yptr[it + shellctx->dim] = yim;
           it++;
         }
       }
@@ -1653,8 +1654,8 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
           /* --- Diagonal part ---*/
           //Get input x values
-          double xre = xptr[getIndexReal(it)];
-          double xim = xptr[getIndexImag(it, shellctx->dim)];
+          double xre = xptr[it];
+          double xim = xptr[it + shellctx->dim];
           // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
           //                         vout = (-hd(ik) + hd(ik'))*uin
           double hd  = H_detune(detuning_freq0, detuning_freq1, i0, i1)
@@ -1697,8 +1698,8 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
           control_T(shellctx->dim, it, n1, i1, n1p, i1p, stridei1, stridei1p, xptr, pt1, qt1, &yre, &yim);
 
           /* Update */
-          yptr[getIndexReal(it)]   = yre;
-          yptr[getIndexImag(it, shellctx->dim)] = yim;
+          yptr[it]   = yre;
+          yptr[it + shellctx->dim] = yim;
           it++;
         }
       }
@@ -1796,8 +1797,8 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
 
               /* --- Diagonal part ---*/
               //Get input x values
-              double xre = xptr[getIndexReal(it)];
-              double xim = xptr[getIndexImag(it, shellctx->dim)];
+              double xre = xptr[it];
+              double xim = xptr[it + shellctx->dim];
               // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
               //                    vout = (-hd(ik) + hd(ik'))*uin
               double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, i0, i1, i2)
@@ -1848,8 +1849,8 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
               control(shellctx->dim, it, n2, i2, n2p, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
               
               /* --- Update --- */
-              yptr[getIndexReal(it)]   = yre;
-              yptr[getIndexImag(it, shellctx->dim)] = yim;
+              yptr[it]   = yre;
+              yptr[it + shellctx->dim] = yim;
               it++;
             }
           }
@@ -1950,8 +1951,8 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
               /* --- Diagonal part ---*/
               //Get input x values
-              double xre = xptr[getIndexReal(it)];
-              double xim = xptr[getIndexImag(it, shellctx->dim)];
+              double xre = xptr[it];
+              double xim = xptr[it + shellctx->dim];
               // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
               //                         vout = (-hd(ik) + hd(ik'))*uin
               double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, i0, i1, i2)
@@ -2003,8 +2004,8 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
               control_T(shellctx->dim, it, n2, i2, n2p, i2p, stridei2, stridei2p, xptr, pt2, qt2, &yre, &yim);
 
               /* Update */
-              yptr[getIndexReal(it)]   = yre;
-              yptr[getIndexImag(it, shellctx->dim)] = yim;
+              yptr[it]   = yre;
+              yptr[it + shellctx->dim] = yim;
               it++;
             }
           }
@@ -2134,8 +2135,8 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
                 for (int i3 = 0; i3 < n3; i3++)  {
 
                   /* --- Diagonal part ---*/
-                  double xre = xptr[getIndexReal(it)];
-                  double xim = xptr[getIndexImag(it, shellctx->dim)];
+                  double xre = xptr[it];
+                  double xim = xptr[it + shellctx->dim];
                   // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
                   //                    vout = (-hd(ik) + hd(ik'))*uin
                   double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, i0, i1, i2, i3)
@@ -2196,8 +2197,8 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
                   control(shellctx->dim, it, n3, i3, n3p, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
               
                   /* --- Update --- */
-                  yptr[getIndexReal(it)]   = yre;
-                  yptr[getIndexImag(it, shellctx->dim)] = yim;
+                  yptr[it]   = yre;
+                  yptr[it + shellctx->dim] = yim;
                   it++;
                 }
               }
@@ -2327,8 +2328,8 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
             for (int i1 = 0; i1 < n1; i1++)  {
               for (int i2 = 0; i2 < n2; i2++)  {
                 for (int i3 = 0; i3 < n3; i3++)  {
-                  double xre = xptr[getIndexReal(it)];
-                  double xim = xptr[getIndexImag(it, shellctx->dim)];
+                  double xre = xptr[it];
+                  double xim = xptr[it + shellctx->dim];
 
                   /* --- Diagonal part ---*/
                   // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
@@ -2392,8 +2393,8 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
                   control_T(shellctx->dim, it, n3, i3, n3p, i3p, stridei3, stridei3p, xptr, pt3, qt3, &yre, &yim);
 
                   /* Update */
-                  yptr[getIndexReal(it)]   = yre;
-                  yptr[getIndexImag(it, shellctx->dim)] = yim;
+                  yptr[it]   = yre;
+                  yptr[it + shellctx->dim] = yim;
                   it++;
                 }
               }
@@ -2558,8 +2559,8 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
                     for (int i4 = 0; i4 < n4; i4++)  {
 
                       /* --- Diagonal part ---*/
-                      double xre = xptr[getIndexReal(it)];
-                      double xim = xptr[getIndexImag(it, shellctx->dim)];
+                      double xre = xptr[it];
+                      double xim = xptr[it + shellctx->dim];
                       // drift Hamiltonian: uout = ( hd(ik) - hd(ik'))*vin
                       //                    vout = (-hd(ik) + hd(ik'))*uin
                       double hd  = H_detune(detuning_freq0, detuning_freq1, detuning_freq2, detuning_freq3, detuning_freq4, i0, i1, i2, i3, i4)
@@ -2632,8 +2633,8 @@ int applyRHS_matfree(Mat RHS, Vec x, Vec y){
                       control(shellctx->dim, it, n4, i4, n4p, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
               
                       /* --- Update --- */
-                      yptr[getIndexReal(it)]   = yre;
-                      yptr[getIndexImag(it, shellctx->dim)] = yim;
+                      yptr[it]   = yre;
+                      yptr[it + shellctx->dim] = yim;
                       it++;
                     }
                   }
@@ -2799,8 +2800,8 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
                   for (int i3 = 0; i3 < n3; i3++)  {
                     for (int i4 = 0; i4 < n4; i4++)  {
 
-                      double xre = xptr[getIndexReal(it)];
-                      double xim = xptr[getIndexImag(it, shellctx->dim)];
+                      double xre = xptr[it];
+                      double xim = xptr[it + shellctx->dim];
 
                       /* --- Diagonal part ---*/
                       // drift Hamiltonian Hd^T: uout = ( hd(ik) - hd(ik'))*vin
@@ -2875,8 +2876,8 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
                       control_T(shellctx->dim, it, n4, i4, n4p, i4p, stridei4, stridei4p, xptr, pt4, qt4, &yre, &yim);
 
                       /* Update */
-                      yptr[getIndexReal(it)]   = yre;
-                      yptr[getIndexImag(it, shellctx->dim)] = yim;
+                      yptr[it]   = yre;
+                      yptr[it + shellctx->dim] = yim;
                       it++;
                     }
                   }
@@ -2899,38 +2900,40 @@ int applyRHS_matfree_transpose(Mat RHS, Vec x, Vec y){
 
 
 double MasterEq::expectedEnergy(const Vec x){
- 
-  PetscInt dim;
-  VecGetSize(x, &dim);
-  PetscInt dimmat = dim_rho; // N
 
   /* Get locally owned portion of x */
-  PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
+  PetscInt localsize_u = dim / mpisize_petsc;
+  PetscInt ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
-  double xdiag;
+  ilow = ilow / 2;
+  iupp = ilow + localsize_u;
 
-  /* Iterate over diagonal elements to add up expected energy level */
+  /* Iterate over diagonal elements (N) to add up expected energy level */
+  PetscInt  id_global_x; 
   double expected = 0.0;
-  for (PetscInt i=0; i<dimmat; i++) {
+  for (PetscInt i=0; i<dim_rho; i++) { 
     /* Get diagonal element in number operator */
     PetscInt num_diag = i ;
 
-    /* Get diagonal element in rho (real) and sum up */
+    /* Get diagonal element and sum up */
+    double xdiag = 0.0;
     if (lindbladtype != LindbladType::NONE){ // Lindblad solver: += i * rho_ii
-      idx_diag_re = getIndexReal(getVecID(i,i,dimmat));
-      xdiag = 0.0;
-      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
-      expected += num_diag * xdiag;
+      PetscInt ivec = getVecID(i,i,dim_rho); 
+      if (ilow <= ivec && ivec < iupp) { // Picks the processor who owns u_ii, v_ii for i=0,...,dim_rho
+        id_global_x =  ivec + mpirank_petsc*localsize_u; // Global index of u_ii in x=[u,v]
+        VecGetValues(x, 1, &id_global_x, &xdiag);
+        expected += num_diag * xdiag;
+      }
     }
     else { // Schoedinger solver: += i * | psi_i |^2
-      idx_diag_re = getIndexReal(i);
-      xdiag = 0.0;
-      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
-      expected += num_diag * xdiag * xdiag;
-      idx_diag_im = getIndexImag(i,dim);
-      xdiag = 0.0;
-      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
-      expected += num_diag * xdiag * xdiag;
+      if (ilow <= i && i < iupp) { // Picks the processor who own u_i, v_i for i=0,...,dim_rho
+        id_global_x =  i + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
+        VecGetValues(x, 1, &id_global_x, &xdiag);
+        expected += num_diag * xdiag * xdiag;
+        id_global_x += localsize_u; // Global index of v_i in x=[u,v]
+        VecGetValues(x, 1, &id_global_x, &xdiag);
+        expected += num_diag * xdiag * xdiag;
+      }
     }
   }
   
@@ -2953,29 +2956,35 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
   std::vector<double> mypop(dim_rho, 0.0);
 
   /* Get locally owned portion of x */
+  PetscInt localsize_u = dim / mpisize_petsc;
   PetscInt ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
+  ilow = ilow / 2;
+  iupp = ilow + localsize_u;
 
   /* Iterate over diagonal elements of the density matrix */
-  for (PetscInt idiag=0; idiag < dim_rho; idiag++) {
+  PetscInt id_global_x;
+  for (PetscInt i=0; i < dim_rho; i++) {
     double popi = 0.0;
     /* Get the diagonal element */
     if (lindbladtype != LindbladType::NONE) { // Lindblad solver
-      PetscInt diagID = getIndexReal(getVecID(idiag, idiag, dim_rho));  // Position in vectorized rho
-      double val = 0.0;
-      if (ilow <= diagID && diagID < iupp)  VecGetValues(x, 1, &diagID, &val);
-      popi = val;
-    } else {
-      PetscInt diagID_re = getIndexReal(idiag);
-      PetscInt diagID_im = getIndexImag(idiag, dim);
-      double val = 0.0;
-      if (ilow <= diagID_re && diagID_re < iupp)  VecGetValues(x, 1, &diagID_re, &val);
-      popi = val * val;
-      val = 0.0;
-      if (ilow <= diagID_im && diagID_im < iupp)  VecGetValues(x, 1, &diagID_im, &val);
-      popi += val * val;
+      PetscInt ivec = getVecID(i, i, dim_rho);  // Position in vectorized rho
+      if (ilow <= ivec && ivec < iupp)  {
+        id_global_x =  ivec + mpirank_petsc*localsize_u; // Global index of u_ii in x=[u,v]
+        VecGetValues(x, 1, &id_global_x, &popi);
+      }
+    } else { // Schroedinger solver
+      if (ilow <= i && i < iupp)  {
+        double val = 0.0;
+        id_global_x =  i + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
+        VecGetValues(x, 1, &id_global_x, &val);
+        popi = val * val;
+        id_global_x += localsize_u; // Global index of v_i in x=[u,v]
+        VecGetValues(x, 1, &id_global_x, &val);
+        popi += val * val;
+      }
     }
-    mypop[idiag] = popi;
+    mypop[i] = popi;
   } 
 
   /* Gather poppulation from all Petsc processors */

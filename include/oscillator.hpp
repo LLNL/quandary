@@ -63,6 +63,7 @@ class Oscillator {
     std::vector<double> carrier_freq; ///< Frequencies of the carrier waves
 
     int mpirank_petsc; ///< Rank of PETSc's communicator
+    int mpisize_petsc; ///< Size of PETSc's communicator
     int mpirank_world; ///< Rank of MPI_COMM_WORLD
 
     bool control_enforceBC; ///< Flag to enforce boundary conditions on controls

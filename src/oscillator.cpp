@@ -24,6 +24,7 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<int>& nlevels
   lindbladtype = lindbladtype_;
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
   /* Check if boundary conditions for controls should be enfored (default: yes). */
@@ -423,33 +424,39 @@ double Oscillator::expectedEnergy(const Vec x) {
   else dimmat = (PetscInt) dim/2;
 
   /* Get locally owned portion of x */
-  PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
+  PetscInt localsize_u = dim / 2 / mpisize_petsc;
+  PetscInt ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
+  ilow = ilow / 2;
+  iupp = ilow + localsize_u;
 
   /* Iterate over diagonal elements to add up expected energy level */
   double expected = 0.0;
-  // YC: for-loop below can iterate only for ilow <= 2 * (i * dimmat + i) < iupp
   for (PetscInt i=0; i<dimmat; i++) {
     /* Get diagonal element in number operator */
     PetscInt num_diag = i % (nlevels*dim_postOsc);
     num_diag = num_diag / dim_postOsc;
-    /* Get diagonal element in rho (real) */
-    if (lindbladtype != LindbladType::NONE) idx_diag_re = getIndexReal(getVecID(i,i,dimmat));
-    else {
-      idx_diag_re = getIndexReal(i);
-      idx_diag_im = getIndexImag(i, dim/2);
-    }
+    // Vectorize if Lindblad 
+    PetscInt idx_diag = i;
+    if (lindbladtype != LindbladType::NONE) idx_diag = getVecID(i,i,dimmat);
     
     double xdiag = 0.0;
     if (lindbladtype != LindbladType::NONE){ // Lindblad solver: += i * rho_ii
-      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
+      if (ilow <= idx_diag && idx_diag < iupp) {
+        PetscInt id_global_x = idx_diag + mpirank_petsc*localsize_u; 
+        VecGetValues(x, 1, &id_global_x, &xdiag);
+      }
       expected += num_diag * xdiag;
     }
     else { // Schoedinger solver: += i * | psi_i |^2
-      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
-      expected += num_diag * xdiag * xdiag;
-      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
-      expected += num_diag * xdiag * xdiag;
+      if (ilow <= idx_diag && idx_diag < iupp) {
+        PetscInt id_global_x = idx_diag + mpirank_petsc*localsize_u; 
+        VecGetValues(x, 1, &id_global_x, &xdiag);
+        expected += num_diag * xdiag * xdiag;
+        id_global_x += localsize_u; 
+        VecGetValues(x, 1, &id_global_x, &xdiag);
+        expected += num_diag * xdiag * xdiag;
+      }
     }
   }
   
@@ -470,8 +477,11 @@ void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_ba
   double xdiag, val;
 
   /* Get locally owned portion of x */
-  PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
+  PetscInt localsize_u = dim /2 / mpisize_petsc;
+  PetscInt ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
+  ilow = ilow / 2;
+  iupp = ilow + localsize_u;
 
   /* Derivative of projective measure */
   for (PetscInt i=0; i<dimmat; i++) {
@@ -479,22 +489,27 @@ void Oscillator::expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_ba
     num_diag = num_diag / dim_postOsc;
     if (lindbladtype != LindbladType::NONE) { // Lindblas solver
       val = num_diag * obj_bar;
-      idx_diag_re = getIndexReal(getVecID(i, i, dimmat));
-      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecSetValues(x_bar, 1, &idx_diag_re, &val, ADD_VALUES);
+      PetscInt idx_diag = getVecID(i, i, dimmat);
+      if (ilow <= idx_diag && idx_diag < iupp) {
+        PetscInt id_global_x = idx_diag + mpirank_petsc*localsize_u; 
+        VecSetValues(x_bar, 1, &id_global_x, &val, ADD_VALUES);
+      }
     }
     else {
       // Real part
-      idx_diag_re = getIndexReal(i);
+      PetscInt idx_diag = i;
       xdiag = 0.0;
-      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
-      val = num_diag * xdiag * obj_bar;
-      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecSetValues(x_bar, 1, &idx_diag_re, &val, ADD_VALUES);
-      // Imaginary part
-      idx_diag_im = getIndexImag(i, dim/2);
-      xdiag = 0.0;
-      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
-      val = - num_diag * xdiag * obj_bar; // TODO: Is this a minus or a plus?? 
-      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecSetValues(x_bar, 1, &idx_diag_im, &val, ADD_VALUES);
+      if (ilow <= idx_diag && idx_diag < iupp) {
+        PetscInt id_global_x = idx_diag + mpirank_petsc*localsize_u; 
+        VecGetValues(x, 1, &id_global_x, &xdiag);
+        val = num_diag * xdiag * obj_bar;
+        VecSetValues(x_bar, 1, &id_global_x, &val, ADD_VALUES);
+        // Imaginary part
+        id_global_x += localsize_u; 
+        VecGetValues(x, 1, &id_global_x, &xdiag);
+        val = - num_diag * xdiag * obj_bar; // TODO: Is this a minus or a plus?? 
+        VecSetValues(x_bar, 1, &id_global_x, &val, ADD_VALUES);
+      }
     }
   }
   VecAssemblyBegin(x_bar); VecAssemblyEnd(x_bar);
@@ -512,8 +527,13 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
   std::vector<double> mypop(nlevels, 0.0);
 
   /* Get locally owned portion of x */
+  PetscInt dim;
+  VecGetSize(x, &dim);
+  PetscInt localsize_u = dim /2 / mpisize_petsc;
   PetscInt ilow, iupp;
   VecGetOwnershipRange(x, &ilow, &iupp);
+  ilow = ilow / 2;
+  iupp = ilow + localsize_u;
 
   /* Iterate over diagonal elements of the reduced density matrix for this oscillator */
   for (int i=0; i < nlevels; i++) {
@@ -527,19 +547,24 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
         /* Get diagonal element */
         PetscInt rhoID = blockstartID + identitystartID + l; // Diagonal element of rho
         if (lindbladtype != LindbladType::NONE) { // Lindblad solver
-          PetscInt diagID = getIndexReal(getVecID(rhoID, rhoID, dimN));  // Position in vectorized rho
+          PetscInt diagID = getVecID(rhoID, rhoID, dimN);  // Position in vectorized rho
           double val = 0.0;
-          if (ilow <= diagID && diagID < iupp)  VecGetValues(x, 1, &diagID, &val);
+          if (ilow <= diagID && diagID < iupp)  {
+            PetscInt id_global_x = diagID+ mpirank_petsc*localsize_u; 
+            VecGetValues(x, 1, &id_global_x, &val);
+          }
           sum += val;
         } else {
-          PetscInt diagID_re = getIndexReal(rhoID);
-          PetscInt diagID_im = getIndexImag(rhoID, dimN);
+          PetscInt diagID = rhoID;
           val = 0.0;
-          if (ilow <= diagID_re && diagID_re < iupp)  VecGetValues(x, 1, &diagID_re, &val);
-          sum += val * val;
-          val = 0.0;
-          if (ilow <= diagID_im && diagID_im < iupp)  VecGetValues(x, 1, &diagID_im, &val);
-          sum += val * val;
+          if (ilow <= diagID && diagID < iupp) {
+            PetscInt id_global_x = diagID+ mpirank_petsc*localsize_u; 
+            VecGetValues(x, 1, &id_global_x, &val);
+            sum += val * val;
+            id_global_x += localsize_u; 
+            VecGetValues(x, 1, &id_global_x, &val);
+            sum += val * val;
+          }
         }
       }
     }

@@ -52,23 +52,6 @@ double getRampFactor(const double time, const double tstart, const double tstop,
 double getRampFactor_diff(const double time, const double tstart, const double tstop, const double tramp);
 
 /**
- * @brief Returns storage index for real part of a state vector element.
- *
- * @param i Element index
- * @return int Storage index (blocked: x[i])
- */
-PetscInt getIndexReal(const PetscInt i);
-
-/**
- * @brief Returns storage index for imaginary part of a state vector element.
- *
- * @param i Element index
- * @param size Size of real-valued subvector
- * @return int Storage index (blocked: x[i+size])
- */
-PetscInt getIndexImag(const PetscInt i, const PetscInt size);
-
-/**
  * @brief Returns vectorized index for matrix element (row,col).
  *
  * @param row Matrix row index

@@ -40,6 +40,8 @@ class TimeStepper{
     std::vector<Vec> dpdm_states; ///< Storage for states needed for second-order derivative penalty
     bool addLeakagePrevent; ///< Flag to include leakage prevention penalty term
     int mpirank_world; ///< MPI rank in global communicator
+    int mpisize_petsc; ///< MPI size in Petsc communicator
+    int mpirank_petsc; ///< MPI rank in Petsc communicator
 
   public:
     MasterEq* mastereq; ///< Pointer to master equation solver

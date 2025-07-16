@@ -9,6 +9,7 @@ Gate::Gate(){
 Gate::Gate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time_, const std::vector<double>& gate_rot_freq_, LindbladType lindbladtype_, bool quietmode_){
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   quietmode=quietmode_;
 
@@ -52,8 +53,10 @@ Gate::Gate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_
   MatCreate(PETSC_COMM_WORLD, &VxV_re);
   MatCreate(PETSC_COMM_WORLD, &VxV_im);
   // parallel matrix, TODO: Preallocate!
-  MatSetSizes(VxV_re, PETSC_DECIDE, PETSC_DECIDE, dim_gate, dim_gate);
-  MatSetSizes(VxV_im, PETSC_DECIDE, PETSC_DECIDE, dim_gate, dim_gate);
+  PetscInt globalsize_u = dim_gate; // Size to be applied to global subvectors u and v
+  PetscInt localsize_u = dim_gate / mpisize_petsc;  
+  MatSetSizes(VxV_re, localsize_u, localsize_u, globalsize_u, globalsize_u);
+  MatSetSizes(VxV_im, localsize_u, localsize_u, globalsize_u, globalsize_u);
   MatSetUp(VxV_re);
   MatSetUp(VxV_im);
   MatAssemblyBegin(VxV_re, MAT_FINAL_ASSEMBLY);
@@ -66,14 +69,10 @@ Gate::Gate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_
 
 
   /* Create vector strides for accessing real and imaginary part of co-located state */
-  PetscInt ilow, iupp;
-  MatGetOwnershipRange(VxV_re, &ilow, &iupp);
-  // PetscInt dimis = iupp - ilow;
-  // ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow, 2, &isu);
-  // ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow+1, 2, &isv);
-  PetscInt dimis = iupp - ilow;
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow, 1, &isu);
-  ISCreateStride(PETSC_COMM_WORLD, dimis, ilow+dim_gate, 1, &isv);
+  PetscInt localsize_x = 2 * localsize_u;       // local size of global state vector x=[u,v]
+  PetscInt ilow = mpirank_petsc * localsize_x;  // local index of first element in global x=[u,v];
+  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow, 1, &isu);             // access local u
+  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow+localsize_u, 1, &isv); // access local v
 }
 
 Gate::~Gate(){

@@ -112,6 +112,7 @@ class MasterEq{
     bool addT1, addT2; ///< Flags for including T1 decay and T2 dephasing Lindblad operators
 
     int mpirank_petsc; ///< Rank of PETSc's communicator
+    int mpisize_petsc;
     int mpirank_world; ///< Rank of global MPI communicator
     IS isu, isv; ///< Vector strides for accessing real and imaginary parts u=Re(x), v=Im(x)
     Vec aux; ///< Auxiliary vector for computations
@@ -551,8 +552,8 @@ inline void dRHSdp_getcoeffs(const PetscInt dim, const int it, const int n, cons
   /* ik+1..,ik'.. term */
   if (i < n-1) {
     int itx = it + stridei;
-    double xre = xptr[getIndexReal(itx)];
-    double xim = xptr[getIndexImag(itx, dim)];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(i + 1);
     *res_p_re +=   sq * xim;
     *res_p_im += - sq * xre;
@@ -562,8 +563,8 @@ inline void dRHSdp_getcoeffs(const PetscInt dim, const int it, const int n, cons
   /* \rho(ik..,ik'+1..) */
   if (ip < np-1) {
     int itx = it + strideip;
-    double xre = xptr[getIndexReal(itx)];
-    double xim = xptr[getIndexImag(itx, dim)];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(ip + 1);
     *res_p_re += - sq * xim;
     *res_p_im += + sq * xre;
@@ -573,8 +574,8 @@ inline void dRHSdp_getcoeffs(const PetscInt dim, const int it, const int n, cons
   /* \rho(ik-1..,ik'..) */
   if (i > 0) {
     int itx = it - stridei;
-    double xre = xptr[getIndexReal(itx)];
-    double xim = xptr[getIndexImag(itx, dim)];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(i);
     *res_p_re += + sq * xim;
     *res_p_im += - sq * xre;
@@ -584,8 +585,8 @@ inline void dRHSdp_getcoeffs(const PetscInt dim, const int it, const int n, cons
   /* \rho(ik..,ik'-1..) */
   if (ip > 0) {
     int itx = it - strideip;
-    double xre = xptr[getIndexReal(itx)];
-    double xim = xptr[getIndexImag(itx, dim)];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(ip);
     *res_p_re += - sq * xim;
     *res_p_im += + sq * xre;
@@ -624,8 +625,8 @@ inline void Jkl_coupling(const PetscInt dim, const int it, const int ni, const i
     //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
     if (i > 0 && j < nj-1) {
       int itx = it - stridei + stridej;
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(i * (j + 1));
       // sin u + cos v + i ( -cos u + sin v)
       *yre += Jij * sq * (   cosij * xim + sinij * xre);
@@ -634,8 +635,8 @@ inline void Jkl_coupling(const PetscInt dim, const int it, const int ni, const i
     // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
     if (i < ni-1 && j > 0) {
       int itx = it + stridei - stridej;  // E+k-l i, i'
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(j * (i + 1)); // sqrt( il*(ik+1))
       // -sin u + cos v + i (-cos u - sin v)
       *yre += Jij * sq * (   cosij * xim - sinij * xre);
@@ -644,8 +645,8 @@ inline void Jkl_coupling(const PetscInt dim, const int it, const int ni, const i
     // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
     if (ip > 0 && jp < njp-1) {
       int itx = it - strideip + stridejp;  // i, E-k+l i'
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(ip * (jp + 1)); // sqrt( ik'*(il'+1))
       //  sin u - cos v + i ( cos u + sin v)
       *yre += Jij * sq * ( - cosij * xim + sinij * xre);
@@ -654,8 +655,8 @@ inline void Jkl_coupling(const PetscInt dim, const int it, const int ni, const i
     // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
     if (ip < nip-1 && jp > 0) {
       int itx = it + strideip - stridejp;  // i, E+k-l i'
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(jp * (ip + 1)); // sqrt( il'*(ik'+1))
       // - sin u - cos v + i ( cos u - sin v)
       *yre += Jij * sq * ( - cosij * xim - sinij * xre);
@@ -692,8 +693,8 @@ inline void Jkl_coupling_T(const PetscInt dim, const int it, const int ni, const
     //  1) [...] * \bar y_{E+k-l i, i′}
     if (i < ni-1 && j > 0) {
       int itx = it + stridei - stridej;
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(j * (i + 1));
       *yre += Jij * sq * ( - cosij * xim + sinij * xre);
       *yim += Jij * sq * ( + cosij * xre + sinij * xim);
@@ -701,8 +702,8 @@ inline void Jkl_coupling_T(const PetscInt dim, const int it, const int ni, const
     // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
     if (i > 0 && j < nj-1) {
       int itx = it - stridei + stridej;  // E-k+l i, i'
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(i * (j + 1)); // sqrt( ik*(il+1))
       *yre += Jij * sq * ( - cosij * xim - sinij * xre);
       *yim += Jij * sq * ( + cosij * xre - sinij * xim);
@@ -710,8 +711,8 @@ inline void Jkl_coupling_T(const PetscInt dim, const int it, const int ni, const
     // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
     if (ip < nip-1 && jp > 0) {
       int itx = it + strideip - stridejp;  // i, E+k-l i'
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(jp * (ip + 1)); // sqrt( il'*(ik'+1))
       *yre += Jij * sq * (   cosij * xim + sinij * xre);
       *yim += Jij * sq * ( - cosij * xre + sinij * xim);
@@ -719,8 +720,8 @@ inline void Jkl_coupling_T(const PetscInt dim, const int it, const int ni, const
     // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
     if (ip > 0 && jp < njp-1) {
       int itx = it - strideip + stridejp;  // i, E-k+l i'
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(ip * (jp + 1)); // sqrt( ik'*(il'+1))
       *yre += Jij * sq * (   cosij * xim - sinij * xre);
       *yim += Jij * sq * ( - cosij * xre - sinij * xim);
@@ -748,8 +749,8 @@ inline void L1decay(const PetscInt dim, const int it, const int n, const int i, 
     if (i < n-1 && ip < n-1) {
       double l1off = decayi * sqrt((i+1)*(ip+1));
       int itx = it + stridei + strideip;
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       *yre += l1off * xre;
       *yim += l1off * xim;
     }
@@ -775,8 +776,8 @@ inline void L1decay_T(const PetscInt dim, const int it, const int i, const int i
       if (i > 0 && ip > 0) {
         double l1off = decayi * sqrt(i*ip);
         int itx = it - stridei - strideip;
-        double xre = xptr[getIndexReal(itx)];
-        double xim = xptr[getIndexImag(itx, dim)];
+        double xre = xptr[itx];
+        double xim = xptr[itx+dim];
         *yre += l1off * xre;
         *yim += l1off * xim;
       }
@@ -805,8 +806,8 @@ inline void control(const PetscInt dim, const int it, const int n, const int i, 
   /* \rho(ik+1..,ik'..) term */
   if (i < n-1) {
       int itx = it + stridei;
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(i + 1);
       *yre += sq * (   pt * xim + qt * xre);
       *yim += sq * ( - pt * xre + qt * xim);
@@ -814,8 +815,8 @@ inline void control(const PetscInt dim, const int it, const int n, const int i, 
     /* \rho(ik..,ik'+1..) */
     if (ip < np-1) {
       int itx = it + strideip;
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(ip + 1);
       *yre += sq * ( -pt * xim + qt * xre);
       *yim += sq * (  pt * xre + qt * xim);
@@ -823,8 +824,8 @@ inline void control(const PetscInt dim, const int it, const int n, const int i, 
     /* \rho(ik-1..,ik'..) */
     if (i > 0) {
       int itx = it - stridei;
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(i);
       *yre += sq * (  pt * xim - qt * xre);
       *yim += sq * (- pt * xre - qt * xim);
@@ -832,8 +833,8 @@ inline void control(const PetscInt dim, const int it, const int n, const int i, 
     /* \rho(ik..,ik'-1..) */
     if (ip > 0) {
       int itx = it - strideip;
-      double xre = xptr[getIndexReal(itx)];
-      double xim = xptr[getIndexImag(itx, dim)];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(ip);
       *yre += sq * (- pt * xim - qt * xre);
       *yim += sq * (  pt * xre - qt * xim);
@@ -861,8 +862,8 @@ inline void control_T(const PetscInt dim, const int it, const int n, const int i
   /* \rho(ik+1..,ik'..) term */
   if (i > 0) {
     int itx = it - stridei;
-    double xre = xptr[getIndexReal(itx)];
-    double xim = xptr[getIndexImag(itx, dim)];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(i);
     *yre += sq * ( - pt * xim + qt * xre);
     *yim += sq * (   pt * xre + qt * xim);
@@ -870,8 +871,8 @@ inline void control_T(const PetscInt dim, const int it, const int n, const int i
   /* \rho(ik..,ik'+1..) */
   if (ip > 0) {
     int itx = it - strideip;
-    double xre = xptr[getIndexReal(itx)];
-    double xim = xptr[getIndexImag(itx, dim)];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(ip);
     *yre += sq * (  pt * xim + qt * xre);
     *yim += sq * ( -pt * xre + qt * xim);
@@ -879,8 +880,8 @@ inline void control_T(const PetscInt dim, const int it, const int n, const int i
   /* \rho(ik-1..,ik'..) */
   if (i < n-1) {
     int itx = it + stridei;
-    double xre = xptr[getIndexReal(itx)];
-    double xim = xptr[getIndexImag(itx, dim)];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(i+1);
     *yre += sq * (- pt * xim - qt * xre);
     *yim += sq * (  pt * xre - qt * xim);
@@ -888,8 +889,8 @@ inline void control_T(const PetscInt dim, const int it, const int n, const int i
   /* \rho(ik..,ik'-1..) */
   if (ip < np-1) {
     int itx = it + strideip;
-    double xre = xptr[getIndexReal(itx)];
-    double xim = xptr[getIndexImag(itx, dim)];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(ip+1);
     *yre += sq * (+ pt * xim - qt * xre);
     *yim += sq * (- pt * xre - qt * xim);

@@ -68,15 +68,6 @@ double getRampFactor_diff(const double time, const double tstart, const double t
     return dramp_dtstop;
 }
 
-PetscInt getIndexReal(const PetscInt i) {
-  // return 2*i; // colocated
-  return i;     // blocked
-}
-
-PetscInt getIndexImag(const PetscInt i, const PetscInt size) {
-  // return 2*i + 1; // colocated
-  return i + size;  // blocked
-}
 
 PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim){
   return row + col * dim;  
@@ -372,8 +363,8 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   IS isu, isv;
 
   PetscInt dimis = dim;
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 2, &isu); CHKERRQ(ierr);
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 1, 2, &isv); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 1, &isu); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, dimis, 1, &isv); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isu, &u); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isv, &v); CHKERRQ(ierr);
 
@@ -421,8 +412,8 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
   PetscInt dimis = dim/2;
   Vec u, v;
   IS isu, isv;
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 2, &isu); CHKERRQ(ierr);
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 1, 2, &isv); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 1, &isu); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, dimis, 1, &isv); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isu, &u); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isv, &v); CHKERRQ(ierr);
 
