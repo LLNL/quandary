@@ -284,7 +284,6 @@ void MasterEq::initSparseMatSolver(){
   /* Else: Initialize system matrices with standard Hamiltonian model */
   } else {
 
-    PetscInt ilow, iupp;
     PetscInt r1,r2, r1a, r2a, r1b, r2b;
     PetscInt col, col1, col2;
     double val;
@@ -298,7 +297,6 @@ void MasterEq::initSparseMatSolver(){
       /* Set control Hamiltonian system matrix real(-iHc) */
       /* Lindblad solver:     Ac = I_N \kron (a - a^T) - (a - a^T)^T \kron I_N   \in C^{N^2 x N^2}*/
       /* Schroedinger solver: Ac = a - a^T   \in C^{N x N}  */
-      MatGetOwnershipRange(Ac_vec[iosc], &ilow, &iupp);
       for (PetscInt row = ilow; row<iupp; row++){
         // A_c or I_N \kron A_c
         col1 = row + npostk;
@@ -336,7 +334,6 @@ void MasterEq::initSparseMatSolver(){
       /* Lindblas solver Bc = - I_N \kron (a + a^T) + (a + a^T)^T \kron I_N */
       /* Schroedinger solver: Bc = -(a+a^T) */
       /* Iterate over local rows of Bc_vec */
-      MatGetOwnershipRange(Bc_vec[iosc], &ilow, &iupp);
       for (int row = ilow; row<iupp; row++){
         // B_c or  I_n \kron B_c 
         col1 = row + npostk;
@@ -393,7 +390,6 @@ void MasterEq::initSparseMatSolver(){
           PetscInt npostj = oscil_vec[josc]->dim_postOsc;
 
           /* Iterate over local rows of Ad_vec / Bd_vec */
-          MatGetOwnershipRange(Ad_vec[matid], &ilow, &iupp);
           for (PetscInt row = ilow; row<iupp; row++){
             // Add +/- I_N \kron (ak^Tal -/+ akal^T) (Lindblad)
             // or  +/- (ak^Tal -/+ akal^T) (Schrodinger)
@@ -453,7 +449,6 @@ void MasterEq::initSparseMatSolver(){
 
       /* Diagonal: detuning and anharmonicity  */
       /* Iterate over local rows of Bd */
-      MatGetOwnershipRange(Bd, &ilow, &iupp);
       for (PetscInt row = ilow; row<iupp; row++){
 
         // Indices for -I_N \kron B_d
@@ -550,7 +545,6 @@ void MasterEq::initSparseMatSolver(){
   /* Set Ad = Lindblad terms */
   if (addT1 || addT2) {  // leave matrix empty if no T1 or T2 decay
 
-    PetscInt ilow, iupp;
     PetscInt r1,r1a, r1b;
     PetscInt col1;
     double val;
@@ -567,7 +561,6 @@ void MasterEq::initSparseMatSolver(){
       PetscInt npostk = oscil_vec[iosc]->dim_postOsc;
 
       /* Iterate over local rows of Ad */
-      MatGetOwnershipRange(Ad, &ilow, &iupp);
       for (PetscInt row = ilow; row<iupp; row++){
 
         /* Add Ad += gamma_j * L \kron L */

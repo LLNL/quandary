@@ -68,11 +68,10 @@ Gate::Gate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_
   MatCreateVecs(VxV_re, &x, NULL);
 
 
-  /* Create vector strides for accessing real and imaginary part of co-located state */
-  PetscInt localsize_x = 2 * localsize_u;       // local size of global state vector x=[u,v]
-  PetscInt ilow = mpirank_petsc * localsize_x;  // local index of first element in global x=[u,v];
-  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow, 1, &isu);             // access local u
-  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow+localsize_u, 1, &isv); // access local v
+  /* Create vector strides for accessing u,v in state x=[u,v] */
+  PetscInt ilow = mpirank_petsc * localsize_u;  
+  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow*2, 1, &isu); 
+  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow*2+localsize_u, 1, &isv); 
 }
 
 Gate::~Gate(){
