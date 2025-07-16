@@ -86,7 +86,8 @@ class Quandary:
     -------------------
     _ninit                : int  # number of initial conditions that are propagated
     _lindblad_solver      : bool # Flag to determine whether lindblad solver vs schroedinger solver 
-    _hamiltonian_filename : str 
+    _hamiltonian_filename_Hsys : str 
+    _hamiltonian_filename_Hc : str 
     _gatefilename         : str 
     _initstatefilename    : str 
     _initialstate         : List[complex] = field(default_factory=list)
@@ -162,7 +163,8 @@ class Quandary:
     # Internal configuration. Should not be changed by user.
     _ninit                : int         = -1
     _lindblad_solver      : bool        = False
-    _hamiltonian_filename : str         = ""
+    _hamiltonian_filename_Hsys : str         = ""
+    _hamiltonian_filename_Hc : str         = ""
     _gatefilename         : str         = ""
     _initstatefilename    : str         = ""
     _initialstate         : List[complex] = field(default_factory=list)
@@ -208,6 +210,7 @@ class Quandary:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
             self.standardmodel=False   
+            self.usematfree=False
         else: # Using standard Hamiltonian model. Set it up only if needed for computing dT or the carrier wave frequencies later
             self.standardmodel=True
         if len(self.targetstate) > 0:
@@ -560,35 +563,28 @@ class Quandary:
         # If not standard Hamiltonian model, write provided Hamiltonians to a file
         if not self.standardmodel:
             # Write non-standard Hamiltonians to file  
-            self._hamiltonian_filename= "hamiltonian.dat"
-            with open(os.path.join(datadir, self._hamiltonian_filename), "w", newline='\n') as f:
-                f.write("# Hsys_real \n")
-                Hsyslist = list(np.array(self.Hsys.real).flatten(order='F'))
-                for value in Hsyslist:
-                    f.write("{:20.13e}\n".format(value))
-                f.write("# Hsys_imag\n")
-                Hsyslist = list(np.array(self.Hsys.imag).flatten(order='F'))
-                for value in Hsyslist:
-                    f.write("{:20.13e}\n".format(value))
-
-            # Write control Hamiltonians to file, if given (append to file)
-            for iosc in range(len(self.Ne)):
-                # Real part, if given
-                if len(self.Hc_re)>iosc and len(self.Hc_re[iosc])>0:
-                    with open(os.path.join(datadir, self._hamiltonian_filename), "a", newline='\n') as f:
-                        Hcrelist = list(np.array(self.Hc_re[iosc]).flatten(order='F'))
-                        f.write("# Oscillator {:d} Hc_real \n".format(iosc))
-                        for value in Hcrelist:
-                            f.write("{:20.13e}\n".format(value))
-                # Imaginary part, if given
-                if len(self.Hc_im)>iosc and len(self.Hc_im[iosc])>0:
-                    with open(os.path.join(datadir, self._hamiltonian_filename), "a", newline='\n') as f:
-                        Hcimlist = list(np.array(self.Hc_im[iosc]).flatten(order='F'))
-                        f.write("# Oscillator {:d} Hc_imag \n".format(iosc))
-                        for value in Hcimlist:
-                            f.write("{:20.13e}\n".format(value))
+            # Write system Hamiltonian (complex)
+            self._hamiltonian_filename_Hsys= "hamiltonian_Hsys.dat"
+            H = self.Hsys
+            with open(os.path.join(datadir, self._hamiltonian_filename_Hsys), "w", newline='\n') as f:
+                f.write("# row col Hsys_real Hsys_imag \n")
+                nz = np.nonzero(H)
+                for i, j in zip(*nz):
+                    v = H[i, j]
+                    f.write(f"{i} {j} {v.real:.13e} {v.imag:.13e}\n")
+            # Write control Hamiltonians, if given
+            if len(self.Hc_re)>0 or len(self.Hc_im)>0:
+                self._hamiltonian_filename_Hc = "hamiltonian_Hc.dat"
+                with open(os.path.join(datadir, self._hamiltonian_filename_Hc), "w", newline='\n') as f:
+                    for iosc, (Hc_re, Hc_im) in enumerate(zip(self.Hc_re, self.Hc_im)):
+                        Hc = np.array(Hc_re) + 1j * np.array(Hc_im)
+                        nz = np.nonzero(Hc)
+                        f.write(f"# oscillator row col Hc_real Hc_imag \n")
+                        for i, j in zip(*nz):
+                            v = Hc[i, j]
+                            f.write(f"{iosc} {i} {j} {v.real:.13e} {v.imag:.13e}\n")
             if self.verbose:
-                print("Hamiltonian operators written to ", os.path.join(datadir, self._hamiltonian_filename))
+                print("Hamiltonian operators written to ", os.path.join(datadir, self._hamiltonian_filename_Hsys), os.path.join(datadir, self._hamiltonian_filename_Hc))
 
         # Initializing the control parameter vector 'pcof0'
         # 1. If the initial parameter vector (list) is given with the 'pcof0' argument, the list will be dumped to a file with name self.pcof0_filename := "pcof0.dat". 
@@ -717,7 +713,10 @@ class Quandary:
         mystring += "linearsolver_type = gmres\n"
         mystring += "linearsolver_maxiter = 20\n"
         if not self.standardmodel:
-            mystring += "hamiltonian_file= "+str(self._hamiltonian_filename)+"\n"
+            if len(self._hamiltonian_filename_Hsys) > 0:
+                mystring += "hamiltonian_file_Hsys= "+str(self._hamiltonian_filename_Hsys)+"\n"
+            if len(self._hamiltonian_filename_Hc) > 0:
+                mystring += "hamiltonian_file_Hc= "+str(self._hamiltonian_filename_Hc)+"\n"
         mystring += "timestepper = "+str(self.timestepper)+ "\n"
         if self.rand_seed is not None and self.rand_seed >= 0:
             mystring += "rand_seed = "+str(int(self.rand_seed))+ "\n"
@@ -1429,12 +1428,11 @@ def execute(*, runtype="simulation", ncores=1, config_filename="config.cfg", dat
     if not verbose:
         runcommand += " --quiet"
     # If parallel run, specify runcommand. Default is 'mpirun -np ', unless batch args are given, then currently using 'srun -n', see end of this file for changing that to other batch systems.
-    if ncores > 1:
-        if len(batchargs)>0:
-            myrun = batch_run  # currently set to "srun -n"
-        else:
-            myrun = mpi_exec
-        runcommand = f"{myrun} {ncores} " + runcommand
+    if len(batchargs)>0:
+        myrun = batch_run  # currently set to "srun -n"
+    else:
+        myrun = mpi_exec
+    runcommand = f"{myrun} {ncores} " + runcommand
     if verbose:
         print("Running Quandary ... ")
 

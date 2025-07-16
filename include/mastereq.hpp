@@ -90,9 +90,9 @@ int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y); ///< Transpose sparse m
 class MasterEq{
 
   protected:
-    int dim; ///< Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
-    int dim_rho; ///< Dimension of Hilbert space = N
-    int dim_ess; ///< Dimension of essential levels = N_e
+    PetscInt dim; ///< Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
+    PetscInt dim_rho; ///< Dimension of Hilbert space = N
+    PetscInt dim_ess; ///< Dimension of essential levels = N_e
     int noscillators; ///< Number of oscillators in the system
     Oscillator** oscil_vec; ///< Array of pointers to oscillator objects
 
@@ -115,7 +115,8 @@ class MasterEq{
     IS isu, isv; ///< Vector strides for accessing real and imaginary parts u=Re(x), v=Im(x)
     Vec aux; ///< Auxiliary vector for computations
     bool quietmode; ///< Flag for quiet mode operation
-    std::string hamiltonian_file; ///< Filename if a custom Hamiltonian is read from file ('none' if standard Hamiltonian is used)
+    std::string hamiltonian_file_Hsys; ///< Filename if a custom system Hamiltonian is read from file ('none' if standard Hamiltonian is used)
+    std::string hamiltonian_file_Hc; ///< Filename if a custom control Hamiltonians are read from file ('none' if standard Hamiltonian is used)
 
   public:
     std::vector<int> nlevels; ///< Number of levels per oscillator
@@ -137,10 +138,11 @@ class MasterEq{
      * @param eta_ Frequency differences for rotating frame
      * @param lindbladtype_ Type of Lindblad operators to include
      * @param usematfree_ Flag to use matrix-free solver
-     * @param hamiltonian_file Filename for Hamiltonian data
+     * @param hamiltonian_file_Hsys Filename for system Hamiltonian data
+     * @param hamiltonian_file_Hc Filename for control Hamiltonian data
      * @param quietmode Flag for quiet operation (default: false)
      */
-    MasterEq(std::vector<int> nlevels, std::vector<int> nessential, Oscillator** oscil_vec_, const std::vector<double> crosskerr_, const std::vector<double> Jkl_, const std::vector<double> eta_, LindbladType lindbladtype_, bool usematfree_, std::string hamiltonian_file, bool quietmode=false);
+    MasterEq(const std::vector<int>& nlevels, const std::vector<int>& nessential, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_Hsys, const std::string& hamiltonian_file_Hc, bool quietmode=false);
 
     ~MasterEq();
 
@@ -175,23 +177,23 @@ class MasterEq{
     /**
      * @brief Retrieves the dimension of the vectorized system.
      *
-     * @return int \f$N^2\f$ for Lindblad solver, \f$N\f$ for Schroedinger solver
+     * @return PetscInt \f$N^2\f$ for Lindblad solver, \f$N\f$ for Schroedinger solver
      */
-    int getDim(){ return dim; }
+    PetscInt getDim(){ return dim; }
 
     /**
      * @brief Retrieves the dimension of the essential level system.
      *
-     * @return int Dimension N_e of essential levels
+     * @return PetscInt Dimension N_e of essential levels
      */
-    int getDimEss(){ return dim_ess; }
+    PetscInt getDimEss(){ return dim_ess; }
 
     /**
      * @brief Retrieves the dimension of the density matrix.
      *
-     * @return int Dimension N of the Hilbert space
+     * @return PetscInt Dimension N of the Hilbert space
      */
-    int getDimRho(){ return dim_rho; }
+    PetscInt getDimRho(){ return dim_rho; }
 
     /**
      * @brief Assembles the real-valued system matrix (RHS) at time t.

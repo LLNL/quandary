@@ -7,6 +7,10 @@ on:
         description: 'Base64 encoded benchmark data'
         required: true
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   store-and-visualize:
     runs-on: ubuntu-latest
