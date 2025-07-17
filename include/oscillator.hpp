@@ -62,8 +62,12 @@ class Oscillator {
     std::vector<ControlBasis *> basisfunctions; ///< Control parameterization basis functions for each time segment
     std::vector<double> carrier_freq; ///< Frequencies of the carrier waves
 
-    int mpirank_petsc; ///< Rank of PETSc's communicator
     int mpirank_world; ///< Rank of MPI_COMM_WORLD
+    int mpirank_petsc; ///< Rank of PETSc's communicator
+    int mpisize_petsc; ///< Size of PETSc's communicator
+    PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
+    PetscInt ilow; ///< First index of the local sub vector u,v
+    PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
 
     bool control_enforceBC; ///< Flag to enforce boundary conditions on controls
 

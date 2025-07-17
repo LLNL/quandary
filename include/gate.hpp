@@ -22,6 +22,7 @@ class Gate {
     std::vector<int> nessential; ///< Number of essential levels per oscillator.
     std::vector<int> nlevels; ///< Total number of levels per oscillator.
     int mpirank_petsc; ///< MPI rank in PETSc communicator.
+    int mpisize_petsc; ///< MPI size in PETSc communicator.
     int mpirank_world; ///< MPI rank in world communicator.
 
     bool quietmode; ///< Flag to suppress output messages.
