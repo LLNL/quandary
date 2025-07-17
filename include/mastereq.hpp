@@ -277,6 +277,8 @@ class MasterEq{
  * @param[in] nlevels Number of energy levels per subsystem 
  * @param[in] isu Index stride to access real parts of a state vector
  * @param[in] isv Index stride to access imaginar parts of a state vector
+ * @param[in] Ac_vec Vector of real parts of control matrices per oscillator
+ * @param[in] Bc_vec Vector of imaginary parts of control matrices per oscillator
  * @param[in] aux Auxiliary vector for computations 
  * @param[in] oscil_vec Vector of quantum oscilators
  */
@@ -288,6 +290,7 @@ void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec x_bar, 
  * Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar in a matrix-free 
  * manner. See @ref compute_dRHS_dParams_sparsemat for the sparse-matrix version of this routine.
  *
+ * @param[in] dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param[in] t Current time
  * @param[in] x State vector
  * @param[in] x_bar Adjoint state vector
@@ -533,6 +536,7 @@ inline int TensorGetIndex(const int nlevels0, const int nlevels1, const int nlev
  *
  * Computes coefficients for gradient computation with respect to control parameters.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param n Number of levels for current oscillator
  * @param np Number of levels for conjugate oscillator
@@ -604,6 +608,7 @@ inline void dRHSdp_getcoeffs(const PetscInt dim, const int it, const int n, cons
  *
  * Implements J_kl coupling terms in the rotating frame between oscillator i and j.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param ni Number of levels for oscillator i
  * @param nj Number of levels for oscillator j
@@ -672,6 +677,7 @@ inline void Jkl_coupling(const PetscInt dim, const int it, const int ni, const i
 /**
  * @brief Transpose of dipole-dipole coupling for adjoint computations.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param ni Number of levels for oscillator i
  * @param nj Number of levels for oscillator j
@@ -737,6 +743,7 @@ inline void Jkl_coupling_T(const PetscInt dim, const int it, const int ni, const
 /**
  * @brief Matrix-free solver inline for off-diagonal L1 decay term.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param n Number of levels
  * @param i Occupation number (bra)
@@ -765,6 +772,7 @@ inline void L1decay(const PetscInt dim, const int it, const int n, const int i, 
 /**
  * @brief Matrix-free inline Transpose of off-diagonal L1 decay for adjoint computations.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param i Occupation number (bra)
  * @param ip Occupation number (ket)
@@ -793,6 +801,7 @@ inline void L1decay_T(const PetscInt dim, const int it, const int i, const int i
  *
  * Applies control Hamiltonian terms (ladder operators) to the state.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param n Number of levels
  * @param i Occupation number (bra)
@@ -849,6 +858,7 @@ inline void control(const PetscInt dim, const int it, const int n, const int i, 
 /**
  * @brief Matrix-free Transpose of control terms for adjoint computations.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param n Number of levels
  * @param i Occupation number (bra)

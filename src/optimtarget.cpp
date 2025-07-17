@@ -514,7 +514,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
         for (PetscInt i_full = 0; i_full<dim_rho; i_full++) {
           for (PetscInt j_full = 0; j_full<dim_rho; j_full++) {
             double val = 1./dim_rho;
-            PetscInt index = getVecID(i_full,j_full,dim_rho);   // Re(rho_ij)
+            PetscInt index = getVecID(i_full,j_full,dim_rho);
             if (ilow <= index && index < iupp) {
               PetscInt id_global_x =  index + mpirank_petsc*localsize_u;
               VecSetValue(rho0, id_global_x, val, INSERT_VALUES); 
@@ -632,7 +632,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
 
       if (k == j) {
         /* B_{kk} = E_{kk} -> set only one element at (k,k) */
-        elemID = getVecID(k, k, dim_rho); // real part in vectorized system
+        elemID = getVecID(k, k, dim_rho); 
         double val = 1.0;
         if (ilow <= elemID && elemID < iupp) {
           PetscInt id_global_x =  elemID + mpirank_petsc*localsize_u; 
