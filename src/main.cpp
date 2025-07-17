@@ -11,6 +11,7 @@
 #include "output.hpp"
 #include "petsc.h"
 #include <random>
+#include "version.hpp"
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
@@ -31,7 +32,14 @@ int main(int argc,char **argv)
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
 
-  /* Parse argument line for "--quiet" to enable reduced output mode */
+  if (argc > 1 && std::string(argv[1]) == "--version") {
+    if (mpirank_world == 0) {
+      printf("Quandary %s\n", QUANDARY_FULL_VERSION_STRING);
+    }
+    MPI_Finalize();
+    return 0;
+  }
+
   bool quietmode = false;
   if (argc > 2){
     for (int i=2; i<argc; i++) {
@@ -48,7 +56,18 @@ int main(int argc,char **argv)
   /* Read config file */
   if (argc < 2) {
     if (mpirank_world == 0) {
-      printf("\nUSAGE: ./main </path/to/configfile> \n");
+      printf("\nQuandary - Optimal control for open quantum systems\n");
+      printf("\nUSAGE:\n");
+      printf("  quandary <config_file> [--quiet]\n");
+      printf("  quandary --version\n");
+      printf("\nOPTIONS:\n");
+      printf("  <config_file>    Configuration file (.cfg) specifying system parameters\n");
+      printf("  --quiet          Reduce output verbosity\n");
+      printf("  --version        Show version information\n");
+      printf("\nEXAMPLES:\n");
+      printf("  quandary config.cfg\n");
+      printf("  mpirun -np 4 quandary config.cfg --quiet\n");
+      printf("\n");
     }
     MPI_Finalize();
     return 0;

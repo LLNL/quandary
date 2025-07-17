@@ -14,8 +14,8 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   comm_optim = comm_optim_;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
-  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_space);
-  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_space);
+  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
   MPI_Comm_rank(comm_optim, &mpirank_optim);
@@ -27,9 +27,12 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
     for (int i = 0; i < ninit_local; i++) {
+
+      PetscInt globalsize = 2 * timestepper->mastereq->getDim();  // Global state vector: 2 for real and imaginary part
+      PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
       Vec state;
       VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+      VecSetSizes(state, localsize, globalsize);
       VecSetFromOptions(state);
       store_finalstates.push_back(state);
     }
@@ -45,7 +48,9 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
 
   /* Allocate the initial condition vector and adjoint terminal state */
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
-  VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
+  PetscInt globalsize = 2 * timestepper->mastereq->getDim();  // Global state vector: 2 for real and imaginary part
+  PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
+  VecSetSizes(rho_t0, localsize, globalsize);
   VecSetFromOptions(rho_t0);
   VecZeroEntries(rho_t0);
   VecAssemblyBegin(rho_t0); VecAssemblyEnd(rho_t0);

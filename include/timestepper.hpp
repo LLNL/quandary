@@ -32,7 +32,6 @@
  */
 class TimeStepper{
   protected:
-    PetscInt dim; ///< State vector dimension
     Vec x; ///< Auxiliary vector for forward time stepping
     Vec xadj; ///< Auxiliary vector needed for adjoint (backward) time stepping
     Vec xprimal; ///< Auxiliary vector for backward time stepping
@@ -40,6 +39,11 @@ class TimeStepper{
     std::vector<Vec> dpdm_states; ///< Storage for states needed for second-order derivative penalty
     bool addLeakagePrevent; ///< Flag to include leakage prevention penalty term
     int mpirank_world; ///< MPI rank in global communicator
+    int mpisize_petsc; ///< MPI size in Petsc communicator
+    int mpirank_petsc; ///< MPI rank in Petsc communicator
+    PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
+    PetscInt ilow; ///< First index of the local sub vector u,v
+    PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
 
   public:
     MasterEq* mastereq; ///< Pointer to master equation solver
