@@ -53,6 +53,9 @@ int main(int argc,char **argv)
 
   if (mpirank_world == 0 && !quietmode) printf("Running on %d cores.\n", mpisize_world);
 
+  /* Start setup timer */
+  double StartTime_setup = MPI_Wtime();
+
   /* Read config file */
   if (argc < 2) {
     if (mpirank_world == 0) {
@@ -434,6 +437,7 @@ int main(int argc,char **argv)
 
   /* Start timer */
   double StartTime = MPI_Wtime();
+  double UsedTime_setup = StartTime - StartTime_setup;
   double objective;
   double gnorm = 0.0;
   /* --- Solve primal --- */
@@ -511,7 +515,8 @@ int main(int argc,char **argv)
   /* Print statistics */
   if (mpirank_world == 0 && !quietmode) {
     printf("\n");
-    printf(" Used Time:        %.2f seconds\n", UsedTime);
+    printf(" Used Time Setup:        %.2f seconds\n", UsedTime_setup);
+    printf(" Used Time Integrate:    %.2f seconds\n", UsedTime);
     printf(" Processors used:  %d\n", mpisize_world);
     printf(" Global Memory:    %.2f MB    [~ %.2f MB per proc]\n", globalMB, globalMB / mpisize_world);
     printf("\n");
