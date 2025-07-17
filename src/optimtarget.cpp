@@ -407,7 +407,7 @@ void OptimTarget::HilbertSchmidtOverlap(const Vec state, const bool scalebypurit
   *HS_im_ptr = HS_im;
 }
 
-void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar){
+void OptimTarget::HilbertSchmidtOverlap_diff(Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar){
 
   double scale = 1.0;
   if (scalebypurity){ 
@@ -823,7 +823,7 @@ void OptimTarget::evalJ_diff(const Vec state, Vec statebar, const double J_re_ba
       break; // case JFROBENIUS
 
     case ObjectiveType::JTRACE:
-      HilbertSchmidtOverlap_diff(state, statebar, true, J_re_bar, J_im_bar);
+      HilbertSchmidtOverlap_diff(statebar, true, J_re_bar, J_im_bar);
     break;
 
     case ObjectiveType::JMEASURE:

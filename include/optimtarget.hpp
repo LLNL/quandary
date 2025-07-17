@@ -184,12 +184,11 @@ class OptimTarget{
     /**
      * @brief Derivative of Hilbert-Schmidt overlap computation.
      *
-     * @param state Current state vector
      * @param statebar Adjoint state vector to update
      * @param scalebypurity Flag to scale by purity of target state
      * @param HS_re_bar Adjoint of real part of overlap
      * @param HS_im_bar Adjoint of imaginary part of overlap
      */
-    void HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar);
+    void HilbertSchmidtOverlap_diff(Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar);
 };
 
