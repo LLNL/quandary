@@ -268,6 +268,19 @@ class Oscillator {
     void population(const Vec x, std::vector<double> &pop);
 
     /**
+     * @brief Computes population in each energy level of this oscillator.
+     *
+     * Extracts the diagonal elements of the reduced density matrix for this oscillator.
+     *
+     * @param[in] x State vector 
+     * @param[out] xbar Adjoint state vector that will be updated
+     * @param[in] popbar Reference to adjoint of population 
+     */
+    void population_diff(const Vec x, Vec xbar, const std::vector<double> &popbar);
+
+
+
+    /**
      * @brief Evaluates control variation penalty term.
      *
      * Computes finite-difference based regularization of control parameters.

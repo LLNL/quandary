@@ -563,3 +563,54 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
   for (size_t i=0; i<mypop.size(); i++) {pop[i] = mypop[i];}
   MPI_Allreduce(mypop.data(), pop.data(), nlevels, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }
+
+
+
+void Oscillator::population_diff(const Vec x, Vec xbar, const std::vector<double> &popbar){
+
+  int dimN = dim_preOsc * nlevels * dim_postOsc;
+
+  assert (popbar.size() == static_cast<size_t>(nlevels));
+
+  /* Get locally owned portion of x */
+  PetscInt ilow, iupp;
+  VecGetOwnershipRange(xbar, &ilow, &iupp);
+
+
+  /* Iterate over diagonal elements of the reduced density matrix for this oscillator */
+  for (int i=0; i < nlevels; i++) {
+    int identitystartID = i * dim_postOsc;
+    /* Sum up elements from all dim_preOsc blocks of size (n_k * dim_postOsc) */
+    double sumbar = popbar[i];
+    for (int j=0; j < dim_preOsc; j++) {
+      int blockstartID = j * nlevels * dim_postOsc; // Go to the block
+      /* Iterate over identity */
+      for (int l=0; l < dim_postOsc; l++) {
+        /* Get diagonal element */
+        int rhoID = blockstartID + identitystartID + l; // Diagonal element of rho
+        if (lindbladtype != LindbladType::NONE) { // Lindblad solver
+          PetscInt diagID = getIndexReal(getVecID(rhoID, rhoID, dimN));  // Position in vectorized rho
+          if (ilow <= diagID && diagID < iupp)  {
+            double valbar = sumbar;
+            VecSetValues(xbar, 1, &diagID, &valbar, ADD_VALUES);
+          }
+        } else {
+          PetscInt diagID_re = getIndexReal(rhoID);
+          PetscInt diagID_im = getIndexImag(rhoID);
+          if (ilow <= diagID_re && diagID_re < iupp)  {
+            double val = 0.0;
+            VecGetValues(x, 1, &diagID_re, &val);
+            double valbar = 2.0*val*sumbar;
+            VecSetValues(xbar, 1, &diagID_re, &valbar, ADD_VALUES);
+          }
+          if (ilow <= diagID_im && diagID_im < iupp)  {
+            double val = 0.0;
+            VecGetValues(x, 1, &diagID_im, &val);
+            double valbar = 2.0*val*sumbar;
+            VecSetValues(xbar, 1, &diagID_im, &valbar, ADD_VALUES);
+          }
+        }
+      }
+    }
+  } 
+}
