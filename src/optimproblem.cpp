@@ -295,7 +295,7 @@ double OptimProblem::evalF(const Vec x) {
       // When learning a transfer function, this doesn't do anything
       mastereq->setControlFromData(ipulse);
 
-      // TEST: write expected energy of the Training data.
+      // TEST: write expected energy of the Training data. (assumes density matrix data) FIX ME!
       for (int iosc=0; iosc<mastereq->nlevels.size(); iosc++){
         std::string filename_expEnergy = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse)+"_expectedEnergy"+std::to_string(iosc)+".dat"; 
         mastereq->learning->data->writeExpectedEnergy(filename_expEnergy.c_str(), ipulse, 0,  iosc); // NOTE: writing data for init_num =0 FIX ME!
@@ -312,8 +312,8 @@ double OptimProblem::evalF(const Vec x) {
     double fidelity_re = 0.0;
     double fidelity_im = 0.0;
 
-    // trying to figure out the logic
-    std::cout << "In evalF: ninit_local = " << ninit_local << std::endl;
+    // tmp: trying to figure out the logic
+    // std::cout << "In evalF: ninit_local = " << ninit_local << std::endl;
 
     for (int iinit = 0; iinit < ninit_local; iinit++) {
       /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
@@ -528,6 +528,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     obj_cost_im = 0.0;
     double fidelity_re = 0.0;
     double fidelity_im = 0.0;
+
+    // tmp: trying to figure out the logic
+    // std::cout << "In evalF: ninit_local = " << ninit_local << std::endl;
     for (int iinit = 0; iinit < ninit_local; iinit++) {
 
       /* Prepare the initial condition */

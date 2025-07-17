@@ -263,15 +263,17 @@ int main(int argc,char **argv)
       std::string identifyer = data_name[0]; // Copy element [0] of the data_name vector 
       data_name.erase(data_name.begin()); // remove element [0] from the data_name vector
 
-      if (identifyer.compare("syntheticRho") == 0) { 
-        data = new SyntheticRhoQuandaryData(config, comm_optim, data_name, nlevels, lindbladtype);
+      if (identifyer.compare("syntheticRho") == 0) {  // density matrices
+        data = new SyntheticRhoQuandaryData(config, comm_optim, data_name, nlevels, lindbladtype, true);
+      } else if (identifyer.compare("syntheticPop") == 0) { // populations
+        data = new SyntheticPopQuandaryData(config, comm_optim, data_name, nlevels, lindbladtype, false);
       } else if (identifyer.compare("Tant2level") == 0) { 
-        data = new Tant2levelData(config, comm_optim, data_name, nlevels, lindbladtype);
+        data = new Tant2levelData(config, comm_optim, data_name, nlevels, lindbladtype, true);
       } else if (identifyer.compare("Tant3level") == 0) {
-        data = new Tant3levelData(config, comm_optim, data_name, nlevels, lindbladtype);
+        data = new Tant3levelData(config, comm_optim, data_name, nlevels, lindbladtype, true);
       }
       else {
-        printf("Wrong setting for loading data. Needs prefix 'synthetic', or 'Tant2level', or 'Tant3level'.\n");
+        printf("Wrong setting for loading data. Needs prefix 'syntheticRho', or 'syntheticPop', or 'Tant2level', or 'Tant3level'.\n");
         exit(1);
       }
 

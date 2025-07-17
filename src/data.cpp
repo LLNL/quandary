@@ -2,18 +2,23 @@
 
 Data::Data() {
   dim = -1;
+  dim_hs = -1;
   npulses = 1;
   npulses_local = 1;
   ninit = 1;
   tstart = 0.0;
   tstop = 0.0;
 	dt = 0.0;
+  densityData = false;
 }
 
-Data::Data(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) {
+Data::Data(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData_) {
+  // NOTE: lindbladtype_ is only used to calculate the variable dim. The variable densityData might be redundant
   nlevels = nlevels_; // nlevels[i] holds the total number of energy levels in subsystem 'i'
   comm_optim = comm_optim_;
   lindbladtype = lindbladtype_;
+  densityData = densityData_;
+
   // This constructor is called after the "data_name" line has been parsed by the main program,
   // but before the derived class constructor, e.g., SyntheticQuandaryData::SyntheticQuandaryData()
   // Compute dimension of the full vectorized system
@@ -21,6 +26,8 @@ Data::Data(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_n
   for (int i=0; i<nlevels.size(); i++){
     dim *= nlevels[i];
   }
+  dim_hs = dim;   // Dimension of the Hilbert space (N)
+
   if (lindbladtype != LindbladType::NONE){
       dim = dim*dim;
   }
@@ -45,7 +52,11 @@ Data::Data(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_n
   for (int q=0; q<data_name.size(); q++){
     data_name[q] = data_folder + "/" + data_name[q];
   }
-  ninit = data_name.size()/2; // TODO: generalize beyond density matrix data 
+
+  // The number of initial conditions depends on whether we are reading density matrices or population data
+  ninit = data_name.size();
+  if (densityData) ninit = ninit/2;
+
   // std::cout << "In Data constructor: npulses = " << npulses << " ninit = " << ninit << std::endl;
   // proceed by processing the data
 
@@ -130,88 +141,93 @@ std::vector<double> Data::getControls(int pulse_num){
 
 
 void Data::writeExpectedEnergy(const char* filename, int pulse_num, int init_num, int ioscillator){
+  // NOTE: only possible to evaluate the expectedEnergy if the data holds density matrix data
+  if (densityData){
+    // Only the processor who owns this pulse trajectory should be writing the file, other procs exit here.
+    int proc = int(pulse_num / npulses_local);
+    if (proc != mpirank_optim) return;
 
-  // Only the processor who owns this pulse trajectory should be writing the file, other procs exit here.
-  int proc = int(pulse_num / npulses_local);
-  if (proc != mpirank_optim) return;
+    /* Open file  */
+    FILE *file_c;
+    file_c = fopen(filename, "w");
 
-  /* Open file  */
-  FILE *file_c;
-  file_c = fopen(filename, "w");
+    /* Iterate over time points, compute expected energy and write to file. */
+    for (int i=0; i<getNData(); i++){
+      double time = tstart + i*dt;
 
-  /* Iterate over time points, compute expected energy and write to file. */
-  for (int i=0; i<getNData(); i++){
-    double time = tstart + i*dt;
-
-    Vec x = getData(time, pulse_num, init_num);
-    if (x != NULL) {
-      double val = expectedEnergy(x, lindbladtype, nlevels, ioscillator);
-      fprintf(file_c, "% 1.8f   % 1.14e   \n", time, val);
+      Vec x = getData(time, pulse_num, init_num);
+      if (x != NULL) {
+        double val = expectedEnergy(x, lindbladtype, nlevels, ioscillator);
+        fprintf(file_c, "% 1.8f   % 1.14e   \n", time, val);
+      }
     }
+    fclose(file_c);
+    // printf("%d: File written: %s\n", mpirank_optim, filename);
   }
-  fclose(file_c);
-  // printf("%d: File written: %s\n", mpirank_optim, filename);
+  else
+    std::cout << "INFO: calling writeExpectedEnergy() without density matrix data" << std::endl;
 }
 
 
 void Data::writeFullstate(const char* filename_re, const char* filename_im, int pulse_num, int init_num){
+  // NOTE: only possible to save the full state if the data holds density matrix data
+  if (densityData){
+    // Only the processor who owns this pulse trajectory should be writing the file, other procs exit here.
+    int proc = int(pulse_num / npulses_local);
+    if (proc != mpirank_optim) return;
 
-  // Only the processor who owns this pulse trajectory should be writing the file, other procs exit here.
-  int proc = int(pulse_num / npulses_local);
-  if (proc != mpirank_optim) return;
+    /* Open files  */
+    FILE *file_re, *file_im;
+    file_re = fopen(filename_re, "w");
+    file_im = fopen(filename_im, "w");
 
-  /* Open files  */
-  FILE *file_re, *file_im;
-  file_re = fopen(filename_re, "w");
-  file_im = fopen(filename_im, "w");
+    /* Iterate over time points ane write vectorized state to file. */
+    for (int i=0; i<getNData(); i++){
+      double time = tstart + i*dt;
 
-  /* Iterate over time points ane write vectorized state to file. */
-  for (int i=0; i<getNData(); i++){
-    double time = tstart + i*dt;
+      Vec x = getData(time, pulse_num, init_num);
+      if (x != NULL) {
 
-    Vec x = getData(time, pulse_num, init_num);
-    if (x != NULL) {
-
-      // write time in first column
-      fprintf(file_re, "%1.8f  ", time);
-      fprintf(file_im, "%1.8f  ", time);
-      // write vectorized state in the following columns
-      int size = 0;
-      VecGetSize(x, &size);
-      const PetscScalar *xptr;
-      VecGetArrayRead(x, &xptr);
-      for (int i=0; i<int(size/2); i++) {
-        fprintf(file_re, "%1.10e  ", xptr[getIndexReal(i)]);  
-        fprintf(file_im, "%1.10e  ", xptr[getIndexImag(i)]);  
+        // write time in first column
+        fprintf(file_re, "%1.8f  ", time);
+        fprintf(file_im, "%1.8f  ", time);
+        // write vectorized state in the following columns
+        int size = 0;
+        VecGetSize(x, &size);
+        const PetscScalar *xptr;
+        VecGetArrayRead(x, &xptr);
+        for (int i=0; i<int(size/2); i++) {
+          fprintf(file_re, "%1.10e  ", xptr[getIndexReal(i)]);  
+          fprintf(file_im, "%1.10e  ", xptr[getIndexImag(i)]);  
+        }
+        fprintf(file_re, "\n");
+        fprintf(file_im, "\n");
+        VecRestoreArrayRead(x, &xptr);
       }
-      fprintf(file_re, "\n");
-      fprintf(file_im, "\n");
-      VecRestoreArrayRead(x, &xptr);
     }
-  }
 
-  fclose(file_re);
-  fclose(file_im);
-  // printf("%d: File written: %s\n", mpirank_optim, filename_re);
-  // printf("%d: File written: %s\n", mpirank_optim, filename_im);
+    fclose(file_re);
+    fclose(file_im);
+    // printf("%d: File written: %s\n", mpirank_optim, filename_re);
+    // printf("%d: File written: %s\n", mpirank_optim, filename_im);
+  }
+  else
+    std::cout << "INFO: calling writeFullstate() without density matrix data" << std::endl;
 }
 
 // **************************** SyntheticRhoQuandaryData() *******************************
-SyntheticRhoQuandaryData::SyntheticRhoQuandaryData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_) {
+SyntheticRhoQuandaryData::SyntheticRhoQuandaryData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_, densityData) {
 
   /* Load training data */
   std::cout << "In SyntheticRhoQuandaryData constructor:" << std::endl;
-  // std::cout << "data_name:" << std::endl;
-  // for (int q=0; q<data_name.size(); q++){
-  //   std::cout << data_name[q] << std::endl;
-  // }
+
   loadData(data_name, &tstart, &tstop, &dt);
 }
 
 // ***************************** ~SyntheticRhoQuandaryData() ******************************
 SyntheticRhoQuandaryData::~SyntheticRhoQuandaryData() {}
 
-// ***************************** loadData() ******************************
+// ***************************** SyntheticRhoQuandaryData::loadData() ******************************
 void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, double* tstart, double* tstop, double* dt){
   // NOTE: This function is specialized to reading Re/Im density matrix data
   std::cout << "In SyntheticRhoQuandaryData::loadData npulses*ninit*2 = " << npulses*ninit*2 << " data_name.size() = " << data_name.size() << std::endl;
@@ -245,7 +261,6 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
       controlparams[ipulse_local].push_back(q_GHz);
     }
 
-    // TODO: Generalize beyond Re/Im density matrix data!
     // Open Re/Im density matrix files 
     for (int iinit=0; iinit< ninit; iinit++){
       int base_idx = ipulse*ninit + iinit;
@@ -330,7 +345,141 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
   if (mpirank_world == 0) printf("-> Data loaded sucessfully. Data dt = %f, tstop = %f\n", *dt, *tstop);
 }
 
-Tant2levelData::Tant2levelData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_){
+// **************************** SyntheticPopQuandaryData() *******************************
+SyntheticPopQuandaryData::SyntheticPopQuandaryData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_, densityData) {
+
+  /* Load training data */
+  std::cout << "In SyntheticPopQuandaryData constructor:" << std::endl;
+  // std::cout << "data_name:" << std::endl;
+  // for (int q=0; q<data_name.size(); q++){
+  //   std::cout << data_name[q] << std::endl;
+  // }
+  loadPopData(data_name, &tstart, &tstop, &dt);
+}
+
+// ***************************** ~SyntheticRhoQuandaryData() ******************************
+SyntheticPopQuandaryData::~SyntheticPopQuandaryData() {}
+
+// ***************************** SyntheticRhoQuandaryData::loadPopData() ******************************
+void SyntheticPopQuandaryData::loadPopData(std::vector<std::string>& data_name, double* tstart, double* tstop, double* dt){
+  // NOTE: This function is specialized to reading population data
+  std::cout << "In SyntheticPopQuandaryData::loadData npulses*ninit = " << npulses*ninit << " data_name.size() = " << data_name.size() << std::endl;
+  if ((npulses*ninit != data_name.size())){
+    std::cout << "WARNING: npulses*ninit = " << npulses*ninit << " != data_name.size() = " << data_name.size() << std::endl;
+  }
+  // std::cout << "tstart= " << *tstart << " tstop= " << *tstop << std::endl;
+
+  // Iterate over local pulses
+  for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
+    int ipulse = mpirank_optim* npulses_local + ipulse_local;
+    // printf("Loading from name %s\n", data_name[ipulse*2+0].c_str());
+
+    /* Extract control amplitudes from file name (searching for "p" and "q")*/
+    std::size_t found_p = data_name[ipulse*2+0].find("ctrlP");
+    std::size_t found_q = data_name[ipulse*2+0].find("ctrlQ");
+
+    int strlength_p = 5;
+    int strlength_q = 5;
+    // If controls are given, load them, otherwise leave controlparams[ipulse] empty
+    controlparams[ipulse_local].clear();
+    if (found_p != std::string::npos && found_q != std::string::npos ){
+      if (data_name[ipulse*2+0][found_p+5] == '-') strlength_p=6;
+      if (data_name[ipulse*2+0][found_q+5] == '-') strlength_q=6;
+      double p_Volt = std::stod(data_name[ipulse*2+0].substr(found_p+5, strlength_p));
+      double q_Volt = std::stod(data_name[ipulse*2+0].substr(found_q+5, strlength_q));
+      double conversion_factor = 1.0;  // conversion factor: Volt to GHz
+      double p_GHz = p_Volt * conversion_factor;
+      double q_GHz = q_Volt * conversion_factor;
+      // printf("Got the control amplitudes %1.8f,%1.8f GHz\n", p_GHz, q_GHz);
+      controlparams[ipulse_local].push_back(p_GHz);
+      controlparams[ipulse_local].push_back(q_GHz);
+    }
+
+    // Open population data files 
+    for (int iinit=0; iinit< ninit; iinit++){
+      int base_idx = ipulse*ninit + iinit;
+      std::ifstream infile_pop;
+      infile_pop.open(data_name[base_idx], std::ifstream::in);
+      if(infile_pop.fail() ) {
+          std::cout << "\n " << mpirank_optim << ": ERROR loading learning data file " << data_name[base_idx] << std::endl;
+          exit(1);
+      } else {
+        std::cout<< "rank = " << mpirank_optim << ": Loading synthetic population data from " << data_name[base_idx] << std::endl;
+      }
+
+      // Iterate over each line in the files
+      int count = 0;
+      double time_pop, time_prev;
+
+      // read the header line
+      std::string headerLine;
+      std::getline(infile_pop, headerLine);
+      // std::cout << "Header line: " << headerLine << std::endl;
+      while (infile_pop >> time_pop) 
+      {
+        // Figure out time and dt
+        if (count == 0){
+          *tstart = time_pop;
+          // std::cout << "tstart = " << time_pop << std::endl;
+        }
+        if (count == 1){
+          *dt = time_pop - time_prev; // Assume a constant time step
+          // std::cout << "time_prev = " << time_prev << std::endl;
+          // std::cout << "dt = " << time_pop - time_prev << std::endl;
+        } 
+
+        // printf("Loading data at Time %1.8f\n", time_pop);
+        // Break if exceeding the requested time domain length
+        if (time_pop > *tstop)  {
+          // printf("Stopping data at %1.8f > %1.8f \n", time_pop, *tstop);
+          break;
+        }
+
+        // Now iterate over the remaining columns and store values.
+        Vec state;
+        VecCreate(PETSC_COMM_WORLD, &state);
+        VecSetSizes(state, PETSC_DECIDE, dim_hs); // Number of populations per time is dim_hs
+        VecSetFromOptions(state);
+        double val_pop;
+        for (int i=0; i<dim_hs; i++) { // Remaining elements are the populations at this time level
+          infile_pop >> val_pop;
+          VecSetValue(state, i, val_pop, INSERT_VALUES);
+        }
+        VecAssemblyBegin(state);
+        VecAssemblyEnd(state);
+
+        // Store the state
+        data[base_idx].push_back(state);
+        count+=1;
+        time_prev = time_pop;
+      }
+
+      /* Update the final time stamp */
+      *tstop = std::min(time_prev, *tstop);
+
+      // tmp
+      // std::cout << "Closing files " << data_name[base_idx] << std::endl;
+      
+      // Close files
+      infile_pop.close();            
+    }
+  }
+
+  // // TEST what was loaded
+  // printf("\nDATA POINTS:\n");
+  // for (int ipulse=0; ipulse<data.size(); ipulse++){
+  //   printf("Control amplutidue: %f %f\n", controlparams[ipulse][0], controlparams[ipulse][1]);
+  //   for (int i=0; i<data[ipulse].size(); i++){
+  //     VecView(data[ipulse][i], NULL);
+  //   }
+  //   printf("\n");
+  // }
+  // printf("END DATA POINTS.\n\n");
+  // exit(1);
+  if (mpirank_world == 0) printf("-> Data loaded sucessfully. Data dt = %f, tstop = %f\n", *dt, *tstop);
+}
+
+Tant2levelData::Tant2levelData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_, densityData){
 
   // Only for 2level data. 
   assert(dim == 4);
@@ -492,7 +641,7 @@ void Tant2levelData::loadData(std::vector<std::string>& data_name, double* tstar
   }
 }
 
-Tant3levelData::Tant3levelData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_) {
+Tant3levelData::Tant3levelData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_, densityData) {
   // Only for 3level data. 
   assert(dim == 9);
 
@@ -517,7 +666,7 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
   */
 
   // Dimension of the Hilbert space (N);
-  int dim_rho = int(sqrt(dim));   // dim_rho = 3, dim = 9
+  // int dim_rho = int(sqrt(dim));   // dim_rho = 3, dim = 9 // Moved to Data constructor, now dim_hs
 
   // Number of pulses
   assert(npulses = data_name.size());
@@ -597,7 +746,7 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
 
       // Skip to the corrected (mitigated) data (skip next 9*3=27 columns)
       if (corrected) {
-        for (int i=0; i < dim*dim_rho; i++){
+        for (int i=0; i < dim*dim_hs; i++){
           infile >> strval;
         }
       }
@@ -611,10 +760,10 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
       // Iterate over the remaining columns to read the probabilities of the rotation operators R_0 to R_8
       double val;
       std::vector<std::vector<double>> prob;  // outer dimension for i, inner for j
-      prob.resize(dim_rho*dim_rho);
-      for (int i=0; i<dim_rho*dim_rho; i++) { // operators R_i
+      prob.resize(dim_hs*dim_hs);
+      for (int i=0; i<dim_hs*dim_hs; i++) { // operators R_i
         prob[i].resize(3);
-        for (int j=0; j<dim_rho; j++) { // outcomes R_i = j, j=0,1,2
+        for (int j=0; j<dim_hs; j++) { // outcomes R_i = j, j=0,1,2
           infile >> prob[i][j];  // probability P(R_i = j)
           // printf("Read P(R %d = %d) = %1.4e\n", i, j, prob[i][j]);
 
@@ -634,7 +783,7 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
           // Make sure they sum to 1.0 by reducing 2nd state probability
           prob[i][2] -= (sum - 1.0);
           sum = 0.0;
-          for (int j=0; j<dim_rho; j++){
+          for (int j=0; j<dim_hs; j++){
             sum += prob[i][j];
           }
         }
@@ -652,8 +801,8 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
 
       // Now assemble the NxN density matrix
       Mat rho_re, rho_im; 
-      MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &rho_re);
-      MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_rho, dim_rho, NULL, &rho_im);
+      MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_hs, dim_hs, NULL, &rho_re);
+      MatCreateDense(PETSC_COMM_WORLD,PETSC_DECIDE, PETSC_DECIDE, dim_hs, dim_hs, NULL, &rho_im);
       MatSetUp(rho_re);
       MatSetUp(rho_im);
       MatAssemblyBegin(rho_re, MAT_FINAL_ASSEMBLY);
@@ -662,9 +811,9 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
       MatAssemblyEnd(rho_im, MAT_FINAL_ASSEMBLY);
       std::vector<Mat> BasisMat_Re;
       std::vector<Mat> BasisMat_Im;
-      createGellmannMats(dim_rho, false, false, false, true, BasisMat_Re, BasisMat_Im);
+      createGellmannMats(dim_hs, false, false, false, true, BasisMat_Re, BasisMat_Im);
       // Note: The Gellmann matrices are ordered in a different way than the above coefficients. Too bad... Here is the mapping. 
-      MatAXPY(rho_re, 1.0/dim_rho, BasisMat_Re[0], DIFFERENT_NONZERO_PATTERN);
+      MatAXPY(rho_re, 1.0/dim_hs, BasisMat_Re[0], DIFFERENT_NONZERO_PATTERN);
       MatAXPY(rho_re, r1/2.0, BasisMat_Re[1], DIFFERENT_NONZERO_PATTERN);
       MatAXPY(rho_re, r4/2.0, BasisMat_Re[2], DIFFERENT_NONZERO_PATTERN);
       MatAXPY(rho_re, r6/2.0, BasisMat_Re[3], DIFFERENT_NONZERO_PATTERN);
@@ -675,12 +824,12 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
       MatAXPY(rho_im, r7/2.0, BasisMat_Im[2], DIFFERENT_NONZERO_PATTERN);
 
       // Now vectorize the density matrix and store into the state 
-      for (int col = 0; col < dim_rho; col++){
+      for (int col = 0; col < dim_hs; col++){
         PetscScalar *vals_re, *vals_im; 
         MatDenseGetColumn(rho_re, col, &vals_re);
         MatDenseGetColumn(rho_im, col, &vals_im);
-        for (int i=0; i<dim_rho; i++){
-          int row = col*dim_rho +i;
+        for (int i=0; i<dim_hs; i++){
+          int row = col*dim_hs +i;
           VecSetValue(state, getIndexReal(row), vals_re[i], INSERT_VALUES);
           VecSetValue(state, getIndexImag(row), vals_im[i], INSERT_VALUES);
         }
@@ -701,7 +850,7 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
 
       // Skip to the end of file, if we used non-corrected data
       if (!corrected) {
-        for (int i=0; i < dim*dim_rho; i++){
+        for (int i=0; i < dim*dim_hs; i++){
           infile >> strval;
         }
       }

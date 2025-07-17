@@ -292,22 +292,61 @@ void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_s
 
 // ************************ addToLoss ******************* 
 void Learning::addToLoss(double time, Vec x, int pulse_num, int init_num){
-
+  // Variable 'x' holds the simulated density matrix elements at t=time
   current_err = 0.0;
   if (dim_rho <= 0) return;
 
   // If data point exists at this time, compute frobenius norm (x-xdata)
   // NOTE: need to pass in the initial condition
   Vec xdata = data->getData(time, pulse_num, init_num);
+
+  // Variable 'xdata' holds the data at t=time
   if (xdata != NULL) {
-    // printf("Add to loss at time %1.8f \n", time);
-    // VecView(xdata,NULL);
-    VecAYPX(aux2, 0.0, x);
-    VecAXPY(aux2, -1.0, xdata);   // aux2 = x - data
-    double norm; 
-    VecNorm(aux2, NORM_2, &norm);
-    current_err = norm;
-    loss_integral += loss_scaling_factor*0.5*norm*norm / (data->getNData()-1);
+    if (data->isDensityData()) {// get the population from the density matrix in 'x'
+      // tmp
+      // printf("Add to loss at time %1.8f \n", time);
+      VecAYPX(aux2, 0.0, x);
+      VecAXPY(aux2, -1.0, xdata);   // aux2 = x - data
+      double norm; 
+      VecNorm(aux2, NORM_2, &norm);
+      current_err = norm;
+      loss_integral += loss_scaling_factor*0.5*norm*norm / (data->getNData()-1);
+    }
+    else{
+      std::vector<double> pop;
+      population(x, lindbladtype, pop);
+      // std::cout << "In addToLoss: pop:" << std::endl;
+      // for (int q=0; q<pop.size(); q++)
+      //   std::cout << pop[q] << std::endl;
+
+      // Declare a temp PETSc vector
+      Vec x_pop;
+      VecCreate(PETSC_COMM_WORLD, &x_pop);
+      VecSetSizes(x_pop, PETSC_DECIDE, pop.size());
+      VecSetFromOptions(x_pop);
+      // Assign the values from the C++ vector into the PETSc Vec
+      for (int i = 0; i < pop.size(); ++i) {
+          VecSetValue(x_pop, i, pop[i], INSERT_VALUES);
+      }
+      // Assemble the vector to ensure consistency across processes
+      VecAssemblyBegin(x_pop);
+      VecAssemblyEnd(x_pop);
+
+      // tmp
+      // std::cout << "x_pop:" << std::endl;
+      // VecView(x_pop,NULL);
+      // std::cout << "xdata:" << std::endl;
+      // VecView(xdata,NULL);
+
+      VecAXPY(x_pop, -1.0, xdata);   // x_pop = x_pop - xdata
+      double norm; 
+      VecNorm(x_pop, NORM_2, &norm);
+      current_err = norm;
+      loss_integral += loss_scaling_factor*0.5*norm*norm / (data->getNData()-1);
+
+      // std::cout << "loss_integral: " << loss_integral << std::endl;
+      // exit(-1);
+    }
   }
 }
 
@@ -318,15 +357,60 @@ void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num,
 
   Vec xdata = data->getData(time, pulse_num, init_num);
   if (xdata != NULL) {
-    // printf("loss_DIFF at time %1.8f \n", time);
-    // VecView(xprimal,NULL);
-    VecAXPY(xbar, Jbar_loss  * loss_scaling_factor / (data->getNData()-1), xprimal);
-    VecAXPY(xbar, -Jbar_loss * loss_scaling_factor / (data->getNData()-1), xdata);
+    if (data->isDensityData()) {
+      // get the population from the density matrix in 'x'
+      // printf("loss_DIFF at time %1.8f \n", time);
+      // VecView(xprimal,NULL);
+      // NOTE: VecAXPY. Computes y = alpha x + y. Usage: VecAXPY(Vec y,PetscScalar alpha,Vec x) 
+      VecAXPY(xbar, Jbar_loss  * loss_scaling_factor / (data->getNData()-1), xprimal);
+      VecAXPY(xbar, -Jbar_loss * loss_scaling_factor / (data->getNData()-1), xdata);
+    }
+    else{
+      // tmp
+      // std::cout << "In addToLoss_diff, NOT densityData" << std::endl;
+      // std::cout << "xbar on entry:" << std::endl;
+      // VecView(xbar,NULL);
+
+      std::vector<double> pop_bar;
+      pop_bar.reserve(data->getDim_hs());
+
+      double *xdata_p, *xbar_p;
+      // get pointers to PETSc vector data
+      VecGetArray(xdata, &xdata_p);
+      VecGetArray(xbar, &xbar_p);
+
+      std::vector<double> pop;
+      population(xprimal, lindbladtype, pop); // extracts the diagonal elements from xprimal
+      double n2_bar = Jbar_loss * loss_scaling_factor / (data->getNData()-1);
+
+      for (int q=0; q < data->getDim_hs(); q++){
+        pop_bar[q] = n2_bar * (pop[q] - xdata_p[q]);
+        // tmp
+        // std::cout << "pop_bar[%d] = " << pop_bar[q] << std::endl;
+      }
+      int qp=0;
+      for (int q=0; q<data->getDim()*2; q++){
+        // tmp fix while waiting for population_diff() routine. Basically inflating the size of the pop_bar vector
+        if (q==0 || q==2*4 || q==2*8){ // only assign the real part of the diagonal elements
+          xbar_p[q] += pop_bar[qp];
+          qp++;
+        }
+      }
+      // restore PETSc vectors
+      VecRestoreArray(xbar, &xbar_p);
+      VecRestoreArray(xdata, &xdata_p);
+
+      // tmp
+      // std::cout << "xbar += pop_bar:" << std::endl;
+      // VecView(xbar,NULL);
+      // std::cout << "xdata:" << std::endl;
+      // VecView(xdata,NULL);
+      // // tmp
+      // std::cout << "Exiting at addToLoss_diff" << std::endl;
+      // exit(-1);
+    }
   }
 }
-
-
-
 
 void Learning::applyUDETransfer(int oscilID, int cwID, double* Blt1, double* Blt2){
 
