@@ -1,12 +1,15 @@
 #include "learning.hpp"
+#include "oscillator.hpp"
 
-Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str, std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data_, std::default_random_engine rand_engine, bool quietmode_, double loss_scaling_factor_){
+Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str, std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data_, std::default_random_engine rand_engine, bool quietmode_, double loss_scaling_factor_, Oscillator** oscil_vec_){
   lindbladtype = lindbladtype_;
   quietmode = quietmode_;
   data = data_;
   hamiltonian_model = NULL;
   lindblad_model = NULL;
   loss_scaling_factor=loss_scaling_factor_;
+  oscil_vec = oscil_vec_;
+  noscillators = nlevels.size();
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
   // Reset
@@ -290,9 +293,8 @@ void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_s
   }
 }
 
-// ************************ addToLoss ******************* 
 void Learning::addToLoss(double time, Vec x, int pulse_num, int init_num){
-  // Variable 'x' holds the simulated density matrix elements at t=time
+  // Variable 'x' holds the simulated state at t=time
   current_err = 0.0;
   if (dim_rho <= 0) return;
 
@@ -302,8 +304,9 @@ void Learning::addToLoss(double time, Vec x, int pulse_num, int init_num){
 
   // Variable 'xdata' holds the data at t=time
   if (xdata != NULL) {
-    if (data->isDensityData()) {// get the population from the density matrix in 'x'
-      // tmp
+
+    if (data->isDensityData()) { // data consists of the density matrix (or state vector)
+
       // printf("Add to loss at time %1.8f \n", time);
       VecAYPX(aux2, 0.0, x);
       VecAXPY(aux2, -1.0, xdata);   // aux2 = x - data
@@ -311,41 +314,41 @@ void Learning::addToLoss(double time, Vec x, int pulse_num, int init_num){
       VecNorm(aux2, NORM_2, &norm);
       current_err = norm;
       loss_integral += loss_scaling_factor*0.5*norm*norm / (data->getNData()-1);
-    }
-    else{
-      std::vector<double> pop;
-      population(x, lindbladtype, pop);
-      // std::cout << "In addToLoss: pop:" << std::endl;
-      // for (int q=0; q<pop.size(); q++)
-      //   std::cout << pop[q] << std::endl;
 
-      // Declare a temp PETSc vector
-      Vec x_pop;
-      VecCreate(PETSC_COMM_WORLD, &x_pop);
-      VecSetSizes(x_pop, PETSC_DECIDE, pop.size());
-      VecSetFromOptions(x_pop);
-      // Assign the values from the C++ vector into the PETSc Vec
-      for (int i = 0; i < pop.size(); ++i) {
-          VecSetValue(x_pop, i, pop[i], INSERT_VALUES);
+    } else { // data consists of population values 
+
+      // Iterate over oscillators
+      for (int ioscil = 0; ioscil< noscillators; ioscil++){
+
+        // Get population from the state variables
+        std::vector<double> pop;
+        oscil_vec[ioscil]->population(x, pop);
+        // std::cout << "In addToLoss: pop:" << std::endl;
+        // for (int q=0; q<pop.size(); q++)
+        //   std::cout << pop[q] << std::endl;
+
+        // tmp
+        // std::cout << "x_pop:" << std::endl;
+        // VecView(x_pop,NULL);
+        // std::cout << "xdata:" << std::endl;
+        // VecView(xdata,NULL);
+
+        // Get pointer to xdata
+        const double* xdata_ptr;
+        VecGetArrayRead(xdata, &xdata_ptr);
+
+        // Compute the 2-norm of the diff between pop and xdata
+        double norm2 = 0.0;
+        for (size_t q=0; q<pop.size(); q++) {
+          norm2 += SQR(pop[q] - xdata_ptr[q]);
+        }
+        current_err = norm2;
+        loss_integral += loss_scaling_factor*0.5*norm2 / (data->getNData()-1);
+        VecRestoreArrayRead(xdata, &xdata_ptr);
+
+        // std::cout << "loss_integral: " << loss_integral << std::endl;
+        // exit(-1);
       }
-      // Assemble the vector to ensure consistency across processes
-      VecAssemblyBegin(x_pop);
-      VecAssemblyEnd(x_pop);
-
-      // tmp
-      // std::cout << "x_pop:" << std::endl;
-      // VecView(x_pop,NULL);
-      // std::cout << "xdata:" << std::endl;
-      // VecView(xdata,NULL);
-
-      VecAXPY(x_pop, -1.0, xdata);   // x_pop = x_pop - xdata
-      double norm; 
-      VecNorm(x_pop, NORM_2, &norm);
-      current_err = norm;
-      loss_integral += loss_scaling_factor*0.5*norm*norm / (data->getNData()-1);
-
-      // std::cout << "loss_integral: " << loss_integral << std::endl;
-      // exit(-1);
     }
   }
 }
@@ -370,44 +373,39 @@ void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num,
       // std::cout << "In addToLoss_diff, NOT densityData" << std::endl;
       // std::cout << "xbar on entry:" << std::endl;
       // VecView(xbar,NULL);
+      for(int ioscil=0; ioscil<noscillators; ioscil++){
 
-      std::vector<double> pop_bar;
-      pop_bar.reserve(data->getDim_hs());
+        std::vector<double> pop_bar;
+        pop_bar.reserve(data->getDim_hs());
 
-      double *xdata_p, *xbar_p;
-      // get pointers to PETSc vector data
-      VecGetArray(xdata, &xdata_p);
-      VecGetArray(xbar, &xbar_p);
+        // get pointers to PETSc vector data
+        double *xdata_p, *xbar_p;
+        VecGetArray(xdata, &xdata_p);
+        VecGetArray(xbar, &xbar_p);
 
-      std::vector<double> pop;
-      population(xprimal, lindbladtype, pop); // extracts the diagonal elements from xprimal
-      double n2_bar = Jbar_loss * loss_scaling_factor / (data->getNData()-1);
+        std::vector<double> pop;
+        oscil_vec[ioscil]->population(xprimal, pop);
+        double n2_bar = Jbar_loss * loss_scaling_factor / (data->getNData()-1);
 
-      for (int q=0; q < data->getDim_hs(); q++){
-        pop_bar[q] = n2_bar * (pop[q] - xdata_p[q]);
-        // tmp
-        // std::cout << "pop_bar[%d] = " << pop_bar[q] << std::endl;
-      }
-      int qp=0;
-      for (int q=0; q<data->getDim()*2; q++){
-        // tmp fix while waiting for population_diff() routine. Basically inflating the size of the pop_bar vector
-        if (q==0 || q==2*4 || q==2*8){ // only assign the real part of the diagonal elements
-          xbar_p[q] += pop_bar[qp];
-          qp++;
+        for (int q=0; q < data->getDim_hs(); q++){
+          pop_bar[q] = n2_bar * (pop[q] - xdata_p[q]);
         }
-      }
-      // restore PETSc vectors
-      VecRestoreArray(xbar, &xbar_p);
-      VecRestoreArray(xdata, &xdata_p);
 
-      // tmp
-      // std::cout << "xbar += pop_bar:" << std::endl;
-      // VecView(xbar,NULL);
-      // std::cout << "xdata:" << std::endl;
-      // VecView(xdata,NULL);
-      // // tmp
-      // std::cout << "Exiting at addToLoss_diff" << std::endl;
-      // exit(-1);
+        oscil_vec[ioscil]->population_diff(xprimal, xbar, pop_bar);
+
+        // restore PETSc vectors
+        VecRestoreArray(xbar, &xbar_p);
+        VecRestoreArray(xdata, &xdata_p);
+
+        // tmp
+        // std::cout << "xbar += pop_bar:" << std::endl;
+        // VecView(xbar,NULL);
+        // std::cout << "xdata:" << std::endl;
+        // VecView(xdata,NULL);
+        // // tmp
+        // std::cout << "Exiting at addToLoss_diff" << std::endl;
+        // exit(-1);
+      }
     }
   }
 }

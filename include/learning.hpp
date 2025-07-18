@@ -11,7 +11,13 @@
 #include<random>
 #include "data.hpp"
 #include "UDEmodel.hpp"
+// #include "oscillator.hpp"
 #pragma once
+
+#ifndef LEARNING_HPP
+#define LEARNING_HPP
+
+class Oscillator;
 
 class Learning {
 
@@ -31,6 +37,8 @@ class Learning {
   int nparams;            /* Total Number of learnable paramters*/
   double loss_integral;   /* Running cost for Loss function */
   Vec aux2;               /* Auxiliary state to eval loss */
+  Oscillator** oscil_vec; ///< Vector of pointers to the oscillators 
+  int noscillators; ///< Number of subsystems (oscillators)
 
   double loss_scaling_factor; /* Scaling the loss function value by this umber. Default=1.0 */
 
@@ -39,7 +47,7 @@ class Learning {
     Data* data;       /* Stores the data */
 
   public: 
-    Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str,  std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data, std::default_random_engine rand_engine, bool quietmode, double loss_scaling_factor);
+    Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str,  std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data, std::default_random_engine rand_engine, bool quietmode, double loss_scaling_factor, Oscillator** oscil_vec_);
     ~Learning();
 
     void resetLoss(){ loss_integral = 0.0; };
@@ -81,4 +89,6 @@ class Learning {
     void addToLoss(double time, Vec x, int pulse_num, int init_num);
     void addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num, int init_num, double Jbar_loss);
 };
+
+#endif
 

@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iostream> 
 #include <iomanip>
-#include "learning.hpp"
+// #include "learning.hpp"
 #include <petscmat.h>
 #include <vector>
 #include <assert.h>
@@ -14,6 +14,11 @@
 #include<random>
 
 #pragma once
+
+#ifndef OSCILLATOR_HPP
+#define OSCILLATOR_HPP
+
+class Learning;
 
 /**
  * @brief Structure for storing pi-pulse parameters.
@@ -300,4 +305,4 @@ class Oscillator {
 };
 
 
-
+#endif

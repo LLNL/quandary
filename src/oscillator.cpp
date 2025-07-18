@@ -1,4 +1,5 @@
 #include "oscillator.hpp"
+#include "learning.hpp"
 
 Oscillator::Oscillator(){
   nlevels = 0;
@@ -520,7 +521,9 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
   int dimN = dim_preOsc * nlevels * dim_postOsc;
   double val;
 
-  assert (pop.size() == static_cast<size_t>(nlevels));
+  // Zero out the population vector
+  pop.clear();
+  pop.resize(nlevels);
 
   std::vector<double> mypop(nlevels, 0.0);
 
