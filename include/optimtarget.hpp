@@ -77,14 +77,13 @@ class OptimTarget{
     /**
      * @brief Prepares the initial condition state.
      *
-     * @param iinit Index in processor range [rank * ninit_local .. (rank+1) * ninit_local - 1]
+     * @param iinit Global index the initial condition that is to be prepared
      * @param ninit Total number of initial conditions
      * @param nlevels Number of levels per oscillator
      * @param nessential Number of essential levels per oscillator
      * @param rho0 Vector to store the initial condition
-     * @return int Identifier for this initial condition (element number in matrix vectorization)
      */
-    int prepareInitialState(const int iinit, const int ninit, const std::vector<int>& nlevels, const std::vector<int>& nessential,  Vec rho0);
+    void prepareInitialState(const int iinit, const int ninit, const std::vector<int>& nlevels, const std::vector<int>& nessential,  Vec rho0);
 
     /**
      * @brief Prepares the target state for gate optimization.

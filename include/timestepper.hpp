@@ -95,12 +95,12 @@ class TimeStepper{
      * 
      * This performs the time-stepping to propagate an initial condition to the final time.
      *
-     * @param initid Initial condition identifier
      * @param rho_t0 Initial state vector
-     * @param pulse_num Number of pulse
+     * @param ipulse_global Global index of the pulse number
+     * @param iinit_global Global index of the initial condtion
      * @return Vec Final state vector at time T
      */
-    Vec solveODE(int initid, Vec rho_t0, int pulse_num, int init_num);
+    Vec solveODE(Vec rho_t0, int ipulse_global, int iinit_glboal);
 
     /**
      * @brief Solves the adjoint ODE backward in time.
@@ -114,9 +114,10 @@ class TimeStepper{
      * @param Jbar_penalty_dpdm Adjoint of second-order derivative penalty
      * @param Jbar_penalty_energy Adjoint of energy penalty term
      * @param Jbar_loss Adjoint of loss term
-     * @param pulse_num pulse id
+     * @param ipulse_global Global index of pulse 
+     * @param iinit_global Global index of initial condition
      */
-    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy, double Jbar_loss, int pulse_num, int init_num);
+    void solveAdjointODE(Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy, double Jbar_loss, int ipulse_global, int iinit_global);
 
     /**
      * @brief Evaluates the penalty integral term.
