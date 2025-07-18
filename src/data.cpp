@@ -26,7 +26,7 @@ Data::Data(Config config, MPI_Comm comm_optim_, MPI_Comm comm_init_, int ninit_,
   // but before the derived class constructor, e.g., SyntheticQuandaryData::SyntheticQuandaryData()
   // Compute dimension of the full vectorized system
   dim = 1;
-  for (int i=0; i<nlevels.size(); i++){
+  for (size_t i=0; i<nlevels.size(); i++){
     dim *= nlevels[i];
   }
   dim_hs = dim;   // Dimension of the Hilbert space (N)
@@ -55,7 +55,7 @@ Data::Data(Config config, MPI_Comm comm_optim_, MPI_Comm comm_init_, int ninit_,
   data_name.erase(data_name.begin()); // remove element [0] from the data_name vector
   // all remaining entries in data_name hold individual file names
   // now prepend the file names by the directory
-  for (int q=0; q<data_name.size(); q++){
+  for (size_t q=0; q<data_name.size(); q++){
     data_name[q] = data_folder + "/" + data_name[q];
   }
 
@@ -67,7 +67,7 @@ Data::Data(Config config, MPI_Comm comm_optim_, MPI_Comm comm_init_, int ninit_,
       // TODO: strip off the folder name and prepend the file names by the directory (see above)
       printf("Multiple pulses not available. Fix it.\n");
       exit(1);
-      for (int i =0; i<data_morenames.size(); i++){
+      for (size_t i =0; i<data_morenames.size(); i++){
         data_name.push_back(data_morenames[i]);
       }
     }
@@ -88,9 +88,9 @@ Data::Data(Config config, MPI_Comm comm_optim_, MPI_Comm comm_init_, int ninit_,
 }
 
 Data::~Data() {
-  for (int ipulse=0; ipulse<data.size(); ipulse++){
-    for (int iinit=0; iinit<data[ipulse].size(); iinit++){
-      for (int itime=0; itime<data[ipulse][iinit].size(); itime++){
+  for (size_t ipulse=0; ipulse<data.size(); ipulse++){
+    for (size_t iinit=0; iinit<data[ipulse].size(); iinit++){
+      for (size_t itime=0; itime<data[ipulse][iinit].size(); itime++){
         VecDestroy(&(data[ipulse][iinit][itime]));
       }
       data[ipulse][iinit].clear();
@@ -98,7 +98,7 @@ Data::~Data() {
     data[ipulse].clear();
   }
   data.clear();
-  for (int i=0; i<controlparams.size(); i++) {
+  for (size_t i=0; i<controlparams.size(); i++) {
     controlparams[i].clear();
   }
   controlparams.clear();
