@@ -257,22 +257,23 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
       controlparams[ipulse_local].push_back(q_GHz);
     }
 
-    // Iterate over global initial conditions 
-    for (int iinit=0; iinit< ninit; iinit++){
+    // Iterate over local initial conditions 
+    for (int iinit_local=0; iinit_local< ninit_local; iinit_local++){
+      int iinit_global = mpirank_init * ninit_local + iinit_local;
 
-      int base_idx = ipulse_global*ninit + iinit;
+      int data_name_idx_global = ipulse_global*ninit + iinit_global;
       std::ifstream infile_re;
       std::ifstream infile_im;
-      infile_re.open(data_name[base_idx*2 + 0], std::ifstream::in);
-      infile_im.open(data_name[base_idx*2 + 1], std::ifstream::in);
+      infile_re.open(data_name[data_name_idx_global*2 + 0], std::ifstream::in);
+      infile_im.open(data_name[data_name_idx_global*2 + 1], std::ifstream::in);
       if(infile_re.fail() ) {
-          std::cout << "\n " << mpirank_optim << ": ERROR loading learning data file " << data_name[base_idx*2 + 0] << std::endl;
+          std::cout << "\n " << mpirank_world<< ": ERROR loading learning data file " << data_name[data_name_idx_global*2 + 0] << std::endl;
           exit(1);
       } else if (infile_im.fail() ) {// checks to see if file opended 
-          std::cout << "\n "<< mpirank_optim << ": ERROR loading learning data file " << data_name[base_idx*2 + 1] << std::endl;
+          std::cout << "\n "<< mpirank_world<< ": ERROR loading learning data file " << data_name[data_name_idx_global*2 + 1] << std::endl;
           exit(1);
       } else {
-        std::cout<< "rank = " << mpirank_optim << ": Loading synthetic data from " << data_name[base_idx*2 + 0] << ", " << data_name[base_idx*2 + 1] << std::endl;
+        std::cout<< "rank = " << mpirank_world<< ": Loading synthetic data from " << data_name[data_name_idx_global*2 + 0] << ", " << data_name[data_name_idx_global*2 + 1] << std::endl;
       }
 
       // Iterate over each line in the files
@@ -310,7 +311,7 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
         VecAssemblyEnd(state);
 
         // Store the state
-        data[ipulse_local][0].push_back(state);  
+        data[ipulse_local][iinit_local].push_back(state);  
         count+=1;
         time_prev = time_re;
       }
@@ -318,9 +319,6 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
       /* Update the final time stamp */
       *tstop = std::min(time_prev, *tstop);
 
-      // tmp
-      // std::cout << "Closing files " << data_name[base_idx*2 + 0] << " and "<< data_name[base_idx*2 + 1] << std::endl;
-      
       // Close files
       infile_re.close();
       infile_im.close();
@@ -332,9 +330,9 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
   // printf("\nDATA POINTS:\n");
   // for (int ipulse=0; ipulse<data.size(); ipulse++){
   //   printf("Control amplutidue: %f %f\n", controlparams[ipulse][0], controlparams[ipulse][1]);
-  //   for (int i=0; i<data[ipulse].size(); i++){
-  //     VecView(data[ipulse][i], NULL);
-  //   }
+  //     for (int j=0; j<data[ipulse][i].size(); i++){
+  //       VecView(data[ipulse][i][j], NULL);
+  //      }
   //   printf("\n");
   // }
   // printf("END DATA POINTS.\n\n");
@@ -357,8 +355,6 @@ void SyntheticPopQuandaryData::loadPopData(std::vector<std::string>& data_name, 
   // for (int q=0; q<data_name.size(); q++){
   //   std::cout << data_name[q] << std::endl;
   // }
-
-  // std::cout << "tstart= " << *tstart << " tstop= " << *tstop << std::endl;
 
   // Iterate over local pulses
   for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
@@ -450,9 +446,6 @@ void SyntheticPopQuandaryData::loadPopData(std::vector<std::string>& data_name, 
       /* Update the final time stamp */
       *tstop = std::min(time_prev, *tstop);
 
-      // tmp
-      // std::cout << "Closing files " << data_name[base_idx] << std::endl;
-      
       // Close files
       infile_pop.close();            
     }
@@ -485,7 +478,6 @@ Tant2levelData::Tant2levelData(Config config, MPI_Comm comm_optim_, MPI_Comm com
     corrected = true;
     data_name.erase(data_name.begin());
   }
-
 
   /* Load training data, this also sets first and last time stamp as well as data sampling step size */
   loadData(data_name, &tstart, &tstop, &dt);
@@ -525,16 +517,16 @@ void Tant2levelData::loadData(std::vector<std::string>& data_name, double* tstar
 
   // Iterate over local pulses
   for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
-    int ipulse = mpirank_optim* npulses_local + ipulse_local;
+    int ipulse_global = mpirank_optim* npulses_local + ipulse_local;
 
     // Open the respective file 
     std::ifstream infile;
-    infile.open(data_name[ipulse], std::ifstream::in);
+    infile.open(data_name[ipulse_global], std::ifstream::in);
     if(infile.fail() ) {// checks to see if file opended 
-        std::cout << "\n ERROR loading learning data file " << data_name[ipulse] << std::endl;
+        std::cout << "\n ERROR loading learning data file " << data_name[ipulse_global] << std::endl;
         exit(1);
     } else {
-      std::cout<< mpirank_optim << ": Loading Tant Device data from " << data_name[ipulse] << std::endl;
+      std::cout<< mpirank_world << ": Loading Tant Device data from " << data_name[ipulse_global] << std::endl;
     }
 
     // Iterate over lines
@@ -559,7 +551,7 @@ void Tant2levelData::loadData(std::vector<std::string>& data_name, double* tstar
 
       infile >> time;      // 2nd column;
       infile >> pulse_num; // 3th column;
-      assert(pulse_num == ipulse);
+      assert(pulse_num == ipulse_global);
 
       // Figure out first time point and sampling time-step
       if (count == 0) *tstart = time;
@@ -616,6 +608,7 @@ void Tant2levelData::loadData(std::vector<std::string>& data_name, double* tstar
       VecAssemblyEnd(state);
 
       // Store the state and update counters
+      // Note: only one initial condition per pulse. 
       data[ipulse_local][0].push_back(state);
       count+=1;
       time_prev = time;
@@ -839,6 +832,7 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
       MatDestroy(&rho_im);
 
       // Store the state
+      // Note: only one initial condition per pulse.
       data[ipulse_local][0].push_back(state);  // Here, only one pulse
       count+=1;
       time_prev = time;
