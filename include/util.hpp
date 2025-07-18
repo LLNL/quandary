@@ -23,9 +23,6 @@ double expectedEnergy(const Vec x, LindbladType lindbladtype, std::vector<int> n
 // void expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar);
 
 
-/* Compute the population of the full composite system.*/
-void population(const Vec x, LindbladType lindbladtype, std::vector<double> &population_com);
-
 /**
  * @brief Sigmoid function for smooth transitions.
  *
