@@ -93,8 +93,9 @@ class Output{
      * @param ntime Total number of time steps
      * @param pulseID Number of pulse
      * @param dt Time step size
+     * @param x_is_control Switch to decide whether x represents the control parameters, or the learning parameters
      */
-    void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt, int pulseID);
+    void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt, int pulseID, bool x_is_control);
 
     /**
      * @brief Writes gradient vector for debugging adjoint calculations.

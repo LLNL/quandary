@@ -110,7 +110,7 @@ void Output::writeGradient(Vec grad){
   }
 }
 
-void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt, int pulseID){
+void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt, int pulseID, bool x_is_control){
     char filename[255];
 
   /* Write controls every <outfreq> iterations */
@@ -135,7 +135,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt,
     if (!quietmode) printf("File written: %s\n", filename);
 
     /* Print control pulse for each oscillator to file */
-    mastereq->setControlAmplitudes(params);
+    if (x_is_control) mastereq->setControlAmplitudes(params);
     for (size_t ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
       if (pulseID >= 0){
         snprintf(filename, 254, "%s/control%zu_pulse%zu.dat", datadir.c_str(), ioscil, pulseID);

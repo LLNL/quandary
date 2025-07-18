@@ -562,7 +562,7 @@ int main(int argc,char **argv)
     }
     int pulseID = ipulse_global;
     if (learning->data->getNPulses() <=1)  pulseID = -1;
-    output->writeControls(xinit, optimctx->timestepper->mastereq, optimctx->timestepper->ntime, optimctx->timestepper->dt, pulseID);
+    output->writeControls(xinit, optimctx->timestepper->mastereq, optimctx->timestepper->ntime, optimctx->timestepper->dt, pulseID, x_is_control);
   }
 
   /* Only evaluate and write control pulses (no propagation) */
@@ -570,7 +570,7 @@ int main(int argc,char **argv)
     std::vector<double> pt, qt;
     optimctx->getStartingPoint(xinit);
     if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
-    output->writeControls(xinit, mastereq, ntime, dt, -1);
+    output->writeControls(xinit, mastereq, ntime, dt, -1, x_is_control);
   }
 
   /* Output */
