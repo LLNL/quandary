@@ -545,9 +545,9 @@ class Quandary:
         """
         Internal helper function that dumps all configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary C++ runs. Returns the name of the configuration file needed for executing Quandary. 
         """
-        print("python **************************")
-        print("Entering __dump(), runtype = ", runtype)
-        print("")
+        # print("python **************************")
+        # print("Entering __dump(), runtype = ", runtype)
+        # print("")
         # If given, write the target gate to file
         if len(self.targetgate) > 0:
             gate_vectorized = np.concatenate((np.real(self.targetgate).ravel(order='F'), np.imag(self.targetgate).ravel(order='F')))
@@ -691,9 +691,9 @@ class Quandary:
             # Figure out if multiple directories are passed (multiple pulses )
             # Also need to consider several initial conditions per pulse!
             # trying to figure out the logic
-            print("In __dump(), trainingdatadir = ", trainingdatadir, " initialcondition = ", self.initialcondition)
+            # print("In __dump(), trainingdatadir = ", trainingdatadir, " initialcondition = ", self.initialcondition)
             if isinstance(trainingdatadir, str): # One pulse directory only
-                print("__dump(): special case data_npulses = 1")
+                # print("__dump(): special case data_npulses = 1")
                 mystring += "data_npulses = 1\n"
                 mydir = [x.strip() for x in trainingdatadir.split(',')]
                 mystring += "data_name = " + mydir[0] +", "
@@ -706,7 +706,7 @@ class Quandary:
             else: # multiple pulses / initial conditions, received a list of trainingdatadirs
                 # Trying to figure out the logic
                 n_pulses = len(trainingdatadir)
-                print("__dump(): general case data_npulses = ", n_pulses)
+                # print("__dump(): general case data_npulses = ", n_pulses)
                 
                 mystring += "data_npulses = " + str(len(trainingdatadir))+"\n"
                 # First element contains the data type specifyier:
@@ -717,22 +717,41 @@ class Quandary:
                     if self.initialcondition == "basis":
                         Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
                         bdim = np.prod(Ntot) if not self._lindblad_solver else np.prod(Ntot)**2
-                        print("__dump(): case 'basis', number of elements: ", bdim)
+                        # print("__dump(): case 'basis', number of elements: ", bdim)
                         for q in range(bdim):
                             mystring += "rho_Re.iinit%04d.dat, " % q
                             mystring += "rho_Im.iinit%04d.dat, " % q
                         mystring += "\n"
                     else:
-                        print("__dump() default case, rho_Re and rho_Im for one initial condition")
+                        # print("__dump() default case, rho_Re and rho_Im for one initial condition")
                         mystring += "rho_Re.iinit0000.dat, rho_Im.iinit0000.dat\n"
+                elif mydir[0] == "syntheticPop":
+                    # how many initial conditions are there?
+                    if self.initialcondition == "basis":
+                        Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
+                        bdim = np.prod(Ntot) if not self._lindblad_solver else np.prod(Ntot)**2
+                        # print("__dump(): case 'basis', number of elements: ", bdim)
+                        for q in range(bdim):
+                            mystring += "population0.iinit%04d.dat, " % q                           
+                        mystring += "\n"
+                    else:
+                        # print("__dump() default case, population data for one initial condition")
+                        mystring += "population0.iinit0000.dat\n"
                 else:
                     if trainingdata_corrected:
                         mystring += "corrected, " 
                     mystring += mydir[1]+"\n"
+
+                # tmp
+                # print("trandingdatadir: ", trainingdatadir[1:])
+
                 # All other elements:
                 for i, mydiri in enumerate(trainingdatadir[1:]):
-                    if mydir[0] == "synthetic":
-                        mystring += "data_name"+str(i+1)+ " = " + mydiri+"/rho_Re.iinit0000.dat, " + mydiri+"/rho_Im.iinit0000.dat\n"
+                    # Generalize to multiple initial conditions! Fix me!
+                    if mydir[0] == "syntheticRho":
+                        mystring += "data_name"+str(i+1)+ " = " + mydiri + ", rho_Re.iinit0000.dat, " + "rho_Im.iinit0000.dat\n"
+                    elif mydir[0] == "syntheticPop":
+                        mystring += "data_name"+str(i+1)+ " = " + mydiri + ", population0.iinit0000.dat\n"
                     else:
                         mystring += "data_name"+str(i+1)+ " = " + mydiri+"\n"
         mystring += "UDEmodel = " + UDEmodel + "\n"

@@ -85,7 +85,7 @@ if do_datageneration:
 
 	print("-> Generated trajectory for perturbed pulse amplitude with perturbation factor:", pfact)
 	# print("->   Unperturbed pulse trajectory directory:", datadir_orig, " Fidelity:", 1.0 - infidelity)
-	print("->   Perturbed pulse (training data) directory:", datadir_test, " Fidelity:", 1.0 - infidelity_pert,"\n")
+	print("-> Perturbed pulse (training data) directory:", datadir_test, " Fidelity:", 1.0 - infidelity_pert,"\n")
  
 ################
 # NOW DO TRAINING! 
@@ -94,14 +94,17 @@ if do_datageneration:
 
 # Set the UDE model: List of learnable terms, containing "hamiltonian" and/or "lindblad" and/or "transferLinear"
 UDEmodel = "transferLinear"
-maxcores = 1 # Note: Only have one pulse
+
+maxcores = 1 # Note: currently, training only works in serial mode
 
 # Set the training time domain
 T_train = T	  
 # Add data type specifier to the first element of the data list
 trainingdatadir = [] # needs to be in a list
-trainingdatadir.append("syntheticRho, " + datadir_test)
-print("trainingdatadir = ", trainingdatadir, " len = ", len(trainingdatadir))
+tf_type = "syntheticPop" # train on population data # tf_type = "syntheticRho" # train on full density matrix data
+
+trainingdatadir.append(tf_type + ", " + datadir_test)
+# print("trainingdatadir = ", trainingdatadir, " len = ", len(trainingdatadir))
 
 # Switch between tikhonov regularization norms (L1 or L2 norm)
 tik0_onenorm = True 			#  Use L1 for sparsification property
