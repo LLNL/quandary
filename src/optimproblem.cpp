@@ -26,7 +26,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   ninit_local = ninit / mpisize_init; 
 
   // Figuring out the logic here
-  std::cout << "In OptimProblem constructor: ninit = " << ninit << std::endl;
+  // std::cout << "In OptimProblem constructor: ninit = " << ninit << std::endl;
 
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
@@ -52,7 +52,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   }
 
   // Figuring out the logic here
-  std::cout << "In OptimProblem constructor: ndesign = " << ndesign << std::endl;
+  // std::cout << "In OptimProblem constructor: ndesign = " << ndesign << std::endl;
 
   /* Allocate the initial condition vector and adjoint terminal state */
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
@@ -98,9 +98,9 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   for (size_t i=0; i<ninit; i++) obj_weights[i] = obj_weights[i] / scaleweights;
 
   // tmp
-  for (int q=0; q<obj_weights.size(); q++){
-    std::cout << "scaled obj_weight = " << obj_weights[q] << std::endl;
-  }
+  // for (int q=0; q<obj_weights.size(); q++){
+  //   std::cout << "scaled obj_weight = " << obj_weights[q] << std::endl;
+  // }
 
   // Distribute over mpi_init processes 
   double sendbuf[obj_weights.size()];
@@ -180,7 +180,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
     int nparamsL = timestepper->mastereq->learning->getNParamsLindblad();
     int nparamsT = timestepper->mastereq->learning->getNParamsTransfer();
     // Figuring out the logic here
-    std::cout << "In OptimProblem constructor: nparamsT = " << nparamsT << std::endl;
+    // std::cout << "In OptimProblem constructor: nparamsT = " << nparamsT << std::endl;
 
     assert(ndesign = nparamsH + nparamsL + nparamsT);
     for (int i=0; i<nparamsH; i++) {

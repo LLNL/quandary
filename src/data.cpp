@@ -45,6 +45,12 @@ Data::Data(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_n
     exit(1);
   }
 
+  // std::cout << "In Data constructor: npulses = " << npulses << " ninit = " << ninit << " data_name:" << std::endl;
+  // for (int q=0; q<data_name.size(); q++){
+  //   std::cout << data_name[q] << std::endl;
+  // }
+  // std::cout << "end of data_name array" << std::endl;
+
   std::string data_folder = data_name[0]; // get the directory name 
   data_name.erase(data_name.begin()); // remove element [0] from the data_name vector
   // all remaining entries in data_name hold individual file names
@@ -57,17 +63,19 @@ Data::Data(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_n
   ninit = data_name.size();
   if (densityData) ninit = ninit/2;
 
-  // std::cout << "In Data constructor: npulses = " << npulses << " ninit = " << ninit << std::endl;
   // proceed by processing the data
 
-  // search more data file names ("data_name1", "data_name2", ...) and push them to the data_name vector. 
+  // search more data file names ("data_name1", "data_name2", ...) and push them to the data_name vector.
+  // NOTE: it would make more sense if the data_name1, data_name2, etc commands were parsed before calling the constructor. Fix me!
   for (int ipulse = 1; ipulse<npulses; ipulse++) {
     std::vector<std::string> data_morenames;
     config.GetVecStrParam("data_name"+std::to_string(ipulse), data_morenames, "none");
     if (data_morenames[0].compare("none") != 0){
-      // TODO: strip off the folder name and prepend the file names by the directory (see above)
+      // strip off the folder name and prepend the file names by the directory (see above)
+      std::string data_folder = data_morenames[0]; // get the directory name 
+      data_morenames.erase(data_morenames.begin()); // remove element [0] from the data_name vector
       for (int i =0; i<data_morenames.size(); i++){
-        data_name.push_back(data_morenames[i]);
+        data_name.push_back(data_folder + "/" + data_morenames[i]);
       }
     }
   }
@@ -219,7 +227,7 @@ void Data::writeFullstate(const char* filename_re, const char* filename_im, int 
 SyntheticRhoQuandaryData::SyntheticRhoQuandaryData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_, densityData) {
 
   /* Load training data */
-  std::cout << "In SyntheticRhoQuandaryData constructor:" << std::endl;
+  // std::cout << "In SyntheticRhoQuandaryData constructor:" << std::endl;
 
   loadData(data_name, &tstart, &tstop, &dt);
 }
@@ -230,15 +238,20 @@ SyntheticRhoQuandaryData::~SyntheticRhoQuandaryData() {}
 // ***************************** SyntheticRhoQuandaryData::loadData() ******************************
 void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, double* tstart, double* tstop, double* dt){
   // NOTE: This function is specialized to reading Re/Im density matrix data
-  std::cout << "In SyntheticRhoQuandaryData::loadData npulses*ninit*2 = " << npulses*ninit*2 << " data_name.size() = " << data_name.size() << std::endl;
+  // std::cout << "In SyntheticRhoQuandaryData::loadData npulses*ninit*2 = " << npulses*ninit*2 << " data_name.size() = " << data_name.size() << std::endl;
   if ((npulses*ninit*2 != data_name.size())){
     std::cout << "WARNING: npulses*ninit*2 = " << npulses*ninit*2 << " != data_name.size() = " << data_name.size() << std::endl;
   }
 
+  // std::cout << "In SyntheticRho, loadData, data_name:" << std::endl;
+  // for (int q=0; q<data_name.size(); q++){
+  //   std::cout << data_name[q] << std::endl;
+  // }
+
   // Iterate over local pulses
   for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
     int ipulse = mpirank_optim* npulses_local + ipulse_local;
-    // printf("Loading from name %s\n", data_name[ipulse*2+0].c_str());
+    // printf("In SyntheticRho, loadData, ipulse = %d, Loading from name %s\n", ipulse, data_name[ipulse*2+0].c_str());
 
     /* Extract control amplitudes from file name (searching for "p" and "q")*/
     std::size_t found_p = data_name[ipulse*2+0].find("ctrlP");
@@ -264,6 +277,8 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
     // Open Re/Im density matrix files 
     for (int iinit=0; iinit< ninit; iinit++){
       int base_idx = ipulse*ninit + iinit;
+      // printf("iinit for-loop, iinit = %d, base_idx = %d\n", iinit, base_idx);
+
       std::ifstream infile_re;
       std::ifstream infile_im;
       infile_re.open(data_name[base_idx*2 + 0], std::ifstream::in);
@@ -349,7 +364,7 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
 SyntheticPopQuandaryData::SyntheticPopQuandaryData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_, densityData) {
 
   /* Load training data */
-  std::cout << "In SyntheticPopQuandaryData constructor:" << std::endl;
+  // std::cout << "In SyntheticPopQuandaryData constructor:" << std::endl;
   // std::cout << "data_name:" << std::endl;
   // for (int q=0; q<data_name.size(); q++){
   //   std::cout << data_name[q] << std::endl;
@@ -363,7 +378,7 @@ SyntheticPopQuandaryData::~SyntheticPopQuandaryData() {}
 // ***************************** SyntheticRhoQuandaryData::loadPopData() ******************************
 void SyntheticPopQuandaryData::loadPopData(std::vector<std::string>& data_name, double* tstart, double* tstop, double* dt){
   // NOTE: This function is specialized to reading population data
-  std::cout << "In SyntheticPopQuandaryData::loadData npulses*ninit = " << npulses*ninit << " data_name.size() = " << data_name.size() << std::endl;
+  // std::cout << "In SyntheticPopQuandaryData::loadData npulses*ninit = " << npulses*ninit << " data_name.size() = " << data_name.size() << std::endl;
   if ((npulses*ninit != data_name.size())){
     std::cout << "WARNING: npulses*ninit = " << npulses*ninit << " != data_name.size() = " << data_name.size() << std::endl;
   }

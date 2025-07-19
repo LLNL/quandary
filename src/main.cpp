@@ -254,12 +254,15 @@ int main(int argc,char **argv)
     if (!x_is_control){
       std::vector<std::string> data_name;
       config.GetVecStrParam("data_name", data_name, "data");
-      // AP: trying to understand the logic
+      // NOTE: the commands data_name1, data_name2, etc (>1 pulse) are parsed by the Data constructor
+
+      // debug printout
       // std::cout << "In main, UDEmodel_str[0] = " << UDEmodel_str[0] << " reading the 'data_name' line: " << std::endl;
       // for (int q=0; q< data_name.size(); q++)
       //   std::cout << data_name[q] << std::endl;
       // std::cout << "end of 'data_name'" << std::endl;
-      // AP: end
+      // end printout
+      
       std::string identifyer = data_name[0]; // Copy element [0] of the data_name vector 
       data_name.erase(data_name.begin()); // remove element [0] from the data_name vector
 

@@ -31,7 +31,7 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
   // Figuring out the logic here
-  std::cout << "In OptimTarget constructor: initcond_str[0] = " << initcond_str[0] << std::endl;
+  // std::cout << "In OptimTarget constructor: initcond_str[0] = " << initcond_str[0] << std::endl;
 
   /* Get initial condition type */
   if (initcond_str[0].compare("file") == 0)              initcond_type = InitialConditionType::FROMFILE;
