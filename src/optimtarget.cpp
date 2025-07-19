@@ -30,9 +30,6 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
   int mpirank_world;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 
-  // Figuring out the logic here
-  // std::cout << "In OptimTarget constructor: initcond_str[0] = " << initcond_str[0] << std::endl;
-
   /* Get initial condition type */
   if (initcond_str[0].compare("file") == 0)              initcond_type = InitialConditionType::FROMFILE;
   else if  (initcond_str[0].compare("pure") == 0)        initcond_type = InitialConditionType::PURE;
@@ -427,16 +424,12 @@ void OptimTarget::HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool
 }
 
 
-int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std::vector<int>& nlevels, const std::vector<int>& nessential, Vec rho0){
+void OptimTarget::prepareInitialState(const int iinit, const int ninit, const std::vector<int>& nlevels, const std::vector<int>& nessential, Vec rho0){
 
   PetscInt ilow, iupp; 
   PetscInt elemID;
   double val;
   int dim_post;
-  int initID = 0;    // Output: ID for this initial condition */
-
-  // tmp
-  //std::cout << "In prepareInitialState, iinit = " << iinit << std::endl;
 
   /* Switch over type of initial condition */
   switch (initcond_type) {
@@ -480,7 +473,6 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
       /* Set the <iinit>'th initial state */
       if (iinit == 0) {
         // 1st initial state: rho(0)_IJ = 2(N-i)/(N(N+1)) Delta_IJ
-        initID = 1;
         for (int i_full = 0; i_full<dim_rho; i_full++) {
           int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
           double val = 2.*(dim_rho - i_full) / (dim_rho * (dim_rho + 1));
@@ -488,7 +480,6 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
         }
       } else if (iinit == 1) {
         // 2nd initial state: rho(0)_IJ = 1/N
-        initID = 2;
         for (int i_full = 0; i_full<dim_rho; i_full++) {
           for (int j_full = 0; j_full<dim_rho; j_full++) {
             double val = 1./dim_rho;
@@ -498,7 +489,6 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
         }
       } else if (iinit == 2) {
         // 3rd initial state: rho(0)_IJ = 1/N Delta_IJ
-        initID = 3;
         for (int i_full = 0; i_full<dim_rho; i_full++) {
           int diagID = getIndexReal(getVecID(i_full,i_full,dim_rho));
           double val = 1./ dim_rho;
@@ -534,7 +524,6 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
         printf("Wrong initial condition index. Should never happen!\n");
         exit(1);
       }
-      initID = iinit;
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
       break;
 
@@ -560,11 +549,6 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
       VecGetOwnershipRange(rho0, &ilow, &iupp);
       if (ilow <= elemID && elemID < iupp) VecSetValues(rho0, 1, &elemID, &val, INSERT_VALUES);
       VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-
-      /* Set initial conditon ID */
-      if (lindbladtype != LindbladType::NONE) initID = iinit * ninit + iinit;
-      else initID = iinit;
-
       break;
 
     case InitialConditionType::BASIS:
@@ -589,9 +573,6 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
       int k, j;
       k = iinit % ( (int) sqrt(ninit) );
       j = (int) iinit / ( (int) sqrt(ninit) );
-
-      /* Set initial condition ID */
-      initID = j * ( (int) sqrt(ninit)) + k;
 
       /* Set position in rho */
       k = k*dim_post;
@@ -652,8 +633,6 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
       printf("ERROR! Wrong initial condition type: %d\n This should never happen!\n", initcond_type);
       exit(1);
   }
-
-  return initID;
 }
 
 

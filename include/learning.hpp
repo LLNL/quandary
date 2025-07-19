@@ -86,8 +86,8 @@ class Learning {
     void getLearnParams(double* x);
 
     /* Add to loss. Note: pulse_num is the global pulse number . */
-    void addToLoss(double time, Vec x, int pulse_num, int init_num);
-    void addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num, int init_num, double Jbar_loss);
+    void addToLoss(double time, Vec x, int ipulse_global, int iinit_global);
+    void addToLoss_diff(double time, Vec xbar, Vec xprimal, int ipulse_global, int iinit_global, double Jbar_loss);
 };
 
 #endif

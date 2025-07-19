@@ -159,8 +159,8 @@ int main(int argc,char **argv)
   int np_petsc = 1;
   // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
   int np_init = std::min(ninit, mpisize_world); 
-  // Number of cores for different pulses: All the remaining ones. 
-  int np_optim = mpisize_world / (np_init * np_petsc);
+  // Number of cores for different pulses: HARDCODE to 1 (serial) for now. 
+  int np_optim = 1;
 
   /* Sanity check for communicator sizes */ 
   if (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) {
@@ -267,13 +267,17 @@ int main(int argc,char **argv)
       data_name.erase(data_name.begin()); // remove element [0] from the data_name vector
 
       if (identifyer.compare("syntheticRho") == 0) {  // density matrices
-        data = new SyntheticRhoQuandaryData(config, comm_optim, data_name, nlevels, lindbladtype, true);
+        bool densityData = true;
+        data = new SyntheticRhoQuandaryData(config, comm_optim, comm_init, ninit, data_name, nlevels, lindbladtype, densityData);
       } else if (identifyer.compare("syntheticPop") == 0) { // populations
-        data = new SyntheticPopQuandaryData(config, comm_optim, data_name, nlevels, lindbladtype, false);
+        bool densityData = false;
+        data = new SyntheticPopQuandaryData(config, comm_optim, comm_init, ninit, data_name, nlevels, lindbladtype, densityData);
       } else if (identifyer.compare("Tant2level") == 0) { 
-        data = new Tant2levelData(config, comm_optim, data_name, nlevels, lindbladtype, true);
+        bool densityData = true;
+        data = new Tant2levelData(config, comm_optim, comm_init, ninit, data_name, nlevels, lindbladtype, densityData);
       } else if (identifyer.compare("Tant3level") == 0) {
-        data = new Tant3levelData(config, comm_optim, data_name, nlevels, lindbladtype, true);
+        bool densityData = true;
+        data = new Tant3levelData(config, comm_optim, comm_init, ninit, data_name, nlevels, lindbladtype, densityData);
       }
       else {
         printf("Wrong setting for loading data. Needs prefix 'syntheticRho', or 'syntheticPop', or 'Tant2level', or 'Tant3level'.\n");

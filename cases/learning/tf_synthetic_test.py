@@ -12,7 +12,7 @@ do_extrapolate = False
 do_analyze = False
 do_prune = False
 
-maxcores=3 # for unitary optimization
+maxcores=9 # for unitary population optimization
 
 # Standard Hamiltonian and Lindblad model setup
 Ne = [3]			# Number of essential levels
@@ -95,7 +95,7 @@ if do_datageneration:
 # Set the UDE model: List of learnable terms, containing "hamiltonian" and/or "lindblad" and/or "transferLinear"
 UDEmodel = "transferLinear"
 
-maxcores = 1 # Note: currently, training only works in serial mode
+#maxcores = 1 # Note: currently, training only works in serial mode
 
 # Set the training time domain
 T_train = T	  
@@ -142,7 +142,7 @@ if do_training:
 	print("\nStarting UDE training for UDE model = ", UDEmodel, " initial_params: ", learnparams_identity, "...")
 
 	# Start training, use the unperturbed control parameters in pcof_opt
-	quandary2.training(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=learnparams_identity, maxcores=maxcores) # maxcores defaults to 75?
+	quandary2.training(pcof0=pcof_opt, trainingdatadir=trainingdatadir, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=learnparams_identity, maxcores=maxcores)
 
 	filename = UDEdatadir + "/params.dat"
 	learnparams_opt = np.loadtxt(filename)

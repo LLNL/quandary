@@ -293,14 +293,14 @@ void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_s
   }
 }
 
-void Learning::addToLoss(double time, Vec x, int pulse_num, int init_num){
+void Learning::addToLoss(double time, Vec x, int ipulse_global, int iinit_global){
   // Variable 'x' holds the simulated state at t=time
   current_err = 0.0;
   if (dim_rho <= 0) return;
 
   // If data point exists at this time, compute frobenius norm (x-xdata)
   // NOTE: need to pass in the initial condition
-  Vec xdata = data->getData(time, pulse_num, init_num);
+  Vec xdata = data->getData(time, ipulse_global, iinit_global);
 
   // Variable 'xdata' holds the data at t=time
   if (xdata != NULL) {
@@ -313,7 +313,7 @@ void Learning::addToLoss(double time, Vec x, int pulse_num, int init_num){
       double norm; 
       VecNorm(aux2, NORM_2, &norm);
       current_err = norm;
-      loss_integral += loss_scaling_factor*0.5*norm*norm / (data->getNData()-1);
+      loss_integral += loss_scaling_factor*0.5*norm*norm / (data->getNTime()-1);
 
     } else { // data consists of population values 
 
@@ -343,7 +343,7 @@ void Learning::addToLoss(double time, Vec x, int pulse_num, int init_num){
           norm2 += SQR(pop[q] - xdata_ptr[q]);
         }
         current_err = norm2;
-        loss_integral += loss_scaling_factor*0.5*norm2 / (data->getNData()-1);
+        loss_integral += loss_scaling_factor*0.5*norm2 / (data->getNTime()-1);
         VecRestoreArrayRead(xdata, &xdata_ptr);
 
         // std::cout << "loss_integral: " << loss_integral << std::endl;
@@ -353,20 +353,19 @@ void Learning::addToLoss(double time, Vec x, int pulse_num, int init_num){
   }
 }
 
-// ************************ addToLoss_diff ******************* 
-void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num, int init_num, double Jbar_loss){
+void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int ipulse_global, int iinit_global, double Jbar_loss){
 
   if (dim_rho <= 0) return;
 
-  Vec xdata = data->getData(time, pulse_num, init_num);
+  Vec xdata = data->getData(time, ipulse_global, iinit_global);
   if (xdata != NULL) {
     if (data->isDensityData()) {
       // get the population from the density matrix in 'x'
       // printf("loss_DIFF at time %1.8f \n", time);
       // VecView(xprimal,NULL);
       // NOTE: VecAXPY. Computes y = alpha x + y. Usage: VecAXPY(Vec y,PetscScalar alpha,Vec x) 
-      VecAXPY(xbar, Jbar_loss  * loss_scaling_factor / (data->getNData()-1), xprimal);
-      VecAXPY(xbar, -Jbar_loss * loss_scaling_factor / (data->getNData()-1), xdata);
+      VecAXPY(xbar, Jbar_loss  * loss_scaling_factor / (data->getNTime()-1), xprimal);
+      VecAXPY(xbar, -Jbar_loss * loss_scaling_factor / (data->getNTime()-1), xdata);
     }
     else{
       // tmp
@@ -385,7 +384,7 @@ void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int pulse_num,
 
         std::vector<double> pop;
         oscil_vec[ioscil]->population(xprimal, pop);
-        double n2_bar = Jbar_loss * loss_scaling_factor / (data->getNData()-1);
+        double n2_bar = Jbar_loss * loss_scaling_factor / (data->getNTime()-1);
 
         for (int q=0; q < data->getDim_hs(); q++){
           pop_bar[q] = n2_bar * (pop[q] - xdata_p[q]);

@@ -6,24 +6,27 @@ Data::Data() {
   npulses = 1;
   npulses_local = 1;
   ninit = 1;
+  ninit_local = 1;
   tstart = 0.0;
   tstop = 0.0;
 	dt = 0.0;
   densityData = false;
 }
 
-Data::Data(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData_) {
+Data::Data(Config config, MPI_Comm comm_optim_, MPI_Comm comm_init_, int ninit_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData_) {
   // NOTE: lindbladtype_ is only used to calculate the variable dim. The variable densityData might be redundant
   nlevels = nlevels_; // nlevels[i] holds the total number of energy levels in subsystem 'i'
   comm_optim = comm_optim_;
+  comm_init = comm_init_;
   lindbladtype = lindbladtype_;
   densityData = densityData_;
+  ninit = ninit_;
 
   // This constructor is called after the "data_name" line has been parsed by the main program,
   // but before the derived class constructor, e.g., SyntheticQuandaryData::SyntheticQuandaryData()
   // Compute dimension of the full vectorized system
   dim = 1;
-  for (int i=0; i<nlevels.size(); i++){
+  for (size_t i=0; i<nlevels.size(); i++){
     dim *= nlevels[i];
   }
   dim_hs = dim;   // Dimension of the Hilbert space (N)
@@ -36,6 +39,9 @@ Data::Data(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_n
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
   MPI_Comm_rank(comm_optim, &mpirank_optim);
   MPI_Comm_size(comm_optim, &mpisize_optim);
+  MPI_Comm_rank(comm_init, &mpirank_init);
+  MPI_Comm_size(comm_init, &mpisize_init);
+  ninit_local = ninit / mpisize_init;
 
   /* Get some data configuration */
   tstop = config.GetDoubleParam("data_tstop", 1e+14, false);
@@ -55,7 +61,7 @@ Data::Data(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_n
   data_name.erase(data_name.begin()); // remove element [0] from the data_name vector
   // all remaining entries in data_name hold individual file names
   // now prepend the file names by the directory
-  for (int q=0; q<data_name.size(); q++){
+  for (size_t q=0; q<data_name.size(); q++){
     data_name[q] = data_folder + "/" + data_name[q];
   }
 
@@ -81,23 +87,31 @@ Data::Data(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_n
   }
  
   // TODO: account for the number of initial conditions in the parallel distribution 
-  assert(npulses*ninit % mpisize_optim == 0);
-  npulses_local = int(npulses / mpisize_optim); // TODO fix this for ninit > 1
+  // assert(npulses*ninit % mpisize_optim == 0);
+  npulses_local = int(npulses / mpisize_optim); 
+  // TODO not tested for ninit > 1
+  assert(npulses == 1); // TODO: Multiple pulses. not tested at this point. Try and fix it.
 
-  // Set outer dimension of the data to the number of control pulses. Inner dimension will be filled in the subclasses.
-  data.resize(npulses_local*ninit); // TODO: generalize to different numbers of initial conditions per pulse
+  // Set first two outer dimensions of the data to number of local control pulses and  initial conditions. Inner dimension will be filled in the subclasses.
+  data.resize(npulses_local); 
+  for (int i=0; i<npulses_local; i++) {
+    data[i].resize(ninit_local);
+  }
   controlparams.resize(npulses_local);
 }
 
 Data::~Data() {
-  for (int ipulse=0; ipulse<data.size(); ipulse++){
-    for (int j=0; j<data[ipulse].size(); j++){
-      VecDestroy(&(data[ipulse][j]));
+  for (size_t ipulse=0; ipulse<data.size(); ipulse++){
+    for (size_t iinit=0; iinit<data[ipulse].size(); iinit++){
+      for (size_t itime=0; itime<data[ipulse][iinit].size(); itime++){
+        VecDestroy(&(data[ipulse][iinit][itime]));
+      }
+      data[ipulse][iinit].clear();
     }
     data[ipulse].clear();
   }
   data.clear();
-  for (int i=0; i<controlparams.size(); i++) {
+  for (size_t i=0; i<controlparams.size(); i++) {
     controlparams[i].clear();
   }
   controlparams.clear();
@@ -117,29 +131,28 @@ double Data::suggestTimeStepSize(double dt_old){
   return dt_new;
 }
 
-Vec Data::getData(double time, int pulse_num, int init_num){
-  // init_num is a zero-based index
-  // NOTE: data is currently only distributed over the pulses FIX ME!
+Vec Data::getData(double time, int ipulse_global, int iinit_global){
   // Get local pulse number for this processor;
-  int pulse_num_local =  pulse_num % npulses_local;
+  int ipulse_local = ipulse_global % npulses_local;
+  int iinit_local = iinit_global % ninit_local;
   
   if (tstart <= time && time <= tstop) {  // if time is within the data domain
     double remainder = std::remainder(time - tstart, dt);
     if (abs(remainder) < 1e-10) {        // if data exists at this time
-      int dataID = round((time - tstart)/dt); // grid point index in time
-      return data[pulse_num_local + init_num][dataID]; 
+      int itime = round((time - tstart)/dt); // index in time
+      return data[ipulse_local][iinit_local][itime]; 
     } else return NULL;
   } else return NULL;
 }
 
 // TODO: Multiple oscillators!
-std::vector<double> Data::getControls(int pulse_num){
+std::vector<double> Data::getControls(int ipulse_global){
 
   // Get local pulse number for this processor;
-  int pulse_num_local =  pulse_num % npulses_local;
+  int ipulse_local =  ipulse_global % npulses_local;
 
-  if (controlparams.size()>pulse_num_local) {
-    return controlparams[pulse_num_local];
+  if (controlparams.size()>ipulse_local) {
+    return controlparams[ipulse_local];
   }
   else {
     std::vector<double> dummy;
@@ -148,11 +161,11 @@ std::vector<double> Data::getControls(int pulse_num){
 }
 
 
-void Data::writeExpectedEnergy(const char* filename, int pulse_num, int init_num, int ioscillator){
+void Data::writeExpectedEnergy(const char* filename, int ipulse_global, int iinit_global, int ioscillator){
   // NOTE: only possible to evaluate the expectedEnergy if the data holds density matrix data
   if (densityData){
     // Only the processor who owns this pulse trajectory should be writing the file, other procs exit here.
-    int proc = int(pulse_num / npulses_local);
+    int proc = int(ipulse_global / npulses_local);
     if (proc != mpirank_optim) return;
 
     /* Open file  */
@@ -160,10 +173,11 @@ void Data::writeExpectedEnergy(const char* filename, int pulse_num, int init_num
     file_c = fopen(filename, "w");
 
     /* Iterate over time points, compute expected energy and write to file. */
-    for (int i=0; i<getNData(); i++){
+    int ntime = data[0][0].size(); // number of time points in the data
+    for (int i=0; i<ntime; i++){
       double time = tstart + i*dt;
 
-      Vec x = getData(time, pulse_num, init_num);
+      Vec x = getData(time, ipulse_global, iinit_global);
       if (x != NULL) {
         double val = expectedEnergy(x, lindbladtype, nlevels, ioscillator);
         fprintf(file_c, "% 1.8f   % 1.14e   \n", time, val);
@@ -172,16 +186,14 @@ void Data::writeExpectedEnergy(const char* filename, int pulse_num, int init_num
     fclose(file_c);
     // printf("%d: File written: %s\n", mpirank_optim, filename);
   }
-  else
-    std::cout << "INFO: calling writeExpectedEnergy() without density matrix data" << std::endl;
 }
 
 
-void Data::writeFullstate(const char* filename_re, const char* filename_im, int pulse_num, int init_num){
+void Data::writeFullstate(const char* filename_re, const char* filename_im, int ipulse_global, int iinit_global){
   // NOTE: only possible to save the full state if the data holds density matrix data
   if (densityData){
     // Only the processor who owns this pulse trajectory should be writing the file, other procs exit here.
-    int proc = int(pulse_num / npulses_local);
+    int proc = int(ipulse_global/ npulses_local);
     if (proc != mpirank_optim) return;
 
     /* Open files  */
@@ -190,10 +202,11 @@ void Data::writeFullstate(const char* filename_re, const char* filename_im, int 
     file_im = fopen(filename_im, "w");
 
     /* Iterate over time points ane write vectorized state to file. */
-    for (int i=0; i<getNData(); i++){
+    int ntime = data[0][0].size(); // number of time points in the data
+    for (int i=0; i<ntime; i++){
       double time = tstart + i*dt;
 
-      Vec x = getData(time, pulse_num, init_num);
+      Vec x = getData(time, ipulse_global, iinit_global);
       if (x != NULL) {
 
         // write time in first column
@@ -219,53 +232,39 @@ void Data::writeFullstate(const char* filename_re, const char* filename_im, int 
     // printf("%d: File written: %s\n", mpirank_optim, filename_re);
     // printf("%d: File written: %s\n", mpirank_optim, filename_im);
   }
-  else
-    std::cout << "INFO: calling writeFullstate() without density matrix data" << std::endl;
 }
 
-// **************************** SyntheticRhoQuandaryData() *******************************
-SyntheticRhoQuandaryData::SyntheticRhoQuandaryData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_, densityData) {
+SyntheticRhoQuandaryData::SyntheticRhoQuandaryData(Config config, MPI_Comm comm_optim_, MPI_Comm comm_init_, int ninit_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, comm_init_, ninit_, data_name, nlevels_, lindbladtype_, densityData) {
 
   /* Load training data */
-  // std::cout << "In SyntheticRhoQuandaryData constructor:" << std::endl;
-
   loadData(data_name, &tstart, &tstop, &dt);
 }
 
-// ***************************** ~SyntheticRhoQuandaryData() ******************************
 SyntheticRhoQuandaryData::~SyntheticRhoQuandaryData() {}
 
-// ***************************** SyntheticRhoQuandaryData::loadData() ******************************
 void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, double* tstart, double* tstop, double* dt){
   // NOTE: This function is specialized to reading Re/Im density matrix data
-  // std::cout << "In SyntheticRhoQuandaryData::loadData npulses*ninit*2 = " << npulses*ninit*2 << " data_name.size() = " << data_name.size() << std::endl;
-  if ((npulses*ninit*2 != data_name.size())){
-    std::cout << "WARNING: npulses*ninit*2 = " << npulses*ninit*2 << " != data_name.size() = " << data_name.size() << std::endl;
-  }
-
-  // std::cout << "In SyntheticRho, loadData, data_name:" << std::endl;
-  // for (int q=0; q<data_name.size(); q++){
-  //   std::cout << data_name[q] << std::endl;
+  // if ((npulses*ninit*2 != data_name.size())){
+  //   std::cout << "WARNING: npulses*ninit*2 = " << npulses*ninit*2 << " != data_name.size() = " << data_name.size() << std::endl;
   // }
 
   // Iterate over local pulses
   for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
-    int ipulse = mpirank_optim* npulses_local + ipulse_local;
-    // printf("In SyntheticRho, loadData, ipulse = %d, Loading from name %s\n", ipulse, data_name[ipulse*2+0].c_str());
+    int ipulse_global = mpirank_optim* npulses_local + ipulse_local;
 
     /* Extract control amplitudes from file name (searching for "p" and "q")*/
-    std::size_t found_p = data_name[ipulse*2+0].find("ctrlP");
-    std::size_t found_q = data_name[ipulse*2+0].find("ctrlQ");
+    std::size_t found_p = data_name[ipulse_global*2+0].find("ctrlP");
+    std::size_t found_q = data_name[ipulse_global*2+0].find("ctrlQ");
 
     int strlength_p = 5;
     int strlength_q = 5;
     // If controls are given, load them, otherwise leave controlparams[ipulse] empty
     controlparams[ipulse_local].clear();
     if (found_p != std::string::npos && found_q != std::string::npos ){
-      if (data_name[ipulse*2+0][found_p+5] == '-') strlength_p=6;
-      if (data_name[ipulse*2+0][found_q+5] == '-') strlength_q=6;
-      double p_Volt = std::stod(data_name[ipulse*2+0].substr(found_p+5, strlength_p));
-      double q_Volt = std::stod(data_name[ipulse*2+0].substr(found_q+5, strlength_q));
+      if (data_name[ipulse_global*2+0][found_p+5] == '-') strlength_p=6;
+      if (data_name[ipulse_global*2+0][found_q+5] == '-') strlength_q=6;
+      double p_Volt = std::stod(data_name[ipulse_global*2+0].substr(found_p+5, strlength_p));
+      double q_Volt = std::stod(data_name[ipulse_global*2+0].substr(found_q+5, strlength_q));
       double conversion_factor = 1.0;  // conversion factor: Volt to GHz
       double p_GHz = p_Volt * conversion_factor;
       double q_GHz = q_Volt * conversion_factor;
@@ -274,23 +273,23 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
       controlparams[ipulse_local].push_back(q_GHz);
     }
 
-    // Open Re/Im density matrix files 
-    for (int iinit=0; iinit< ninit; iinit++){
-      int base_idx = ipulse*ninit + iinit;
-      // printf("iinit for-loop, iinit = %d, base_idx = %d\n", iinit, base_idx);
+    // Iterate over local initial conditions 
+    for (int iinit_local=0; iinit_local< ninit_local; iinit_local++){
+      int iinit_global = mpirank_init * ninit_local + iinit_local;
 
+      int data_name_idx_global = ipulse_global*ninit + iinit_global;
       std::ifstream infile_re;
       std::ifstream infile_im;
-      infile_re.open(data_name[base_idx*2 + 0], std::ifstream::in);
-      infile_im.open(data_name[base_idx*2 + 1], std::ifstream::in);
+      infile_re.open(data_name[data_name_idx_global*2 + 0], std::ifstream::in);
+      infile_im.open(data_name[data_name_idx_global*2 + 1], std::ifstream::in);
       if(infile_re.fail() ) {
-          std::cout << "\n " << mpirank_optim << ": ERROR loading learning data file " << data_name[base_idx*2 + 0] << std::endl;
+          std::cout << "\n " << mpirank_world<< ": ERROR loading learning data file " << data_name[data_name_idx_global*2 + 0] << std::endl;
           exit(1);
       } else if (infile_im.fail() ) {// checks to see if file opended 
-          std::cout << "\n "<< mpirank_optim << ": ERROR loading learning data file " << data_name[base_idx*2 + 1] << std::endl;
+          std::cout << "\n "<< mpirank_world<< ": ERROR loading learning data file " << data_name[data_name_idx_global*2 + 1] << std::endl;
           exit(1);
       } else {
-        std::cout<< "rank = " << mpirank_optim << ": Loading synthetic data from " << data_name[base_idx*2 + 0] << ", " << data_name[base_idx*2 + 1] << std::endl;
+        std::cout<< "rank = " << mpirank_world<< ": Loading synthetic data from " << data_name[data_name_idx_global*2 + 0] << ", " << data_name[data_name_idx_global*2 + 1] << std::endl;
       }
 
       // Iterate over each line in the files
@@ -328,7 +327,7 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
         VecAssemblyEnd(state);
 
         // Store the state
-        data[base_idx].push_back(state);  // TODO: Distribute over the initial conditions too
+        data[ipulse_local][iinit_local].push_back(state);  
         count+=1;
         time_prev = time_re;
       }
@@ -336,9 +335,6 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
       /* Update the final time stamp */
       *tstop = std::min(time_prev, *tstop);
 
-      // tmp
-      // std::cout << "Closing files " << data_name[base_idx*2 + 0] << " and "<< data_name[base_idx*2 + 1] << std::endl;
-      
       // Close files
       infile_re.close();
       infile_im.close();
@@ -350,9 +346,9 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
   // printf("\nDATA POINTS:\n");
   // for (int ipulse=0; ipulse<data.size(); ipulse++){
   //   printf("Control amplutidue: %f %f\n", controlparams[ipulse][0], controlparams[ipulse][1]);
-  //   for (int i=0; i<data[ipulse].size(); i++){
-  //     VecView(data[ipulse][i], NULL);
-  //   }
+  //     for (int j=0; j<data[ipulse][i].size(); i++){
+  //       VecView(data[ipulse][i][j], NULL);
+  //      }
   //   printf("\n");
   // }
   // printf("END DATA POINTS.\n\n");
@@ -360,48 +356,38 @@ void SyntheticRhoQuandaryData::loadData(std::vector<std::string>& data_name, dou
   if (mpirank_world == 0) printf("-> Data loaded sucessfully. Data dt = %f, tstop = %f\n", *dt, *tstop);
 }
 
-// **************************** SyntheticPopQuandaryData() *******************************
-SyntheticPopQuandaryData::SyntheticPopQuandaryData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_, densityData) {
+SyntheticPopQuandaryData::SyntheticPopQuandaryData(Config config, MPI_Comm comm_optim_, MPI_Comm comm_init_, int ninit_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, comm_init_, ninit_, data_name, nlevels_, lindbladtype_, densityData) {
 
   /* Load training data */
-  // std::cout << "In SyntheticPopQuandaryData constructor:" << std::endl;
-  // std::cout << "data_name:" << std::endl;
-  // for (int q=0; q<data_name.size(); q++){
-  //   std::cout << data_name[q] << std::endl;
-  // }
   loadPopData(data_name, &tstart, &tstop, &dt);
 }
 
-// ***************************** ~SyntheticRhoQuandaryData() ******************************
 SyntheticPopQuandaryData::~SyntheticPopQuandaryData() {}
 
 // ***************************** SyntheticRhoQuandaryData::loadPopData() ******************************
 void SyntheticPopQuandaryData::loadPopData(std::vector<std::string>& data_name, double* tstart, double* tstop, double* dt){
   // NOTE: This function is specialized to reading population data
-  // std::cout << "In SyntheticPopQuandaryData::loadData npulses*ninit = " << npulses*ninit << " data_name.size() = " << data_name.size() << std::endl;
   if ((npulses*ninit != data_name.size())){
     std::cout << "WARNING: npulses*ninit = " << npulses*ninit << " != data_name.size() = " << data_name.size() << std::endl;
   }
-  // std::cout << "tstart= " << *tstart << " tstop= " << *tstop << std::endl;
-
+  
   // Iterate over local pulses
   for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
-    int ipulse = mpirank_optim* npulses_local + ipulse_local;
-    // printf("Loading from name %s\n", data_name[ipulse*2+0].c_str());
+    int ipulse_global = mpirank_optim* npulses_local + ipulse_local;
 
     /* Extract control amplitudes from file name (searching for "p" and "q")*/
-    std::size_t found_p = data_name[ipulse*2+0].find("ctrlP");
-    std::size_t found_q = data_name[ipulse*2+0].find("ctrlQ");
+    std::size_t found_p = data_name[ipulse_global*2+0].find("ctrlP");
+    std::size_t found_q = data_name[ipulse_global*2+0].find("ctrlQ");
 
     int strlength_p = 5;
     int strlength_q = 5;
     // If controls are given, load them, otherwise leave controlparams[ipulse] empty
     controlparams[ipulse_local].clear();
     if (found_p != std::string::npos && found_q != std::string::npos ){
-      if (data_name[ipulse*2+0][found_p+5] == '-') strlength_p=6;
-      if (data_name[ipulse*2+0][found_q+5] == '-') strlength_q=6;
-      double p_Volt = std::stod(data_name[ipulse*2+0].substr(found_p+5, strlength_p));
-      double q_Volt = std::stod(data_name[ipulse*2+0].substr(found_q+5, strlength_q));
+      if (data_name[ipulse_global*2+0][found_p+5] == '-') strlength_p=6;
+      if (data_name[ipulse_global*2+0][found_q+5] == '-') strlength_q=6;
+      double p_Volt = std::stod(data_name[ipulse_global*2+0].substr(found_p+5, strlength_p));
+      double q_Volt = std::stod(data_name[ipulse_global*2+0].substr(found_q+5, strlength_q));
       double conversion_factor = 1.0;  // conversion factor: Volt to GHz
       double p_GHz = p_Volt * conversion_factor;
       double q_GHz = q_Volt * conversion_factor;
@@ -410,16 +396,19 @@ void SyntheticPopQuandaryData::loadPopData(std::vector<std::string>& data_name, 
       controlparams[ipulse_local].push_back(q_GHz);
     }
 
-    // Open population data files 
-    for (int iinit=0; iinit< ninit; iinit++){
-      int base_idx = ipulse*ninit + iinit;
+    // Iterate over local initial conditions
+    for (int iinit_local =0; iinit_local < ninit_local; iinit_local++){
+      int iinit_global = mpirank_init * ninit_local + iinit_local;
+
+      // Open the data file for this initial condition and this pulse number
+      int data_name_idx_global = ipulse_global*ninit + iinit_global;
       std::ifstream infile_pop;
-      infile_pop.open(data_name[base_idx], std::ifstream::in);
+      infile_pop.open(data_name[data_name_idx_global], std::ifstream::in);
       if(infile_pop.fail() ) {
-          std::cout << "\n " << mpirank_optim << ": ERROR loading learning data file " << data_name[base_idx] << std::endl;
+          std::cout << "\n " << mpirank_world << ": ERROR loading learning data file " << data_name[data_name_idx_global] << std::endl;
           exit(1);
       } else {
-        std::cout<< "rank = " << mpirank_optim << ": Loading synthetic population data from " << data_name[base_idx] << std::endl;
+        std::cout<< "rank = " << mpirank_world << ": Loading synthetic population data from " << data_name[data_name_idx_global] << std::endl;
       }
 
       // Iterate over each line in the files
@@ -464,7 +453,7 @@ void SyntheticPopQuandaryData::loadPopData(std::vector<std::string>& data_name, 
         VecAssemblyEnd(state);
 
         // Store the state
-        data[base_idx].push_back(state);
+        data[ipulse_local][iinit_local].push_back(state);
         count+=1;
         time_prev = time_pop;
       }
@@ -472,9 +461,6 @@ void SyntheticPopQuandaryData::loadPopData(std::vector<std::string>& data_name, 
       /* Update the final time stamp */
       *tstop = std::min(time_prev, *tstop);
 
-      // tmp
-      // std::cout << "Closing files " << data_name[base_idx] << std::endl;
-      
       // Close files
       infile_pop.close();            
     }
@@ -485,7 +471,9 @@ void SyntheticPopQuandaryData::loadPopData(std::vector<std::string>& data_name, 
   // for (int ipulse=0; ipulse<data.size(); ipulse++){
   //   printf("Control amplutidue: %f %f\n", controlparams[ipulse][0], controlparams[ipulse][1]);
   //   for (int i=0; i<data[ipulse].size(); i++){
-  //     VecView(data[ipulse][i], NULL);
+  //     for (int j=0; j<data[ipulse][i].size(); i++){
+  //       VecView(data[ipulse][i][j], NULL);
+  //      }
   //   }
   //   printf("\n");
   // }
@@ -494,7 +482,7 @@ void SyntheticPopQuandaryData::loadPopData(std::vector<std::string>& data_name, 
   if (mpirank_world == 0) printf("-> Data loaded sucessfully. Data dt = %f, tstop = %f\n", *dt, *tstop);
 }
 
-Tant2levelData::Tant2levelData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_, densityData){
+Tant2levelData::Tant2levelData(Config config, MPI_Comm comm_optim_, MPI_Comm comm_init_, int ninit_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, comm_init_, ninit_, data_name, nlevels_, lindbladtype_, densityData){
 
   // Only for 2level data. 
   assert(dim == 4);
@@ -505,7 +493,6 @@ Tant2levelData::Tant2levelData(Config config, MPI_Comm comm_optim_, std::vector<
     corrected = true;
     data_name.erase(data_name.begin());
   }
-
 
   /* Load training data, this also sets first and last time stamp as well as data sampling step size */
   loadData(data_name, &tstart, &tstop, &dt);
@@ -545,16 +532,16 @@ void Tant2levelData::loadData(std::vector<std::string>& data_name, double* tstar
 
   // Iterate over local pulses
   for (int ipulse_local = 0; ipulse_local < npulses_local; ipulse_local++){
-    int ipulse = mpirank_optim* npulses_local + ipulse_local;
+    int ipulse_global = mpirank_optim* npulses_local + ipulse_local;
 
     // Open the respective file 
     std::ifstream infile;
-    infile.open(data_name[ipulse], std::ifstream::in);
+    infile.open(data_name[ipulse_global], std::ifstream::in);
     if(infile.fail() ) {// checks to see if file opended 
-        std::cout << "\n ERROR loading learning data file " << data_name[ipulse] << std::endl;
+        std::cout << "\n ERROR loading learning data file " << data_name[ipulse_global] << std::endl;
         exit(1);
     } else {
-      std::cout<< mpirank_optim << ": Loading Tant Device data from " << data_name[ipulse] << std::endl;
+      std::cout<< mpirank_world << ": Loading Tant Device data from " << data_name[ipulse_global] << std::endl;
     }
 
     // Iterate over lines
@@ -579,7 +566,7 @@ void Tant2levelData::loadData(std::vector<std::string>& data_name, double* tstar
 
       infile >> time;      // 2nd column;
       infile >> pulse_num; // 3th column;
-      assert(pulse_num == ipulse);
+      assert(pulse_num == ipulse_global);
 
       // Figure out first time point and sampling time-step
       if (count == 0) *tstart = time;
@@ -636,7 +623,8 @@ void Tant2levelData::loadData(std::vector<std::string>& data_name, double* tstar
       VecAssemblyEnd(state);
 
       // Store the state and update counters
-      data[ipulse_local].push_back(state);
+      // Note: only one initial condition per pulse. 
+      data[ipulse_local][0].push_back(state);
       count+=1;
       time_prev = time;
 
@@ -656,7 +644,7 @@ void Tant2levelData::loadData(std::vector<std::string>& data_name, double* tstar
   }
 }
 
-Tant3levelData::Tant3levelData(Config config, MPI_Comm comm_optim_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, data_name, nlevels_, lindbladtype_, densityData) {
+Tant3levelData::Tant3levelData(Config config, MPI_Comm comm_optim_, MPI_Comm comm_init_, int ninit_, std::vector<std::string>& data_name, std::vector<int> nlevels_, LindbladType lindbladtype_, bool densityData) : Data(config, comm_optim_, comm_init_, ninit_, data_name, nlevels_, lindbladtype_, densityData) {
   // Only for 3level data. 
   assert(dim == 9);
 
@@ -859,7 +847,8 @@ void Tant3levelData::loadData(std::vector<std::string>& data_name, double* tstar
       MatDestroy(&rho_im);
 
       // Store the state
-      data[ipulse_local].push_back(state);  // Here, only one pulse
+      // Note: only one initial condition per pulse.
+      data[ipulse_local][0].push_back(state);  // Here, only one pulse
       count+=1;
       time_prev = time;
 
