@@ -159,8 +159,8 @@ int main(int argc,char **argv)
   int np_petsc = 1;
   // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
   int np_init = std::min(ninit, mpisize_world); 
-  // Number of cores for different pulses: HARDCODE to 1 (serial) for now. 
-  int np_optim = 1;
+  // Number of cores for different pulses. 
+  int np_optim = mpisize_world / (np_init * np_petsc);
 
   /* Sanity check for communicator sizes */ 
   if (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) {
@@ -252,34 +252,7 @@ int main(int argc,char **argv)
     /* Load trajectory data only if operating on the Loss (if not x_is_control) */
     Data* data;
     if (!x_is_control){
-      std::vector<std::string> data_name;
-      config.GetVecStrParam("data_name", data_name, "data");
-      // AP: trying to understand the logic
-      // std::cout << "In main, UDEmodel_str[0] = " << UDEmodel_str[0] << " reading the 'data_name' line: " << std::endl;
-      // for (int q=0; q< data_name.size(); q++)
-      //   std::cout << data_name[q] << std::endl;
-      // std::cout << "end of 'data_name'" << std::endl;
-      // AP: end
-      std::string identifyer = data_name[0]; // Copy element [0] of the data_name vector 
-      data_name.erase(data_name.begin()); // remove element [0] from the data_name vector
-
-      if (identifyer.compare("syntheticRho") == 0) {  // density matrices
-        bool densityData = true;
-        data = new SyntheticRhoQuandaryData(config, comm_optim, comm_init, ninit, data_name, nlevels, lindbladtype, densityData);
-      } else if (identifyer.compare("syntheticPop") == 0) { // populations
-        bool densityData = false;
-        data = new SyntheticPopQuandaryData(config, comm_optim, comm_init, ninit, data_name, nlevels, lindbladtype, densityData);
-      } else if (identifyer.compare("Tant2level") == 0) { 
-        bool densityData = true;
-        data = new Tant2levelData(config, comm_optim, comm_init, ninit, data_name, nlevels, lindbladtype, densityData);
-      } else if (identifyer.compare("Tant3level") == 0) {
-        bool densityData = true;
-        data = new Tant3levelData(config, comm_optim, comm_init, ninit, data_name, nlevels, lindbladtype, densityData);
-      }
-      else {
-        printf("Wrong setting for loading data. Needs prefix 'syntheticRho', or 'syntheticPop', or 'Tant2level', or 'Tant3level'.\n");
-        exit(1);
-      }
+      data = new Data(config, comm_optim, comm_init, ninit, nlevels, lindbladtype);
 
       /* Update the time-integration step-size such that it is an integer divisor of the data sampling size  */
       double dt_tmp = dt;

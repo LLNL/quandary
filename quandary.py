@@ -378,14 +378,14 @@ class Quandary:
 
         return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, mpi_exec=mpi_exec, batchargs=batchargs)
     
-    def training(self, *, trainingdatadir="./", trainingdata_corrected=False, UDEmodel="none", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[], T_train=1e13):
+    def training(self, *, trainingdata="./", trainingdata_corrected=False, UDEmodel="none", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[], T_train=1e13):
 
-        return self.__run(pcof0=pcof0, runtype="UDEoptimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir,trainingdata_corrected=trainingdata_corrected,  UDEmodel=UDEmodel,  learn_params=learn_params, T_train=T_train)
+        return self.__run(pcof0=pcof0, runtype="UDEoptimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdata=trainingdata,trainingdata_corrected=trainingdata_corrected,  UDEmodel=UDEmodel,  learn_params=learn_params, T_train=T_train)
 
 
-    def UDEsimulate(self, *, trainingdatadir="./", trainingdata_corrected=False, UDEmodel="none", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[], T_train=1e13):
+    def UDEsimulate(self, *, trainingdata="./", trainingdata_corrected=False, UDEmodel="none", pcof0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], learn_params=[], T_train=1e13):
 
-        return self.__run(pcof0=pcof0, runtype="UDEsimulation", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdatadir=trainingdatadir,trainingdata_corrected=trainingdata_corrected, UDEmodel=UDEmodel,  learn_params=learn_params, T_train=T_train)
+        return self.__run(pcof0=pcof0, runtype="UDEsimulation", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, trainingdata=trainingdata,trainingdata_corrected=trainingdata_corrected, UDEmodel=UDEmodel,  learn_params=learn_params, T_train=T_train)
 
 
     def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", mpi_exec="mpirun -np ", cygwinbash=""):
@@ -483,7 +483,7 @@ class Quandary:
         return pcof0
 
 
-    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], trainingdatadir="", trainingdata_corrected=False,UDEmodel="none", learn_params=[], T_train=1e13, mpi_exec="mpirun -np "):
+    def __run(self, *, pcof0=[], runtype="optimization", overwrite_popt=False, maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", batchargs=[], trainingdata="", trainingdata_corrected=False,UDEmodel="none", learn_params=[], T_train=1e13, mpi_exec="mpirun -np "):
         """
         Internal helper function to launch processes to execute the C++ Quandary code:
           1. Writes quandary config files to file system
@@ -496,7 +496,7 @@ class Quandary:
 
         # Create quandary data directory and dump configuration file
         os.makedirs(datadir, exist_ok=True)
-        config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir, trainingdatadir=trainingdatadir,trainingdata_corrected=trainingdata_corrected,UDEmodel=UDEmodel, learn_params=learn_params, T_train=T_train)
+        config_filename = self.__dump(pcof0=pcof0, runtype=runtype, datadir=datadir, trainingdata=trainingdata,trainingdata_corrected=trainingdata_corrected,UDEmodel=UDEmodel, learn_params=learn_params, T_train=T_train)
 
         # Set default number of cores to the number of initial conditions, unless otherwise specified. Make sure ncores is an integer divisible of ninit.
         ncores = self._ninit
@@ -507,10 +507,11 @@ class Quandary:
                 if i <= ncores:
                     ncores = i
                     break
-        if len(trainingdatadir) > 0: # If UDE training: ncores=npulses
-            ncores = len(trainingdatadir) 
-            if maxcores > -1:
-                ncores = min(ncores, maxcores)
+        # If UDE training: to parallelize over pulses
+        if len(trainingdata)>1:
+            ncores = ncores * len(trainingdata)
+        if maxcores > -1:
+            ncores = min(ncores, maxcores)
 
         # Execute subprocess to run Quandary
         err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash, mpi_exec=mpi_exec, batchargs=batchargs)
@@ -518,8 +519,8 @@ class Quandary:
             print("Quandary data dir: ", datadir, "\n")
 
         # Get results from quandary output files
-        if not err and len(trainingdatadir)<=1: # can't read for multiple pulses. TODO
-            time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = self.get_results(datadir=datadir)
+        if not err and len(trainingdata)<=1: # can't read for multiple pulses. TODO
+            time, pt, qt, uT, expectedEnergy, population, popt, infidelity, optim_hist = self.get_results(datadir=datadir, ignore_failure=True)
             if (overwrite_popt):
                 self.popt = popt[:]
             self.optim_hist = optim_hist
@@ -541,13 +542,10 @@ class Quandary:
         return time, pt, qt, infidelity, expectedEnergy, population
 
 
-    def __dump(self, *, pcof0=[], runtype="simulation", datadir="./run_dir", trainingdatadir="", trainingdata_corrected=False,UDEmodel="none", learn_params=[], T_train=1e13):
+    def __dump(self, *, pcof0=[], runtype="simulation", datadir="./run_dir", trainingdata="", trainingdata_corrected=False,UDEmodel="none", learn_params=[], T_train=1e13):
         """
         Internal helper function that dumps all configuration options (and target gate, pcof0, Hamiltonian operators) into files for Quandary C++ runs. Returns the name of the configuration file needed for executing Quandary. 
         """
-        print("python **************************")
-        print("Entering __dump(), runtype = ", runtype)
-        print("")
         # If given, write the target gate to file
         if len(self.targetgate) > 0:
             gate_vectorized = np.concatenate((np.real(self.targetgate).ravel(order='F'), np.imag(self.targetgate).ravel(order='F')))
@@ -687,54 +685,36 @@ class Quandary:
             mystring += "collapse_type = none\n"
 
         # Stuff for Training
-        if len(trainingdatadir) > 0:
-            # Figure out if multiple directories are passed (multiple pulses )
-            # Also need to consider several initial conditions per pulse!
-            # trying to figure out the logic
-            print("In __dump(), trainingdatadir = ", trainingdatadir, " initialcondition = ", self.initialcondition)
-            if isinstance(trainingdatadir, str): # One pulse directory only
-                print("__dump(): special case data_npulses = 1")
-                mystring += "data_npulses = 1\n"
-                mydir = [x.strip() for x in trainingdatadir.split(',')]
-                mystring += "data_name = " + mydir[0] +", "
-                if mydir[0] == "syntheticRho":
-                    mystring += mydir[1]+ ", " + "rho_Re.iinit0000.dat, rho_Im.iinit0000.dat\n"
+        if len(trainingdata) > 0:
+            # THIS ASSUMES THAT trainingdata is a list of strings, one string for each pulse. Each elements is assumed to be of the form 'identifier, directory, filename0, filename1, ...'
+
+            # if a string  was passed (e.g. for only one pulse), make it a list of one element
+            if isinstance(trainingdata, str): 
+                trainingdata = [trainingdata] 
+
+            # Write number of pulses: the length of trainingdata
+            mystring += "data_npulses = " + str(len(trainingdata)) + "\n"
+
+            # Iterate over pulses (elements in trainingdata)
+            for ipulse, datastr in enumerate(trainingdata):
+                # First pulse gets config option "data_name", other pulses "data_name1", "data_name2", etc.
+                if ipulse == 0:
+                    mystring += "data_name = " 
                 else:
-                    if trainingdata_corrected:
-                        mystring += "corrected, " 
-                    mystring += mydir[1]+"\n"
-            else: # multiple pulses / initial conditions, received a list of trainingdatadirs
-                # Trying to figure out the logic
-                n_pulses = len(trainingdatadir)
-                print("__dump(): general case data_npulses = ", n_pulses)
-                
-                mystring += "data_npulses = " + str(len(trainingdatadir))+"\n"
-                # First element contains the data type specifyier:
-                mydir = [x.strip() for x in trainingdatadir[0].split(',')]
-                mystring += "data_name = " + mydir[0] + ", " + mydir[1] + ", "
-                if mydir[0] == "syntheticRho":
-                    # how many initial conditions are there?
-                    if self.initialcondition == "basis":
-                        Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
-                        bdim = np.prod(Ntot) if not self._lindblad_solver else np.prod(Ntot)**2
-                        print("__dump(): case 'basis', number of elements: ", bdim)
-                        for q in range(bdim):
-                            mystring += "rho_Re.iinit%04d.dat, " % q
-                            mystring += "rho_Im.iinit%04d.dat, " % q
-                        mystring += "\n"
-                    else:
-                        print("__dump() default case, rho_Re and rho_Im for one initial condition")
-                        mystring += "rho_Re.iinit0000.dat, rho_Im.iinit0000.dat\n"
-                else:
-                    if trainingdata_corrected:
-                        mystring += "corrected, " 
-                    mystring += mydir[1]+"\n"
-                # All other elements:
-                for i, mydiri in enumerate(trainingdatadir[1:]):
-                    if mydir[0] == "synthetic":
-                        mystring += "data_name"+str(i+1)+ " = " + mydiri+"/rho_Re.iinit0000.dat, " + mydiri+"/rho_Im.iinit0000.dat\n"
-                    else:
-                        mystring += "data_name"+str(i+1)+ " = " + mydiri+"\n"
+                    mystring += "data_name" + str(ipulse) + " = "
+                # Split the string into identifier, directory, and filenames
+                datastr_strip = datastr.strip().split(',') 
+                # Write identifier and directory name
+                mystring += datastr_strip[0] + ", " + datastr_strip[1] + ", "
+                # Write all data filenames
+                for iname in datastr_strip[2:]:
+                        mystring += iname + ", "
+                mystring += "\n"
+
+            if trainingdata_corrected:
+                    print("Passing the 'corrected' identifier not available in the python interface. Todo.\n")
+                    stop
+
         mystring += "UDEmodel = " + UDEmodel + "\n"
         if len(learn_params_filename) > 0:
             mystring += "learnparams_initialization = file, " + str(learn_params_filename) + "\n"

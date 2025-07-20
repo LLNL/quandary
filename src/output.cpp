@@ -117,22 +117,24 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt,
   if ( mpirank_world == 0 ) { 
   
     char filename[255];
+    FILE *file, *file_c;
     PetscInt ndesign;
     VecGetSize(params, &ndesign);
 
-    /* Print current parameters to file */
-    FILE *file, *file_c;
-    snprintf(filename, 254, "%s/params.dat", datadir.c_str());
-    file = fopen(filename, "w");
+    /* Print current parameters to file (global vector. Only print for one of the pulses) */
+    if (pulseID <= 0){
+      snprintf(filename, 254, "%s/params.dat", datadir.c_str());
+      file = fopen(filename, "w");
 
-    const PetscScalar* params_ptr;
-    VecGetArrayRead(params, &params_ptr);
-    for (int i=0; i<ndesign; i++){
-      fprintf(file, "%1.14e\n", params_ptr[i]);
+      const PetscScalar* params_ptr;
+      VecGetArrayRead(params, &params_ptr);
+      for (int i=0; i<ndesign; i++){
+        fprintf(file, "%1.14e\n", params_ptr[i]);
+      }
+      fclose(file);
+      VecRestoreArrayRead(params, &params_ptr);
+      if (!quietmode) printf("File written: %s\n", filename);
     }
-    fclose(file);
-    VecRestoreArrayRead(params, &params_ptr);
-    if (!quietmode) printf("File written: %s\n", filename);
 
     /* Print control pulse for each oscillator to file */
     if (x_is_control) mastereq->setControlAmplitudes(params);
