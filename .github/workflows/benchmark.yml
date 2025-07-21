@@ -7,6 +7,11 @@ on:
         description: 'Base64 encoded benchmark data'
         required: true
 
+permissions:
+  checks: write
+  contents: write
+  pull-requests: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
