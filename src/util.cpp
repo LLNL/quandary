@@ -68,31 +68,24 @@ double getRampFactor_diff(const double time, const double tstart, const double t
     return dramp_dtstop;
 }
 
-int getIndexReal(const int i) {
-  return 2*i;
-}
 
-int getIndexImag(const int i) {
-  return 2*i + 1;
-}
-
-int getVecID(const int row, const int col, const int dim){
+PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim){
   return row + col * dim;  
 } 
 
 
-int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
 
-  int id = 0;
-  int index = i;
+  PetscInt id = 0;
+  PetscInt index = i;
   for (size_t iosc = 0; iosc<nlevels.size()-1; iosc++){
-    int postdim = 1;
-    int postdim_ess = 1;
+    PetscInt postdim = 1;
+    PetscInt postdim_ess = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
     }
-    int iblock = (int) index / postdim_ess;
+    PetscInt iblock = index / postdim_ess;
     index = index % postdim_ess;
     // move id to that block
     id += iblock * postdim;  
@@ -103,18 +96,18 @@ int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector
   return id;
 }
 
-int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
 
-  int id = 0;
-  int index = i;
+  PetscInt id = 0;
+  PetscInt index = i;
   for (size_t iosc = 0; iosc<nlevels.size(); iosc++){
-    int postdim = 1;
-    int postdim_ess = 1;
+    PetscInt postdim = 1;
+    PetscInt postdim_ess = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
     }
-    int iblock = (int) index / postdim;
+    PetscInt iblock = index / postdim;
     index = index % postdim;
     if (iblock >= nessential[iosc]) return -1; // this row/col belongs to a guard level, no mapping defined. 
     // move id to that block
@@ -169,7 +162,7 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
   int index = i;
   for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
 
-    int postdim = 1;
+    PetscInt postdim = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }
@@ -190,7 +183,7 @@ int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector
   int index = i;
   for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
 
-    int postdim = 1;
+    PetscInt postdim = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }
@@ -275,7 +268,7 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
             //printf("A: row = %d, col = %d, val = %f\n", i, cols[j], Avals[j]);
             
             // dimI rows. global row indices: i, i+dimI
-            for (int k=0; k<dimI; k++) {
+            for (PetscInt k=0; k<dimI; k++) {
                rowid = i*dimI + k;
                colid = cols[j]*dimI + k;
                insertval = Avals[j] * alpha;
@@ -358,7 +351,7 @@ PetscErrorCode MatIsAntiSymmetric(Mat A, PetscReal tol, PetscBool *flag) {
 
 PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   int ierr;
-  int i, j;
+  PetscInt i, j;
 
   /* TODO: Either make this work in Petsc-parallel, or add error exit if this runs in parallel. */
   
@@ -369,9 +362,9 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   Vec u, v;
   IS isu, isv;
 
-  int dimis = dim;
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 2, &isu); CHKERRQ(ierr);
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 1, 2, &isv); CHKERRQ(ierr);
+  PetscInt dimis = dim;
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 1, &isu); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, dimis, 1, &isv); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isu, &u); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isv, &v); CHKERRQ(ierr);
 
@@ -384,7 +377,7 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   double u_diff, v_diff;
   ierr = VecGetArrayRead(u, &u_array); CHKERRQ(ierr);
   ierr = VecGetArrayRead(v, &v_array); CHKERRQ(ierr);
-  int N = sqrt(dim);
+  PetscInt N = sqrt(dim);
   for (i=0; i<N; i++) {
     for (j=i; j<N; j++) {
       u_diff = u_array[i*N+j] - u_array[j*N+i];
@@ -411,16 +404,16 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
 PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
 
   int ierr;
-  int i;
+  PetscInt i;
 
   /* Get u and v from x */
   PetscInt dim;
   ierr = VecGetSize(x, &dim); CHKERRQ(ierr);
-  int dimis = dim/2;
+  PetscInt dimis = dim/2;
   Vec u, v;
   IS isu, isv;
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 2, &isu); CHKERRQ(ierr);
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 1, 2, &isv); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 1, &isu); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, dimis, 1, &isv); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isu, &u); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isv, &v); CHKERRQ(ierr);
 
@@ -436,7 +429,7 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
   double v_sum = 0.0;
   ierr = VecGetArrayRead(u, &u_array); CHKERRQ(ierr);
   ierr = VecGetArrayRead(v, &v_array); CHKERRQ(ierr);
-  int N = sqrt(dimis);
+  PetscInt N = sqrt(dimis);
   for (i=0; i<N; i++) {
     u_sum += u_array[i*N+i];
     v_sum += fabs(v_array[i*N+i]);

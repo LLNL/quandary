@@ -62,15 +62,19 @@ class Oscillator {
     std::vector<ControlBasis *> basisfunctions; ///< Control parameterization basis functions for each time segment
     std::vector<double> carrier_freq; ///< Frequencies of the carrier waves
 
-    int mpirank_petsc; ///< Rank of PETSc's communicator
     int mpirank_world; ///< Rank of MPI_COMM_WORLD
+    int mpirank_petsc; ///< Rank of PETSc's communicator
+    int mpisize_petsc; ///< Size of PETSc's communicator
+    PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
+    PetscInt ilow; ///< First index of the local sub vector u,v
+    PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
 
     bool control_enforceBC; ///< Flag to enforce boundary conditions on controls
 
   public:
     PiPulse pipulse; ///< Pi-pulse storage (dummy for compatibility)
-    int dim_preOsc; ///< Dimension of coupled subsystems preceding this oscillator
-    int dim_postOsc; ///< Dimension of coupled subsystems following this oscillator
+    PetscInt dim_preOsc; ///< Dimension of coupled subsystems preceding this oscillator
+    PetscInt dim_postOsc; ///< Dimension of coupled subsystems following this oscillator
 
     Oscillator();
 
@@ -92,7 +96,7 @@ class Oscillator {
      * @param lindbladtype_ Type of Lindblad operators
      * @param rand_engine Random number generator engine
      */
-    Oscillator(Config config, size_t id, std::vector<int> nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, std::vector<double> carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::default_random_engine rand_engine);
+    Oscillator(Config config, size_t id, const std::vector<int>& nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine);
 
     virtual ~Oscillator();
 

@@ -52,22 +52,6 @@ double getRampFactor(const double time, const double tstart, const double tstop,
 double getRampFactor_diff(const double time, const double tstart, const double tstop, const double tramp);
 
 /**
- * @brief Returns storage index for real part of a state vector element.
- *
- * @param i Element index
- * @return int Storage index (colocated: x[2*i])
- */
-int getIndexReal(const int i);
-
-/**
- * @brief Returns storage index for imaginary part of a state vector element.
- *
- * @param i Element index
- * @return int Storage index (colocated: x[2*i+1])
- */
-int getIndexImag(const int i);
-
-/**
  * @brief Returns vectorized index for matrix element (row,col).
  *
  * @param row Matrix row index
@@ -75,7 +59,7 @@ int getIndexImag(const int i);
  * @param dim Matrix dimension
  * @return int Vectorized index for element (row,col)
  */
-int getVecID(const int row, const int col, const int dim);
+PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim);
 
 /**
  * @brief Maps index from essential level system to full-dimension system.
@@ -85,7 +69,7 @@ int getVecID(const int row, const int col, const int dim);
  * @param nessential Number of essential levels per oscillator
  * @return int Corresponding index in full-dimension system
  */
-int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /**
  * @brief Maps index from full dimension to essential dimension system.
@@ -95,7 +79,7 @@ int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector
  * @param nessential Number of essential levels per oscillator
  * @return int Corresponding index in essential dimension system
  */
-int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /**
  * @brief Tests if density matrix index corresponds to an essential level.

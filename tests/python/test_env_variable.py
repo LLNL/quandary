@@ -121,15 +121,6 @@ def test_file_as_base_directory(quandary, request, tmp_path, clean_env_var, mpi_
 
 
 @pytest.fixture
-def mpi_exec(request):
-    """Get MPI executor from pytest option."""
-    executor = request.config.getoption("--mpi-exec")
-    if executor != "mpirun":
-        return f"{executor} -n "
-    return "mpirun -np "
-
-
-@pytest.fixture
 def cd_tmp_path(tmp_path):
     """Change to a temporary directory for the test and return afterward."""
     original_cwd = os.getcwd()

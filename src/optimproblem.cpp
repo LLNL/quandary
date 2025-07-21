@@ -14,8 +14,8 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   comm_optim = comm_optim_;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
-  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_space);
-  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_space);
+  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
   MPI_Comm_rank(comm_optim, &mpirank_optim);
@@ -27,9 +27,12 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
     for (int i = 0; i < ninit_local; i++) {
+
+      PetscInt globalsize = 2 * timestepper->mastereq->getDim();  // Global state vector: 2 for real and imaginary part
+      PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
       Vec state;
       VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
+      VecSetSizes(state, localsize, globalsize);
       VecSetFromOptions(state);
       store_finalstates.push_back(state);
     }
@@ -45,7 +48,9 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
 
   /* Allocate the initial condition vector and adjoint terminal state */
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
-  VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
+  PetscInt globalsize = 2 * timestepper->mastereq->getDim();  // Global state vector: 2 for real and imaginary part
+  PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
+  VecSetSizes(rho_t0, localsize, globalsize);
   VecSetFromOptions(rho_t0);
   VecZeroEntries(rho_t0);
   VecAssemblyBegin(rho_t0); VecAssemblyEnd(rho_t0);
@@ -235,8 +240,8 @@ double OptimProblem::evalF(const Vec x) {
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
-    if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
+    optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+    if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, iinit_global);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepareTargetState(rho_t0);
@@ -382,7 +387,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* Prepare the initial condition */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+    optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
     optim_target->prepareTargetState(rho_t0);
@@ -505,7 +510,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       int iinit_global = mpirank_init * ninit_local + iinit;
 
       /* Recompute the initial state and target */
-      int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+      optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
       optim_target->prepareTargetState(rho_t0);
       // if (mpirank_optim == 0) printf("%d: %d BWD. \n", mpirank_init, initid);
      
@@ -605,10 +610,18 @@ double OptimProblem::computeRobustCost(){
   for (int n=1; n<=ntime; n++){
     for (int m=n+1; m<=ntime; m++) {
       for (int iinit = 0; iinit < ninit_local; iinit++){
-        Vec xn_re = timestepper->store_states_robust_re[iinit][n];
-        Vec xn_im = timestepper->store_states_robust_im[iinit][n];
-        Vec xm_re = timestepper->store_states_robust_re[iinit][m];
-        Vec xm_im = timestepper->store_states_robust_im[iinit][m];
+        // Grab pointer to the states at tn and tm
+        Vec xn = timestepper->store_states[iinit][n];
+        Vec xm = timestepper->store_states[iinit][m];
+
+        // Get real and imaginary subvectors 
+        Vec xn_re, xn_im, xm_re, xm_im;
+        VecGetSubVector(xn, timestepper->mastereq->isu, &xn_re);
+        VecGetSubVector(xn, timestepper->mastereq->isv, &xn_im);
+        VecGetSubVector(xm, timestepper->mastereq->isu, &xm_re);
+        VecGetSubVector(xm, timestepper->mastereq->isv, &xm_im);
+
+        // Evaluate the znm = xn^dagger xm
         double tmp1, tmp2;
         VecDot(xn_re, xm_re, &tmp1);
         VecDot(xn_im, xm_im, &tmp2);
@@ -616,6 +629,12 @@ double OptimProblem::computeRobustCost(){
         VecDot(xn_re, xm_im, &tmp1);
         VecDot(xn_im, xm_re, &tmp2);
         znm_im_local[pair_idx] += tmp1 - tmp2;
+
+        // Restore subvectors
+        VecRestoreSubVector(xn, timestepper->mastereq->isu, &xn_re);
+        VecRestoreSubVector(xn, timestepper->mastereq->isv, &xn_im);
+        VecRestoreSubVector(xm, timestepper->mastereq->isu, &xm_re);
+        VecRestoreSubVector(xm, timestepper->mastereq->isv, &xm_im);
       }
       pair_idx++;
     }
@@ -649,10 +668,9 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
 
   int ntime = timestepper->getNTimeSteps();
   // Reset the adjoints first, they might have values from previous optimization iterations
-  for (size_t i=0; i<timestepper->store_states_robust_re.size(); i++){
-    for (size_t j=0; j<timestepper->store_states_robust_re[i].size(); j++){
-      VecZeroEntries(timestepper->store_adj_states_robust_re[i][j]);
-      VecZeroEntries(timestepper->store_adj_states_robust_im[i][j]);
+  for (size_t i=0; i<timestepper->store_states.size(); i++){
+    for (size_t j=0; j<timestepper->store_states[i].size(); j++){
+      VecZeroEntries(timestepper->store_adj_states[i][j]);
     }
   }
 
@@ -666,10 +684,18 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
   for (int n=1; n<=ntime; n++){
     for (int m=n+1; m<=ntime; m++) {
       for (int iinit = 0; iinit < ninit_local; iinit++){
-        Vec xn_re = timestepper->store_states_robust_re[iinit][n];
-        Vec xn_im = timestepper->store_states_robust_im[iinit][n];
-        Vec xm_re = timestepper->store_states_robust_re[iinit][m];
-        Vec xm_im = timestepper->store_states_robust_im[iinit][m];
+        // Grab pointer to the states at tn and tm
+        Vec xn = timestepper->store_states[iinit][n];
+        Vec xm = timestepper->store_states[iinit][m];
+
+        // Get real and imaginary subvectors 
+        Vec xn_re, xn_im, xm_re, xm_im;
+        VecGetSubVector(xn, timestepper->mastereq->isu, &xn_re);
+        VecGetSubVector(xn, timestepper->mastereq->isv, &xn_im);
+        VecGetSubVector(xm, timestepper->mastereq->isu, &xm_re);
+        VecGetSubVector(xm, timestepper->mastereq->isv, &xm_im);
+
+        // Evaluate the znm = xn^dagger xm
         double tmp1, tmp2;
         VecDot(xn_re, xm_re, &tmp1);
         VecDot(xn_im, xm_im, &tmp2);
@@ -677,6 +703,12 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
         VecDot(xn_re, xm_im, &tmp1);
         VecDot(xn_im, xm_re, &tmp2);
         znm_im_local[pair_idx] += tmp1 - tmp2;
+
+        // Restore subvectors
+        VecRestoreSubVector(xn, timestepper->mastereq->isu, &xn_re);
+        VecRestoreSubVector(xn, timestepper->mastereq->isv, &xn_im);
+        VecRestoreSubVector(xm, timestepper->mastereq->isu, &xm_re);
+        VecRestoreSubVector(xm, timestepper->mastereq->isv, &xm_im);
       }
       pair_idx++;
     }
@@ -703,23 +735,45 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
 
       // Apply adjoint updates to local initial conditions
       for (int iinit = 0; iinit < ninit_local; iinit++){
-        // printf("%d: %d %d %d\n", mpirank_init, n, m, iinit);
-        Vec xn_re = timestepper->store_states_robust_re[iinit][n];
-        Vec xn_im = timestepper->store_states_robust_im[iinit][n];
-        Vec xm_re = timestepper->store_states_robust_re[iinit][m];
-        Vec xm_im = timestepper->store_states_robust_im[iinit][m];
-        Vec xn_bar_re = timestepper->store_adj_states_robust_re[iinit][n];
-        Vec xn_bar_im = timestepper->store_adj_states_robust_im[iinit][n];
-        Vec xm_bar_re = timestepper->store_adj_states_robust_re[iinit][m];
-        Vec xm_bar_im = timestepper->store_adj_states_robust_im[iinit][m];
-        // xn_bar_re += xm_re*znm_bar_re + xm_im*znm_bar_im
-        VecAXPBYPCZ(xn_bar_re, znm_bar_re,      znm_bar_im, 1.0, xm_re, xm_im);
-        // xn_bar_im += xm_im*znm_bar_re - xm_re*znm_bar_im
-        VecAXPBYPCZ(xn_bar_im, znm_bar_re, -1.0*znm_bar_im, 1.0, xm_im, xm_re);
-        // xm_bar_re += xn_re*znm_bar_re - xn_im*znm_bar_im
-        VecAXPBYPCZ(xm_bar_re, znm_bar_re, -1.0*znm_bar_im, 1.0, xn_re, xn_im);
-        // xm_bar_im += xn_im*znm_bar_re + xm_re*znm_bar_im
-        VecAXPBYPCZ(xm_bar_im, znm_bar_re,      znm_bar_im, 1.0, xn_im, xn_re);
+        // Grab pointer to the states and adjoint states at tn and tm
+        Vec xn = timestepper->store_states[iinit][n];
+        Vec xm = timestepper->store_states[iinit][m];
+        Vec xn_bar = timestepper->store_adj_states[iinit][n];
+        Vec xm_bar = timestepper->store_adj_states[iinit][m];
+
+        // Get real and imaginary subvectors 
+        Vec xn_re, xn_im, xm_re, xm_im;
+        VecGetSubVector(xn, timestepper->mastereq->isu, &xn_re);
+        VecGetSubVector(xn, timestepper->mastereq->isv, &xn_im);
+        VecGetSubVector(xm, timestepper->mastereq->isu, &xm_re);
+        VecGetSubVector(xm, timestepper->mastereq->isv, &xm_im);
+        // // xn_bar_re += xm_re*znm_bar_re + xm_im*znm_bar_im
+        // VecAXPBYPCZ(xn_bar_re, znm_bar_re,      znm_bar_im, 1.0, xm_re, xm_im);
+        // // xn_bar_im += xm_im*znm_bar_re - xm_re*znm_bar_im
+        // VecAXPBYPCZ(xn_bar_im, znm_bar_re, -1.0*znm_bar_im, 1.0, xm_im, xm_re);
+        // // xm_bar_re += xn_re*znm_bar_re - xn_im*znm_bar_im
+        // VecAXPBYPCZ(xm_bar_re, znm_bar_re, -1.0*znm_bar_im, 1.0, xn_re, xn_im);
+        // // xm_bar_im += xn_im*znm_bar_re + xn_re*znm_bar_im
+        // VecAXPBYPCZ(xm_bar_im, znm_bar_re,      znm_bar_im, 1.0, xn_im, xn_re);
+
+        // xn_bar += xm * znm_bar_re
+        // xm_bar += xn * znm_bar_im
+        VecAXPY(xn_bar, znm_bar_re, xm);
+        VecAXPY(xm_bar, znm_bar_re, xn);
+
+        // xn_bar_re += xm_im*znm_bar_im
+        // xn_bar_im -= xm_re*znm_bar_im
+        VecISAXPY(xn_bar, timestepper->mastereq->isu,  znm_bar_im, xm_im);
+        VecISAXPY(xn_bar, timestepper->mastereq->isv, -znm_bar_im, xm_re);
+        // xm_bar_re -= xn_im*znm_bar_im
+        // xm_bar_im += xn_re*znm_bar_im
+        VecISAXPY(xm_bar, timestepper->mastereq->isu, -znm_bar_im, xn_im);
+        VecISAXPY(xm_bar, timestepper->mastereq->isv,  znm_bar_im, xn_re);
+
+        // Restore subvectors
+        VecRestoreSubVector(xn, timestepper->mastereq->isu, &xn_re);
+        VecRestoreSubVector(xn, timestepper->mastereq->isv, &xn_im);
+        VecRestoreSubVector(xm, timestepper->mastereq->isu, &xm_re);
       }
       pair_idx++;
     }

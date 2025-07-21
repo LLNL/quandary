@@ -2,23 +2,28 @@
 #include "petscvec.h"
 
 TimeStepper::TimeStepper() {
-  dim = 0;
   mastereq = NULL;
   ntime = 0;
   total_time = 0.0;
   dt = 0.0;
   storeFWD = false;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   writeTrajectoryDataFiles = false;
 }
 
 TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local) : TimeStepper() {
   mastereq = mastereq_;
-  dim = 2*mastereq->getDim(); // will be either N^2 (Lindblad) or N (Schroedinger)
   ntime = ntime_;
   total_time = total_time_;
   output = output_;
   storeFWD = storeFWD_;
+
+  // Set local sizes of subvectors u,v in state x=[u,v]
+  localsize_u = mastereq->getDim() / mpisize_petsc; 
+  ilow = mpirank_petsc * localsize_u;
+  iupp = ilow + localsize_u;         
 
   /* Check if leakage term is added: Only if nessential is smaller than nlevels for at least one oscillator */
   addLeakagePrevent = false; 
@@ -32,38 +37,32 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
   /* Allocate storage of primal state */
   if (storeFWD) { 
     for (int iinit = 0; iinit<ninit_local; iinit++) {
-      std::vector<Vec> states_iinit_re, states_iinit_im;
-      std::vector<Vec> adj_states_iinit_re, adj_states_iinit_im;
+      std::vector<Vec> states_iinit;
+      std::vector<Vec> adj_states_iinit;
       for (int n = 0; n <=ntime; n++) {
-        Vec s_re, s_im;
-        Vec sadj_re, sadj_im;
-        VecCreate(PETSC_COMM_WORLD, &s_re);
-        VecCreate(PETSC_COMM_WORLD, &s_im);
-        VecCreate(PETSC_COMM_WORLD, &sadj_re);
-        VecCreate(PETSC_COMM_WORLD, &sadj_im);
-        VecSetSizes(s_re, PETSC_DECIDE, mastereq->getDim());
-        VecSetSizes(s_im, PETSC_DECIDE, mastereq->getDim());
-        VecSetSizes(sadj_re, PETSC_DECIDE, mastereq->getDim());
-        VecSetSizes(sadj_im, PETSC_DECIDE, mastereq->getDim());
-        VecSetFromOptions(s_re);
-        VecSetFromOptions(s_im);
-        VecSetFromOptions(sadj_re);
-        VecSetFromOptions(sadj_im);
-        states_iinit_re.push_back(s_re);
-        states_iinit_im.push_back(s_im);
-        adj_states_iinit_re.push_back(sadj_re);
-        adj_states_iinit_im.push_back(sadj_im);
+        Vec s, sadj;
+        VecCreate(PETSC_COMM_WORLD, &s);
+        VecCreate(PETSC_COMM_WORLD, &sadj);
+        PetscInt globalsize = 2 * mastereq->getDim();  // 2 for real and imaginary part
+        PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
+        VecSetSizes(s,localsize,globalsize);
+        VecSetSizes(sadj,localsize,globalsize);
+        VecSetFromOptions(s);
+        VecSetFromOptions(sadj);
+        states_iinit.push_back(s);
+        adj_states_iinit.push_back(sadj);
       }
-      store_states_robust_re.push_back(states_iinit_re);
-      store_states_robust_im.push_back(states_iinit_im);
-      store_adj_states_robust_re.push_back(adj_states_iinit_re);
-      store_adj_states_robust_im.push_back(adj_states_iinit_im);
+      store_states.push_back(states_iinit);
+      store_adj_states.push_back(adj_states_iinit);
     }
   }
 
   /* Allocate auxiliary state vector */
   VecCreate(PETSC_COMM_WORLD, &x);
-  VecSetSizes(x, PETSC_DECIDE, dim);
+
+  PetscInt globalsize = 2 * mastereq->getDim(); 
+  PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
+  VecSetSizes(x,localsize,globalsize);
   VecSetFromOptions(x);
   VecZeroEntries(x);
   VecDuplicate(x, &xadj);
@@ -83,17 +82,13 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
 
 
 TimeStepper::~TimeStepper() {
-  for (size_t iinit = 0; iinit<store_states_robust_re.size(); iinit++) {
-    for (size_t n = 0; n <store_states_robust_re[iinit].size(); n++) {
-      VecDestroy(&(store_states_robust_re[iinit][n]));
-      VecDestroy(&(store_states_robust_im[iinit][n]));
-      VecDestroy(&(store_adj_states_robust_re[iinit][n]));
-      VecDestroy(&(store_adj_states_robust_im[iinit][n]));
+  for (size_t iinit = 0; iinit<store_states.size(); iinit++) {
+    for (size_t n = 0; n <store_states[iinit].size(); n++) {
+      VecDestroy(&(store_states[iinit][n]));
+      VecDestroy(&(store_adj_states[iinit][n]));
     }
-    store_states_robust_re[iinit].clear();
-    store_states_robust_im[iinit].clear();
-    store_adj_states_robust_re[iinit].clear();
-    store_adj_states_robust_im[iinit].clear();
+    store_states[iinit].clear();
+    store_adj_states[iinit].clear();
   }
   VecDestroy(&x);
   VecDestroy(&xadj);
@@ -117,7 +112,9 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
     for (int i = 0; i < 2; i++) {
       Vec state;
       VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, dim);
+      PetscInt globalsize = 2 * mastereq->getDim(); 
+      PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
+      VecSetSizes(state,localsize,globalsize);
       VecSetFromOptions(state);
       dpdm_states.push_back(state);
     }
@@ -136,9 +133,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
     /* store and write current state. */
     if (storeFWD) {
-      // For robust optim, store Re and Im separately. TODO merge with store_states
-      VecISCopy(x, mastereq->isu, SCATTER_REVERSE, store_states_robust_re[initid][n]);
-      VecISCopy(x, mastereq->isv, SCATTER_REVERSE, store_states_robust_im[initid][n]);
+      VecCopy(x, store_states[initid][n]);
     }
 
     if (writeTrajectoryDataFiles) {
@@ -172,9 +167,7 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
 
   /* Store last time step */
   if (storeFWD) {
-    // For robust optim, store Re and Im separately. TODO: merge with store_states
-    VecISCopy(x, mastereq->isu, SCATTER_REVERSE, store_states_robust_re[initid][ntime]);
-    VecISCopy(x, mastereq->isv, SCATTER_REVERSE, store_states_robust_im[initid][ntime]);
+    VecCopy(x, store_states[initid][ntime]);
   }
 
   /* Clear out dpdm storage */
@@ -206,8 +199,7 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
 
   // add robust adjoint contribution at final time
   if (storeFWD){
-    VecISAXPY(xadj, mastereq->isu, 1.0, store_adj_states_robust_re[initid][ntime]);
-    VecISAXPY(xadj, mastereq->isv, 1.0, store_adj_states_robust_im[initid][ntime]);
+    VecAXPY(xadj, 1.0, store_adj_states[initid][ntime]);
   }
 
   /* Set terminal primal state */
@@ -218,7 +210,9 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
     for (int i = 0; i < 5; i++) {
       Vec state;
       VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, PETSC_DECIDE, dim);
+      PetscInt globalsize = 2 * mastereq->getDim(); 
+      PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
+      VecSetSizes(state,localsize,globalsize);
       VecSetFromOptions(state);
       dpdm_states.push_back(state);
     }
@@ -247,8 +241,7 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
 
     /* Get the state at n-1. If Schroedinger solver, recompute it by taking a step backwards with the forward solver, otherwise get it from storage. */
     if (storeFWD){
-      VecISCopy(xprimal, mastereq->isu, SCATTER_FORWARD, store_states_robust_re[initid][n-1]);
-      VecISCopy(xprimal, mastereq->isv, SCATTER_FORWARD, store_states_robust_im[initid][n-1]);
+      VecCopy(store_states[initid][n-1], xprimal);
     } 
     else evolveFWD(tstop, tstart, xprimal);
 
@@ -257,8 +250,7 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
 
     /* Add robust adjoint contribution */
     if (storeFWD){
-      VecISAXPY(xadj, mastereq->isu, 1.0, store_adj_states_robust_re[initid][n-1]);
-      VecISAXPY(xadj, mastereq->isv, 1.0, store_adj_states_robust_im[initid][n-1]);
+      VecAXPY(xadj, 1.0, store_adj_states[initid][n-1]);
     }
 
     /* Update dpdm storage */
@@ -283,9 +275,8 @@ void TimeStepper::solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, do
 
 double TimeStepper::penaltyIntegral(double time, const Vec x){
   double penalty = 0.0;
-  int dim_rho = mastereq->getDimRho(); // N
+  PetscInt dim_rho = mastereq->getDimRho(); // N
   double x_re, x_im;
-  PetscInt vecID_re, vecID_im;
 
   /* weighted integral of the objective function */
   if (penalty_param > 1e-13) {
@@ -301,22 +292,20 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
   /* Add guard-level occupation to prevent leakage. A guard level is the LAST NON-ESSENTIAL energy level of an oscillator */
   if (addLeakagePrevent) {
     double leakage = 0.0;
-    PetscInt ilow, iupp;
-    VecGetOwnershipRange(x, &ilow, &iupp);
     /* Sum over all diagonal elements that correspond to a non-essential guard level. */
-    for (int i=0; i<dim_rho; i++) {
+    for (PetscInt i=0; i<dim_rho; i++) {
       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
-          // printf("%f: isGuard: %d / %d\n", time, i, dim_rho);
-        if (mastereq->lindbladtype != LindbladType::NONE) {
-          vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
-        } else {
-          vecID_re = getIndexReal(i);
-          vecID_im = getIndexImag(i);
+        // vectorize if lindblad
+        PetscInt vecID = i;
+        if (mastereq->lindbladtype != LindbladType::NONE) vecID = getVecID(i,i,dim_rho);
+        x_re = 0.0; 
+        x_im = 0.0;
+        if (ilow <= vecID && vecID < iupp) {
+          PetscInt id_global_x = vecID + mpirank_petsc*localsize_u; 
+          VecGetValues(x, 1, &id_global_x, &x_re);
+          id_global_x += localsize_u; 
+          VecGetValues(x, 1, &id_global_x, &x_im); 
         }
-        x_re = 0.0; x_im = 0.0;
-        if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
-        if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im); 
         leakage += (x_re * x_re + x_im * x_im) / (dt*ntime);
       }
     }
@@ -329,8 +318,7 @@ double TimeStepper::penaltyIntegral(double time, const Vec x){
 }
 
 void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, double penaltybar){
-  int dim_rho = mastereq->getDimRho();  // N
-  PetscInt vecID_re, vecID_im;
+  PetscInt dim_rho = mastereq->getDimRho();  // N
 
   /* Derivative of weighted integral of the objective function */
   if (penalty_param > 1e-13){
@@ -348,24 +336,21 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
   /* If gate optimization: Derivative of adding guard-level occupation */
   if (addLeakagePrevent) {
-    PetscInt ilow, iupp;
-    VecGetOwnershipRange(x, &ilow, &iupp);
     double x_re, x_im;
-    for (int i=0; i<dim_rho; i++) {
+    for (PetscInt i=0; i<dim_rho; i++) {
       if ( isGuardLevel(i, mastereq->nlevels, mastereq->nessential) ) {
-        if (mastereq->lindbladtype != LindbladType::NONE){ 
-          vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
-        } else {
-          vecID_re = getIndexReal(i);
-          vecID_im = getIndexImag(i);
+        PetscInt  vecID = i;
+        if (mastereq->lindbladtype != LindbladType::NONE) vecID = getVecID(i,i,dim_rho);
+        x_re = 0.0; 
+        x_im = 0.0;
+        if (ilow <= vecID && vecID < iupp) {
+          PetscInt id_global_x = vecID + mpirank_petsc*localsize_u; 
+          VecGetValues(x, 1, &id_global_x, &x_re);
+          VecSetValue(xbar, id_global_x, 2.*x_re*penaltybar/ntime, ADD_VALUES);
+          id_global_x += localsize_u; 
+          VecGetValues(x, 1, &id_global_x, &x_im);
+          VecSetValue(xbar, id_global_x, 2.*x_im*penaltybar/ntime, ADD_VALUES);
         }
-        x_re = 0.0; x_im = 0.0;
-        if (ilow <= vecID_re && vecID_re < iupp) VecGetValues(x, 1, &vecID_re, &x_re);
-        if (ilow <= vecID_im && vecID_im < iupp) VecGetValues(x, 1, &vecID_im, &x_im);
-        // Derivative: 2 * rho(i,i) * weights * penalbar * dt
-        if (ilow <= vecID_re && vecID_re < iupp) VecSetValue(xbar, vecID_re, 2.*x_re*penaltybar/ntime, ADD_VALUES);
-        if (ilow <= vecID_im && vecID_im < iupp) VecSetValue(xbar, vecID_im, 2.*x_im*penaltybar/ntime, ADD_VALUES);
       }
     }
     VecAssemblyBegin(xbar);
@@ -375,34 +360,24 @@ void TimeStepper::penaltyIntegral_diff(double time, const Vec x, Vec xbar, doubl
 
 
 double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
-    int dim_rho = mastereq->getDimRho(); // N
-    int vecID_re, vecID_im;
 
-    double tmp1, tmp2;
-
+    // Get local data pointers
     const PetscScalar *xptr, *xm1ptr, *xm2ptr;
     VecGetArrayRead(x, &xptr);
     VecGetArrayRead(xm1, &xm1ptr);
     VecGetArrayRead(xm2, &xm2ptr);
      
-    PetscInt ilow, iupp;
-
     /* precompute 1/dt^4 */
     double dtinv = 1.0 / (dt*dt*dt*dt);
 
     double dpdm = 0.0;
-    VecGetOwnershipRange(x, &ilow, &iupp);
-    for (int i=0; i<dim_rho; i++) {  
-        if (mastereq->lindbladtype != LindbladType::NONE) { 
-          vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
-        } else {
-          vecID_re = getIndexReal(i);
-          vecID_im = getIndexImag(i);
-        }
+    for (PetscInt i=0; i<localsize_u; i++) {
+        PetscInt vecID_re = i;
+        PetscInt vecID_im = i + localsize_u;
 
-        if (ilow <= vecID_re && vecID_re < iupp) tmp1 = xptr[vecID_re]*xptr[vecID_re] - 2.0*xm1ptr[vecID_re]*xm1ptr[vecID_re] + xm2ptr[vecID_re]*xm2ptr[vecID_re];
-        if (ilow <= vecID_im && vecID_im < iupp) tmp2 = xptr[vecID_im]*xptr[vecID_im] - 2.0*xm1ptr[vecID_im]*xm1ptr[vecID_im] + xm2ptr[vecID_im]*xm2ptr[vecID_im];
+        double tmp1 = xptr[vecID_re]*xptr[vecID_re] - 2.0*xm1ptr[vecID_re]*xm1ptr[vecID_re] + xm2ptr[vecID_re]*xm2ptr[vecID_re];
+        double tmp2 = xptr[vecID_im]*xptr[vecID_im] - 2.0*xm1ptr[vecID_im]*xm1ptr[vecID_im] + xm2ptr[vecID_im]*xm2ptr[vecID_im];
+
         dpdm += dtinv * (tmp1 + tmp2)*(tmp1 + tmp2);
     }
 
@@ -415,8 +390,6 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
 
 
 void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
-    int dim_rho = mastereq->getDimRho(); // N
-    int vecID_re, vecID_im;
 
     const PetscScalar *xptr, *xm1ptr, *xm2ptr, *xp1ptr, *xp2ptr;
     Vec x, xm1, xm2, xp1, xp2;
@@ -435,27 +408,17 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
     if (n < ntime)    VecGetArrayRead(xp1, &xp1ptr);
     if (n < ntime-1)  VecGetArrayRead(xp2, &xp2ptr);
 
-     
-    PetscInt ilow, iupp;
-
     /* precompute 1/dt^4 */
     double dtinv = 1.0 / (dt*dt*dt*dt);
 
-    VecGetOwnershipRange(x, &ilow, &iupp);
-    for (int i=0; i<dim_rho; i++) {  
-        if (mastereq->lindbladtype != LindbladType::NONE) { 
-          vecID_re = getIndexReal(getVecID(i,i,dim_rho));
-          vecID_im = getIndexImag(getVecID(i,i,dim_rho));
-        } else {
-          vecID_re = getIndexReal(i);
-          vecID_im = getIndexImag(i);
-        }
+    for (PetscInt i=0; i<localsize_u; i++) {
+        PetscInt vecID_re = i;
+        PetscInt vecID_im = i + localsize_u;
 
         // first term
         if (n > 1) {
           // if (i==0) printf("DPDM BWD, update %d from on first f(%d %d %d) \n", n, n-2, n-1, n);
 
-          if (ilow <= vecID_re && vecID_re < iupp) { // should be same as im. 
             double tmp1 = xm2ptr[vecID_re]*xm2ptr[vecID_re] - 2.0*xm1ptr[vecID_re]*xm1ptr[vecID_re] + xptr[vecID_re]*xptr[vecID_re];
             double tmp2 = xm2ptr[vecID_im]*xm2ptr[vecID_im] - 2.0*xm1ptr[vecID_im]*xm1ptr[vecID_im] + xptr[vecID_im]*xptr[vecID_im];
             double pop = tmp1+tmp2;
@@ -463,13 +426,11 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
             double dpdphi_im = 2.0*xptr[vecID_im];
             VecSetValue(xbar,vecID_re,  2.0 * pop * dpdphi_re * dtinv * Jbar, ADD_VALUES);
             VecSetValue(xbar,vecID_im,  2.0 * pop * dpdphi_im * dtinv * Jbar, ADD_VALUES);
-          }
         }
 
         // center term
         if (n > 0 && n < ntime) {
             // if (i==0) printf("DPDM BWD, update %d from on second f(%d %d %d) \n", n, n-1, n, n+1);
-            if (ilow <= vecID_re && vecID_re < iupp) {
               double tmp1 = xm1ptr[vecID_re]*xm1ptr[vecID_re] - 2.0*xptr[vecID_re]*xptr[vecID_re] + xp1ptr[vecID_re]*xp1ptr[vecID_re];
               double tmp2 = xm1ptr[vecID_im]*xm1ptr[vecID_im] - 2.0*xptr[vecID_im]*xptr[vecID_im] + xp1ptr[vecID_im]*xp1ptr[vecID_im];
               double pop = tmp1 + tmp2;
@@ -477,13 +438,11 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
               double dpdphi_im = 2.0*xptr[vecID_im];
               VecSetValue(xbar, vecID_re, - 4.0 * pop * dpdphi_re * dtinv * Jbar, ADD_VALUES);
               VecSetValue(xbar, vecID_im, - 4.0 * pop * dpdphi_im * dtinv * Jbar, ADD_VALUES);
-            }
         }
         
         // last term 
         if (n < ntime-1) {
             // if (i==0) printf("DPDM BWD, update %d from on third f(%d %d %d) \n", n, n, n+1, n+2);
-            if (ilow <= vecID_re && vecID_re < iupp) {
               double tmp1 = xptr[vecID_re]*xptr[vecID_re] - 2.0*xp1ptr[vecID_re]*xp1ptr[vecID_re] + xp2ptr[vecID_re]*xp2ptr[vecID_re];
               double tmp2 = xptr[vecID_im]*xptr[vecID_im] - 2.0*xp1ptr[vecID_im]*xp1ptr[vecID_im] + xp2ptr[vecID_im]*xp2ptr[vecID_im];
               double pop = tmp1 + tmp2;
@@ -491,7 +450,6 @@ void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
               double dpdphi_im = 2.0*xptr[vecID_im];
               VecSetValue(xbar, vecID_re, 2.0* pop * dpdphi_re * dtinv * Jbar, ADD_VALUES);
               VecSetValue(xbar, vecID_im, 2.0* pop * dpdphi_im * dtinv * Jbar, ADD_VALUES);
-            }
         }
     }
 
@@ -519,7 +477,7 @@ double TimeStepper::energyPenaltyIntegral(double time){
 
 void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec redgrad){
 
-  int col_shift = 0;
+  PetscInt col_shift = 0;
   double* grad_ptr;
   VecGetArray(redgrad, &grad_ptr);
 
@@ -821,15 +779,17 @@ CompositionalImplMidpoint::CompositionalImplMidpoint(int order_, MasterEq* maste
   if (mpirank_world == 0) printf("Timestepper: Compositional Impl. Midpoint, order %d, %lu stages\n", order, gamma.size());
 
   // Allocate storage of stages for backward process 
+  PetscInt globalsize = 2 * mastereq->getDim(); 
+  PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
   for (size_t i = 0; i <gamma.size(); i++) {
     Vec state;
     VecCreate(PETSC_COMM_WORLD, &state);
-    VecSetSizes(state, PETSC_DECIDE, dim);
+    VecSetSizes(state,localsize,globalsize);
     VecSetFromOptions(state);
     x_stage.push_back(state);
   }
   VecCreate(PETSC_COMM_WORLD, &aux);
-  VecSetSizes(aux, PETSC_DECIDE, dim);
+  VecSetSizes(aux,localsize,globalsize);
   VecSetFromOptions(aux);
 }
 

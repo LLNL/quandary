@@ -22,21 +22,26 @@
 class OptimTarget{
     protected:
 
-    int dim; ///< State dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
-    int dim_rho; ///< Dimension of Hilbert space = N
-    int dim_ess; ///< Dimension of essential level system = N_e
+    PetscInt dim; ///< State dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
+    PetscInt dim_rho; ///< Dimension of Hilbert space = N
+    PetscInt dim_ess; ///< Dimension of essential level system = N_e
     int noscillators; ///< Number of oscillators in the system
  
     TargetType target_type; ///< Type of optimization target (pure state preparation or gate optimization)
     ObjectiveType objective_type; ///< Type of objective function measure (Frobenius, trace, pure-state measure)
     Gate *targetgate; ///< Pointer to target gate (if gate optimization)
     double purity_rho0; ///< Purity of initial state Tr(rho(0)^2)
-    int purestateID; ///< For pure state preparation: integer m for preparing the target state \f$ e_m e_m^{\dagger}\f$
+    PetscInt purestateID; ///< For pure state preparation: integer m for preparing the target state \f$ e_m e_m^{\dagger}\f$
     std::string target_filename; ///< Filename if target state is read from file
     Vec targetstate; ///< Storage for the target state vector (NULL for pure states, \f$V\rho V^\dagger\f$ for gates, density matrix from file)
     InitialConditionType initcond_type; ///< Type of initial conditions
     std::vector<size_t> initcond_IDs; ///< Integer list for pure-state initialization
     LindbladType lindbladtype; ///< Type of Lindblad decoherence operators, or NONE for Schroedinger solver
+    int mpisize_petsc; ///< Size of PETSc communicator
+    int mpirank_petsc; ///< Rank of PETSc communicator
+    PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
+    PetscInt ilow; ///< First index of the local sub vector u,v
+    PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
 
     Vec aux; ///< Auxiliary vector for gate optimization objective computation
     bool quietmode; ///< Flag for quiet mode operation
@@ -56,7 +61,7 @@ class OptimTarget{
      * @param rho_t0 Initial state vector
      * @param quietmode_ Flag for quiet operation
      */
-    OptimTarget(std::vector<std::string> target_str, std::string objective_str, std::vector<std::string> initcond_str, MasterEq* mastereq, double total_time, std::vector<double> read_gate_rot, Vec rho_t0, bool quietmode_);
+    OptimTarget(std::vector<std::string> target_str, const std::string& objective_str, std::vector<std::string> initcond_str, MasterEq* mastereq, double total_time, std::vector<double> read_gate_rot, Vec rho_t0, bool quietmode_);
 
     ~OptimTarget();
 
@@ -84,7 +89,7 @@ class OptimTarget{
      * @param rho0 Vector to store the initial condition
      * @return int Identifier for this initial condition (element number in matrix vectorization)
      */
-    int prepareInitialState(const int iinit, const int ninit, std::vector<int> nlevels, std::vector<int> nessential,  Vec rho0);
+    int prepareInitialState(const int iinit, const int ninit, const std::vector<int>& nlevels, const std::vector<int>& nessential,  Vec rho0);
 
     /**
      * @brief Prepares the target state for gate optimization.
@@ -179,12 +184,11 @@ class OptimTarget{
     /**
      * @brief Derivative of Hilbert-Schmidt overlap computation.
      *
-     * @param state Current state vector
      * @param statebar Adjoint state vector to update
      * @param scalebypurity Flag to scale by purity of target state
      * @param HS_re_bar Adjoint of real part of overlap
      * @param HS_im_bar Adjoint of imaginary part of overlap
      */
-    void HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar);
+    void HilbertSchmidtOverlap_diff(Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar);
 };
 
