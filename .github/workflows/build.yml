@@ -30,7 +30,6 @@ jobs:
 
     - name: Configure Spack
       run: |
-        spack -e .spack_env mirror set binary_mirror --unsigned
         spack mirror add --type binary --unsigned --oci-username GITHUB_USER --oci-password-variable GITHUB_TOKEN local-buildcache oci://ghcr.io/LLNL/quandary-spack-buildcache
 
     - name: Install with strict warnings
