@@ -2,7 +2,7 @@ import os
 import pytest
 import numpy as np
 from quandary import Quandary
-from utils import assert_results_equal, print_expected_values
+from utils import assert_results_equal
 
 # Mark all tests in this file as regression tests
 pytestmark = pytest.mark.regression
@@ -118,7 +118,6 @@ SAMPLE_INDICES = [int(i * (EXPECTED_LENGTH - 1) / (NUM_SAMPLES - 1)) for i in ra
 def test_example_cnot_const_init_ctrl(mpi_exec, tmp_path, request):
     """Test CNOT gate optimization using Python interface."""
     datadir_path = os.path.join(tmp_path, request.node.name)
-    print(f"datadir is {datadir_path}")
 
     freq01 = [4.80595, 4.8601]
     favg = sum(freq01)/len(freq01)
@@ -150,7 +149,6 @@ def test_example_cnot_const_init_ctrl(mpi_exec, tmp_path, request):
         datadir=datadir_path,
     )
 
-    print_expected_values(infidelity, pt, qt, energy, population, SAMPLE_INDICES, n_osc)
     assert_results_equal(
         t=t,
         pt=pt,
