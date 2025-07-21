@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1753120045767,
+  "lastUpdate": 1753124080996,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1011,6 +1011,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4221.54,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "b0fb2490eadca3a6f2ac570715cd7c04f44d3540",
+          "message": "Merge pull request #72 from LLNL/add-const-init-ctrl-test\n\nAdd python test case with constant initial control",
+          "timestamp": "2025-07-21T18:17:36Z",
+          "url": "https://github.com/LLNL/quandary/commit/b0fb2490eadca3a6f2ac570715cd7c04f44d3540"
+        },
+        "date": 1753124078926,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7344474499113858,
+            "unit": "seconds",
+            "range": "0.3467403308458125"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 85.78,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 9.306950623635203,
+            "unit": "seconds",
+            "range": "0.09639120584184843"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4222.29,
             "unit": "MB"
           }
         ]
