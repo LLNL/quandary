@@ -457,21 +457,8 @@ states <span class="arithmatex">\(u(t), v(t)\in \R^{M}\)</span> for <span class=
 \begin{pmatrix} u(t) \\ v(t) \end{pmatrix}  \quad \text{where}\quad A(t) = I_N\otimes Re(-i H(t)) - Re(-iH(t))^T \otimes I_N + \vec L \notag \\
 &amp; \qquad \qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\qquad\quad  B(t) = I_N\otimes Im(-i H(t)) - Im(-iH(t))^T \otimes I_N)  \notag 
 \end{align}\]</pre>
-<p>The real and imaginary parts of <span class="arithmatex">\(q(t)\)</span> are stored in a colocated manner: For
-  <span class="arithmatex">\(q = u+iv\)</span> with <span class="arithmatex">\(u,v\in\R^{M}\)</span>, a vector of size <span class="arithmatex">\(2M\)</span> is stored that
-  staggers real and imaginary parts behind each other for each component:</p>
-<pre class="arithmatex">\[\begin{align*}
-  q = u+iv = \begin{bmatrix}
-    u^1\\u^2\\ \vdots \\ u^{M}
-  \end{bmatrix}
-  + i \begin{bmatrix}
-    v^1\\v^2\\ \vdots \\ v^{M}
-  \end{bmatrix}
-  \quad \Rightarrow \quad
-  q_{store} = \begin{bmatrix}
-    u_1 \\ v_1\\ u_2 \\ v_2 \\ \vdots \\ u_{M} \\ v_{M}
-  \end{bmatrix}
-\end{align*}\]</pre>
+<p>The real and imaginary parts of <span class="arithmatex">\(q(t)\)</span> are stored in blocked manner: For
+  <span class="arithmatex">\(q = u+iv\)</span> with <span class="arithmatex">\(u,v\in\R^{M}\)</span>, a vector of size <span class="arithmatex">\(2M\)</span> as $q=\begin{bmatrix} u\v \end{bmatrix}.</p>
 <h2 id="time-stepping">Time-stepping</h2>
 <p>To solve the resulting real-valued differential equation </p>
 <pre class="arithmatex">\[\begin{align*}
@@ -573,7 +560,7 @@ processes (<span class="arithmatex">\(np_{total}\)</span>) is split as</p>
 <p>It is currently required that the number of total cores for executing quandary is an integer divisor of multiplier of the number of initial conditions, such that each processor group owns the same number of initial conditions.</p>
 <p>It is further required that the system dimension is an integer multiple of the number of cores used for distributed linear algebra from Petsc, i.e. it is required that <span class="arithmatex">\(\frac{M}{np_{petsc}} \in \mathbb{N}\)</span> where <span class="arithmatex">\(M=N^2\)</span> in the Lindblad solver case and <span class="arithmatex">\(M=N\)</span> in the Schroedinger case. This requirement is a little
   annoying, however the current implementation requires this due to the
-  colocated storage of the real and imaginary parts of the vectorized
+  storage of the real and imaginary parts of the vectorized
   state.</p>
 <h1 id="output-and-plotting-the-results">Output and plotting the results</h1>
 <p>Quandary generates various output files for system evolution of the current (optimized) controls as well as the optimization progress. All data files will be dumped into a user-specified folder through the config option <code>datadir</code>.</p>
