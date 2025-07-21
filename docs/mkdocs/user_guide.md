@@ -302,22 +302,8 @@ to derive the vectorized master equation for $q(t) := \text{vec}(\rho(t)) \in \C
 \end{align}
 
 
-The real and imaginary parts of $q(t)$ are stored in a colocated manner: For
-  $q = u+iv$ with $u,v\in\R^{M}$, a vector of size $2M$ is stored that
-  staggers real and imaginary parts behind each other for each component:
-
-\begin{align*}
-  q = u+iv = \begin{bmatrix}
-    u^1\\u^2\\ \vdots \\ u^{M}
-  \end{bmatrix}
-  + i \begin{bmatrix}
-    v^1\\v^2\\ \vdots \\ v^{M}
-  \end{bmatrix}
-  \quad \Rightarrow \quad
-  q_{store} = \begin{bmatrix}
-    u_1 \\ v_1\\ u_2 \\ v_2 \\ \vdots \\ u_{M} \\ v_{M}
-  \end{bmatrix}
-\end{align*}
+The real and imaginary parts of $q(t)$ are stored in blocked manner: For
+  $q = u+iv$ with $u,v\in\R^{M}$, a vector of size $2M$ as $q=\begin{bmatrix} u\\v \end{bmatrix}.
 
 ## Time-stepping
 To solve the resulting real-valued differential equation 
@@ -450,7 +436,7 @@ It is currently required that the number of total cores for executing quandary i
 
 It is further required that the system dimension is an integer multiple of the number of cores used for distributed linear algebra from Petsc, i.e. it is required that $\frac{M}{np_{petsc}} \in \mathbb{N}$ where $M=N^2$ in the Lindblad solver case and $M=N$ in the Schroedinger case. This requirement is a little
   annoying, however the current implementation requires this due to the
-  colocated storage of the real and imaginary parts of the vectorized
+  storage of the real and imaginary parts of the vectorized
   state.
 
 # Output and plotting the results

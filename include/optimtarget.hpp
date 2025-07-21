@@ -37,6 +37,11 @@ class OptimTarget{
     InitialConditionType initcond_type; ///< Type of initial conditions
     std::vector<size_t> initcond_IDs; ///< Integer list for pure-state initialization
     LindbladType lindbladtype; ///< Type of Lindblad decoherence operators, or NONE for Schroedinger solver
+    int mpisize_petsc; ///< Size of PETSc communicator
+    int mpirank_petsc; ///< Rank of PETSc communicator
+    PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
+    PetscInt ilow; ///< First index of the local sub vector u,v
+    PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
 
     Vec aux; ///< Auxiliary vector for gate optimization objective computation
     bool quietmode; ///< Flag for quiet mode operation
@@ -179,12 +184,11 @@ class OptimTarget{
     /**
      * @brief Derivative of Hilbert-Schmidt overlap computation.
      *
-     * @param state Current state vector
      * @param statebar Adjoint state vector to update
      * @param scalebypurity Flag to scale by purity of target state
      * @param HS_re_bar Adjoint of real part of overlap
      * @param HS_im_bar Adjoint of imaginary part of overlap
      */
-    void HilbertSchmidtOverlap_diff(const Vec state, Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar);
+    void HilbertSchmidtOverlap_diff(Vec statebar, bool scalebypurity, const double HS_re_bar, const double HS_im_bar);
 };
 
