@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1751917811050,
+  "lastUpdate": 1753120045767,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -967,6 +967,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4362.5,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Stefanie Guenther",
+            "username": "steffi7574",
+            "email": "guenther5@llnl.gov"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "e35fe2f9945bea85d7462e7b4304a58b4ed11590",
+          "message": "Merge pull request #71 from LLNL/blocked_vector_storage\n\nSwitch colocated state storage to blocked storage",
+          "timestamp": "2025-07-21T17:13:27Z",
+          "url": "https://github.com/LLNL/quandary/commit/e35fe2f9945bea85d7462e7b4304a58b4ed11590"
+        },
+        "date": 1753120044513,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7294120454462245,
+            "unit": "seconds",
+            "range": "0.203665943877743"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 85.93,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 9.242814552038908,
+            "unit": "seconds",
+            "range": "0.13009465040776017"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4221.54,
             "unit": "MB"
           }
         ]
