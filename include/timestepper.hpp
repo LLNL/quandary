@@ -45,8 +45,9 @@ class TimeStepper{
     PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
 
   public:
-    std::vector<std::vector<Vec>> store_states; ///< Robust optim: for each initial condition, vector of states at each time-step
-    std::vector<std::vector<Vec>> store_adj_states; ///< Robust optim: for each initial condition, vector of adjoint states at each time-step
+    std::vector<std::vector<Vec>> store_states; ///< For each initial condition, vector of states at each time-step. Only allocated if storeFWD=true
+    std::vector<std::vector<Vec>> store_adj_states; ///< For each initial condition, vector of adjoint states at each time-step. Only allocated if needed for Robust Optimization
+    bool storeFWD; ///< Flag to store primal states during forward evaluation
 
   public:
     MasterEq* mastereq; ///< Pointer to master equation solver
@@ -69,7 +70,6 @@ class TimeStepper{
     Output* output; ///< Pointer to output handler
 
   public: 
-    bool storeFWD; ///< Flag to store primal states during forward evaluation
 
     TimeStepper(); 
 
@@ -83,7 +83,7 @@ class TimeStepper{
      * @param storeFWD_ Flag to store forward states
      * @param ninit_local Number of initial conditions on this processor
      */
-    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local); 
+    TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local, double gamma_robust); 
 
     virtual ~TimeStepper(); 
 
@@ -221,7 +221,7 @@ class ExplEuler : public TimeStepper {
      * @param storeFWD_ Flag to store forward states
      * @param ninit_local Number of initial conditions on this processor
      */
-    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local);
+    ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local, double gamma_robust);
 
     ~ExplEuler();
 
@@ -288,7 +288,7 @@ class ImplMidpoint : public TimeStepper {
      * @param storeFWD_ Flag to store forward states
      * @param ninit_local Number of initial conditions on this processor
      */
-    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local);
+    ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local, double gamma_robust);
 
     ~ImplMidpoint();
 
@@ -355,7 +355,7 @@ class CompositionalImplMidpoint : public ImplMidpoint {
      * @param storeFWD_ Flag to store forward states
      * @param ninit_local Number of initial conditions on this processor
      */
-    CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local);
+    CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local, double gamma_robust);
 
     ~CompositionalImplMidpoint();
 

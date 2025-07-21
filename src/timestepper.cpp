@@ -13,7 +13,7 @@ TimeStepper::TimeStepper() {
   writeTrajectoryDataFiles = false;
 }
 
-TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local) : TimeStepper() {
+TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local, double gamma_robust) : TimeStepper() {
   mastereq = mastereq_;
   ntime = ntime_;
   total_time = total_time_;
@@ -38,22 +38,27 @@ TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Ou
   if (storeFWD) { 
     for (int iinit = 0; iinit<ninit_local; iinit++) {
       std::vector<Vec> states_iinit;
-      std::vector<Vec> adj_states_iinit;
       for (int n = 0; n <=ntime; n++) {
-        Vec s, sadj;
+        Vec s;
         VecCreate(PETSC_COMM_WORLD, &s);
-        VecCreate(PETSC_COMM_WORLD, &sadj);
         PetscInt globalsize = 2 * mastereq->getDim();  // 2 for real and imaginary part
         PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
         VecSetSizes(s,localsize,globalsize);
-        VecSetSizes(sadj,localsize,globalsize);
         VecSetFromOptions(s);
-        VecSetFromOptions(sadj);
         states_iinit.push_back(s);
-        adj_states_iinit.push_back(sadj);
       }
       store_states.push_back(states_iinit);
-      store_adj_states.push_back(adj_states_iinit);
+      
+      // If robust optimization, also allocate adjoint states
+      if (gamma_robust > 0.0){
+        std::vector<Vec> adj_states_iinit;
+        for (int n = 0; n <=ntime; n++) {
+          Vec sadj;
+          VecDuplicate(states_iinit[n], &sadj);
+          adj_states_iinit.push_back(sadj);
+        }
+        store_adj_states.push_back(adj_states_iinit);
+      }
     }
   }
 
@@ -85,9 +90,13 @@ TimeStepper::~TimeStepper() {
   for (size_t iinit = 0; iinit<store_states.size(); iinit++) {
     for (size_t n = 0; n <store_states[iinit].size(); n++) {
       VecDestroy(&(store_states[iinit][n]));
-      VecDestroy(&(store_adj_states[iinit][n]));
     }
     store_states[iinit].clear();
+  }
+  for (size_t iinit = 0; iinit<store_adj_states.size(); iinit++) {
+    for (size_t n = 0; n <store_adj_states[iinit].size(); n++) {
+      VecDestroy(&(store_adj_states[iinit][n]));
+    }
     store_adj_states[iinit].clear();
   }
   VecDestroy(&x);
@@ -501,7 +510,7 @@ void TimeStepper::energyPenaltyIntegral_diff(double time, double penaltybar, Vec
 
 void TimeStepper::evolveBWD(const double /*tstart*/, const double /*tstop*/, const Vec /*x_stop*/, Vec /*x_adj*/, Vec /*grad*/, bool /*compute_gradient*/){}
 
-ExplEuler::ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_, ninit_local) {
+ExplEuler::ExplEuler(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local, double gamma_robust) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_, ninit_local, gamma_robust) {
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
   VecZeroEntries(stage);
 }
@@ -539,7 +548,7 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
 }
 
-ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_, ninit_local) {
+ImplMidpoint::ImplMidpoint(MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local, double gamma_robust) : TimeStepper(mastereq_, ntime_, total_time_, output_, storeFWD_, ninit_local, gamma_robust) {
 
   /* Create and reset the intermediate vectors */
   MatCreateVecs(mastereq->getRHS(), &stage, NULL);
@@ -748,7 +757,7 @@ int ImplMidpoint::NeumannSolve(Mat A, Vec b, Vec y, double alpha, bool transpose
 
 
 
-CompositionalImplMidpoint::CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local): ImplMidpoint(mastereq_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, ninit_local) {
+CompositionalImplMidpoint::CompositionalImplMidpoint(int order_, MasterEq* mastereq_, int ntime_, double total_time_, LinearSolverType linsolve_type_, int linsolve_maxiter_, Output* output_, bool storeFWD_, int ninit_local, double gamma_robust): ImplMidpoint(mastereq_, ntime_, total_time_, linsolve_type_, linsolve_maxiter_, output_, storeFWD_, ninit_local, gamma_robust) {
 
   order = order_;
 
