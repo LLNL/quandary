@@ -233,11 +233,11 @@ Protected Attributes</h2></td></tr>
 <tr class="memitem:af1e168e956b9a8c5bc8c746588781a3d" id="r_af1e168e956b9a8c5bc8c746588781a3d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#af1e168e956b9a8c5bc8c746588781a3d">mpisize_optim</a></td></tr>
 <tr class="memdesc:af1e168e956b9a8c5bc8c746588781a3d"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank and size for optimization communicator.  <br /></td></tr>
 <tr class="separator:af1e168e956b9a8c5bc8c746588781a3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa98b198c99fd5509e65539474f8bd5e6" id="r_aa98b198c99fd5509e65539474f8bd5e6"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#aa98b198c99fd5509e65539474f8bd5e6">mpirank_space</a></td></tr>
-<tr class="separator:aa98b198c99fd5509e65539474f8bd5e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acdb99dc589ca9dc4f4c6b1e4237e4ede" id="r_acdb99dc589ca9dc4f4c6b1e4237e4ede"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#acdb99dc589ca9dc4f4c6b1e4237e4ede">mpisize_space</a></td></tr>
-<tr class="memdesc:acdb99dc589ca9dc4f4c6b1e4237e4ede"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank and size for spatial parallelization (PETSc)  <br /></td></tr>
-<tr class="separator:acdb99dc589ca9dc4f4c6b1e4237e4ede"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a078dd8e68ceace2d59d60b2be44d03d1" id="r_a078dd8e68ceace2d59d60b2be44d03d1"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a078dd8e68ceace2d59d60b2be44d03d1">mpirank_petsc</a></td></tr>
+<tr class="separator:a078dd8e68ceace2d59d60b2be44d03d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4c750707efb0efe69925ad524da74087" id="r_a4c750707efb0efe69925ad524da74087"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a4c750707efb0efe69925ad524da74087">mpisize_petsc</a></td></tr>
+<tr class="memdesc:a4c750707efb0efe69925ad524da74087"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank and size for spatial parallelization (PETSc)  <br /></td></tr>
+<tr class="separator:a4c750707efb0efe69925ad524da74087"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9ff4b767eef4af36a48630d9e4a9cf15" id="r_a9ff4b767eef4af36a48630d9e4a9cf15"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a9ff4b767eef4af36a48630d9e4a9cf15">mpirank_world</a></td></tr>
 <tr class="separator:a9ff4b767eef4af36a48630d9e4a9cf15"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a04e1c1653c1e1baff1082d4376b367e2" id="r_a04e1c1653c1e1baff1082d4376b367e2"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOptimProblem.html#a04e1c1653c1e1baff1082d4376b367e2">mpisize_world</a></td></tr>
@@ -1401,8 +1401,8 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="aa98b198c99fd5509e65539474f8bd5e6" name="aa98b198c99fd5509e65539474f8bd5e6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa98b198c99fd5509e65539474f8bd5e6">&#9670;&#160;</a></span>mpirank_space</h2>
+<a id="a078dd8e68ceace2d59d60b2be44d03d1" name="a078dd8e68ceace2d59d60b2be44d03d1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a078dd8e68ceace2d59d60b2be44d03d1">&#9670;&#160;</a></span>mpirank_petsc</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1411,7 +1411,7 @@ Protected Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">int OptimProblem::mpirank_space</td>
+          <td class="memname">int OptimProblem::mpirank_petsc</td>
         </tr>
       </table>
   </td>
@@ -1493,8 +1493,8 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="acdb99dc589ca9dc4f4c6b1e4237e4ede" name="acdb99dc589ca9dc4f4c6b1e4237e4ede"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acdb99dc589ca9dc4f4c6b1e4237e4ede">&#9670;&#160;</a></span>mpisize_space</h2>
+<a id="a4c750707efb0efe69925ad524da74087" name="a4c750707efb0efe69925ad524da74087"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4c750707efb0efe69925ad524da74087">&#9670;&#160;</a></span>mpisize_petsc</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1503,7 +1503,7 @@ Protected Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">int OptimProblem::mpisize_space</td>
+          <td class="memname">int OptimProblem::mpisize_petsc</td>
         </tr>
       </table>
   </td>

@@ -6,5 +6,5 @@ var searchData=
   ['hadamardgate_3',['HadamardGate',['../classHadamardGate.html#aef120b22c884f624489aaefee452efbf',1,'HadamardGate']]],
   ['hamiltonianfilereader_4',['hamiltonianfilereader',['../classHamiltonianFileReader.html#aa20a62cfdbbc54f7d49d08a60bca874e',1,'HamiltonianFileReader::HamiltonianFileReader(std::string hamiltonian_file_Hsys, std::string hamiltonian_file_Hc, LindbladType lindbladtype_, PetscInt dim_rho_, bool quietmode_)'],['../classHamiltonianFileReader.html#a5be6b3d1e4ea0ad79fcba260625586e4',1,'HamiltonianFileReader::HamiltonianFileReader()']]],
   ['hilbertschmidtoverlap_5',['HilbertSchmidtOverlap',['../classOptimTarget.html#afcdb3bccc77da77d06e7c9a6f480e519',1,'OptimTarget']]],
-  ['hilbertschmidtoverlap_5fdiff_6',['HilbertSchmidtOverlap_diff',['../classOptimTarget.html#a22206893538fa23fd54b1bb29a9dd468',1,'OptimTarget']]]
+  ['hilbertschmidtoverlap_5fdiff_6',['HilbertSchmidtOverlap_diff',['../classOptimTarget.html#a3740ec8e0daf121b81957dd824545231',1,'OptimTarget']]]
 ];

@@ -229,12 +229,24 @@ Protected Attributes</h2></td></tr>
 <tr class="memitem:acf6134e3003b15eba18569f2b29d7834" id="r_acf6134e3003b15eba18569f2b29d7834"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#acf6134e3003b15eba18569f2b29d7834">carrier_freq</a></td></tr>
 <tr class="memdesc:acf6134e3003b15eba18569f2b29d7834"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequencies of the carrier waves.  <br /></td></tr>
 <tr class="separator:acf6134e3003b15eba18569f2b29d7834"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab568836a8dcac299a93f84ee130e2d31" id="r_ab568836a8dcac299a93f84ee130e2d31"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#ab568836a8dcac299a93f84ee130e2d31">mpirank_petsc</a></td></tr>
-<tr class="memdesc:ab568836a8dcac299a93f84ee130e2d31"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of PETSc's communicator.  <br /></td></tr>
-<tr class="separator:ab568836a8dcac299a93f84ee130e2d31"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a60f21a24f232900b09fdcfeedd662d0b" id="r_a60f21a24f232900b09fdcfeedd662d0b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a60f21a24f232900b09fdcfeedd662d0b">mpirank_world</a></td></tr>
 <tr class="memdesc:a60f21a24f232900b09fdcfeedd662d0b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of MPI_COMM_WORLD.  <br /></td></tr>
 <tr class="separator:a60f21a24f232900b09fdcfeedd662d0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab568836a8dcac299a93f84ee130e2d31" id="r_ab568836a8dcac299a93f84ee130e2d31"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#ab568836a8dcac299a93f84ee130e2d31">mpirank_petsc</a></td></tr>
+<tr class="memdesc:ab568836a8dcac299a93f84ee130e2d31"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rank of PETSc's communicator.  <br /></td></tr>
+<tr class="separator:ab568836a8dcac299a93f84ee130e2d31"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a05bff83d0a8895b6264fc644e77e08bd" id="r_a05bff83d0a8895b6264fc644e77e08bd"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a05bff83d0a8895b6264fc644e77e08bd">mpisize_petsc</a></td></tr>
+<tr class="memdesc:a05bff83d0a8895b6264fc644e77e08bd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of PETSc's communicator.  <br /></td></tr>
+<tr class="separator:a05bff83d0a8895b6264fc644e77e08bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8032dc257524e6023f9a5fa40b48d8c1" id="r_a8032dc257524e6023f9a5fa40b48d8c1"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a8032dc257524e6023f9a5fa40b48d8c1">localsize_u</a></td></tr>
+<tr class="memdesc:a8032dc257524e6023f9a5fa40b48d8c1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of local sub vector u or v in state x=[u,v].  <br /></td></tr>
+<tr class="separator:a8032dc257524e6023f9a5fa40b48d8c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab049a0cee20164f5eb7b1252ca9d712e" id="r_ab049a0cee20164f5eb7b1252ca9d712e"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#ab049a0cee20164f5eb7b1252ca9d712e">ilow</a></td></tr>
+<tr class="memdesc:ab049a0cee20164f5eb7b1252ca9d712e"><td class="mdescLeft">&#160;</td><td class="mdescRight">First index of the local sub vector u,v.  <br /></td></tr>
+<tr class="separator:ab049a0cee20164f5eb7b1252ca9d712e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a187209ffd542912e8918530b79fdafcd" id="r_a187209ffd542912e8918530b79fdafcd"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a187209ffd542912e8918530b79fdafcd">iupp</a></td></tr>
+<tr class="memdesc:a187209ffd542912e8918530b79fdafcd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Last index (+1) of the local sub vector u,v.  <br /></td></tr>
+<tr class="separator:a187209ffd542912e8918530b79fdafcd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a89b64697e0c5454fa68c1cab1bc74d57" id="r_a89b64697e0c5454fa68c1cab1bc74d57"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOscillator.html#a89b64697e0c5454fa68c1cab1bc74d57">control_enforceBC</a></td></tr>
 <tr class="memdesc:a89b64697e0c5454fa68c1cab1bc74d57"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to enforce boundary conditions on controls.  <br /></td></tr>
 <tr class="separator:a89b64697e0c5454fa68c1cab1bc74d57"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1343,6 +1355,54 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="ab049a0cee20164f5eb7b1252ca9d712e" name="ab049a0cee20164f5eb7b1252ca9d712e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab049a0cee20164f5eb7b1252ca9d712e">&#9670;&#160;</a></span>ilow</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">PetscInt Oscillator::ilow</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>First index of the local sub vector u,v. </p>
+
+</div>
+</div>
+<a id="a187209ffd542912e8918530b79fdafcd" name="a187209ffd542912e8918530b79fdafcd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a187209ffd542912e8918530b79fdafcd">&#9670;&#160;</a></span>iupp</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">PetscInt Oscillator::iupp</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Last index (+1) of the local sub vector u,v. </p>
+
+</div>
+</div>
 <a id="ad393a00805d44f10e81f5747ffc0c280" name="ad393a00805d44f10e81f5747ffc0c280"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad393a00805d44f10e81f5747ffc0c280">&#9670;&#160;</a></span>lindbladtype</h2>
 
@@ -1364,6 +1424,30 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Type of Lindblad collapse operators to include. </p>
+
+</div>
+</div>
+<a id="a8032dc257524e6023f9a5fa40b48d8c1" name="a8032dc257524e6023f9a5fa40b48d8c1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8032dc257524e6023f9a5fa40b48d8c1">&#9670;&#160;</a></span>localsize_u</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">PetscInt Oscillator::localsize_u</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Size of local sub vector u or v in state x=[u,v]. </p>
 
 </div>
 </div>
@@ -1412,6 +1496,30 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Rank of MPI_COMM_WORLD. </p>
+
+</div>
+</div>
+<a id="a05bff83d0a8895b6264fc644e77e08bd" name="a05bff83d0a8895b6264fc644e77e08bd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a05bff83d0a8895b6264fc644e77e08bd">&#9670;&#160;</a></span>mpisize_petsc</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Oscillator::mpisize_petsc</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Size of PETSc's communicator. </p>
 
 </div>
 </div>

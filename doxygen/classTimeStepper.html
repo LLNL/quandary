@@ -223,9 +223,6 @@ Public Attributes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pro-attribs" name="pro-attribs"></a>
 Protected Attributes</h2></td></tr>
-<tr class="memitem:ad7582c6e92e95afc145ad260c9724935" id="r_ad7582c6e92e95afc145ad260c9724935"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#ad7582c6e92e95afc145ad260c9724935">dim</a></td></tr>
-<tr class="memdesc:ad7582c6e92e95afc145ad260c9724935"><td class="mdescLeft">&#160;</td><td class="mdescRight">State vector dimension.  <br /></td></tr>
-<tr class="separator:ad7582c6e92e95afc145ad260c9724935"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7b47c0f5ce67d8f4a04c77c2c96bd93c" id="r_a7b47c0f5ce67d8f4a04c77c2c96bd93c"><td class="memItemLeft" align="right" valign="top">Vec&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a7b47c0f5ce67d8f4a04c77c2c96bd93c">x</a></td></tr>
 <tr class="memdesc:a7b47c0f5ce67d8f4a04c77c2c96bd93c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Auxiliary vector for forward time stepping.  <br /></td></tr>
 <tr class="separator:a7b47c0f5ce67d8f4a04c77c2c96bd93c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -247,6 +244,21 @@ Protected Attributes</h2></td></tr>
 <tr class="memitem:a354e57936c67ef0191a90d2c8c343e39" id="r_a354e57936c67ef0191a90d2c8c343e39"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a354e57936c67ef0191a90d2c8c343e39">mpirank_world</a></td></tr>
 <tr class="memdesc:a354e57936c67ef0191a90d2c8c343e39"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank in global communicator.  <br /></td></tr>
 <tr class="separator:a354e57936c67ef0191a90d2c8c343e39"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad94ad10793beb1ceaa4e1e891fbe5fa0" id="r_ad94ad10793beb1ceaa4e1e891fbe5fa0"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#ad94ad10793beb1ceaa4e1e891fbe5fa0">mpisize_petsc</a></td></tr>
+<tr class="memdesc:ad94ad10793beb1ceaa4e1e891fbe5fa0"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI size in Petsc communicator.  <br /></td></tr>
+<tr class="separator:ad94ad10793beb1ceaa4e1e891fbe5fa0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1312affa8a74d82367c5f3cdaddf92c7" id="r_a1312affa8a74d82367c5f3cdaddf92c7"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a1312affa8a74d82367c5f3cdaddf92c7">mpirank_petsc</a></td></tr>
+<tr class="memdesc:a1312affa8a74d82367c5f3cdaddf92c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI rank in Petsc communicator.  <br /></td></tr>
+<tr class="separator:a1312affa8a74d82367c5f3cdaddf92c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab73aaee4909456bd8c9b5d4b0d1ffb12" id="r_ab73aaee4909456bd8c9b5d4b0d1ffb12"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#ab73aaee4909456bd8c9b5d4b0d1ffb12">localsize_u</a></td></tr>
+<tr class="memdesc:ab73aaee4909456bd8c9b5d4b0d1ffb12"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of local sub vector u or v in state x=[u,v].  <br /></td></tr>
+<tr class="separator:ab73aaee4909456bd8c9b5d4b0d1ffb12"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a83f9f48fa49f9cbb63e0e4200601b87c" id="r_a83f9f48fa49f9cbb63e0e4200601b87c"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a83f9f48fa49f9cbb63e0e4200601b87c">ilow</a></td></tr>
+<tr class="memdesc:a83f9f48fa49f9cbb63e0e4200601b87c"><td class="mdescLeft">&#160;</td><td class="mdescRight">First index of the local sub vector u,v.  <br /></td></tr>
+<tr class="separator:a83f9f48fa49f9cbb63e0e4200601b87c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a212403add28856d8466b25e3a4ad2ad2" id="r_a212403add28856d8466b25e3a4ad2ad2"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimeStepper.html#a212403add28856d8466b25e3a4ad2ad2">iupp</a></td></tr>
+<tr class="memdesc:a212403add28856d8466b25e3a4ad2ad2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Last index (+1) of the local sub vector u,v.  <br /></td></tr>
+<tr class="separator:a212403add28856d8466b25e3a4ad2ad2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Base class for time integration schemes to evolve the quantum dynamics. </p>
@@ -892,30 +904,6 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="ad7582c6e92e95afc145ad260c9724935" name="ad7582c6e92e95afc145ad260c9724935"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad7582c6e92e95afc145ad260c9724935">&#9670;&#160;</a></span>dim</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">PetscInt TimeStepper::dim</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>State vector dimension. </p>
-
-</div>
-</div>
 <a id="a33769128e30e615ac6527991392554e1" name="a33769128e30e615ac6527991392554e1"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a33769128e30e615ac6527991392554e1">&#9670;&#160;</a></span>dpdm_states</h2>
 
@@ -1020,6 +1008,78 @@ Protected Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a83f9f48fa49f9cbb63e0e4200601b87c" name="a83f9f48fa49f9cbb63e0e4200601b87c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a83f9f48fa49f9cbb63e0e4200601b87c">&#9670;&#160;</a></span>ilow</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">PetscInt TimeStepper::ilow</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>First index of the local sub vector u,v. </p>
+
+</div>
+</div>
+<a id="a212403add28856d8466b25e3a4ad2ad2" name="a212403add28856d8466b25e3a4ad2ad2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a212403add28856d8466b25e3a4ad2ad2">&#9670;&#160;</a></span>iupp</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">PetscInt TimeStepper::iupp</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Last index (+1) of the local sub vector u,v. </p>
+
+</div>
+</div>
+<a id="ab73aaee4909456bd8c9b5d4b0d1ffb12" name="ab73aaee4909456bd8c9b5d4b0d1ffb12"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab73aaee4909456bd8c9b5d4b0d1ffb12">&#9670;&#160;</a></span>localsize_u</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">PetscInt TimeStepper::localsize_u</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Size of local sub vector u or v in state x=[u,v]. </p>
+
+</div>
+</div>
 <a id="a19a5d08c76bf1580122ec82665c2f7ef" name="a19a5d08c76bf1580122ec82665c2f7ef"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a19a5d08c76bf1580122ec82665c2f7ef">&#9670;&#160;</a></span>mastereq</h2>
 
@@ -1033,6 +1093,30 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Pointer to master equation solver. </p>
+
+</div>
+</div>
+<a id="a1312affa8a74d82367c5f3cdaddf92c7" name="a1312affa8a74d82367c5f3cdaddf92c7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1312affa8a74d82367c5f3cdaddf92c7">&#9670;&#160;</a></span>mpirank_petsc</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int TimeStepper::mpirank_petsc</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>MPI rank in Petsc communicator. </p>
 
 </div>
 </div>
@@ -1057,6 +1141,30 @@ Protected Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>MPI rank in global communicator. </p>
+
+</div>
+</div>
+<a id="ad94ad10793beb1ceaa4e1e891fbe5fa0" name="ad94ad10793beb1ceaa4e1e891fbe5fa0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad94ad10793beb1ceaa4e1e891fbe5fa0">&#9670;&#160;</a></span>mpisize_petsc</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int TimeStepper::mpisize_petsc</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">protected</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>MPI size in Petsc communicator. </p>
 
 </div>
 </div>

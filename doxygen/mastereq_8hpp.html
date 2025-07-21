@@ -276,9 +276,9 @@ Functions</h2></td></tr>
 <tr class="memitem:aa77e13c9a94d0ac25e730935925a0cff" id="r_aa77e13c9a94d0ac25e730935925a0cff"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aa77e13c9a94d0ac25e730935925a0cff">compute_dRHS_dParams_sparsemat</a> (const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad, std::vector&lt; int &gt; &amp;nlevels, IS isu, IS isv, std::vector&lt; Mat &gt; &amp;Ac_vec, std::vector&lt; Mat &gt; &amp;Bc_vec, Vec aux, <a class="el" href="classOscillator.html">Oscillator</a> **oscil_vec)</td></tr>
 <tr class="memdesc:aa77e13c9a94d0ac25e730935925a0cff"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Sparse-matrix version to compute gradient of RHS with respect to parameters  <br /></td></tr>
 <tr class="separator:aa77e13c9a94d0ac25e730935925a0cff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa983d2208310e7d957c97114ab3fbebd" id="r_aa983d2208310e7d957c97114ab3fbebd"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aa983d2208310e7d957c97114ab3fbebd">compute_dRHS_dParams_matfree</a> (const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad, std::vector&lt; int &gt; &amp;nlevels, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype, <a class="el" href="classOscillator.html">Oscillator</a> **oscil_vec)</td></tr>
-<tr class="memdesc:aa983d2208310e7d957c97114ab3fbebd"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Matrix free version to compute gradient of RHS with respect to parameters  <br /></td></tr>
-<tr class="separator:aa983d2208310e7d957c97114ab3fbebd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad07e79fe88ae679ea14d6772b91458aa" id="r_ad07e79fe88ae679ea14d6772b91458aa"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ad07e79fe88ae679ea14d6772b91458aa">compute_dRHS_dParams_matfree</a> (const PetscInt dim, const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad, std::vector&lt; int &gt; &amp;nlevels, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype, <a class="el" href="classOscillator.html">Oscillator</a> **oscil_vec)</td></tr>
+<tr class="memdesc:ad07e79fe88ae679ea14d6772b91458aa"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Matrix free version to compute gradient of RHS with respect to parameters  <br /></td></tr>
+<tr class="separator:ad07e79fe88ae679ea14d6772b91458aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aebbda51dfa3b2ccda3c86e83efb422f3" id="r_aebbda51dfa3b2ccda3c86e83efb422f3"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aebbda51dfa3b2ccda3c86e83efb422f3">H_detune</a> (const double detuning0, const int a)</td></tr>
 <tr class="memdesc:aebbda51dfa3b2ccda3c86e83efb422f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS to Compute detuning for 1 oscillator.  <br /></td></tr>
 <tr class="separator:aebbda51dfa3b2ccda3c86e83efb422f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -348,27 +348,27 @@ Functions</h2></td></tr>
 <tr class="separator:ab9db8a05c90cfaa114286dafd95ee61b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a418d121bd4b2619395278c41978fa9eb" id="r_a418d121bd4b2619395278c41978fa9eb"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a418d121bd4b2619395278c41978fa9eb">TensorGetIndex</a> (const int nlevels0, const int nlevels1, const int nlevels2, const int nlevels3, const int nlevels4, const int i0, const int i1, const int i2, const int i3, const int i4, const int i0p, const int i1p, const int i2p, const int i3p, const int i4p)</td></tr>
 <tr class="separator:a418d121bd4b2619395278c41978fa9eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a30e19fc9f17030c99d9f1efb4f76db43" id="r_a30e19fc9f17030c99d9f1efb4f76db43"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a30e19fc9f17030c99d9f1efb4f76db43">dRHSdp_getcoeffs</a> (const int it, const int n, const int np, const int i, const int ip, const int stridei, const int strideip, const double *xptr, double *res_p_re, double *res_p_im, double *res_q_re, double *res_q_im)</td></tr>
-<tr class="memdesc:a30e19fc9f17030c99d9f1efb4f76db43"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS for gradient updates.  <br /></td></tr>
-<tr class="separator:a30e19fc9f17030c99d9f1efb4f76db43"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac5c01379a727f6e4065d00fc81a3d7f8" id="r_ac5c01379a727f6e4065d00fc81a3d7f8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ac5c01379a727f6e4065d00fc81a3d7f8">Jkl_coupling</a> (const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double *xptr, const double Jij, const double cosij, const double sinij, double *yre, double *yim)</td></tr>
-<tr class="memdesc:ac5c01379a727f6e4065d00fc81a3d7f8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver inline for dipole-dipole coupling between oscillators.  <br /></td></tr>
-<tr class="separator:ac5c01379a727f6e4065d00fc81a3d7f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab1bca30d773692bcd076d76927c8ba39" id="r_ab1bca30d773692bcd076d76927c8ba39"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ab1bca30d773692bcd076d76927c8ba39">Jkl_coupling_T</a> (const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double *xptr, const double Jij, const double cosij, const double sinij, double *yre, double *yim)</td></tr>
-<tr class="memdesc:ab1bca30d773692bcd076d76927c8ba39"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose of dipole-dipole coupling for adjoint computations.  <br /></td></tr>
-<tr class="separator:ab1bca30d773692bcd076d76927c8ba39"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaa7f2114c09d97537ef8d2579e98b0bc" id="r_aaa7f2114c09d97537ef8d2579e98b0bc"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aaa7f2114c09d97537ef8d2579e98b0bc">L1decay</a> (const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double *xptr, const double decayi, double *yre, double *yim)</td></tr>
-<tr class="memdesc:aaa7f2114c09d97537ef8d2579e98b0bc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver inline for off-diagonal L1 decay term.  <br /></td></tr>
-<tr class="separator:aaa7f2114c09d97537ef8d2579e98b0bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7516a772ec73ed0deead7db33a194319" id="r_a7516a772ec73ed0deead7db33a194319"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a7516a772ec73ed0deead7db33a194319">L1decay_T</a> (const int it, const int i, const int ip, const int stridei, const int strideip, const double *xptr, const double decayi, double *yre, double *yim)</td></tr>
-<tr class="memdesc:a7516a772ec73ed0deead7db33a194319"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free inline Transpose of off-diagonal L1 decay for adjoint computations.  <br /></td></tr>
-<tr class="separator:a7516a772ec73ed0deead7db33a194319"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a343ecc505aee2c823165b37592945f30" id="r_a343ecc505aee2c823165b37592945f30"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a343ecc505aee2c823165b37592945f30">control</a> (const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double *xptr, const double pt, const double qt, double *yre, double *yim)</td></tr>
-<tr class="memdesc:a343ecc505aee2c823165b37592945f30"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver inline for control terms.  <br /></td></tr>
-<tr class="separator:a343ecc505aee2c823165b37592945f30"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a05441506524e4cfac60bc0ed729e51ba" id="r_a05441506524e4cfac60bc0ed729e51ba"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a05441506524e4cfac60bc0ed729e51ba">control_T</a> (const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double *xptr, const double pt, const double qt, double *yre, double *yim)</td></tr>
-<tr class="memdesc:a05441506524e4cfac60bc0ed729e51ba"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free Transpose of control terms for adjoint computations.  <br /></td></tr>
-<tr class="separator:a05441506524e4cfac60bc0ed729e51ba"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8f077a3b08eaffd2721784b5e8aded1c" id="r_a8f077a3b08eaffd2721784b5e8aded1c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a8f077a3b08eaffd2721784b5e8aded1c">dRHSdp_getcoeffs</a> (const PetscInt dim, const int it, const int n, const int np, const int i, const int ip, const int stridei, const int strideip, const double *xptr, double *res_p_re, double *res_p_im, double *res_q_re, double *res_q_im)</td></tr>
+<tr class="memdesc:a8f077a3b08eaffd2721784b5e8aded1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS for gradient updates.  <br /></td></tr>
+<tr class="separator:a8f077a3b08eaffd2721784b5e8aded1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a91a476485ea7a73ce5ad12e4888af677" id="r_a91a476485ea7a73ce5ad12e4888af677"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a91a476485ea7a73ce5ad12e4888af677">Jkl_coupling</a> (const PetscInt dim, const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double *xptr, const double Jij, const double cosij, const double sinij, double *yre, double *yim)</td></tr>
+<tr class="memdesc:a91a476485ea7a73ce5ad12e4888af677"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver inline for dipole-dipole coupling between oscillators.  <br /></td></tr>
+<tr class="separator:a91a476485ea7a73ce5ad12e4888af677"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a40b326a8bf579b23be81cfc004bcd27a" id="r_a40b326a8bf579b23be81cfc004bcd27a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a40b326a8bf579b23be81cfc004bcd27a">Jkl_coupling_T</a> (const PetscInt dim, const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double *xptr, const double Jij, const double cosij, const double sinij, double *yre, double *yim)</td></tr>
+<tr class="memdesc:a40b326a8bf579b23be81cfc004bcd27a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose of dipole-dipole coupling for adjoint computations.  <br /></td></tr>
+<tr class="separator:a40b326a8bf579b23be81cfc004bcd27a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa159bffd2b0a5e4673edd97cee863dd4" id="r_aa159bffd2b0a5e4673edd97cee863dd4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aa159bffd2b0a5e4673edd97cee863dd4">L1decay</a> (const PetscInt dim, const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double *xptr, const double decayi, double *yre, double *yim)</td></tr>
+<tr class="memdesc:aa159bffd2b0a5e4673edd97cee863dd4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver inline for off-diagonal L1 decay term.  <br /></td></tr>
+<tr class="separator:aa159bffd2b0a5e4673edd97cee863dd4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af770f017839be90b01c452e6c5fe18c3" id="r_af770f017839be90b01c452e6c5fe18c3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#af770f017839be90b01c452e6c5fe18c3">L1decay_T</a> (const PetscInt dim, const int it, const int i, const int ip, const int stridei, const int strideip, const double *xptr, const double decayi, double *yre, double *yim)</td></tr>
+<tr class="memdesc:af770f017839be90b01c452e6c5fe18c3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free inline Transpose of off-diagonal L1 decay for adjoint computations.  <br /></td></tr>
+<tr class="separator:af770f017839be90b01c452e6c5fe18c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab1f1874266f7eb3e45894ba2dd4a8a79" id="r_ab1f1874266f7eb3e45894ba2dd4a8a79"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ab1f1874266f7eb3e45894ba2dd4a8a79">control</a> (const PetscInt dim, const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double *xptr, const double pt, const double qt, double *yre, double *yim)</td></tr>
+<tr class="memdesc:ab1f1874266f7eb3e45894ba2dd4a8a79"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free solver inline for control terms.  <br /></td></tr>
+<tr class="separator:ab1f1874266f7eb3e45894ba2dd4a8a79"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad7a20cf2e9a78242ffcd72c87032b29b" id="r_ad7a20cf2e9a78242ffcd72c87032b29b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ad7a20cf2e9a78242ffcd72c87032b29b">control_T</a> (const PetscInt dim, const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double *xptr, const double pt, const double qt, double *yre, double *yim)</td></tr>
+<tr class="memdesc:ad7a20cf2e9a78242ffcd72c87032b29b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Matrix-free Transpose of control terms for adjoint computations.  <br /></td></tr>
+<tr class="separator:ad7a20cf2e9a78242ffcd72c87032b29b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Function Documentation</h2>
 <a id="a4bbcb17d81ad9a2ed8c929a3d474fd76" name="a4bbcb17d81ad9a2ed8c929a3d474fd76"></a>
@@ -804,8 +804,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="aa983d2208310e7d957c97114ab3fbebd" name="aa983d2208310e7d957c97114ab3fbebd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa983d2208310e7d957c97114ab3fbebd">&#9670;&#160;</a></span>compute_dRHS_dParams_matfree()</h2>
+<a id="ad07e79fe88ae679ea14d6772b91458aa" name="ad07e79fe88ae679ea14d6772b91458aa"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad07e79fe88ae679ea14d6772b91458aa">&#9670;&#160;</a></span>compute_dRHS_dParams_matfree()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -813,6 +813,12 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void compute_dRHS_dParams_matfree </td>
           <td>(</td>
+          <td class="paramtype">const PetscInt&#160;</td>
+          <td class="paramname"><em>dim</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
           <td class="paramtype">const double&#160;</td>
           <td class="paramname"><em>t</em>, </td>
         </tr>
@@ -870,6 +876,7 @@ Functions</h2></td></tr>
 <p>Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar in a matrix-free manner. See <a class="el" href="mastereq_8cpp.html#af2f40d837405f8e22f2e1ae3746d5678">compute_dRHS_dParams_sparsemat</a> for the sparse-matrix version of this routine.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">dim</td><td>Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">t</td><td>Current time </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">x</td><td>State vector </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">x_bar</td><td>Adjoint state vector </td></tr>
@@ -971,7 +978,7 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>: Sparse-matrix version to compute gradient of RHS with respect to parameters </p>
-<p>Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar with sparse-matrix version of RHS. Compare <a class="el" href="mastereq_8cpp.html#aedacbb7ca7a8e9d3c9de1ce6983f9c15">compute_dRHS_dParams_matfree</a> for the matrix-free version of this routine.</p>
+<p>Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar with sparse-matrix version of RHS. Compare <a class="el" href="mastereq_8cpp.html#ad3dd9cf141f58de662dadeae99538791">compute_dRHS_dParams_matfree</a> for the matrix-free version of this routine.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">t</td><td>Current time </td></tr>
@@ -982,6 +989,8 @@ Functions</h2></td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">nlevels</td><td>Number of energy levels per subsystem </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">isu</td><td>Index stride to access real parts of a state vector </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">isv</td><td>Index stride to access imaginar parts of a state vector </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">Ac_vec</td><td>Vector of real parts of control matrices per oscillator </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">Bc_vec</td><td>Vector of imaginary parts of control matrices per oscillator </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">aux</td><td>Auxiliary vector for computations </td></tr>
     <tr><td class="paramdir">[in]</td><td class="paramname">oscil_vec</td><td>Vector of quantum oscilators </td></tr>
   </table>
@@ -990,8 +999,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a343ecc505aee2c823165b37592945f30" name="a343ecc505aee2c823165b37592945f30"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a343ecc505aee2c823165b37592945f30">&#9670;&#160;</a></span>control()</h2>
+<a id="ab1f1874266f7eb3e45894ba2dd4a8a79" name="ab1f1874266f7eb3e45894ba2dd4a8a79"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab1f1874266f7eb3e45894ba2dd4a8a79">&#9670;&#160;</a></span>control()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1002,6 +1011,12 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void control </td>
           <td>(</td>
+          <td class="paramtype">const PetscInt&#160;</td>
+          <td class="paramname"><em>dim</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
           <td class="paramtype">const int&#160;</td>
           <td class="paramname"><em>it</em>, </td>
         </tr>
@@ -1088,6 +1103,7 @@ Functions</h2></td></tr>
 <p>Applies control Hamiltonian terms (ladder operators) to the state.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
+    <tr><td class="paramname">dim</td><td>Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger </td></tr>
     <tr><td class="paramname">it</td><td>Current tensor index </td></tr>
     <tr><td class="paramname">n</td><td>Number of levels </td></tr>
     <tr><td class="paramname">i</td><td>Occupation number (bra) </td></tr>
@@ -1106,8 +1122,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a05441506524e4cfac60bc0ed729e51ba" name="a05441506524e4cfac60bc0ed729e51ba"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a05441506524e4cfac60bc0ed729e51ba">&#9670;&#160;</a></span>control_T()</h2>
+<a id="ad7a20cf2e9a78242ffcd72c87032b29b" name="ad7a20cf2e9a78242ffcd72c87032b29b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad7a20cf2e9a78242ffcd72c87032b29b">&#9670;&#160;</a></span>control_T()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1118,6 +1134,12 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void control_T </td>
           <td>(</td>
+          <td class="paramtype">const PetscInt&#160;</td>
+          <td class="paramname"><em>dim</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
           <td class="paramtype">const int&#160;</td>
           <td class="paramname"><em>it</em>, </td>
         </tr>
@@ -1203,6 +1225,7 @@ Functions</h2></td></tr>
 <p>Matrix-free Transpose of control terms for adjoint computations. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
+    <tr><td class="paramname">dim</td><td>Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger </td></tr>
     <tr><td class="paramname">it</td><td>Current tensor index </td></tr>
     <tr><td class="paramname">n</td><td>Number of levels </td></tr>
     <tr><td class="paramname">i</td><td>Occupation number (bra) </td></tr>
@@ -1221,8 +1244,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a30e19fc9f17030c99d9f1efb4f76db43" name="a30e19fc9f17030c99d9f1efb4f76db43"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a30e19fc9f17030c99d9f1efb4f76db43">&#9670;&#160;</a></span>dRHSdp_getcoeffs()</h2>
+<a id="a8f077a3b08eaffd2721784b5e8aded1c" name="a8f077a3b08eaffd2721784b5e8aded1c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8f077a3b08eaffd2721784b5e8aded1c">&#9670;&#160;</a></span>dRHSdp_getcoeffs()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1233,6 +1256,12 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void dRHSdp_getcoeffs </td>
           <td>(</td>
+          <td class="paramtype">const PetscInt&#160;</td>
+          <td class="paramname"><em>dim</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
           <td class="paramtype">const int&#160;</td>
           <td class="paramname"><em>it</em>, </td>
         </tr>
@@ -1319,6 +1348,7 @@ Functions</h2></td></tr>
 <p>Computes coefficients for gradient computation with respect to control parameters.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
+    <tr><td class="paramname">dim</td><td>Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger </td></tr>
     <tr><td class="paramname">it</td><td>Current tensor index </td></tr>
     <tr><td class="paramname">n</td><td>Number of levels for current oscillator </td></tr>
     <tr><td class="paramname">np</td><td>Number of levels for conjugate oscillator </td></tr>
@@ -2292,8 +2322,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ac5c01379a727f6e4065d00fc81a3d7f8" name="ac5c01379a727f6e4065d00fc81a3d7f8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac5c01379a727f6e4065d00fc81a3d7f8">&#9670;&#160;</a></span>Jkl_coupling()</h2>
+<a id="a91a476485ea7a73ce5ad12e4888af677" name="a91a476485ea7a73ce5ad12e4888af677"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a91a476485ea7a73ce5ad12e4888af677">&#9670;&#160;</a></span>Jkl_coupling()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -2304,6 +2334,12 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void Jkl_coupling </td>
           <td>(</td>
+          <td class="paramtype">const PetscInt&#160;</td>
+          <td class="paramname"><em>dim</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
           <td class="paramtype">const int&#160;</td>
           <td class="paramname"><em>it</em>, </td>
         </tr>
@@ -2432,6 +2468,7 @@ Functions</h2></td></tr>
 <p>Implements J_kl coupling terms in the rotating frame between oscillator i and j.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
+    <tr><td class="paramname">dim</td><td>Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger </td></tr>
     <tr><td class="paramname">it</td><td>Current tensor index </td></tr>
     <tr><td class="paramname">ni</td><td>Number of levels for oscillator i </td></tr>
     <tr><td class="paramname">nj</td><td>Number of levels for oscillator j </td></tr>
@@ -2457,8 +2494,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ab1bca30d773692bcd076d76927c8ba39" name="ab1bca30d773692bcd076d76927c8ba39"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab1bca30d773692bcd076d76927c8ba39">&#9670;&#160;</a></span>Jkl_coupling_T()</h2>
+<a id="a40b326a8bf579b23be81cfc004bcd27a" name="a40b326a8bf579b23be81cfc004bcd27a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a40b326a8bf579b23be81cfc004bcd27a">&#9670;&#160;</a></span>Jkl_coupling_T()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -2469,6 +2506,12 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void Jkl_coupling_T </td>
           <td>(</td>
+          <td class="paramtype">const PetscInt&#160;</td>
+          <td class="paramname"><em>dim</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
           <td class="paramtype">const int&#160;</td>
           <td class="paramname"><em>it</em>, </td>
         </tr>
@@ -2596,6 +2639,7 @@ Functions</h2></td></tr>
 <p>Transpose of dipole-dipole coupling for adjoint computations. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
+    <tr><td class="paramname">dim</td><td>Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger </td></tr>
     <tr><td class="paramname">it</td><td>Current tensor index </td></tr>
     <tr><td class="paramname">ni</td><td>Number of levels for oscillator i </td></tr>
     <tr><td class="paramname">nj</td><td>Number of levels for oscillator j </td></tr>
@@ -2621,8 +2665,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="aaa7f2114c09d97537ef8d2579e98b0bc" name="aaa7f2114c09d97537ef8d2579e98b0bc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aaa7f2114c09d97537ef8d2579e98b0bc">&#9670;&#160;</a></span>L1decay()</h2>
+<a id="aa159bffd2b0a5e4673edd97cee863dd4" name="aa159bffd2b0a5e4673edd97cee863dd4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa159bffd2b0a5e4673edd97cee863dd4">&#9670;&#160;</a></span>L1decay()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -2633,6 +2677,12 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void L1decay </td>
           <td>(</td>
+          <td class="paramtype">const PetscInt&#160;</td>
+          <td class="paramname"><em>dim</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
           <td class="paramtype">const int&#160;</td>
           <td class="paramname"><em>it</em>, </td>
         </tr>
@@ -2706,6 +2756,7 @@ Functions</h2></td></tr>
 <p>Matrix-free solver inline for off-diagonal L1 decay term. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
+    <tr><td class="paramname">dim</td><td>Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger </td></tr>
     <tr><td class="paramname">it</td><td>Current tensor index </td></tr>
     <tr><td class="paramname">n</td><td>Number of levels </td></tr>
     <tr><td class="paramname">i</td><td>Occupation number (bra) </td></tr>
@@ -2722,8 +2773,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a7516a772ec73ed0deead7db33a194319" name="a7516a772ec73ed0deead7db33a194319"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7516a772ec73ed0deead7db33a194319">&#9670;&#160;</a></span>L1decay_T()</h2>
+<a id="af770f017839be90b01c452e6c5fe18c3" name="af770f017839be90b01c452e6c5fe18c3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af770f017839be90b01c452e6c5fe18c3">&#9670;&#160;</a></span>L1decay_T()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -2734,6 +2785,12 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">void L1decay_T </td>
           <td>(</td>
+          <td class="paramtype">const PetscInt&#160;</td>
+          <td class="paramname"><em>dim</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
           <td class="paramtype">const int&#160;</td>
           <td class="paramname"><em>it</em>, </td>
         </tr>
@@ -2801,6 +2858,7 @@ Functions</h2></td></tr>
 <p>Matrix-free inline Transpose of off-diagonal L1 decay for adjoint computations. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
+    <tr><td class="paramname">dim</td><td>Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger </td></tr>
     <tr><td class="paramname">it</td><td>Current tensor index </td></tr>
     <tr><td class="paramname">i</td><td>Occupation number (bra) </td></tr>
     <tr><td class="paramname">ip</td><td>Occupation number (ket) </td></tr>
