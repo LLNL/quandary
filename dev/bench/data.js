@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1753207741823,
+  "lastUpdate": 1753210225109,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1099,6 +1099,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4218.29,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Stefanie Guenther",
+            "username": "steffi7574",
+            "email": "guenther5@llnl.gov"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "37d7c3dab03683ff9f723f34dbf5504712a07ab1",
+          "message": "Merge pull request #74 from LLNL/bugfix-hamiltonianreader\n\nBugfix hamiltonianreader: Set up hamiltonian matrices on all ranks, not just rank 0.",
+          "timestamp": "2025-07-22T17:58:02Z",
+          "url": "https://github.com/LLNL/quandary/commit/37d7c3dab03683ff9f723f34dbf5504712a07ab1"
+        },
+        "date": 1753210223190,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7823266775812954,
+            "unit": "seconds",
+            "range": "0.380216104278327"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 85.92,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 9.248127500060946,
+            "unit": "seconds",
+            "range": "0.13891813590182364"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4218.88,
             "unit": "MB"
           }
         ]
