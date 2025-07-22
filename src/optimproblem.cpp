@@ -620,6 +620,8 @@ double OptimProblem::computeRobustCost(){
   int pair_idx = 0;
   for (int n=1; n<=ntime; n++){
     for (int m=n+1; m<=ntime; m++) {
+
+      // Iterate over local initial conditions, summing up znm = xn^dagger xm
       znm_re_local[pair_idx] = 0.0;
       znm_im_local[pair_idx] = 0.0;
       for (int iinit = 0; iinit < ninit_local; iinit++){
@@ -627,27 +629,22 @@ double OptimProblem::computeRobustCost(){
         Vec xn = timestepper->store_states[iinit][n];
         Vec xm = timestepper->store_states[iinit][m];
 
-        // Get real and imaginary subvectors 
-        Vec xn_re, xn_im, xm_re, xm_im;
-        VecGetSubVector(xn, timestepper->mastereq->isu, &xn_re);
-        VecGetSubVector(xn, timestepper->mastereq->isv, &xn_im);
-        VecGetSubVector(xm, timestepper->mastereq->isu, &xm_re);
-        VecGetSubVector(xm, timestepper->mastereq->isv, &xm_im);
+        // Get pointers to the local u,v, subvectors
+        const double *xn_re, *xn_im, *xm_re, *xm_im;
+        VecGetArrayRead(xn, &xn_re);
+        VecGetArrayRead(xm, &xm_re);
+        xn_im = xn_re + timestepper->mastereq->localsize_u;
+        xm_im = xm_re + timestepper->mastereq->localsize_u;
 
-        // Evaluate the znm = xn^dagger xm
-        double tmp1, tmp2;
-        VecDot(xn_re, xm_re, &tmp1);
-        VecDot(xn_im, xm_im, &tmp2);
-        znm_re_local[pair_idx] += tmp1 + tmp2;
-        VecDot(xn_re, xm_im, &tmp1);
-        VecDot(xn_im, xm_re, &tmp2);
-        znm_im_local[pair_idx] += tmp1 - tmp2;
+        // Evaluate znm = xn^dagger xm
+        for (int il = 0; il < timestepper->mastereq->localsize_u; il++){
+          znm_re_local[pair_idx] += xn_re[il] * xm_re[il] + xn_im[il] * xm_im[il];
+          znm_im_local[pair_idx] += xn_re[il] * xm_im[il] - xn_im[il] * xm_re[il];
+        }
 
-        // Restore subvectors
-        VecRestoreSubVector(xn, timestepper->mastereq->isu, &xn_re);
-        VecRestoreSubVector(xn, timestepper->mastereq->isv, &xn_im);
-        VecRestoreSubVector(xm, timestepper->mastereq->isu, &xm_re);
-        VecRestoreSubVector(xm, timestepper->mastereq->isv, &xm_im);
+        // Restore vectors
+        VecRestoreArrayRead(xn, &xn_re);
+        VecRestoreArrayRead(xm, &xm_re);
       }
       pair_idx++;
     }
@@ -696,27 +693,22 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
         Vec xn = timestepper->store_states[iinit][n];
         Vec xm = timestepper->store_states[iinit][m];
 
-        // Get real and imaginary subvectors 
-        Vec xn_re, xn_im, xm_re, xm_im;
-        VecGetSubVector(xn, timestepper->mastereq->isu, &xn_re);
-        VecGetSubVector(xn, timestepper->mastereq->isv, &xn_im);
-        VecGetSubVector(xm, timestepper->mastereq->isu, &xm_re);
-        VecGetSubVector(xm, timestepper->mastereq->isv, &xm_im);
+        // Get pointers to the local u,v, subvectors
+        const double *xn_re, *xn_im, *xm_re, *xm_im;
+        VecGetArrayRead(xn, &xn_re);
+        VecGetArrayRead(xm, &xm_re);
+        xn_im = xn_re + timestepper->mastereq->localsize_u;
+        xm_im = xm_re + timestepper->mastereq->localsize_u;
 
-        // Evaluate the znm = xn^dagger xm
-        double tmp1, tmp2;
-        VecDot(xn_re, xm_re, &tmp1);
-        VecDot(xn_im, xm_im, &tmp2);
-        znm_re_local[pair_idx] += tmp1 + tmp2;
-        VecDot(xn_re, xm_im, &tmp1);
-        VecDot(xn_im, xm_re, &tmp2);
-        znm_im_local[pair_idx] += tmp1 - tmp2;
+        // Evaluate znm = xn^dagger xm
+        for (int il = 0; il < timestepper->mastereq->localsize_u; il++){
+          znm_re_local[pair_idx] += xn_re[il] * xm_re[il] + xn_im[il] * xm_im[il];
+          znm_im_local[pair_idx] += xn_re[il] * xm_im[il] - xn_im[il] * xm_re[il];
+        }
 
-        // Restore subvectors
-        VecRestoreSubVector(xn, timestepper->mastereq->isu, &xn_re);
-        VecRestoreSubVector(xn, timestepper->mastereq->isv, &xn_im);
-        VecRestoreSubVector(xm, timestepper->mastereq->isu, &xm_re);
-        VecRestoreSubVector(xm, timestepper->mastereq->isv, &xm_im);
+        // Restore vectors
+        VecRestoreArrayRead(xn, &xn_re);
+        VecRestoreArrayRead(xm, &xm_re);
       }
       pair_idx++;
     }
@@ -731,6 +723,7 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
   pair_idx = 0;
   for (int n=1; n<=ntime; n++){
     for (int m=n+1; m<=ntime; m++) {
+
       // Get the global znm values for this pair
       double znm_re = znm_re_global[pair_idx];
       double znm_im = znm_im_global[pair_idx];
@@ -741,38 +734,42 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
 
       // Apply adjoint updates to local initial conditions
       for (int iinit = 0; iinit < ninit_local; iinit++){
+
         // Grab pointer to the states and adjoint states at tn and tm
         Vec xn = timestepper->store_states[iinit][n];
         Vec xm = timestepper->store_states[iinit][m];
         Vec xn_bar = timestepper->store_adj_states[iinit][n];
         Vec xm_bar = timestepper->store_adj_states[iinit][m];
 
-        // Get real and imaginary subvectors 
-        Vec xn_re, xn_im, xm_re, xm_im;
-        VecGetSubVector(xn, timestepper->mastereq->isu, &xn_re);
-        VecGetSubVector(xn, timestepper->mastereq->isv, &xn_im);
-        VecGetSubVector(xm, timestepper->mastereq->isu, &xm_re);
-        VecGetSubVector(xm, timestepper->mastereq->isv, &xm_im);
+        // Get pointers to local real and imaginary subvectors 
+        const double *xn_re, *xn_im, *xm_re, *xm_im;
+        VecGetArrayRead(xn, &xn_re);
+        VecGetArrayRead(xm, &xm_re);
+        xn_im = xn_re + timestepper->mastereq->localsize_u;
+        xm_im = xm_re + timestepper->mastereq->localsize_u;
+        double *xn_bar_re, *xn_bar_im, *xm_bar_re, *xm_bar_im;
+        VecGetArray(xn_bar, &xn_bar_re);
+        VecGetArray(xm_bar, &xm_bar_re);
+        xn_bar_im = xn_bar_re + timestepper->mastereq->localsize_u;
+        xm_bar_im = xm_bar_re + timestepper->mastereq->localsize_u;
 
-        // xn_bar += xm * znm_bar_re
-        // xm_bar += xn * znm_bar_im
-        VecAXPY(xn_bar, znm_bar_re, xm);
-        VecAXPY(xm_bar, znm_bar_re, xn);
+        // Update adjoints 
+        // xn_bar_re += xm_re * znm_bar_re + xm_im * znm_bar_im
+        // xn_bar_im += xm_im * znm_bar_re - xm_re * znm_bar_im
+        // xm_bar_re += xn_re * znm_bar_re - xn_im * znm_bar_im
+        // xm_bar_im += xn_im * znm_bar_re + xn_re * znm_bar_im
+        for (int il = 0; il < timestepper->mastereq->localsize_u; il++){
+          xn_bar_re[il] += xm_re[il] * znm_bar_re + xm_im[il] * znm_bar_im;
+          xn_bar_im[il] += xm_im[il] * znm_bar_re - xm_re[il] * znm_bar_im;
+          xm_bar_re[il] += xn_re[il] * znm_bar_re - xn_im[il] * znm_bar_im;
+          xm_bar_im[il] += xn_im[il] * znm_bar_re + xn_re[il] * znm_bar_im;
+        }
 
-        // xn_bar_re += xm_im*znm_bar_im
-        // xn_bar_im -= xm_re*znm_bar_im
-        VecISAXPY(xn_bar, timestepper->mastereq->isu,  znm_bar_im, xm_im);
-        VecISAXPY(xn_bar, timestepper->mastereq->isv, -znm_bar_im, xm_re);
-        // xm_bar_re -= xn_im*znm_bar_im
-        // xm_bar_im += xn_re*znm_bar_im
-        VecISAXPY(xm_bar, timestepper->mastereq->isu, -znm_bar_im, xn_im);
-        VecISAXPY(xm_bar, timestepper->mastereq->isv,  znm_bar_im, xn_re);
-
-        // Restore subvectors
-        VecRestoreSubVector(xn, timestepper->mastereq->isu, &xn_re);
-        VecRestoreSubVector(xn, timestepper->mastereq->isv, &xn_im);
-        VecRestoreSubVector(xm, timestepper->mastereq->isu, &xm_re);
-        VecRestoreSubVector(xm, timestepper->mastereq->isv, &xm_im);
+        // Restore vectors
+        VecRestoreArrayRead(xn, &xn_re);
+        VecRestoreArrayRead(xm, &xm_re);
+        VecRestoreArray(xn_bar, &xn_bar_re);
+        VecRestoreArray(xm_bar, &xm_bar_re);
       }
       pair_idx++;
     }

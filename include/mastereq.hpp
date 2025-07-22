@@ -114,9 +114,6 @@ class MasterEq{
     int mpirank_world; ///< Rank of global MPI communicator
     int mpirank_petsc; ///< Rank of PETSc's communicator
     int mpisize_petsc; ///< Size of PETSc's communicator
-    PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
-    PetscInt ilow; ///< First index of the local sub vector u,v
-    PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
 
     Vec aux; ///< Auxiliary vector for computations
     bool quietmode; ///< Flag for quiet mode operation
@@ -124,6 +121,9 @@ class MasterEq{
     std::string hamiltonian_file_Hc; ///< Filename if a custom control Hamiltonians are read from file ('none' if standard Hamiltonian is used)
 
   public:
+    PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
+    PetscInt ilow; ///< First index of the local sub vector u,v
+    PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
     IS isu, isv; ///< Vector strides for accessing real and imaginary parts u=Re(x), v=Im(x)
     std::vector<int> nlevels; ///< Number of levels per oscillator
     std::vector<int> nessential; ///< Number of essential levels per oscillator
