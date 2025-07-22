@@ -338,7 +338,9 @@ double OptimProblem::evalF(const Vec x) {
 
   /* Output */
   if (mpirank_world == 0 && !quietmode) {
-    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << " + " << obj_robust << std::endl;
+    std::cout<< "Objective = " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation;
+    if (gamma_robust > 0.0) std::cout << " + " << obj_robust;
+    std::cout << std::endl;
     std::cout<< "Fidelity = " << fidelity  << std::endl;
   }
 
@@ -402,7 +404,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     optim_target->prepareTargetState(rho_t0);
 
     /* --- Solve primal --- */
-    // if (mpirank_optim == 0) printf("%d: %d FWD. \n", mpirank_init, iinit_global);
+    // printf("%d: FWD %d\n", mpirank_world, iinit_global);
 
     /* Run forward with initial condition rho_t0 */
     Vec finalstate = timestepper->solveODE(iinit_global, rho_t0);
@@ -434,7 +436,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
     if (timestepper->mastereq->lindbladtype != LindbladType::NONE) {
-      // if (mpirank_optim == 0) printf("%d: %d BWD.", mpirank_init, initid);
+      // if (mpirank_optim == 0) printf("%d: %d BWD.\n", mpirank_init, iinit_global);
 
       /* Reset adjoint */
       VecZeroEntries(rho_t0_bar);
@@ -793,17 +795,24 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_penal_variation= ctx->getPenaltyVariation();
   double F_avg = ctx->getFidelity();
 
+
   /* Additional Stopping criteria */
   bool lastIter = false;
   std::string finalReason_str = "";
   if (1.0 - F_avg <= ctx->getInfTol()) {
-    // finalReason_str = "Optimization converged with small infidelity.";
-    // TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-    lastIter = true;
+      // Stop at small infidelity only if NOT robust optimization
+      if (obj_robust < 1.0) {
+      finalReason_str = "Optimization converged with small infidelity.";
+      TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+      lastIter = true;
+    }
   } else if (obj_cost <= ctx->getFaTol()) {
-    // finalReason_str = "Optimization converged with small final time cost.";
-    // TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-    // lastIter = true;
+    // Stop at small terminal costs only if NOT robust optimization
+    if (obj_robust < 1.0) {
+      finalReason_str = "Optimization converged with small final time cost.";
+      TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+      lastIter = true;
+    }
   } else if (iter == ctx->getMaxIter()) {
     finalReason_str = "Optimization stopped at maximum number of iterations.";
     lastIter = true;
@@ -828,7 +837,8 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
     // Screen output 
     if (ctx->getMPIrank_world() == 0) {
-      std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << " + " << obj_robust;
+      std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation;
+      if (obj_robust > 0.0) std::cout << " + " << obj_robust;
       std::cout<< "  Fidelity = " << F_avg;
       std::cout<< "  ||Grad|| = " << gnorm;
       std::cout<< std::endl;

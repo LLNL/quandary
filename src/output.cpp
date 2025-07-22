@@ -33,7 +33,7 @@ Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nosc
     char filename[255];
     snprintf(filename, 254, "%s/optim_history.dat", datadir.c_str());
     optimfile = fopen(filename, "w");
-    fprintf(optimfile, "#\"iter\" \"Objective\"          \"||Pr(grad)||\"        \"LS step\"   \"F_avg\"              \"Terminal cost\"       \"Tikhonov-regul\"       \"Penalty-term\"        \"State variation\"     \"Energy-term\"         \"Control variation\"   \"Univ. robust\" \n");
+    fprintf(optimfile, "#\"iter\" \"Objective\"          \"||Pr(grad)||\"        \"LS step\"   \"F_avg\"              \"Terminal cost\"       \"Tikhonov-regul\"       \"Penalty-term\"        \"State variation\"     \"Energy-term\"         \"Control variation\"\n");
   } 
 
   /* Reset flags and data file pointers */
@@ -80,7 +80,8 @@ Output::~Output(){
 void Output::writeOptimFile(int optim_iter, double objective, double gnorm, double stepsize, double Favg, double costT, double tikh_regul, double penalty, double penalty_dpdm, double penalty_energy, double penalty_variation, double obj_robust){
 
   if (mpirank_world == 0){
-    fprintf(optimfile, "%05d  %1.14e  %1.14e  %.8f  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e\n", optim_iter, objective, gnorm, stepsize, Favg, costT, tikh_regul, penalty, penalty_dpdm, penalty_energy, penalty_variation, obj_robust);
+    if (obj_robust > 0.0) fprintf(optimfile, "%05d  %1.14e  %1.14e  %.8f  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e\n", optim_iter, objective, gnorm, stepsize, Favg, costT, tikh_regul, penalty, penalty_dpdm, penalty_energy, penalty_variation, obj_robust);
+    else fprintf(optimfile, "%05d  %1.14e  %1.14e  %.8f  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e  %1.14e\n", optim_iter, objective, gnorm, stepsize, Favg, costT, tikh_regul, penalty, penalty_dpdm, penalty_energy, penalty_variation);
     fflush(optimfile);
   } 
 }

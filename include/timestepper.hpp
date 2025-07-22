@@ -66,6 +66,7 @@ class TimeStepper{
     double gamma_penalty; ///< Weight for integral penalty term
     double gamma_penalty_dpdm; ///< Weight for second-order derivative penalty
     double gamma_penalty_energy; ///< Weight for energy penalty
+    double gamma_robust; ///< Weight for robust optimization term
 
     OptimTarget* optim_target; ///< Pointer to optimization target specification
     Output* output; ///< Pointer to output handler

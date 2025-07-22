@@ -13,13 +13,14 @@ TimeStepper::TimeStepper() {
   writeTrajectoryDataFiles = false;
 }
 
-TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local_, double gamma_robust) : TimeStepper() {
+TimeStepper::TimeStepper(MasterEq* mastereq_, int ntime_, double total_time_, Output* output_, bool storeFWD_, int ninit_local_, double gamma_robust_) : TimeStepper() {
   mastereq = mastereq_;
   ntime = ntime_;
   total_time = total_time_;
   output = output_;
   storeFWD = storeFWD_;
   ninit_local = ninit_local_;
+  gamma_robust = gamma_robust_;
 
   // Set local sizes of subvectors u,v in state x=[u,v]
   localsize_u = mastereq->getDim() / mpisize_petsc; 
@@ -208,7 +209,7 @@ void TimeStepper::solveAdjointODE(int iinit_global, Vec rho_t0_bar, Vec finalsta
   VecCopy(rho_t0_bar, xadj);
 
   // add robust adjoint contribution at final time
-  if (storeFWD){
+  if (storeFWD && gamma_robust > 0){
     VecAXPY(xadj, 1.0, store_adj_states[iinit_local][ntime]);
   }
 
@@ -259,7 +260,7 @@ void TimeStepper::solveAdjointODE(int iinit_global, Vec rho_t0_bar, Vec finalsta
     evolveBWD(tstop, tstart, xprimal, xadj, redgrad, true);
 
     /* Add robust adjoint contribution */
-    if (storeFWD){
+    if (storeFWD && gamma_robust > 0){
       VecAXPY(xadj, 1.0, store_adj_states[iinit_local][n-1]);
     }
 
