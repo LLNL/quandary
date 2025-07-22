@@ -105,7 +105,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   gamma_penalty_energy = config.GetDoubleParam("optim_penalty_energy", 0.0);
   gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, true, false);
   gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
-  gamma_penalty_variation = config.GetDoubleParam("optim_penalty_variation", 0.01); 
+  gamma_penalty_variation = config.GetDoubleParam("optim_penalty_variation", 0.0); 
   gamma_robust = config.GetDoubleParam("gamma_robust", -1.0, false);
 
   // Allocate auxiliary storage of robust objective function terms
@@ -322,11 +322,13 @@ double OptimProblem::evalF(const Vec x) {
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Evaluate penality term for control variation */
-  double var_reg = 0.0;
-  for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
+  if (gamma_penalty_variation > 0.0) {
+    double var_reg = 0.0;
+    for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+      var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
+    }
+    obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
   }
-  obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
 
   /* Evaluate universally robust objective term */
   if (gamma_robust > 0.0) {
@@ -372,12 +374,14 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     }
 
     // Derivative of penalization of control variation 
-    double var_reg_bar = 0.5*gamma_penalty_variation;
-    int skip_to_oscillator = 0;
-    for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-      Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
-      osc->evalControlVariationDiff(G, var_reg_bar, skip_to_oscillator);
-      skip_to_oscillator += osc->getNParams();
+    if (gamma_penalty_variation > 0.0) {
+      double var_reg_bar = 0.5*gamma_penalty_variation;
+      int skip_to_oscillator = 0;
+      for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+        Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
+        osc->evalControlVariationDiff(G, var_reg_bar, skip_to_oscillator);
+        skip_to_oscillator += osc->getNParams();
+      }
     }
   }
 
@@ -493,11 +497,13 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   obj_regul = gamma_tik / 2. * pow(xnorm,2.0);
 
   /* Evaluate penalty term for control parameter variation */
-  double var_reg = 0.0;
-  for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
+  if (gamma_penalty_variation > 0.0) {
+    double var_reg = 0.0;
+    for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
+      var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
+    }
+    obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
   }
-  obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
 
   /* Evaluate universally robust objective term */
   if (gamma_robust > 0.0) {

@@ -3,6 +3,7 @@
 
 ControlBasis::ControlBasis() {
     nparams= 0;
+    nsplines = 0;
     skip = 0;
     controltype = ControlType::NONE;
     enforceZeroBoundary = false;
@@ -16,6 +17,62 @@ ControlBasis::ControlBasis(int nparams_, double tstart_, double tstop_, bool enf
 }
 ControlBasis::~ControlBasis(){}
 
+double ControlBasis::computeVariation(std::vector<double>& params, int carrierfreqID){
+    double var = 0.0;
+    //   Re params
+    for (int lc=1; lc<nsplines; lc++){
+        var += SQR(params[skip + 2*carrierfreqID*nsplines + lc] - params[skip+ 2*carrierfreqID*nsplines + lc - 1]);
+    }
+    // Im params
+    for (int lc=1; lc<nsplines; lc++){
+        var += SQR(params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1]);
+    }
+
+    if (enforceZeroBoundary) {
+        // Re
+        var += SQR(params[skip + 2*carrierfreqID*nsplines + 0 ]); // lc = 0
+        var += SQR(params[skip+ 2*carrierfreqID*nsplines + nsplines - 1]); // lc = nsplines
+        // Im
+        var += SQR(params[skip + (2*carrierfreqID+1)*nsplines ]); // lc=0
+        var += SQR(params[skip + (2*carrierfreqID+1)*nsplines + nsplines- 1]); // lc=nsplines
+    }
+    return var;
+}
+
+
+void ControlBasis::computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID){
+
+    double fact = 2.0*var_bar;
+
+    // Re params
+    int lc = 0;
+    grad[skip + 2*carrierfreqID*nsplines + lc] += fact * (params[skip + 2*carrierfreqID*nsplines + lc] - params[skip + 2*carrierfreqID*nsplines + lc + 1]);
+    // interior lc
+    for (lc=1; lc<nsplines-1; lc++){
+      grad[skip+ 2*carrierfreqID*nsplines + lc] += fact * (2*params[skip + 2*carrierfreqID*nsplines + lc] - params[skip + 2*carrierfreqID*nsplines + lc - 1] - params[skip + 2*carrierfreqID*nsplines + lc + 1]);
+    }
+    lc = nsplines-1;
+    grad[skip + 2*carrierfreqID*nsplines + lc] += fact * (params[skip + 2*carrierfreqID*nsplines + lc] - params[skip + 2*carrierfreqID*nsplines + lc - 1]);
+    // Im params
+    lc = 0;
+    grad[skip + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc + 1]);
+    // interior lc
+    for (int lc=1; lc<nsplines-1; lc++){
+      grad[skip + (2*carrierfreqID+1)*nsplines + lc] += fact * (2*params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1] - params[skip + (2*carrierfreqID+1)*nsplines + lc + 1]);
+    }
+    lc = nsplines-1;
+    grad[skip + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1]);
+
+
+    if (enforceZeroBoundary) {
+        // Re
+        grad[skip + 2*carrierfreqID*nsplines ] += fact * params[skip + 2*carrierfreqID*nsplines ];
+        grad[skip + 2*carrierfreqID*nsplines + nsplines-1] += fact * params[skip + 2*carrierfreqID*nsplines + nsplines-1];
+        // Im
+        grad[skip + 2*carrierfreqID*nsplines + nsplines] += fact * params[skip + 2*carrierfreqID*nsplines + nsplines];
+        grad[skip + 2*carrierfreqID*nsplines + 2*nsplines-1] += fact * params[skip + 2*carrierfreqID*nsplines + 2*nsplines-1];
+    }
+}
 
 BSpline2nd::BSpline2nd(int nsplines_, double t0, double T, bool enforceZeroBoundary_) : ControlBasis(2*nsplines_, t0, T, enforceZeroBoundary_){
     nsplines = nsplines_;
@@ -253,63 +310,6 @@ void BSpline0::derivative(const double t, const std::vector<double>& /*coeff*/, 
     }
 }
 
-
-double BSpline0::computeVariation(std::vector<double>& params, int carrierfreqID){
-    double var = 0.0;
-    //   Re params
-    for (int lc=1; lc<nsplines; lc++){
-        var += SQR(params[skip + 2*carrierfreqID*nsplines + lc] - params[skip+ 2*carrierfreqID*nsplines + lc - 1]);
-    }
-    // Im params
-    for (int lc=1; lc<nsplines; lc++){
-        var += SQR(params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1]);
-    }
-
-    if (enforceZeroBoundary) {
-        // Re
-        var += SQR(params[skip + 2*carrierfreqID*nsplines + 0 ]); // lc = 0
-        var += SQR(params[skip+ 2*carrierfreqID*nsplines + nsplines - 1]); // lc = nsplines
-        // Im
-        var += SQR(params[skip + (2*carrierfreqID+1)*nsplines ]); // lc=0
-        var += SQR(params[skip + (2*carrierfreqID+1)*nsplines + nsplines- 1]); // lc=nsplines
-    }
-    return var;
-}
-
-
-void BSpline0::computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID){
-
-    double fact = 2.0*var_bar;
-
-    // Re params
-    int lc = 0;
-    grad[skip + 2*carrierfreqID*nsplines + lc] += fact * (params[skip + 2*carrierfreqID*nsplines + lc] - params[skip + 2*carrierfreqID*nsplines + lc + 1]);
-    // interior lc
-    for (lc=1; lc<nsplines-1; lc++){
-      grad[skip+ 2*carrierfreqID*nsplines + lc] += fact * (2*params[skip + 2*carrierfreqID*nsplines + lc] - params[skip + 2*carrierfreqID*nsplines + lc - 1] - params[skip + 2*carrierfreqID*nsplines + lc + 1]);
-    }
-    lc = nsplines-1;
-    grad[skip + 2*carrierfreqID*nsplines + lc] += fact * (params[skip + 2*carrierfreqID*nsplines + lc] - params[skip + 2*carrierfreqID*nsplines + lc - 1]);
-    // Im params
-    lc = 0;
-    grad[skip + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc + 1]);
-    // interior lc
-    for (int lc=1; lc<nsplines-1; lc++){
-      grad[skip + (2*carrierfreqID+1)*nsplines + lc] += fact * (2*params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1] - params[skip + (2*carrierfreqID+1)*nsplines + lc + 1]);
-    }
-    lc = nsplines-1;
-    grad[skip + (2*carrierfreqID+1)*nsplines + lc] += fact * (params[skip + (2*carrierfreqID+1)*nsplines + lc] - params[skip + (2*carrierfreqID+1)*nsplines + lc - 1]);
-
-
-    if (enforceZeroBoundary) {
-        // Re
-        grad[skip + 2*carrierfreqID*nsplines ] += fact * params[skip + 2*carrierfreqID*nsplines ];
-        grad[skip + 2*carrierfreqID*nsplines + nsplines-1] += fact * params[skip + 2*carrierfreqID*nsplines + nsplines-1];
-        // Im
-        grad[skip + 2*carrierfreqID*nsplines + nsplines] += fact * params[skip + 2*carrierfreqID*nsplines + nsplines];
-        grad[skip + 2*carrierfreqID*nsplines + 2*nsplines-1] += fact * params[skip + 2*carrierfreqID*nsplines + 2*nsplines-1];
-    }
-}
 
 void BSpline0::enforceBoundary(double* x, int carrierfreqID){
 

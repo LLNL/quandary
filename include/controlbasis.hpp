@@ -28,6 +28,7 @@ class ControlBasis {
         double tstart; ///< Start time of the interval where the control basis is applied.
         double tstop; ///< Stop time of the interval where the control basis is applied.
         int skip; ///< Offset to the starting location for this basis inside the global control vector.
+        int nsplines; ///< Number of splines, or 0
         ControlType controltype; ///< Type of control parameterization.
         bool enforceZeroBoundary; ///< Flag to enforce zero boundary conditions for control pulses.
 
@@ -93,23 +94,28 @@ class ControlBasis {
          *
          * @return int Number of splines.
          */
-        virtual int getNSplines() {return 0;};
+        int getNSplines() {return nsplines;};
 
         /**
-         * @brief Computes the variation of control parameters (default implementation returns 0.0).
+         * @brief Computes the variation of control parameters.
          *
-         * Default implementation ignores all input parameters.
+         * Computes \f$\frac{1}{n_{splines}} \sum_{splines} (\alpha_i - \alpha_{i-1})^2\f$.
          *
-         * @return double Variation value.
+         * @param params Vector of control parameters
+         * @param carrierfreqID ID of the carrier frequency
+         * @return double Variation value
          */
-        virtual double computeVariation(std::vector<double>& /*params*/, int /*carrierfreqID*/){return 0.0;};
+        double computeVariation(std::vector<double>& params, int carrierfreqID);
 
         /**
-         * @brief Computes the gradient of the variation (default implementation does nothing).
+         * @brief Computes derivative of control parameter variation.
          *
-         * Default implementation ignores all input parameters.
+         * @param grad Pointer to gradient array to update
+         * @param params Vector of control parameters
+         * @param var_bar Adjoint of variation term
+         * @param carrierfreqID ID of the carrier frequency
          */
-        virtual void computeVariation_diff(double* /*grad*/, std::vector<double>& /*params*/, double /*var_bar*/, int /*carrierfreqID*/){};
+        void computeVariation_diff(double* /*grad*/, std::vector<double>& params, double var_bar, int carrierfreqID);
 
         /**
          * @brief Enforces boundary conditions for controls (default implementation does nothing).
@@ -154,7 +160,6 @@ class ControlBasis {
  */
 class BSpline2nd : public ControlBasis {
     protected:
-        int nsplines; ///< Number of splines.
         double dtknot; ///< Spacing of time knot vector.
         double *tcenter; ///< Vector of basis function center positions.
         double width; ///< Support of each basis function (m*dtknot).
@@ -181,8 +186,6 @@ class BSpline2nd : public ControlBasis {
 
         ~BSpline2nd();
         
-        int getNSplines() {return nsplines;};
-
         /**
          * @brief Sets the first and last two spline coefficients in x to zero for this carrier wave, 
          * so that the controls start and end at zero.
@@ -207,7 +210,6 @@ class BSpline2nd : public ControlBasis {
  */
 class BSpline2ndAmplitude : public ControlBasis {
     protected:
-        int nsplines; ///< Number of splines.
         double dtknot; ///< Spacing of the time knot vector.
         double *tcenter; ///< Vector of basis function center positions.
         double width; ///< Support of each basis function (m * dtknot).
@@ -235,8 +237,6 @@ class BSpline2ndAmplitude : public ControlBasis {
         BSpline2ndAmplitude(int nsplines, double scaling, double tstart, double tstop, bool enforceZeroBoundary);
 
         ~BSpline2ndAmplitude();
-
-        int getNSplines() {return nsplines;};
 
         /**
          * @brief Sets the first and last two spline coefficients in x to zero, so that the controls start and end at zero.
@@ -290,15 +290,12 @@ class Step : public ControlBasis {
  */
 class BSpline0 : public ControlBasis {
     protected:
-        int nsplines; ///< Number of splines.
         double dtknot; ///< Spacing of time knot vector.
         double width; ///< Support of each basis function (m*dtknot).
 
     public:
         BSpline0(int nsplines, double tstart, double tstop, bool enforceZeroBoundary);
         ~BSpline0();
-
-        int getNSplines() {return nsplines;};
 
         /**
          * @brief Sets the first and last parameter to zero for this carrier wave, 
@@ -308,27 +305,6 @@ class BSpline0 : public ControlBasis {
          * @param carrier_id ID of the carrier wave
          */
         void enforceBoundary(double* x, int carrier_id);
-
-        /**
-         * @brief Computes total variation of the control parameters.
-         *
-         * Computes \f$\frac{1}{n_{splines}} \sum_{splines} (\alpha_i - \alpha_{i-1})^2\f$.
-         *
-         * @param params Vector of control parameters
-         * @param carrierfreqID ID of the carrier frequency
-         * @return double Variation value
-         */
-        double computeVariation(std::vector<double>& params, int carrierfreqID);
-
-        /**
-         * @brief Computes derivative of control parameter variation.
-         *
-         * @param grad Pointer to gradient array to update
-         * @param params Vector of control parameters
-         * @param var_bar Adjoint of variation term
-         * @param carrierfreqID ID of the carrier frequency
-         */
-        virtual void computeVariation_diff(double* grad, std::vector<double>&params, double var_bar, int carrierfreqID);
 
         void evaluate(const double t, const std::vector<double>& coeff, int carrier_freq_id, double* Blt1_ptr, double* Blt2_ptr);
 
