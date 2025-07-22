@@ -7,6 +7,11 @@ on:
         description: 'Base64 encoded benchmark data'
         required: true
 
+permissions:
+  checks: write
+  contents: write
+  pull-requests: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -48,7 +53,7 @@ jobs:
           auto-push: ${{ github.ref == 'refs/heads/main' }}
           gh-pages-branch: gh-pages
           benchmark-data-dir-path: dev/bench
-          comment-on-alert: true
+          comment-always: true
           fail-on-alert: true
           alert-threshold: '120%'
           max-items-in-chart: 100
