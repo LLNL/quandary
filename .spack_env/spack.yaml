@@ -13,3 +13,6 @@ spack:
     quandary:
       path: ../
       spec: quandary@=develop
+  config:
+    flags:
+      keep_werror: all

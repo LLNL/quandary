@@ -35,7 +35,7 @@ jobs:
     - name: Install with strict warnings
       run: |
         spack -e .spack_env rm quandary
-        spack -e .spack_env add "quandary@develop build_type=Debug cxxflags=\"-Werror -Wall -Wextra -Wpedantic\" %${{ matrix.compiler }} ^openmpi"
+        spack -e .spack_env add "quandary@develop build_type=Debug %${{ matrix.compiler }} ^openmpi"
         spack -e .spack_env install -v --use-buildcache package:never
 
     - name: Push packages and update index
