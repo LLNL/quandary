@@ -652,8 +652,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
-    //printf("ERROR, THIS NEEDS CHANGE! !\n");
-    // exit(1);
 
     // Iterate over all initial conditions 
     for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -679,8 +677,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       /* Derivative of time-stepping */
 
       if (!x_is_control){
-        printf("ERROR: obj_cost_re/im are set from the LAST ipulse iterations. TODO: Fix it. Also, pass the pulse number to solveAdjointODE.\n");
-        exit(1);
+        // printf("ERROR: obj_cost_re/im are set from the LAST ipulse iterations. TODO: Fix it. Also, pass the pulse number to solveAdjointODE.\n");
+        // exit(1);
+        assert(mastereq->learning->data->getNPulses() == 1);
       }
 
       timestepper->solveAdjointODE(rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy, Jbar_loss, -1, iinit_global);
