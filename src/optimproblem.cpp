@@ -819,8 +819,13 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
 
   /* Every <optim_monitor_freq> iterations: Output of optimization history */
   if (iter % ctx->output->optim_monitor_freq == 0 ||lastIter) {
+
     // Add to optimization history file 
     ctx->output->writeOptimFile(iter, f, gnorm, deltax, F_avg, obj_cost, obj_regul, obj_penal, obj_penal_dpdm, obj_penal_energy, obj_penal_variation, obj_robust);
+
+    // write controls and optimization parameters
+    ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
+
     // Screen output 
     if (ctx->getMPIrank_world() == 0) {
       std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << " + " << obj_robust;
