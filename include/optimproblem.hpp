@@ -94,6 +94,11 @@ class OptimProblem {
   double* mygrad; ///< Auxiliary gradient storage
     
   Vec xtmp; ///< Temporary vector storage
+
+  std::vector<double> znm_re_local;
+  std::vector<double> znm_im_local;
+  std::vector<double> znm_re_global;
+  std::vector<double> znm_im_global;
   
   public: 
     Output* output; ///< Pointer to output handler

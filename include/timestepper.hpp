@@ -43,6 +43,7 @@ class TimeStepper{
     PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
     PetscInt ilow; ///< First index of the local sub vector u,v
     PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
+    PetscInt ninit_local;
 
   public:
     std::vector<std::vector<Vec>> store_states; ///< For each initial condition, vector of states at each time-step. Only allocated if storeFWD=true
@@ -103,7 +104,7 @@ class TimeStepper{
      * @param rho_t0 Initial state vector
      * @return Vec Final state vector at time T
      */
-    Vec solveODE(int initid, Vec rho_t0);
+    Vec solveODE(int iinit_global, Vec rho_t0);
 
     /**
      * @brief Solves the adjoint ODE backward in time.
@@ -118,7 +119,7 @@ class TimeStepper{
      * @param Jbar_penalty_dpdm Adjoint of second-order derivative penalty
      * @param Jbar_penalty_energy Adjoint of energy penalty term
      */
-    void solveAdjointODE(int initid, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy);
+    void solveAdjointODE(int iinit_global, Vec rho_t0_bar, Vec finalstate, double Jbar_penalty, double Jbar_penalty_dpdm, double Jbar_penalty_energy);
 
     /**
      * @brief Evaluates the penalty integral term.

@@ -107,7 +107,16 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
   gamma_penalty_variation = config.GetDoubleParam("optim_penalty_variation", 0.01); 
   gamma_robust = config.GetDoubleParam("gamma_robust", -1.0, false);
-  
+
+  // Allocate auxiliary storage of robust objective function terms
+  if (gamma_robust>0.0) {
+    int ntime = timestepper->getNTimeSteps();
+    int num_pairs = ntime * (ntime - 1) / 2;
+    znm_re_local.resize(num_pairs);
+    znm_im_local.resize(num_pairs); 
+    znm_re_global.resize(num_pairs);
+    znm_im_global.resize(num_pairs); 
+  }
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
     if (mpirank_world == 0 && !quietmode) {
@@ -247,7 +256,7 @@ double OptimProblem::evalF(const Vec x) {
     optim_target->prepareTargetState(rho_t0);
 
     /* Run forward with initial condition initid */
-    Vec finalstate = timestepper->solveODE(iinit, rho_t0);
+    Vec finalstate = timestepper->solveODE(iinit_global, rho_t0);
 
     /* Add to integral penalty term */
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
@@ -393,10 +402,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     optim_target->prepareTargetState(rho_t0);
 
     /* --- Solve primal --- */
-    // if (mpirank_optim == 0) printf("%d: %d FWD. \n", mpirank_init, initid);
+    // if (mpirank_optim == 0) printf("%d: %d FWD. \n", mpirank_init, iinit_global);
 
     /* Run forward with initial condition rho_t0 */
-    Vec finalstate = timestepper->solveODE(iinit, rho_t0);
+    Vec finalstate = timestepper->solveODE(iinit_global, rho_t0);
 
     /* Store the final state for the Schroedinger solver */
     if (timestepper->mastereq->lindbladtype == LindbladType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
@@ -436,7 +445,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(iinit, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(iinit_global, rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -523,7 +532,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
 
       /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(iinit, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+      timestepper->solveAdjointODE(iinit_global, rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
 
       /* Add to optimizers's gradient */
       VecAXPY(G, 1.0, timestepper->redgrad);
@@ -595,20 +604,16 @@ void OptimProblem::getSolution(Vec* param_ptr){
   *param_ptr = params;
 }
 
-
-
 double OptimProblem::computeRobustCost(){
   int ntime = timestepper->getNTimeSteps();
   double cost_robust = 0.0;
-
-  int num_pairs = ntime * (ntime - 1) / 2;
-  std::vector<double> znm_re_local(num_pairs, 0.0);
-  std::vector<double> znm_im_local(num_pairs, 0.0);
 
   // Compute local contribution on each processor first
   int pair_idx = 0;
   for (int n=1; n<=ntime; n++){
     for (int m=n+1; m<=ntime; m++) {
+      znm_re_local[pair_idx] = 0.0;
+      znm_im_local[pair_idx] = 0.0;
       for (int iinit = 0; iinit < ninit_local; iinit++){
         // Grab pointer to the states at tn and tm
         Vec xn = timestepper->store_states[iinit][n];
@@ -641,10 +646,8 @@ double OptimProblem::computeRobustCost(){
   }
 
   // Communicate over initial condition processors
-  std::vector<double> znm_re_global(num_pairs);
-  std::vector<double> znm_im_global(num_pairs);
-  MPI_Allreduce(znm_re_local.data(), znm_re_global.data(), num_pairs, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(znm_im_local.data(), znm_im_global.data(), num_pairs, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(znm_re_local.data(), znm_re_global.data(), znm_re_global.size(), MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(znm_im_local.data(), znm_im_global.data(), znm_im_global.size(), MPI_DOUBLE, MPI_SUM, comm_init);
 
   // Compute final cost on all processors
   pair_idx = 0;
@@ -674,15 +677,12 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
     }
   }
 
-  // Calculate the size of upper triangular matrix
-  int num_pairs = ntime * (ntime - 1) / 2;
-  std::vector<double> znm_re_local(num_pairs, 0.0);
-  std::vector<double> znm_im_local(num_pairs, 0.0);
-
-   // Compute local contribution on each processor first
+  // Compute local contribution on each processor first
   int pair_idx = 0;
   for (int n=1; n<=ntime; n++){
     for (int m=n+1; m<=ntime; m++) {
+      znm_re_local[pair_idx] = 0.0;
+      znm_im_local[pair_idx] = 0.0;
       for (int iinit = 0; iinit < ninit_local; iinit++){
         // Grab pointer to the states at tn and tm
         Vec xn = timestepper->store_states[iinit][n];
@@ -715,10 +715,8 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
   }
 
   // Communicate over initial condition processors
-  std::vector<double> znm_re_global(num_pairs);
-  std::vector<double> znm_im_global(num_pairs);
-  MPI_Allreduce(znm_re_local.data(), znm_re_global.data(), num_pairs, MPI_DOUBLE, MPI_SUM, comm_init);
-  MPI_Allreduce(znm_im_local.data(), znm_im_global.data(), num_pairs, MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(znm_re_local.data(), znm_re_global.data(), znm_re_global.size(), MPI_DOUBLE, MPI_SUM, comm_init);
+  MPI_Allreduce(znm_im_local.data(), znm_im_global.data(), znm_im_global.size(), MPI_DOUBLE, MPI_SUM, comm_init);
 
   // Now iterate through pairs again for adjoint updates
   double cost_robust_bar = Jbar / ((double) SQR(timestepper->getNTimeSteps()));
@@ -747,14 +745,6 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
         VecGetSubVector(xn, timestepper->mastereq->isv, &xn_im);
         VecGetSubVector(xm, timestepper->mastereq->isu, &xm_re);
         VecGetSubVector(xm, timestepper->mastereq->isv, &xm_im);
-        // // xn_bar_re += xm_re*znm_bar_re + xm_im*znm_bar_im
-        // VecAXPBYPCZ(xn_bar_re, znm_bar_re,      znm_bar_im, 1.0, xm_re, xm_im);
-        // // xn_bar_im += xm_im*znm_bar_re - xm_re*znm_bar_im
-        // VecAXPBYPCZ(xn_bar_im, znm_bar_re, -1.0*znm_bar_im, 1.0, xm_im, xm_re);
-        // // xm_bar_re += xn_re*znm_bar_re - xn_im*znm_bar_im
-        // VecAXPBYPCZ(xm_bar_re, znm_bar_re, -1.0*znm_bar_im, 1.0, xn_re, xn_im);
-        // // xm_bar_im += xn_im*znm_bar_re + xn_re*znm_bar_im
-        // VecAXPBYPCZ(xm_bar_im, znm_bar_re,      znm_bar_im, 1.0, xn_im, xn_re);
 
         // xn_bar += xm * znm_bar_re
         // xm_bar += xn * znm_bar_im
@@ -774,6 +764,7 @@ void OptimProblem::computeRobustCost_diff(double Jbar){
         VecRestoreSubVector(xn, timestepper->mastereq->isu, &xn_re);
         VecRestoreSubVector(xn, timestepper->mastereq->isv, &xn_im);
         VecRestoreSubVector(xm, timestepper->mastereq->isu, &xm_re);
+        VecRestoreSubVector(xm, timestepper->mastereq->isv, &xm_im);
       }
       pair_idx++;
     }
