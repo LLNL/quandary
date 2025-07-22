@@ -59,8 +59,8 @@ void HamiltonianFileReader::receiveHsys(Mat& Ad, Mat& Bd){
     imag_vals.resize(num_entries);
   }
 
-  MPI_Bcast(rows.data(), num_entries, MPI_INT, 0, MPI_COMM_WORLD);
-  MPI_Bcast(cols.data(), num_entries, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(rows.data(), num_entries, MPIU_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast(cols.data(), num_entries, MPIU_INT, 0, MPI_COMM_WORLD);
   MPI_Bcast(real_vals.data(), num_entries, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast(imag_vals.data(), num_entries, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
