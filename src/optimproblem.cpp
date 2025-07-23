@@ -281,16 +281,6 @@ double OptimProblem::evalF(const Vec x) {
       /* Make sure the control pulse matches the data, if given */
       // When learning a transfer function, this doesn't do anything
       mastereq->setControlFromData(ipulse_global);
-
-      // TEST: write expected energy of the Training data. (assumes density matrix data) FIX ME!
-      for (size_t iosc=0; iosc<mastereq->nlevels.size(); iosc++){
-        std::string filename_expEnergy = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse_global)+"_expectedEnergy"+std::to_string(iosc)+".dat"; 
-        mastereq->learning->data->writeExpectedEnergy(filename_expEnergy.c_str(), ipulse_global, 0,  iosc); // NOTE: writing data for init_num =0 FIX ME!
-      }
-      // TODO: what happens when solving Schroedinger's equation?
-      std::string filename_rho_Re = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse_global)+"_rho_Re.dat"; 
-      std::string filename_rho_Im = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse_global)+"_rho_Im.dat"; 
-      mastereq->learning->data->writeFullstate(filename_rho_Re.c_str(), filename_rho_Im.c_str(), ipulse_global, 0); // NOTE: writing data for init_num =0 FIX ME!
     }
 
     /*  Iterate over initial condition */
