@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1753210225109,
+  "lastUpdate": 1753288429264,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1143,6 +1143,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4218.88,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "34c3c7723cbe7650ab2272ba6257cc64e9b396bf",
+          "message": "Merge pull request #75 from LLNL/fix-gh-worflow-permission\n\nFix workflow permission",
+          "timestamp": "2025-07-23T15:40:39Z",
+          "url": "https://github.com/LLNL/quandary/commit/34c3c7723cbe7650ab2272ba6257cc64e9b396bf"
+        },
+        "date": 1753288427293,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7241069637238979,
+            "unit": "seconds",
+            "range": "0.047991734925145975"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 85.84,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 9.211598691064864,
+            "unit": "seconds",
+            "range": "0.013379337944133282"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4223.33,
             "unit": "MB"
           }
         ]
