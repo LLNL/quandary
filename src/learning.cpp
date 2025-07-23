@@ -1,7 +1,7 @@
 #include "learning.hpp"
 #include "oscillator.hpp"
 
-Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str, std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data_, std::default_random_engine rand_engine, bool quietmode_, double loss_scaling_factor_, Oscillator** oscil_vec_){
+Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str, std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data_, std::mt19937 rand_engine, bool quietmode_, double loss_scaling_factor_, Oscillator** oscil_vec_){
   lindbladtype = lindbladtype_;
   quietmode = quietmode_;
   data = data_;
@@ -193,7 +193,7 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
 }
 
 
-void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_str, std::default_random_engine rand_engine){
+void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_str, std::mt19937 rand_engine){
   // Switch over initialization string ("file", "constant", or "random")
 
   if (learninit_str[0].compare("file") == 0 ) { //  Read parameter from file. 

@@ -230,8 +230,8 @@ void Data::loadData_SyntheticQuandaryRho(std::vector<std::vector<std::string>> &
         for (int i=0; i<dim; i++) { // Other elements are the state (re and im) at this time
           infile_re >> val_re;
           infile_im >> val_im;
-          VecSetValue(state, getIndexReal(i), val_re, INSERT_VALUES);
-          VecSetValue(state, getIndexImag(i), val_im, INSERT_VALUES);
+          VecSetValue(state, i, val_re, INSERT_VALUES);
+          VecSetValue(state, i+dim, val_im, INSERT_VALUES);
         }
         VecAssemblyBegin(state);
         VecAssemblyEnd(state);

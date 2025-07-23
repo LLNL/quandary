@@ -283,113 +283,6 @@ void createDecayBasis_2qubit(int dim_rho, std::vector<Mat>& BasisMats_Re, bool i
   }
 }
 
-double expectedEnergy(const Vec x, LindbladType lindbladtype, std::vector<int> nlevels, int subsystem){
- 
-  // Compute Hilbertspace dimension and the dimension of the systems following this subsystem
-  PetscInt dim=1;
-  PetscInt post_dim = 1;
-  for (size_t i=0; i<nlevels.size(); i++){
-    dim *= nlevels[i];
-    if (i > subsystem) {
-      post_dim *= nlevels[i];
-    }
-  }
-  // Sanity check on full Hilbert space dimension:
-  PetscInt dim_test;
-  VecGetSize(x, &dim_test);
-  dim_test = dim_test / 2;  // since x stores real and imaginary numbers separately
-  if (lindbladtype != LindbladType::NONE){ // take the square root if lindblad solver -> N
-    dim_test = int(sqrt(dim_test)); 
-  }
-  assert(dim_test == dim);
-
-  /* Get locally owned portion of x */
-  PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
-  VecGetOwnershipRange(x, &ilow, &iupp);
-  double xdiag;
-
-  /* Iterate over diagonal elements to add up expected energy level */
-  double expected = 0.0;
-  for (int i=0; i<dim; i++) {
-    /* Get diagonal element in number operator */
-    int num_diag = i;  // for full composite system
-    if (subsystem >= 0) { // for a subsystem
-      num_diag = i % (nlevels[subsystem]*post_dim);
-      num_diag = num_diag / post_dim;
-    }
-
-    /* Get diagonal element in rho (real) and sum up */
-    if (lindbladtype != LindbladType::NONE){ // Lindblad solver: += i * rho_ii
-      idx_diag_re = getIndexReal(getVecID(i,i,dim));
-      xdiag = 0.0;
-      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
-      expected += num_diag * xdiag;
-
-      // Make sure the diagonal is real. 
-      idx_diag_im = getIndexImag(getVecID(i,i,dim));
-      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
-      if (xdiag > 1e-10) {
-        printf("WARNING: imaginary number on the diagonal of the density matrix! %1.14e\n", xdiag);
-      }
-    }
-    else { // Schoedinger solver: += i * | psi_i |^2
-      idx_diag_re = getIndexReal(i);
-      xdiag = 0.0;
-      if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
-      expected += num_diag * xdiag * xdiag;
-      idx_diag_im = getIndexImag(i);
-      xdiag = 0.0;
-      if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
-      expected += num_diag * xdiag * xdiag;
-    }
-  }
-  
-  /* Sum up from all Petsc processors */
-  double myexp = expected;
-  MPI_Allreduce(&myexp, &expected, 1, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
-
-  return expected;
-}
-
-// void expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar) {
-//   PetscInt dim;
-//   VecGetSize(x, &dim);
-//   int dimmat;
-//   if (lindbladtype != LindbladType::NONE) dimmat = (int) sqrt(dim/2);
-//   else dimmat = (int) dim/2;
-//   double num_diag, xdiag, val;
-
-//   /* Get locally owned portion of x */
-//   PetscInt ilow, iupp, idx_diag_re, idx_diag_im;
-//   VecGetOwnershipRange(x, &ilow, &iupp);
-
-//   /* Derivative of projective measure */
-//   for (int i=0; i<dimmat; i++) {
-//     int num_diag = i % (nlevels*dim_postOsc);
-//     num_diag = num_diag / dim_postOsc;
-//     if (lindbladtype != LindbladType::NONE) { // Lindblas solver
-//       val = num_diag * obj_bar;
-//       idx_diag_re = getIndexReal(getVecID(i, i, dimmat));
-//       if (ilow <= idx_diag_re && idx_diag_re < iupp) VecSetValues(x_bar, 1, &idx_diag_re, &val, ADD_VALUES);
-//     }
-//     else {
-//       // Real part
-//       idx_diag_re = getIndexReal(i);
-//       xdiag = 0.0;
-//       if (ilow <= idx_diag_re && idx_diag_re < iupp) VecGetValues(x, 1, &idx_diag_re, &xdiag);
-//       val = num_diag * xdiag * obj_bar;
-//       if (ilow <= idx_diag_re && idx_diag_re < iupp) VecSetValues(x_bar, 1, &idx_diag_re, &val, ADD_VALUES);
-//       // Imaginary part
-//       idx_diag_im = getIndexImag(i);
-//       xdiag = 0.0;
-//       if (ilow <= idx_diag_im && idx_diag_im < iupp) VecGetValues(x, 1, &idx_diag_im, &xdiag);
-//       val = - num_diag * xdiag * obj_bar; // TODO: Is this a minus or a plus?? 
-//       if (ilow <= idx_diag_im && idx_diag_im < iupp) VecSetValues(x_bar, 1, &idx_diag_im, &val, ADD_VALUES);
-//     }
-//   }
-//   VecAssemblyBegin(x_bar); VecAssemblyEnd(x_bar);
-// }
-
 
 double sigmoid(double width, double x){
   return 1.0 / ( 1.0 + exp(-width*x) );
@@ -456,31 +349,24 @@ double getRampFactor_diff(const double time, const double tstart, const double t
     return dramp_dtstop;
 }
 
-int getIndexReal(const int i) {
-  return 2*i;
-}
 
-int getIndexImag(const int i) {
-  return 2*i + 1;
-}
-
-int getVecID(const int row, const int col, const int dim){
+PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim){
   return row + col * dim;  
 } 
 
 
-int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
 
-  int id = 0;
-  int index = i;
+  PetscInt id = 0;
+  PetscInt index = i;
   for (size_t iosc = 0; iosc<nlevels.size()-1; iosc++){
-    int postdim = 1;
-    int postdim_ess = 1;
+    PetscInt postdim = 1;
+    PetscInt postdim_ess = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
     }
-    int iblock = (int) index / postdim_ess;
+    PetscInt iblock = index / postdim_ess;
     index = index % postdim_ess;
     // move id to that block
     id += iblock * postdim;  
@@ -491,18 +377,18 @@ int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector
   return id;
 }
 
-int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
 
-  int id = 0;
-  int index = i;
+  PetscInt id = 0;
+  PetscInt index = i;
   for (size_t iosc = 0; iosc<nlevels.size(); iosc++){
-    int postdim = 1;
-    int postdim_ess = 1;
+    PetscInt postdim = 1;
+    PetscInt postdim_ess = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
       postdim_ess *= nessential[j];
     }
-    int iblock = (int) index / postdim;
+    PetscInt iblock = index / postdim;
     index = index % postdim;
     if (iblock >= nessential[iosc]) return -1; // this row/col belongs to a guard level, no mapping defined. 
     // move id to that block
@@ -557,7 +443,7 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
   int index = i;
   for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
 
-    int postdim = 1;
+    PetscInt postdim = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }
@@ -578,7 +464,7 @@ int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector
   int index = i;
   for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
 
-    int postdim = 1;
+    PetscInt postdim = 1;
     for (size_t j = iosc+1; j<nlevels.size(); j++){
       postdim *= nlevels[j];
     }
@@ -663,7 +549,7 @@ PetscErrorCode kronI(const Mat A, const int dimI, const double alpha, Mat *Out, 
             //printf("A: row = %d, col = %d, val = %f\n", i, cols[j], Avals[j]);
             
             // dimI rows. global row indices: i, i+dimI
-            for (int k=0; k<dimI; k++) {
+            for (PetscInt k=0; k<dimI; k++) {
                rowid = i*dimI + k;
                colid = cols[j]*dimI + k;
                insertval = Avals[j] * alpha;
@@ -746,7 +632,7 @@ PetscErrorCode MatIsAntiSymmetric(Mat A, PetscReal tol, PetscBool *flag) {
 
 PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   int ierr;
-  int i, j;
+  PetscInt i, j;
 
   /* TODO: Either make this work in Petsc-parallel, or add error exit if this runs in parallel. */
   
@@ -757,9 +643,9 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   Vec u, v;
   IS isu, isv;
 
-  int dimis = dim;
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 2, &isu); CHKERRQ(ierr);
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 1, 2, &isv); CHKERRQ(ierr);
+  PetscInt dimis = dim;
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 1, &isu); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, dimis, 1, &isv); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isu, &u); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isv, &v); CHKERRQ(ierr);
 
@@ -772,7 +658,7 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
   double u_diff, v_diff;
   ierr = VecGetArrayRead(u, &u_array); CHKERRQ(ierr);
   ierr = VecGetArrayRead(v, &v_array); CHKERRQ(ierr);
-  int N = sqrt(dim);
+  PetscInt N = sqrt(dim);
   for (i=0; i<N; i++) {
     for (j=i; j<N; j++) {
       u_diff = u_array[i*N+j] - u_array[j*N+i];
@@ -799,16 +685,16 @@ PetscErrorCode StateIsHermitian(Vec x, PetscReal tol, PetscBool *flag) {
 PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
 
   int ierr;
-  int i;
+  PetscInt i;
 
   /* Get u and v from x */
   PetscInt dim;
   ierr = VecGetSize(x, &dim); CHKERRQ(ierr);
-  int dimis = dim/2;
+  PetscInt dimis = dim/2;
   Vec u, v;
   IS isu, isv;
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 2, &isu); CHKERRQ(ierr);
-  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 1, 2, &isv); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, 0, 1, &isu); CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_WORLD, dimis, dimis, 1, &isv); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isu, &u); CHKERRQ(ierr);
   ierr = VecGetSubVector(x, isv, &v); CHKERRQ(ierr);
 
@@ -824,7 +710,7 @@ PetscErrorCode StateHasTrace1(Vec x, PetscReal tol, PetscBool *flag) {
   double v_sum = 0.0;
   ierr = VecGetArrayRead(u, &u_array); CHKERRQ(ierr);
   ierr = VecGetArrayRead(v, &v_array); CHKERRQ(ierr);
-  int N = sqrt(dimis);
+  PetscInt N = sqrt(dimis);
   for (i=0; i<N; i++) {
     u_sum += u_array[i*N+i];
     v_sum += fabs(v_array[i*N+i]);

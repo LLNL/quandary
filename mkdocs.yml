@@ -1,0 +1,44 @@
+site_name: Quandary
+site_description: Documentation for Quandary
+site_author: LLNL
+site_url: https://software.llnl.gov/quandary/
+
+plugins:
+  - search
+  - mkdocs-jupyter
+  - bibtex:
+      bib_file: "docs/mkdocs/user_guide.bib"
+      enable_inline_citations: false
+
+markdown_extensions:
+  - footnotes
+  - attr_list
+  - pymdownx.arithmatex:
+      generic: true
+      block_tag: 'pre'
+  - pymdownx.snippets:
+      base_path: ['.', 'docs']
+      check_paths: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+theme:
+  name: mkdocs
+
+nav:
+  - Home: index.md
+  - Basics:
+    - Getting Started: getting_started.md
+    - Tutorial: QuandaryWithPython_HowTo.ipynb
+  - User Guide: user_guide.md
+  - Reference:
+    - Python API Reference: python_api.md
+    - C++ Configuration Reference: config.md
+    - Doxygen: "https://software.llnl.gov/quandary/doxygen/"
+
+use_directory_urls: true
+docs_dir: docs/mkdocs
+site_dir: site
