@@ -754,7 +754,7 @@ void MasterEq::set_RHS_MatMult_operation(){
           int nsplines = oscil_vec[ioscil]->getNSplines();
           int ncarrier = oscil_vec[ioscil]->getNCarrierfrequencies();
           int nparams = oscil_vec[ioscil]->getNParams();
-          assert(nparams = 2*nsplines*ncarrier);
+          assert(nparams == 2*nsplines*ncarrier);
           double p_GHz = controls[0] / ncarrier;
           double q_GHz = controls[1] / ncarrier;
           controls.resize(nparams);

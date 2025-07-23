@@ -57,7 +57,7 @@ class Learning {
     int getNParams(){ return nparams; };
     int getNParamsHamiltonian(){ return learnparamsH.size();};
     int getNParamsLindblad(){ return learnparamsL.size(); };
-    int getNParamsTransfer(){ int sum=0; for (int i=0; i<learnparamsT.size();i++) sum+= learnparamsT[i].size(); return sum; };
+    int getNParamsTransfer(){ int sum=0; for (size_t i=0; i<learnparamsT.size();i++) sum+= learnparamsT[i].size(); return sum; };
     int getNParamsTransfer(int iosc){ return learnparamsT[iosc].size(); };
 
     /* Initialize learnable parameters. */

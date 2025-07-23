@@ -6,8 +6,8 @@
 void createGellmannMats(int dim_rho, bool upper_only, bool real_only, bool shifted_diag, bool includeIdentity, std::vector<Mat>& Mats_Re, std::vector<Mat>& Mats_Im){
 
   /* First empty out the vectors, if needed */
-  for (int i=0; i<Mats_Re.size(); i++) MatDestroy(&Mats_Re[i]);
-  for (int i=0; i<Mats_Im.size(); i++) MatDestroy(&Mats_Im[i]);
+  for (size_t i=0; i<Mats_Re.size(); i++) MatDestroy(&Mats_Re[i]);
+  for (size_t i=0; i<Mats_Im.size(); i++) MatDestroy(&Mats_Im[i]);
 
   /* Put the identity first, if needed */
   if (includeIdentity){
@@ -89,8 +89,8 @@ void createGellmannMats(int dim_rho, bool upper_only, bool real_only, bool shift
 void createEijBasisMats(int dim_rho, bool includeIdentity, std::vector<Mat>& Mats_Re, std::vector<Mat>& Mats_Im){
 
   /* First empty out the vectors, if needed */
-  for (int i=0; i<Mats_Re.size(); i++) MatDestroy(&Mats_Re[i]);
-  for (int i=0; i<Mats_Im.size(); i++) MatDestroy(&Mats_Im[i]);
+  for (size_t i=0; i<Mats_Re.size(); i++) MatDestroy(&Mats_Re[i]);
+  for (size_t i=0; i<Mats_Im.size(); i++) MatDestroy(&Mats_Im[i]);
 
   /* Put the identity first, if needed */
   if (includeIdentity){
@@ -288,7 +288,7 @@ double expectedEnergy(const Vec x, LindbladType lindbladtype, std::vector<int> n
   // Compute Hilbertspace dimension and the dimension of the systems following this subsystem
   PetscInt dim=1;
   PetscInt post_dim = 1;
-  for (int i=0; i<nlevels.size(); i++){
+  for (size_t i=0; i<nlevels.size(); i++){
     dim *= nlevels[i];
     if (i > subsystem) {
       post_dim *= nlevels[i];

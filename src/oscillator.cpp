@@ -355,7 +355,7 @@ int Oscillator::evalControl_diff(const double t, double* grad, bool x_is_control
             double Blt2bar = cos_omt*qbar - sin_omt*pbar;
 
             /* Derivative of Transfer model wrt controls */
-            double Blt1, Blt2, dtransfer_dBlt1, dtransfer_dBlt2;
+            double Blt1, Blt2;
             basisfunctions[bs]->evaluate(t, params, f, &Blt1, &Blt2);
             learning->applyUDETransfer_diff(myid, f, Blt1, Blt2, Blt1bar, Blt2bar, grad, x_is_control);
 

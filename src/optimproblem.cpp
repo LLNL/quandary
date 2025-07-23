@@ -169,7 +169,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
     int nparamsL = timestepper->mastereq->learning->getNParamsLindblad();
     int nparamsT = timestepper->mastereq->learning->getNParamsTransfer();
 
-    assert(ndesign = nparamsH + nparamsL + nparamsT);
+    assert(ndesign == nparamsH + nparamsL + nparamsT); 
     for (int i=0; i<nparamsH; i++) {
       double boundval = 1e6;
       VecSetValue(xupper, i,     boundval, INSERT_VALUES);
@@ -283,7 +283,7 @@ double OptimProblem::evalF(const Vec x) {
       mastereq->setControlFromData(ipulse_global);
 
       // TEST: write expected energy of the Training data. (assumes density matrix data) FIX ME!
-      for (int iosc=0; iosc<mastereq->nlevels.size(); iosc++){
+      for (size_t iosc=0; iosc<mastereq->nlevels.size(); iosc++){
         std::string filename_expEnergy = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse_global)+"_expectedEnergy"+std::to_string(iosc)+".dat"; 
         mastereq->learning->data->writeExpectedEnergy(filename_expEnergy.c_str(), ipulse_global, 0,  iosc); // NOTE: writing data for init_num =0 FIX ME!
       }

@@ -321,7 +321,7 @@ int main(int argc,char **argv)
     assert(controlinit_str.size() >=2);
     // Read file 
     int nparams = 0;
-    for (int iosc = 0; iosc < nlevels.size(); iosc++){
+    for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
       nparams += oscil_vec[iosc]->getNParams();
     }
     std::vector<double> initguess_fromfile(nparams, 0.0);
@@ -329,7 +329,7 @@ int main(int argc,char **argv)
     MPI_Bcast(initguess_fromfile.data(), nparams, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     // Pass control initialization to oscillators
     int shift=0;
-    for (int ioscil = 0; ioscil < nlevels.size(); ioscil++) {
+    for (size_t ioscil = 0; ioscil < nlevels.size(); ioscil++) {
       /* Copy x into the oscillators parameter array. */
       oscil_vec[ioscil]->setParams(initguess_fromfile.data() + shift);
       shift += oscil_vec[ioscil]->getNParams();
@@ -439,7 +439,6 @@ int main(int argc,char **argv)
   }
 
   /* My time stepper */
-  int ninit_local = ninit / mpisize_init; 
   // If lindblad solver, store states during forward timestepping (needed for gradients). Otherwise, states will be recomputed during backward timestepping. 
   bool storeFWD;
   if (mastereq->lindbladtype != LindbladType::NONE ) { // Lindblad solver
