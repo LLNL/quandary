@@ -64,7 +64,10 @@ void HamiltonianFileReader::receiveHsys(Mat& Ad, Mat& Bd){
   MPI_Bcast(real_vals.data(), num_entries, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast(imag_vals.data(), num_entries, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-  // Now all ranks set the values
+  PetscInt ilow, iupp;
+  MatGetOwnershipRange(Ad, &ilow, &iupp); 
+
+  // Now all ranks set their local values
   for (int i = 0; i < num_entries; i++) {
     PetscInt row = rows[i]; 
     PetscInt col = cols[i];
@@ -75,19 +78,21 @@ void HamiltonianFileReader::receiveHsys(Mat& Ad, Mat& Bd){
     // Assemble: Bd = Imag(-i*Hsys) = -Real(Hsys)
     if (lindbladtype == LindbladType::NONE) {
       // Schroedinger 
-      if (fabs(imag) > 1e-15) MatSetValue(Ad, row, col, imag, INSERT_VALUES);
-      if (fabs(real) > 1e-15) MatSetValue(Bd, row, col, -real, INSERT_VALUES);
+      if (fabs(imag) > 1e-15 && ilow <= row && row < iupp) MatSetValue(Ad, row, col, imag, INSERT_VALUES);
+      if (fabs(real) > 1e-15 && ilow <= row && row < iupp) MatSetValue(Bd, row, col, -real, INSERT_VALUES);
     } else {
-      // Lindblad: Vectorize I_N \kron X - X^T \kron I_N
+      // Lindblad: 
+      // Vectorized Ad = Real(I_N \kron (-iH) - (-iH)^T \kron I_N) = I_N \kron Im(Hsys) - Im(Hsys)^T \kron I_N
+      // Vectorized Bd = Imag(I_N \kron (-iH) - (-iH)^T \kron I_N) = - I_n \kron Real(Hsys) + Real(Hsys)^T \kron I_N
       for (PetscInt k = 0; k < dim_rho; k++) {
         PetscInt rowk = row + dim_rho * k;
         PetscInt colk = col + dim_rho * k;
-        if (fabs(imag) > 1e-15) MatSetValue(Ad, rowk, colk, imag, INSERT_VALUES);
-        if (fabs(real) > 1e-15) MatSetValue(Bd, rowk, colk, -real, INSERT_VALUES);
+        if (fabs(imag) > 1e-15 && ilow <= row && row < iupp) MatSetValue(Ad, rowk, colk, imag, ADD_VALUES);
+        if (fabs(real) > 1e-15 && ilow <= row && row < iupp) MatSetValue(Bd, rowk, colk, -real, ADD_VALUES);
         rowk = col * dim_rho + k;
         colk = row * dim_rho + k;
-        if (fabs(imag) > 1e-15) MatSetValue(Ad, rowk, colk, -imag, INSERT_VALUES);
-        if (fabs(real) > 1e-15) MatSetValue(Bd, rowk, colk, real, INSERT_VALUES);
+        if (fabs(imag) > 1e-15 && ilow <= row && row < iupp) MatSetValue(Ad, rowk, colk, -imag, ADD_VALUES);
+        if (fabs(real) > 1e-15 && ilow <= row && row < iupp) MatSetValue(Bd, rowk, colk, real, ADD_VALUES);
       }
     }
   }
