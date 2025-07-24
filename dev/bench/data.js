@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1753288429264,
+  "lastUpdate": 1753373886582,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1187,6 +1187,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4223.33,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "e1a44eb10b2098b069091ba71fe4c19b09fee349",
+          "message": "Merge pull request #77 from LLNL/pyproject-versions\n\nUpdate pyproject.toml",
+          "timestamp": "2025-07-24T15:51:25Z",
+          "url": "https://github.com/LLNL/quandary/commit/e1a44eb10b2098b069091ba71fe4c19b09fee349"
+        },
+        "date": 1753373884932,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7510104309767485,
+            "unit": "seconds",
+            "range": "0.05215134706291422"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 85.83,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 9.341559431981295,
+            "unit": "seconds",
+            "range": "0.03450679066656553"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4219.21,
             "unit": "MB"
           }
         ]
