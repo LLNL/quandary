@@ -5,14 +5,18 @@
 # SPDX-License-Identifier: (MIT)
 ###############################################################################
 
-.performance_base_job:
-  extends:
-    - .job_on_ruby
-    - .performance_job
+clang_14_0_6:
+  extends: .perf_on_ruby
   variables:
     PERFORMANCE_TESTS: "true"
-
-clang_14_0_6:
-  extends: .performance_base_job
-  variables:
     SPEC: "${PROJECT_RUBY_VARIANTS} %clang@=14.0.6 ${PROJECT_RUBY_DEPS}"
+
+process_results:
+  extends: .pytest_to_gh_benchmark
+  depends:
+    - clang_14_0_6
+
+report_results:
+  extends: .report_to_gh_benchmark
+  depends:
+    - process_results

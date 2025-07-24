@@ -17,6 +17,8 @@ variables:
   RUBY_SHARED_ALLOC: "--exclusive --reservation=ci --time=15 --nodes=1"
 # Arguments for job level allocation
   RUBY_JOB_ALLOC: "--reservation=ci --overlap --nodes=1"
+# Arguments for performance job allocation (dedicated allocation with no overlapping).
+  RUBY_PERF_ALLOC: "--exclusive --reservation=ci --time=15 --nodes=1"
 # Project specific variants for ruby
   PROJECT_RUBY_VARIANTS: "+test"
 # Project specific deps for ruby
@@ -48,24 +50,6 @@ variables:
   artifacts:
     reports:
       junit: junit.xml
-
-.performance_job:
-  artifacts:
-    paths:
-      - benchmark_results.json
-  after_script:
-    - |
-      if [ -f "benchmark_results.json" ]; then
-        echo "Sending benchmark results to GitHub..."
-        BENCHMARK_DATA=$(base64 -w 0 benchmark_results.json)
-        curl -X POST \
-        -H "Authorization: token $GITHUB_TOKEN" \
-        -H "Accept: application/vnd.github.v3+json" \
-        https://api.github.com/repos/${GITHUB_PROJECT_ORG}/${GITHUB_PROJECT_NAME}/actions/workflows/benchmark.yml/dispatches \
-        -d "{\"ref\":\"${CI_COMMIT_REF_NAME}\",\"inputs\":{\"benchmark_data\":\"$BENCHMARK_DATA\"}}"
-      else
-        echo "benchmark_results.json not found, skipping GitHub API integration."
-      fi
 
 .reproducer_vars:
   script:
