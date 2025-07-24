@@ -311,8 +311,8 @@ double OptimProblem::evalF(const Vec x) {
 
       /* If learning: add to loss function */
       double loss_local = mastereq->learning->getLoss();
-      if (!x_is_control)
-        printf("%dx%d: Local loss for pulse %d, init.cond. %d: %1.14e\n", mpirank_optim, mpirank_init, ipulse_global, iinit_global, loss_local);
+      // if (!x_is_control)
+        // printf("%dx%d: Local loss for pulse %d, init.cond. %d: %1.14e\n", mpirank_optim, mpirank_init, ipulse_global, iinit_global, loss_local);
       obj_loss += obj_weights[iinit] * loss_local;
 
       /* Add to integral penalty terms */
