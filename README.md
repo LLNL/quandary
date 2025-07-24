@@ -38,11 +38,7 @@ Spack can be used to install Quandary, including the required dependency on Pets
     spack env activate .spack_env/
     ```
 
-4. Trust Spack's binary mirror so we can speed up the installation process (optional):
-    ```
-    spack buildcache keys --install --trust
-    ```
-5. Finally, to install the necessary dependencies and build Quandary run:
+4. Finally, to install the necessary dependencies and build Quandary run:
     ```
     spack install
     ```

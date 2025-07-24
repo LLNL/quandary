@@ -13,5 +13,6 @@ spack:
     quandary:
       path: ../
       spec: quandary@=develop
-  mirrors:
-    binary_mirror: https://binaries.spack.io/develop
+  config:
+    flags:
+      keep_werror: all

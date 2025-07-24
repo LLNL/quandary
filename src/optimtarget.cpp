@@ -690,7 +690,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
       break;
 
     default:
-      printf("ERROR! Wrong initial condition type: %d\n This should never happen!\n", initcond_type);
+      printf("ERROR! Wrong initial condition type: %d\n This should never happen!\n", static_cast<int>(initcond_type));
       exit(1);
   }
 
