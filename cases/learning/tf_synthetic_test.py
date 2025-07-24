@@ -19,9 +19,13 @@ do_lindblad = False
 Ne = [3]			# Number of essential levels
 Ng = [0]			# Number of guard levels
 
+# Frequency scaling factor relative to MHz and us (1e-6 sec)
+freq_scale = 1e-2 # 1e-2 (100 MHz); 1e-3 (GHz)
+time_scale = 1/freq_scale
+
 #  Transition frequencies [GHz] from the device: 2025, Jan 06
-f01 = 3422.625432e-3
-f12=  3213.617052e-3
+f01 = 3422.625432*freq_scale
+f12=  3213.617052*freq_scale
 
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [f01] 
@@ -31,13 +35,13 @@ selfkerr = [f01-f12]
 rotfreq = freq01
 
 # Set the gate duration (us)
-T = 0.240e3
+T = 0.240*time_scale
 
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
-maxctrl = 4.0e-3
+maxctrl = 4.0*freq_scale
 
 # Amplitude of randomized initial control vector
-initctrl = 10.0e-3
+initctrl = 10.0*freq_scale
 
 # Set up a target gate (in essential level dimensions)
 unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
@@ -69,6 +73,7 @@ if do_lindblad:
 else: 
 	quandary2 = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl=maxctrl, targetgate=unitary, T=T, pcof0=pcof_opt, verbose=verbose, rand_seed=rand_seed,  initialcondition=initialcondition, output_frequency=output_frequency)
 
+
 cwd = os.getcwd()
 datadir_test = cwd+"/"+dirprefix+"_asmeasured" # NOTE: not an array
 pfact = [0.8, 1.2] # [0.75, 1.5] #
@@ -82,9 +87,9 @@ if do_datageneration:
 	pcof_pert[0:Nfirst] = [pcofi * pfact[0] for pcofi in pcof_opt[0:Nfirst]]
 	pcof_pert[Nfirst:2*Nfirst] = [pcofi * pfact[1] for pcofi in pcof_opt[Nfirst:2*Nfirst]]	# original control vector in pcof_opt
 
-	# Perturb the Hamiltonian (order MHz)
-	pert_freq01 = -1e-3
-	pert_selfkerr = -2e-3
+	# Perturb the Hamiltonian in the quandary2 object (order MHz)
+	pert_freq01 = -1*freq_scale
+	pert_selfkerr = -2*freq_scale
 	quandary2.freq01 = [freqi  + pert_freq01 for freqi in freq01] 
 	quandary2.selfkerr= [selfi + pert_selfkerr for selfi in selfkerr]
 
@@ -100,9 +105,6 @@ if do_datageneration:
 ################
 # NOW DO TRAINING! 
 ################
-# Reset the Hamiltonian:  
-quandary2.freq01[:] = freq01[:]
-quandary2.selfkerr[:] = selfkerr[:]
 
 # Set the UDE model: List of learnable terms, containing "hamiltonian" and/or "lindblad" and/or "transferLinear"
 UDEmodel = "hamiltonian, transferLinear"
@@ -146,19 +148,24 @@ quandary2.gamma_dpdm = 0.0
 quandary2.maxiter = 500
 
 
-### TEST: Simulate with transfer functions set to the exact pertubation from above -> Loss should be zero!
-learnparams_perturb = 0e-4*np.ones(10) 
+### TEST: Simulate with transfer functions set to the exact pertubation from above and using the same Hamiltonian as in the data generation
+###  -> Loss should be zero!
+learnparams_perturb = 0e-4*np.ones(10) # No perturbation
 learnparams_perturb[8] = pfact[0] # correct scaling factors
 learnparams_perturb[9] = pfact[1] # correct scaling factors
 quandary2.UDEsimulate(pcof0=pcof_opt, trainingdata=trainingdata, UDEmodel=UDEmodel, learn_params=learnparams_perturb, maxcores=maxcores, datadir=UDEdatadir+"_scaledtransfer")
-print("learnparams = ", learnparams_perturb, " CHECK: Loss should be zero (small)!\n")
+print("learnparams = ", learnparams_perturb, " CHECK: Above Loss should be zero (small)!\n")
+
+# Reset the Hamiltonian to the original model:  
+quandary2.freq01[:] = freq01[:]
+quandary2.selfkerr[:] = selfkerr[:]
 
 ## TEST: Simulate with transfer functions set to the identity -> Loss should be large!
 learnparams_identity = 1e-4*np.ones(10) 
 learnparams_identity[8] = 0.9 
 learnparams_identity[9] = 1.1 
 quandary2.UDEsimulate(pcof0=pcof_opt, trainingdata=trainingdata, UDEmodel=UDEmodel, learn_params=learnparams_identity, maxcores=maxcores, datadir=UDEdatadir+"_identitytransfer")
-print("learnparams = ", learnparams_identity, " CHECK: Loss should be large!\n")
+print("learnparams = ", learnparams_identity, " CHECK: Above Loss should be large!\n")
 
 if do_training:
 	print("\nStarting UDE training for UDE model = ", UDEmodel, " initial_params: ", learnparams_identity, "...")
