@@ -158,5 +158,16 @@
         "number_of_processes": [
             1, 4
         ]
+    },
+    {
+        "simulation_name": "hamiltonian-reader-lindblad",
+        "files_to_compare": [
+            "population*.dat",
+            "optim_history.dat"
+        ],
+        "number_of_processes": [
+            1, 8
+        ]
     }
+
 ]
