@@ -145,7 +145,7 @@ class Quandary:
     spline_order        : int         = 2                           
     carrier_frequency   : List[List[float]] = field(default_factory=list) 
     cw_amp_thres        : float       = 1e-7
-    cw_prox_thres       : float       = 1e-2                        
+    cw_prox_thres       : float       = 1e-4 # Better to base this on differences in resonance frequencies? Used to be 1e-2                        
     # Optimization options
     maxiter                : int   = 200         
     tol_infidelity         : float = 1e-5        
@@ -1362,16 +1362,19 @@ def plot_population(Ne, time, population):
 
 def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     """ Plot all results of one oscillator """
-
-    fig, ax = plt.subplots(2, 3, figsize=(20,8))
+    Ncols = 3 # Number of plot columns 
+    fig, ax = plt.subplots(2, Ncols, figsize=(20,8))
     fig.subplots_adjust(hspace=0.3)
 
     t = myconfig.time
 
     # Plot pulses
-    ax[0,0].plot(t, p, label='I')
-    ax[0,0].plot(t, q, label='Q') 
-    ax[0,0].set_ylabel('Pulse amplitude')
+    rad2freq = 1.0 # 1/(2*np.pi) # What are the units of (p,q) here?
+    pa = np.array(p) # make (p, q) numpy arrays so they can be scaled!
+    qa = np.array(q)
+    ax[0,0].plot(t, pa*rad2freq, label='I')
+    ax[0,0].plot(t, qa*rad2freq, label='Q') 
+    ax[0,0].set_ylabel('Pulse amplitude [freq]')
     ax[0,0].set_xlabel('Time')
     ax[0,0].legend()
     ax[0,0].grid()
@@ -1395,7 +1398,7 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     # ax[0,1].set_ylim(1e-8, 1e5)
 
     # Plot Populations for each initial condition 
-    for iinit in range(len(population)):  # for each of the initial states
+    for iinit in range(min(3, len(population))):  # for each of the initial states (up to 3)
         row = 1
         col = iinit
             
