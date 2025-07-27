@@ -280,7 +280,9 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr, Lear
 
   /* Evaluate p(t) and q(t) using the parameters */
   if (params.size()>0) {
-    // Iterate over control segments. Only one will be used, see the break-statement. 
+    // Iterate over control segments. Only one will be used, see the break-statement.
+    // The index 'bs' can be calculated from t and the knot spacing. 
+    // No need to loop over the entire array!
     for (size_t bs = 0; bs < basisfunctions.size(); bs++){
       if (basisfunctions[bs]->getTstart() <= t && 
           basisfunctions[bs]->getTstop() >= t ) {
