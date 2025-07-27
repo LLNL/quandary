@@ -128,6 +128,7 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt,
 
       const PetscScalar* params_ptr;
       VecGetArrayRead(params, &params_ptr);
+
       for (int i=0; i<ndesign; i++){
         fprintf(file, "%1.14e\n", params_ptr[i]);
       }
@@ -156,10 +157,10 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt,
         mastereq->getOscillator(ioscil)->evalControl_Labframe(time, &LabI, mastereq->learning);
         // Write control drives
         fprintf(file_c, "% 1.8f   % 1.14e   % 1.14e   % 1.14e \n", time, ReI/(2.0*M_PI), ImI/(2.0*M_PI), LabI/(2.0*M_PI));
-     } // end of time loop 
+      } // end of time loop 
 
       fclose(file_c);
-      // if (!quietmode) printf("File written: %s\n", filename);
+      if (!quietmode) printf("File written: %s\n", filename);
     } // end of oscillator loop
   }
 }
