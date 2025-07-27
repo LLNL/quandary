@@ -73,11 +73,6 @@ class Data{
     /* If data point exists at this time, return it. Otherwise, returns NULL. Note: pulse_num is the global counter. */
     Vec getData(double time, int ipulse_global, int iinit_global);
 
-    /* Write expected energy of a data trajectory to file */
-    void writeExpectedEnergy(const char* filename, int ipulse_global, int iinit_global, int ioscillator);
-
-    /* Write full density matrix of a data trajectory to files */
-    void writeFullstate(const char* filename_Re, const char* filename_Im, int ipulse_global, int iinit_global);
 };
 
 
