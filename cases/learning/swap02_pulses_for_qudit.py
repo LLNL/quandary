@@ -8,12 +8,20 @@ from quandary import *
 unitMHz = True
 ## One qudit test case: Swap the 0 and 2 state of a three-level qudit ##
 
-Ne = [3]  # Number of essential energy levels
-Ng = [1]  # Number of extra guard levels
+Ne = [4]  # Number of essential energy levels
+Ng = [0]  # Number of extra guard levels
 
-#  Transition frequencies [GHz] from the device: 2025, Jan 06
-f01 = 3422.625432
-f12=  3213.617052
+# Frequency scaling factor relative to MHz and us (1e-6 sec)
+freq_scale = 1e-3 # 1e-2 (100 MHz); 1e-3 (GHz)
+time_scale = 1/freq_scale
+
+#  Transition frequencies [GHz] from the device: 
+# 2025, Jan 06
+# f01 = 3422.625432
+# f12=  3213.617052
+# July 25, 2025: Transition frequencies [GHz]: f01 = 3.416682744 f12= 3.2074712470000004
+f01 = 3.416682744*freq_scale
+f12 = 3.2074712470000004*freq_scale
 
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [f01] 
@@ -21,17 +29,24 @@ freq01 = [f01]
 selfkerr = [f01-f12]
 
 # Set the total time duration (us)
-T = 0.240
+# T = 0.360*time_scale
+T = 0.360*time_scale
 
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
-maxctrl_MHz = 4.0
+maxctrl = 7.0*freq_scale
+initctrl = 1.0*freq_scale
 
 # Set up a target gate (in essential level dimensions)
-unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
+# unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
+unitary = [[0,0,1,0],[0,1,0,0],[1,0,0,0],[0,0,0,1]]  # Swaps first and third level
+# unitary = [[0,1,0,0],[1,0,0,0],[0,0,1,0],[0,0,0,1]] # X-gate
 # print(unitary)
 
-# Prepare Quandary with those options. This set default options for all member variables and overwrites those that are passed through the constructor here. Use help(Quandary) to see all options.
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, rand_seed=1234, unitMHz= unitMHz)
+# Prepare Quandary with those options. This sets default options for all member variables and overwrites those that are passed through the constructor here. Use help(Quandary) to see all options.
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, initctrl= initctrl, maxctrl=maxctrl, targetgate=unitary, T=T, control_enforce_BC=True, rand_seed=1234, cw_prox_thres=0.5*abs(selfkerr[0]), verbose=True)
+
+# Turn off verbosity after the carrier frequencies have been reported
+quandary.verbose = False
 
 # Execute quandary. Default number of executing cores is the essential Hilbert space dimension. Limit the number of cores by passing ncores=<int>. Use help(quandary.optimize) to see all arguments.
 datadir="./SWAP02_run_dir"
@@ -40,10 +55,6 @@ print(f"\nFidelity = {1.0 - infidelity}")
 
 # Plot the control pulse and expected energy level evolution
 if True:
-    # plot_pulse(quandary.Ne, t, pt, qt)
-    # plot_expectedEnergy(quandary.Ne, t, expectedEnergy)
-    # plot_population(quandary.Ne, t, population)
-
     # If one oscillator, you can also use the plot_results function to plot everything in one figure.
     plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
 
@@ -60,11 +71,8 @@ print("T=", quandary.T, "nsteps=", quandary.nsteps, "dt=", quandary.dT)
 
 # You can evaluate the control pulses on different time grid using a specific sampling rate with
 points_per_ns = 64
-t1, p1_list, q1_list = quandary.evalControls(pcof0=quandary.popt, points_per_ns=points_per_ns, datadir=datadir)
-
-print("After evalControls")
-
-print("T=", quandary.T, "nsteps=", quandary.nsteps, "dt=", quandary.dT)
+eval_datadir = datadir + "_eval"
+t1, p1_list, q1_list = quandary.evalControls(pcof0=quandary.popt, points_per_ns=points_per_ns, datadir=eval_datadir)
 
 # Remove last time point (just to be consistent with TensorFlow results)
 t1 = t1[0:-1]
