@@ -327,6 +327,7 @@ int main(int argc,char **argv)
     std::vector<double> initguess_fromfile(nparams, 0.0);
     if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), nparams, quietmode);
     MPI_Bcast(initguess_fromfile.data(), nparams, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
     // Pass control initialization to oscillators
     int shift=0;
     for (int ioscil = 0; ioscil < nlevels.size(); ioscil++) {
@@ -334,6 +335,7 @@ int main(int argc,char **argv)
       oscil_vec[ioscil]->setParams(initguess_fromfile.data() + shift);
       shift += oscil_vec[ioscil]->getNParams();
     }
+
   }
 
   // Get pi-pulses, if any, and pass it to the oscillators
@@ -526,11 +528,17 @@ int main(int argc,char **argv)
     optimctx->getSolution(&opt);
   }
 
-    /* If learning, print out the learned operators */
-    if (!x_is_control){
-      learning->writeOperators(output->datadir);
-    }
+  /* If learning, print out the learned operators */
+  if (!x_is_control){
+    learning->writeOperators(output->datadir);
+  }
    
+  /* Only evaluate and write control pulses (no propagation) */
+  if (runtype == RunType::EVALCONTROLS) {
+    // NOTE: getStartingPoint(xinit) has never been called if runtype == EVALCONTROLS
+    optimctx->getStartingPoint(xinit);
+  }
+
   /* Write all control pulses to file */
   for (int ipulse_local = 0; ipulse_local < learning->data->getNPulses_local(); ipulse_local++){
     int ipulse_global = mpirank_optim * learning->data->getNPulses_local() + ipulse_local;
@@ -539,15 +547,10 @@ int main(int argc,char **argv)
     }
     int pulseID = ipulse_global;
     if (learning->data->getNPulses() <=1)  pulseID = -1;
-    output->writeControls(xinit, optimctx->timestepper->mastereq, optimctx->timestepper->ntime, optimctx->timestepper->dt, pulseID, x_is_control);
-  }
 
-  /* Only evaluate and write control pulses (no propagation) */
-  if (runtype == RunType::EVALCONTROLS) {
-    std::vector<double> pt, qt;
-    optimctx->getStartingPoint(xinit);
-    if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
-    output->writeControls(xinit, mastereq, ntime, dt, -1, x_is_control);
+    output->writeControls(xinit, optimctx->timestepper->mastereq, optimctx->timestepper->ntime, optimctx->timestepper->dt, pulseID, x_is_control); 
+    // how is the above call different from the one below ???
+    // output->writeControls(xinit, mastereq, ntime, dt, pulseID, x_is_control);
   }
 
   /* Output */
