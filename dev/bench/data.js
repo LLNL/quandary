@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1753373886582,
+  "lastUpdate": 1753739244993,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1231,6 +1231,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4219.21,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Stefanie Guenther",
+            "username": "steffi7574",
+            "email": "guenther5@llnl.gov"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "a8a15d1ac69e18fa2ed548901812d25915733505",
+          "message": "Merge pull request #78 from LLNL/bugfix-hamiltonianreader\n\nBugfix: Hamiltonian reader for Petsc-parallel Lindblad solver",
+          "timestamp": "2025-07-28T20:53:54Z",
+          "url": "https://github.com/LLNL/quandary/commit/a8a15d1ac69e18fa2ed548901812d25915733505"
+        },
+        "date": 1753739243732,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7273674565367401,
+            "unit": "seconds",
+            "range": "0.3835431598455397"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 85.91,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 9.270472630858421,
+            "unit": "seconds",
+            "range": "0.16134447293495427"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4220.59,
             "unit": "MB"
           }
         ]
