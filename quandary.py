@@ -151,7 +151,7 @@ class Quandary:
     tol_gnorm_rel          : float = 1e-4
     costfunction           : str   = "Jtrace"                      
     optim_target           : str   = "gate, none"
-    gamma_tik0             : float = 1e-4 
+    gamma_tik0             : bool = 1e-4 
     gamma_tik0_interpolate : float = 0.0
     gamma_leakage          : float = 0.1 	       
     gamma_energy           : float = 0.1
@@ -692,12 +692,8 @@ class Quandary:
         mystring += "optim_ftol= " + str(self.tol_costfunc) + "\n"
         mystring += "optim_inftol= " + str(self.tol_infidelity) + "\n"
         mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
-        if self.gamma_tik0_interpolate > 0.0:
-            mystring += "optim_regul= " + str(self.gamma_tik0_interpolate) + "\n"
-            mystring += "optim_regul_interpolate = true\n"
-        else:
-            mystring += "optim_regul= " + str(self.gamma_tik0) + "\n"
-            mystring += "optim_regul_interpolate=False\n"
+        mystring += "optim_regul= " + str(self.gamma_tik0) + "\n"
+        mystring += "optim_regul_interpolate=" + str(self.gamma_tik0_interpolate)+"\n"
         mystring += "optim_penalty= " + str(self.gamma_leakage) + "\n"
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
