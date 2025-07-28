@@ -5,33 +5,32 @@
 #   or specify its location within the call to quandary.optimize(quandary_exec=/path/to/Quandary/quandary)
 from quandary import * 
 
-unitMHz = True
 ## One qudit test case: Swap the 0 and 2 state of a three-level qudit ##
 
 Ne = [3]  # Number of essential energy levels
 Ng = [1]  # Number of extra guard levels
 
 #  Transition frequencies [GHz] from the device: 2025, Jan 06
-f01 = 3422.625432
-f12=  3213.617052
+f01 = 3.422625432
+f12=  3.213617052
 
 # 01 transition frequencies [GHz] per oscillator
 freq01 = [f01] 
 # Anharmonicities [GHz] per oscillator
 selfkerr = [f01-f12]
 
-# Set the total time duration (us)
-T = 0.240
+# Set the total time duration (ns)
+T = 240.0
 
-# Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
-maxctrl_MHz = 4.0
+# Bounds on the control pulse (in rotational frame, p and q) [GHz] per oscillator
+maxctrl = 0.004
 
 # Set up a target gate (in essential level dimensions)
 unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
 # print(unitary)
 
 # Prepare Quandary with those options. This set default options for all member variables and overwrites those that are passed through the constructor here. Use help(Quandary) to see all options.
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, maxctrl_MHz=maxctrl_MHz, targetgate=unitary, T=T, rand_seed=1234, unitMHz= unitMHz)
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, maxctrl=maxctrl, targetgate=unitary, T=T, rand_seed=1234)
 
 # Execute quandary. Default number of executing cores is the essential Hilbert space dimension. Limit the number of cores by passing ncores=<int>. Use help(quandary.optimize) to see all arguments.
 datadir="./SWAP02_run_dir"
