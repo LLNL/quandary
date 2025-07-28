@@ -798,20 +798,19 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   double obj_penal_variation= ctx->getPenaltyVariation();
   double F_avg = ctx->getFidelity();
 
-
   /* Additional Stopping criteria */
   bool lastIter = false;
   std::string finalReason_str = "";
   if (1.0 - F_avg <= ctx->getInfTol()) {
-      // Stop at small infidelity only if NOT robust optimization
-      if (obj_robust < 1.0) {
+    // Stop at small infidelity only if NOT robust optimization
+    if (obj_robust < 1e-12){
       finalReason_str = "Optimization converged with small infidelity.";
       TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
       lastIter = true;
     }
   } else if (obj_cost <= ctx->getFaTol()) {
     // Stop at small terminal costs only if NOT robust optimization
-    if (obj_robust < 1.0) {
+    if (obj_robust < 1e-12) {
       finalReason_str = "Optimization converged with small final time cost.";
       TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
       lastIter = true;

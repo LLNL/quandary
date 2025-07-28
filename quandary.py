@@ -1532,3 +1532,18 @@ def infidelity_(A,B):
 	dim = int(np.sqrt(A.size))
 	return 1.0 - np.abs(np.trace(A.conj().transpose() @ B))**2/dim**2
 
+
+def random_hermitian_matrix(dim):
+    """ 
+    Generate a random complex hermitian matrix with H[0,0]=0.0
+    """
+    max_amplitude = 1.0
+    np.random.seed(42) 
+    realA = np.random.uniform(-max_amplitude, max_amplitude, (dim, dim))
+    imagA = np.random.uniform(-max_amplitude, max_amplitude, (dim, dim))
+    A = realA + 1j * imagA 
+    H = (A + A.conj().T) / 2
+    # Energy shift to set H[0,0] = 0.0
+    H = H - H[0,0]*np.identity(dim)
+    return H
+
