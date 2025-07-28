@@ -47,7 +47,7 @@ class Learning {
     Data* data;       /* Stores the data */
 
   public: 
-    Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str,  std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data, std::mt19937 rand_engine, bool quietmode, double loss_scaling_factor, Oscillator** oscil_vec_);
+    Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str,  std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data, std::default_random_engine rand_engine, bool quietmode, double loss_scaling_factor, Oscillator** oscil_vec_);
     ~Learning();
 
     void resetLoss(){ loss_integral = 0.0; };
@@ -57,11 +57,11 @@ class Learning {
     int getNParams(){ return nparams; };
     int getNParamsHamiltonian(){ return learnparamsH.size();};
     int getNParamsLindblad(){ return learnparamsL.size(); };
-    int getNParamsTransfer(){ int sum=0; for (size_t i=0; i<learnparamsT.size();i++) sum+= learnparamsT[i].size(); return sum; };
+    int getNParamsTransfer(){ int sum=0; for (int i=0; i<learnparamsT.size();i++) sum+= learnparamsT[i].size(); return sum; };
     int getNParamsTransfer(int iosc){ return learnparamsT[iosc].size(); };
 
     /* Initialize learnable parameters. */
-    void initLearnParams(int nparams, std::vector<std::string> learninit_str, std::mt19937 rand_engine);
+    void initLearnParams(int nparams, std::vector<std::string> learninit_str, std::default_random_engine rand_engine);
 
     /* Applies Hamiltonian and Lindblad UDE terms to input state (u,v) */
     void applyUDESystemMats(Vec u, Vec v, Vec uout, Vec vout);

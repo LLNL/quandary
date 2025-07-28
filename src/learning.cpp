@@ -1,7 +1,7 @@
 #include "learning.hpp"
 #include "oscillator.hpp"
 
-Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str, std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data_, std::mt19937 rand_engine, bool quietmode_, double loss_scaling_factor_, Oscillator** oscil_vec_){
+Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str, std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data_, std::default_random_engine rand_engine, bool quietmode_, double loss_scaling_factor_, Oscillator** oscil_vec_){
   lindbladtype = lindbladtype_;
   quietmode = quietmode_;
   data = data_;
@@ -20,7 +20,7 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
   dim_rho = 0;
   if (nlevels.size() > 0){
     dim_rho = 1;
-    for (size_t i = 0; i<nlevels.size(); i++){
+    for (int i = 0; i<nlevels.size(); i++){
       dim_rho *= nlevels[i];
     }
   }
@@ -33,7 +33,7 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
   if (dim_rho > 0) {
 
     // Parse the UDEmodel_str for learnable term identifyiers and create parameterizations
-    for (size_t i=0; i<UDEmodel_str.size(); i++) {
+    for (int i=0; i<UDEmodel_str.size(); i++) {
       if (UDEmodel_str[i].compare("hamiltonian") == 0 ) {
         bool shifted_diag = true;
         hamiltonian_model = new HamiltonianModel(dim_rho, shifted_diag, lindbladtype);
@@ -45,7 +45,7 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
         lindblad_model    = new LindbladModel(dim_rho, shifted_diag, upper_only, real_only); 
       }
       if (UDEmodel_str[i].compare("transferLinear") == 0 ) {
-        for (size_t iosc=0; iosc<ncarrierwaves.size(); iosc++){
+        for (int iosc=0; iosc<ncarrierwaves.size(); iosc++){
           TransferModel* transfer_iosc = new TransferModel(dim_rho, ncarrierwaves[iosc], lindbladtype);
           transfer_model.push_back(transfer_iosc);
         }
@@ -58,7 +58,7 @@ Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::v
 
     /* Compute the total number of learnable paramters */
     nparams = hamiltonian_model->getNParams() + lindblad_model->getNParams();
-    for (size_t iosc=0; iosc<transfer_model.size(); iosc++) {
+    for (int iosc=0; iosc<transfer_model.size(); iosc++) {
       nparams += transfer_model[iosc]->getNParams();
     }
 
@@ -82,7 +82,7 @@ Learning::~Learning(){
   if (dim_rho > 0) {
     learnparamsH.clear();
     learnparamsL.clear();
-    for (size_t iosc=0; iosc<learnparamsT.size(); iosc++){
+    for (int iosc=0; iosc<learnparamsT.size(); iosc++){
       learnparamsT[iosc].clear();
     }
     learnparamsT.clear();
@@ -119,6 +119,7 @@ void Learning::writeOperators(std::string datadir){
   if (dim_rho <= 0) return;
 
   if (mpirank_world == 0) {
+    bool shift_diag = true;
     hamiltonian_model->writeOperator(learnparamsH, datadir);
     lindblad_model->writeOperator(learnparamsL, datadir);
   }
@@ -143,7 +144,7 @@ void Learning::setLearnParams(const Vec x){
     learnparamsL[i] = ptr[i+skip];
   }
   skip += lindblad_model->getNParams();
-  for (size_t iosc=0; iosc<transfer_model.size(); iosc++) {
+  for (int iosc=0; iosc<transfer_model.size(); iosc++) {
     for (int i=0; i<transfer_model[iosc]->getNParams(); i++) {
       learnparamsT[iosc][i] = ptr[skip];
       skip++;
@@ -168,7 +169,7 @@ void Learning::getLearnParams(double* x){
     x[i+skip] = learnparamsL[i];
   }
   skip += lindblad_model->getNParams();
-  for (size_t iosc=0; iosc<transfer_model.size(); iosc++) {
+  for (int iosc=0; iosc<transfer_model.size(); iosc++) {
     for (int i=0; i<transfer_model[iosc]->getNParams(); i++) {
       x[skip] = learnparamsT[iosc][i];
       skip++;
@@ -193,7 +194,7 @@ void Learning::dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar){
 }
 
 
-void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_str, std::mt19937 rand_engine){
+void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_str, std::default_random_engine rand_engine){
   // Switch over initialization string ("file", "constant", or "random")
 
   if (learninit_str[0].compare("file") == 0 ) { //  Read parameter from file. 
@@ -219,7 +220,7 @@ void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_s
     }
     // Then set all transfer params, iterating over oscillators first, then over carrier waves
     skip += lindblad_model->getNParams();
-    for (size_t iosc=0; iosc<transfer_model.size(); iosc++) {
+    for (int iosc=0; iosc<transfer_model.size(); iosc++) {
       std::vector<double> myparams;
       for (int i=0; i<transfer_model[iosc]->getNParams(); i++){
         myparams.push_back(initguess_fromfile[skip]); 
@@ -247,7 +248,7 @@ void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_s
       }
     }
     // Then all transfer parameters. ALWAYS CONSTANT init for now.
-    for (size_t iosc=0; iosc<transfer_model.size(); iosc++){
+    for (int iosc=0; iosc<transfer_model.size(); iosc++){
       if (learninit_str.size() < 4) copyLast(learninit_str, 4);
       std::vector<double> myparams;
       if (transfer_model[iosc]->getNParams() > 0) {
@@ -275,7 +276,7 @@ void Learning::initLearnParams(int nparams, std::vector<std::string> learninit_s
       }
     }
     // Then all transfer parameters. For now, always init with identity. TODO.
-    for (size_t iosc=0; iosc<transfer_model.size(); iosc++){
+    for (int iosc=0; iosc<transfer_model.size(); iosc++){
       std::vector<double> myparams;
       if (transfer_model[iosc]->getNParams() > 0) {
         if (learninit_str.size() < 4) copyLast(learninit_str, 4);

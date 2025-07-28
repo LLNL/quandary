@@ -91,10 +91,10 @@ class TransferModel: public UDEmodel {
     ~TransferModel();
 
     // Transfer functions are NOT acting as system matrices, disable those:
-    void applySystem(Vec, Vec, Vec, Vec, std::vector<double>& ) {};
-    void applySystem_diff(Vec, Vec, Vec, Vec, std::vector<double>& ) {};
-    void dRHSdp(Vec, Vec , Vec , double , Vec , Vec , std::vector<double>&, int ) {};
-    void writeOperator(std::vector<double>& , std::string ) {};
+    void applySystem(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams) {};
+    void applySystem_diff(Vec u, Vec v, Vec uout, Vec vout, std::vector<double>& learnparams) {};
+    void dRHSdp(Vec grad, Vec u, Vec v, double alpha, Vec ubar, Vec vbar, std::vector<double>& learnparamsL, int grad_skip) {};
+    void writeOperator(std::vector<double>& learnparamsL, std::string datadir) {};
 
     /* Apply the transfer function to carrier wave number <cwID>. 
      * In: Blt1, Blt2  being the real and imag parts of the spline for this carrier wave: 

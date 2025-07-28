@@ -9,7 +9,6 @@ Gate::Gate(){
 Gate::Gate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, double time_, const std::vector<double>& gate_rot_freq_, LindbladType lindbladtype_, bool quietmode_){
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
-  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   quietmode=quietmode_;
 
@@ -47,16 +46,14 @@ Gate::Gate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_
   /* Allocate vectorized Gate in full dimensions */
   /* If Lindblad solver: Gate G = V_full x V_full, where V is the full-dimension gate (inserting identities for all non-essential levels) */ 
   /* Else Schroedinger solver: Gate G = V_full */
-  PetscInt dim_gate;
+  int dim_gate;
   if (lindbladtype != LindbladType::NONE) dim_gate = dim_rho*dim_rho;
   else dim_gate = dim_rho;
   MatCreate(PETSC_COMM_WORLD, &VxV_re);
   MatCreate(PETSC_COMM_WORLD, &VxV_im);
   // parallel matrix, TODO: Preallocate!
-  PetscInt globalsize_u = dim_gate; // Size to be applied to global subvectors u and v
-  PetscInt localsize_u = dim_gate / mpisize_petsc;  
-  MatSetSizes(VxV_re, localsize_u, localsize_u, globalsize_u, globalsize_u);
-  MatSetSizes(VxV_im, localsize_u, localsize_u, globalsize_u, globalsize_u);
+  MatSetSizes(VxV_re, PETSC_DECIDE, PETSC_DECIDE, dim_gate, dim_gate);
+  MatSetSizes(VxV_im, PETSC_DECIDE, PETSC_DECIDE, dim_gate, dim_gate);
   MatSetUp(VxV_re);
   MatSetUp(VxV_im);
   MatAssemblyBegin(VxV_re, MAT_FINAL_ASSEMBLY);
@@ -68,10 +65,13 @@ Gate::Gate(const std::vector<int>& nlevels_, const std::vector<int>& nessential_
   MatCreateVecs(VxV_re, &x, NULL);
 
 
-  /* Create vector strides for accessing u,v in state x=[u,v] */
-  PetscInt ilow = mpirank_petsc * localsize_u;  
-  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow*2, 1, &isu); 
-  ISCreateStride(PETSC_COMM_WORLD, localsize_u, ilow*2+localsize_u, 1, &isv); 
+  /* Create vector strides for accessing real and imaginary part of co-located state */
+  PetscInt ilow, iupp;
+  MatGetOwnershipRange(VxV_re, &ilow, &iupp);
+  PetscInt dimis = iupp - ilow;
+  ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow, 2, &isu);
+  ISCreateStride(PETSC_COMM_WORLD, dimis, 2*ilow+1, 2, &isv);
+ 
 }
 
 Gate::~Gate(){
@@ -96,16 +96,16 @@ void Gate::assembleGate(){
   PetscMalloc1(dim_ess, &cols); 
   // get the frequency of the diagonal scaling e^{iwt} for each row rotation matrix R=R1\otimes R2\otimes...
   for (PetscInt row=0; row<dim_ess; row++){
-    PetscInt r = row;
+    int r = row;
     double freq = 0.0;
     for (size_t iosc=0; iosc<nlevels.size(); iosc++){
       // compute dimension of essential levels of all following subsystems 
-      PetscInt dim_post = 1;
+      int dim_post = 1;
       for (size_t josc=iosc+1; josc<nlevels.size();josc++) {
         dim_post *= nessential[josc];
       }
       // compute the frequency 
-      PetscInt rk = r / dim_post;
+      int rk = (int) r / dim_post;
       freq = freq + rk * gate_rot_freq[iosc];
       r = r % dim_post;
     }
@@ -165,8 +165,8 @@ void Gate::assembleGate(){
         MatGetValues(V_im, 1, &row_e, 1, &col_e, &vim_ij);
         // for all nonzeros in this row, place block \bar Ve_{i,j} * (V_f) at starting position G[a,b]
         if (fabs(vre_ij) > 1e-14 || fabs(vim_ij) > 1e-14 ) {
-          PetscInt a = row_f * dim_rho;
-          PetscInt b = mapEssToFull(col_e, nlevels, nessential) * dim_rho;
+          int a = row_f * dim_rho;
+          int b = mapEssToFull(col_e, nlevels, nessential) * dim_rho;
           // iterate over rows in V_f
           for (PetscInt r=0; r<dim_rho; r++) {
             PetscInt rowout = a + r;  // row in G
@@ -195,9 +195,9 @@ void Gate::assembleGate(){
         }
       }
     } else { // place Vf block starting at G[a,a], a=row_f * N
-      PetscInt a = row_f * dim_rho;
+      int a = row_f * dim_rho;
       // iterate over rows in V_f
-      for (PetscInt r=0; r<dim_rho; r++) {
+      for (int r=0; r<dim_rho; r++) {
         PetscInt rowout = a + r;  // row in G
         if (ilow <= rowout && rowout < iupp) {
           if (isEssential(r, nlevels, nessential)){ // place ve_rc at G[a+r, a+map(ce)]
@@ -237,7 +237,7 @@ void Gate::assembleGate(){
           MatGetValues(V_re, 1, &row_e, 1, &col_e, &vre_ij);
           MatGetValues(V_im, 1, &row_e, 1, &col_e, &vim_ij);
           // for all nonzeros in this row, place Ve_{i,j} at G[row_f,mapEssToFull(coll_e)]
-          PetscInt col_f = mapEssToFull(col_e, nlevels, nessential);
+          int col_f = mapEssToFull(col_e, nlevels, nessential);
           if (fabs(vre_ij) > 1e-14) MatSetValue(VxV_re, row_f, col_f, vre_ij, INSERT_VALUES);
           if (fabs(vim_ij) > 1e-14) MatSetValue(VxV_im, row_f, col_f, vim_ij, INSERT_VALUES);
         }
@@ -414,16 +414,16 @@ SWAP_0Q::SWAP_0Q(const std::vector<int>& nlevels_, const std::vector<int>& nesse
   /* Fill lab-frame swap 0<->Q-1 gate in essential dimension system V_re = Re(V), V_im = Im(V) = 0 */
 
   // diagonal elements. don't swap on states |0xx0> and |1xx1>
-  for (PetscInt i=0; i< (PetscInt) pow(2, Q-2); i++) {
+  for (int i=0; i< (int) pow(2, Q-2); i++) {
     MatSetValue(V_re, 2*i, 2*i, 1.0, INSERT_VALUES);
   }
-  for (PetscInt i=(PetscInt) pow(2, Q-2); i< pow(2, Q-1); i++) {
+  for (int i=(int) pow(2, Q-2); i< pow(2, Q-1); i++) {
     MatSetValue(V_re, 2*i+1, 2*i+1, 1.0, INSERT_VALUES);
   }
   // off-diagonal elements, swap on |0xx1> and |1xx0>
   for (int i=0; i< pow(2, Q-2); i++) {
-    MatSetValue(V_re, 2*i + 1, 2*i + (PetscInt) pow(2,Q-1), 1.0, INSERT_VALUES);
-    MatSetValue(V_re, 2*i + (PetscInt) pow(2,Q-1), 2*i + 1, 1.0, INSERT_VALUES);
+    MatSetValue(V_re, 2*i + 1, 2*i + (int) pow(2,Q-1), 1.0, INSERT_VALUES);
+    MatSetValue(V_re, 2*i + (int) pow(2,Q-1), 2*i + 1, 1.0, INSERT_VALUES);
   }
  
 

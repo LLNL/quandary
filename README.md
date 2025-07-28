@@ -9,10 +9,9 @@ realize a logical quantum operation, or state preparation that aims to drive the
 
 Quandary targets deployment on High-Performance Computing platforms, offering various levels for parallelization using the message passing paradigm. Quandary is written in C++ and executed by providing a text-based configuration file. Further, a Python interface is available to call the underlying C++ code from within a python interpreter, to ease usage.
 
-Feel free to reach out to Stefanie Guenther [guenther5@llnl.gov] for any question you may have. 
+It is advised to look at the user guide in `doc/`, describing the underlying mathematical models, their implementation and usage in Quandary. 
 
-# Documentation
-Both user and code documentation is available [here](https://software.llnl.gov/quandary).
+Feel free to reach out to Stefanie Guenther [guenther5@llnl.gov] for any question you may have. 
 
 # Building
 Quandary uses CMake and [BLT](https://github.com/LLNL/blt) to handle builds. Since BLT is included as a
@@ -152,6 +151,8 @@ See `tests/performance/README.md` for more information.
 # Community and Contributing
 
 Quandary is an open source project that is under heavy development. Contributions in all forms are very welcome, and can be anything from new features to bugfixes, documentation, or even discussions. Contributing is easy, work on your branch, create a pull request to `main` when you're good to go and the regression tests pass.
+
+Developer documentation is made with [Doxygen](https://www.doxygen.org) and is viewable [here](https://software.llnl.gov/quandary/doxygen).
 
 # Publications
 * S. Guenther, N.A. Petersson, J.L. DuBois: "Quantum Optimal Control for Pure-State Preparation Using One Initial State", AVS Quantum Science, vol. 3, arXiv preprint <https://arxiv.org/abs/2106.09148> (2021)

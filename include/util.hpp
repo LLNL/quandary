@@ -18,6 +18,11 @@ void createEijBasisMats(int dim_rho, bool includeIdentity, std::vector<Mat>& Mat
 /* Create Basis matrix for 2qubit 2level system that contain decay and decoherence for each qubit */
 void createDecayBasis_2qubit(int dim_rho, std::vector<Mat>& BasisMats_Re, bool includeIdentity);
 
+/* Compute the expected energy of the full composite system (default), or of a subsystem i */
+double expectedEnergy(const Vec x, LindbladType lindbladtype, std::vector<int> nlevels, int subsystem =-1);
+// void expectedEnergy_diff(const Vec x, Vec x_bar, const double obj_bar);
+
+
 /**
  * @brief Sigmoid function for smooth transitions.
  *
@@ -62,6 +67,22 @@ double getRampFactor(const double time, const double tstart, const double tstop,
 double getRampFactor_diff(const double time, const double tstart, const double tstop, const double tramp);
 
 /**
+ * @brief Returns storage index for real part of a state vector element.
+ *
+ * @param i Element index
+ * @return int Storage index (colocated: x[2*i])
+ */
+int getIndexReal(const int i);
+
+/**
+ * @brief Returns storage index for imaginary part of a state vector element.
+ *
+ * @param i Element index
+ * @return int Storage index (colocated: x[2*i+1])
+ */
+int getIndexImag(const int i);
+
+/**
  * @brief Returns vectorized index for matrix element (row,col).
  *
  * @param row Matrix row index
@@ -69,7 +90,7 @@ double getRampFactor_diff(const double time, const double tstart, const double t
  * @param dim Matrix dimension
  * @return int Vectorized index for element (row,col)
  */
-PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim);
+int getVecID(const int row, const int col, const int dim);
 
 /**
  * @brief Maps index from essential level system to full-dimension system.
@@ -79,7 +100,7 @@ PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim);
  * @param nessential Number of essential levels per oscillator
  * @return int Corresponding index in full-dimension system
  */
-PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+int mapEssToFull(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /**
  * @brief Maps index from full dimension to essential dimension system.
@@ -89,7 +110,7 @@ PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const s
  * @param nessential Number of essential levels per oscillator
  * @return int Corresponding index in essential dimension system
  */
-PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+int mapFullToEss(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
 
 /**
  * @brief Tests if density matrix index corresponds to an essential level.

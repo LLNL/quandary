@@ -6,10 +6,6 @@ on:
   push:
     branches: ['main']
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build-and-test:
     strategy:
@@ -50,7 +46,7 @@ jobs:
       run: |
         spack env activate .spack_env
         python -m pip install -e . --prefer-binary
-        pytest -v -s -m "not performance" --mpi-opt="--oversubscribe"
+        pytest -v -s tests/regression --mpi-opt="--oversubscribe"
 
     - name: Push packages and update index
       env:
@@ -65,4 +61,4 @@ jobs:
         else
           spack -e .spack_env buildcache push --update-index local-buildcache
         fi
-      if: ${{ !cancelled() && github.event.pull_request.head.repo.full_name == github.repository }}
+      if: ${{ !cancelled() }}

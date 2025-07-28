@@ -15,8 +15,8 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   comm_optim = comm_optim_;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
-  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
-  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
+  MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_space);
+  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_space);
   MPI_Comm_rank(comm_init, &mpirank_init);
   MPI_Comm_size(comm_init, &mpisize_init);
   MPI_Comm_rank(comm_optim, &mpirank_optim);
@@ -28,12 +28,9 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
   if (timestepper->mastereq->lindbladtype == LindbladType::NONE) {
     for (int i = 0; i < ninit_local; i++) {
-
-      PetscInt globalsize = 2 * timestepper->mastereq->getDim();  // Global state vector: 2 for real and imaginary part
-      PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
       Vec state;
       VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, localsize, globalsize);
+      VecSetSizes(state, PETSC_DECIDE, 2*timestepper->mastereq->getDim());
       VecSetFromOptions(state);
       store_finalstates.push_back(state);
     }
@@ -53,9 +50,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
 
   /* Allocate the initial condition vector and adjoint terminal state */
   VecCreate(PETSC_COMM_WORLD, &rho_t0); 
-  PetscInt globalsize = 2 * timestepper->mastereq->getDim();  // Global state vector: 2 for real and imaginary part
-  PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
-  VecSetSizes(rho_t0, localsize, globalsize);
+  VecSetSizes(rho_t0,PETSC_DECIDE,2*timestepper->mastereq->getDim());
   VecSetFromOptions(rho_t0);
   VecZeroEntries(rho_t0);
   VecAssemblyBegin(rho_t0); VecAssemblyEnd(rho_t0);
@@ -174,7 +169,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
     int nparamsL = timestepper->mastereq->learning->getNParamsLindblad();
     int nparamsT = timestepper->mastereq->learning->getNParamsTransfer();
 
-    assert(ndesign == nparamsH + nparamsL + nparamsT); 
+    assert(ndesign = nparamsH + nparamsL + nparamsT);
     for (int i=0; i<nparamsH; i++) {
       double boundval = 1e6;
       VecSetValue(xupper, i,     boundval, INSERT_VALUES);
@@ -286,6 +281,16 @@ double OptimProblem::evalF(const Vec x) {
       /* Make sure the control pulse matches the data, if given */
       // When learning a transfer function, this doesn't do anything
       mastereq->setControlFromData(ipulse_global);
+
+      // TEST: write expected energy of the Training data. (assumes density matrix data) FIX ME!
+      for (int iosc=0; iosc<mastereq->nlevels.size(); iosc++){
+        std::string filename_expEnergy = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse_global)+"_expectedEnergy"+std::to_string(iosc)+".dat"; 
+        mastereq->learning->data->writeExpectedEnergy(filename_expEnergy.c_str(), ipulse_global, 0,  iosc); // NOTE: writing data for init_num =0 FIX ME!
+      }
+      // TODO: what happens when solving Schroedinger's equation?
+      std::string filename_rho_Re = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse_global)+"_rho_Re.dat"; 
+      std::string filename_rho_Im = output->datadir + "/TrainingData_pulse"+std::to_string(ipulse_global)+"_rho_Im.dat"; 
+      mastereq->learning->data->writeFullstate(filename_rho_Re.c_str(), filename_rho_Im.c_str(), ipulse_global, 0); // NOTE: writing data for init_num =0 FIX ME!
     }
 
     /*  Iterate over initial condition */
@@ -311,8 +316,8 @@ double OptimProblem::evalF(const Vec x) {
 
       /* If learning: add to loss function */
       double loss_local = mastereq->learning->getLoss();
-      // if (!x_is_control)
-        // printf("%dx%d: Local loss for pulse %d, init.cond. %d: %1.14e\n", mpirank_optim, mpirank_init, ipulse_global, iinit_global, loss_local);
+      if (!x_is_control)
+        printf("%dx%d: Local loss for pulse %d, init.cond. %d: %1.14e\n", mpirank_optim, mpirank_init, ipulse_global, iinit_global, loss_local);
       obj_loss += obj_weights[iinit] * loss_local;
 
       /* Add to integral penalty terms */

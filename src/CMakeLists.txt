@@ -10,7 +10,7 @@ blt_add_library(
     NAME quandary_lib
     SOURCES ${SRC_FILES}
     HEADERS ${HEADER_FILES}
-    INCLUDES ${INC_DIR} ${CMAKE_BINARY_DIR}/include
+    INCLUDES ${INC_DIR}
     DEPENDS_ON blt::mpi
 )
 

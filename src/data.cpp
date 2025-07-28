@@ -151,6 +151,80 @@ std::vector<double> Data::getControls(int ipulse_global){
   }
 }
 
+
+void Data::writeExpectedEnergy(const char* filename, int ipulse_global, int iinit_global, int ioscillator){
+  // NOTE: only possible to evaluate the expectedEnergy if the data holds density matrix data
+  if (densityData){
+    // Only the processor who owns this pulse trajectory should be writing the file, other procs exit here.
+    int proc = int(ipulse_global / npulses_local);
+    if (proc != mpirank_optim) return;
+
+    /* Open file  */
+    FILE *file_c;
+    file_c = fopen(filename, "w");
+
+    /* Iterate over time points, compute expected energy and write to file. */
+    int ntime = data[0][0].size(); // number of time points in the data
+    for (int i=0; i<ntime; i++){
+      double time = tstart + i*dt;
+
+      Vec x = getData(time, ipulse_global, iinit_global);
+      if (x != NULL) {
+        double val = expectedEnergy(x, lindbladtype, nlevels, ioscillator);
+        fprintf(file_c, "% 1.8f   % 1.14e   \n", time, val);
+      }
+    }
+    fclose(file_c);
+    // printf("%d: File written: %s\n", mpirank_optim, filename);
+  }
+}
+
+
+void Data::writeFullstate(const char* filename_re, const char* filename_im, int ipulse_global, int iinit_global){
+  // NOTE: only possible to save the full state if the data holds density matrix data
+  if (densityData){
+    // Only the processor who owns this pulse trajectory should be writing the file, other procs exit here.
+    int proc = int(ipulse_global/ npulses_local);
+    if (proc != mpirank_optim) return;
+
+    /* Open files  */
+    FILE *file_re, *file_im;
+    file_re = fopen(filename_re, "w");
+    file_im = fopen(filename_im, "w");
+
+    /* Iterate over time points ane write vectorized state to file. */
+    int ntime = data[0][0].size(); // number of time points in the data
+    for (int i=0; i<ntime; i++){
+      double time = tstart + i*dt;
+
+      Vec x = getData(time, ipulse_global, iinit_global);
+      if (x != NULL) {
+
+        // write time in first column
+        fprintf(file_re, "%1.8f  ", time);
+        fprintf(file_im, "%1.8f  ", time);
+        // write vectorized state in the following columns
+        int size = 0;
+        VecGetSize(x, &size);
+        const PetscScalar *xptr;
+        VecGetArrayRead(x, &xptr);
+        for (int i=0; i<int(size/2); i++) {
+          fprintf(file_re, "%1.10e  ", xptr[getIndexReal(i)]);  
+          fprintf(file_im, "%1.10e  ", xptr[getIndexImag(i)]);  
+        }
+        fprintf(file_re, "\n");
+        fprintf(file_im, "\n");
+        VecRestoreArrayRead(x, &xptr);
+      }
+    }
+
+    fclose(file_re);
+    fclose(file_im);
+    // printf("%d: File written: %s\n", mpirank_optim, filename_re);
+    // printf("%d: File written: %s\n", mpirank_optim, filename_im);
+  }
+}
+
 void Data::loadData_SyntheticQuandaryRho(std::vector<std::vector<std::string>> &data_names){
   // NOTE: This function is specialized to reading Re/Im density matrix data generate with Quandary
   densityData = true;
@@ -230,8 +304,8 @@ void Data::loadData_SyntheticQuandaryRho(std::vector<std::vector<std::string>> &
         for (int i=0; i<dim; i++) { // Other elements are the state (re and im) at this time
           infile_re >> val_re;
           infile_im >> val_im;
-          VecSetValue(state, i, val_re, INSERT_VALUES);
-          VecSetValue(state, i+dim, val_im, INSERT_VALUES);
+          VecSetValue(state, getIndexReal(i), val_re, INSERT_VALUES);
+          VecSetValue(state, getIndexImag(i), val_im, INSERT_VALUES);
         }
         VecAssemblyBegin(state);
         VecAssemblyEnd(state);
