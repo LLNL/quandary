@@ -13,6 +13,8 @@ clang_14_0_6:
 
 process_results:
   extends: .pytest_to_gh_benchmark
+  variables:
+    PERF_PROCESSING_CMD: "tests/performance/convert_benchmark_format.py"
   depends:
     - clang_14_0_6
 

@@ -89,8 +89,8 @@ stages:
       - local: '.gitlab/custom-jobs-and-variables.yml'
       - project: 'radiuss/radiuss-shared-ci'
         ref: 'woptim/caliper-ci'
-        file: 'pipelines/${CI_MACHINE}.yml'
-      - local: '.gitlab/jobs/ruby-performance.yml'
+        file: 'pipelines/performances.yml'
+      - local: '.gitlab/jobs/performances.yml'
     strategy: depend
     forward:
       pipeline_variables: true
