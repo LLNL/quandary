@@ -51,6 +51,13 @@ variables:
     reports:
       junit: junit.xml
 
+# Configuration shared by performance jobs specific to this project.
+# Not all configuration can be shared. Here projects can fine tune the
+# CI behavior.
+.custom_perf:
+  variables:
+    JOB_TEMPLATE_CANNOT_BE_EMPTY: "True"
+
 .reproducer_vars:
   script:
     - |
