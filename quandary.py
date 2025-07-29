@@ -553,12 +553,24 @@ class Quandary:
             else:
                 state = self._initialstate
             vectorized = np.concatenate((np.real(state).ravel(order='F'), np.imag(state).ravel(order='F')))
+
+        # If given, write the initial state to file
+        if self.initialcondition[0:4] == "file":
+            if self._lindblad_solver:  # If Lindblad solver, make it a density matrix
+                state = np.outer(self._initialstate, np.array(self._initialstate).conj())
+            else:
+                state = self._initialstate
+
+            # Vectorize and separate real and imaginary parts
+            flattened = state.ravel(order='F')
             self._initstatefilename = "initialstate.dat"
             with open(os.path.join(datadir, self._initstatefilename), "w", newline='\n') as f:
-                for value in vectorized:
-                    f.write("{:20.13e}\n".format(value))
+                f.write("# idx   Real     Imag\n")
+                for idx, value in enumerate(flattened):
+                    if np.abs(value) > 1e-14:
+                        f.write(f"{idx:12d}  {value.real:20.13e}  {value.imag:20.13e}\n")  
             if self.verbose:
-                print("Initial state written to ", os.path.join(datadir, self._initstatefilename))
+                print("Sparse initial state written to", os.path.join(datadir, self._initstatefilename))
 
 
         # If not standard Hamiltonian model, write provided Hamiltonians to a file

@@ -101,46 +101,56 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
     }
   }
   else if (initcond_type == InitialConditionType::FROMFILE) { 
-    /* Read initial condition from file */
-    int nelems = 0;
-    if (mastereq->lindbladtype != LindbladType::NONE) nelems = 2*dim_ess*dim_ess;
-    else nelems = 2 * dim_ess;
-    double * vec = new double[nelems];
+
+    /* Read and broadcast state data */
+    std::vector<PetscInt> rows;
+    std::vector<PetscScalar> real_vals, imag_vals;
+    // Only rank 0 reads the file 
     if (mpirank_world == 0) {
-      assert (initcond_str.size()==2);
-      std::string filename = initcond_str[1];
-      read_vector(filename.c_str(), vec, nelems, quietmode);
-    }
-    MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-    if (lindbladtype != LindbladType::NONE) { // Lindblad solver, fill density matrix
-      for (PetscInt i = 0; i < dim_ess*dim_ess; i++) {
-        PetscInt k = i % dim_ess;
-        PetscInt j = i / dim_ess;
-        if (dim_ess*dim_ess < mastereq->getDim()) {
-          k = mapEssToFull(k, mastereq->nlevels, mastereq->nessential);
-          j = mapEssToFull(j, mastereq->nlevels, mastereq->nessential);
-        }
-        PetscInt elemid = getVecID(k,j,dim_rho);
-        if (ilow <= elemid && elemid < iupp) {
-          PetscInt id_global_x =  elemid + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
-          VecSetValue(rho_t0, id_global_x, vec[i], INSERT_VALUES);  // RealPart
-          VecSetValue(rho_t0, id_global_x + localsize_u, vec[i + dim_ess*dim_ess], INSERT_VALUES); // Imaginary Part
-        }
+      std::ifstream infile(initcond_str[1]);
+      if (!infile.is_open()) {
+          std::cerr << "Could not open " << initcond_str[1] << std::endl;
+          MPI_Abort(MPI_COMM_WORLD, 1);
       }
-    } else { // Schroedinger solver, fill vector 
-      for (PetscInt i = 0; i < dim_ess; i++) {
-        PetscInt k = i;
-        if (dim_ess < mastereq->getDim()) 
-          k = mapEssToFull(i, mastereq->nlevels, mastereq->nessential);
-        PetscInt elemid = k;
-        if (ilow <= elemid && elemid < iupp) {
-          PetscInt id_global_x =  elemid + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
-          VecSetValue(rho_t0, id_global_x, vec[i], INSERT_VALUES);  // RealPart
-          VecSetValue(rho_t0, id_global_x + localsize_u, vec[i + dim_ess], INSERT_VALUES); // Imaginary Part
-        }
+      std::string line;
+      while (std::getline(infile, line)) {
+          if (line.empty() || line[0] == '#') continue;
+          std::istringstream iss(line);
+          PetscInt row;
+          double real, imag;
+          if (!(iss >> row >> real >> imag)) continue;
+          rows.push_back(row);
+          real_vals.push_back(real);
+          imag_vals.push_back(imag);
+      }
+      infile.close();
+    }
+
+    // Broadcast the size and data to all ranks
+    int num_entries = rows.size();
+    MPI_Bcast(&num_entries, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (mpirank_world != 0) {
+      rows.resize(num_entries);
+      real_vals.resize(num_entries);
+      imag_vals.resize(num_entries);
+    }
+    MPI_Bcast(rows.data(), num_entries, MPIU_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(real_vals.data(), num_entries, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(imag_vals.data(), num_entries, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    // Now all ranks set their local values
+    for (int i = 0; i < num_entries; i++) {
+      PetscInt row = rows[i]; 
+      double real = real_vals[i]; 
+      double imag = imag_vals[i];
+
+      if (ilow <= row && row < iupp) {
+        PetscInt id_global_x =  row + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
+        VecSetValue(rho_t0, id_global_x, real, INSERT_VALUES);
+        id_global_x += localsize_u; // global index of v_i
+        VecSetValue(rho_t0, id_global_x, imag, INSERT_VALUES);
       }
     }
-    delete [] vec;
   } else if (initcond_type == InitialConditionType::ENSEMBLE) {
     // Sanity check for the list in initcond_IDs!
     assert(initcond_IDs.size() >= 1); // at least one element 
