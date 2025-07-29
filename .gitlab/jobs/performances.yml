@@ -15,10 +15,10 @@ process_results:
   extends: .pytest_to_gh_benchmark
   variables:
     PERF_PROCESSING_CMD: "tests/performance/convert_benchmark_format.py"
-  depends:
+  dependencies:
     - clang_14_0_6
 
 report_results:
   extends: .report_to_gh_benchmark
-  depends:
+  dependencies:
     - process_results
