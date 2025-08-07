@@ -5,14 +5,13 @@
 #   or specify its location within the call to quandary.optimize(quandary_exec=/path/to/Quandary/quandary)
 from quandary import * 
 
-unitMHz = True
 ## One qudit test case: Swap the 0 and 2 state of a three-level qudit ##
 
 Ne = [4]  # Number of essential energy levels
 Ng = [0]  # Number of extra guard levels
 
-# Frequency scaling factor relative to MHz and us (1e-6 sec)
-freq_scale = 1e-3 # 1e-2 (100 MHz); 1e-3 (GHz)
+# Frequency scaling factor relative to GHz and ns (1e-6 sec)
+freq_scale = 1.0 # 
 time_scale = 1/freq_scale
 
 #  Transition frequencies [GHz] from the device: 
@@ -20,7 +19,8 @@ time_scale = 1/freq_scale
 # f01 = 3422.625432
 # f12=  3213.617052
 # July 25, 2025: Transition frequencies [GHz]: f01 = 3.416682744 f12= 3.2074712470000004
-f01 = 3.416682744*freq_scale
+# Aug 4, 2025:   Transition frequencies [GHz]: f01 = 3.416634567 f12= 3.2074712470000004
+f01 = 3.416634567*freq_scale
 f12 = 3.2074712470000004*freq_scale
 
 # 01 transition frequencies [GHz] per oscillator
@@ -30,11 +30,11 @@ selfkerr = [f01-f12]
 
 # Set the total time duration (us)
 # T = 0.360*time_scale
-T = 0.360*time_scale
+T = 360.0*time_scale
 
 # Bounds on the control pulse (in rotational frame, p and q) [MHz] per oscillator
-maxctrl = 7.0*freq_scale
-initctrl = 1.0*freq_scale
+maxctrl = 7.0e-3*freq_scale
+initctrl = 1.0e-3*freq_scale
 
 # Set up a target gate (in essential level dimensions)
 # unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
@@ -42,11 +42,15 @@ unitary = [[0,0,1,0],[0,1,0,0],[1,0,0,0],[0,0,0,1]]  # Swaps first and third lev
 # unitary = [[0,1,0,0],[1,0,0,0],[0,0,1,0],[0,0,0,1]] # X-gate
 # print(unitary)
 
+rand_seed = 1235
 # Prepare Quandary with those options. This sets default options for all member variables and overwrites those that are passed through the constructor here. Use help(Quandary) to see all options.
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, initctrl= initctrl, maxctrl=maxctrl, targetgate=unitary, T=T, control_enforce_BC=True, rand_seed=1234, cw_prox_thres=0.5*abs(selfkerr[0]), verbose=True)
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, initctrl= initctrl, maxctrl=maxctrl, targetgate=unitary, T=T, control_enforce_BC=True, rand_seed=rand_seed, cw_prox_thres=0.5*abs(selfkerr[0]), verbose=True)
 
 # Turn off verbosity after the carrier frequencies have been reported
 quandary.verbose = False
+
+quandary.carrier_frequency[0] = quandary.carrier_frequency[0][0:2]
+print("Carrier freq: ", quandary.carrier_frequency) 
 
 # Execute quandary. Default number of executing cores is the essential Hilbert space dimension. Limit the number of cores by passing ncores=<int>. Use help(quandary.optimize) to see all arguments.
 datadir="./SWAP02_run_dir"
@@ -79,6 +83,12 @@ t1 = t1[0:-1]
 p1 = p1_list[0][0:-1]
 q1 = q1_list[0][0:-1]
 
+# can we make it cell-centered instead?
+
+# Keep all data points (breaks the Quandary_pulse.ipynb notebook)
+# p1 = p1_list[0]
+# q1 = q1_list[0]
+
 # Sanity check (requires Qutip): Plot the time evolution using mesolve, starting from initial ground state. This plot should look a lot like the plot in the lower left corner of the above figure (population from |0>)
 # nstates = 4
 # starting = 0
@@ -104,3 +114,7 @@ np.savetxt('p_ctrl.dat', p1, fmt='%20.10e')
 np.savetxt('q_ctrl.dat', q1, fmt='%20.10e')
 
 print("Saved control arrays on files")
+
+# Notes:
+# When running on vibranium, the population is saved every 1 ns, with the first data point at 4 ns.
+
