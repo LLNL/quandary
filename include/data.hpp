@@ -66,6 +66,8 @@ class Data{
     void loadData_SyntheticQuandaryRho(std::vector<std::vector<std::string>> &data_names); 
     // Synthetic Quandary data for population values per oscillator
     void loadData_SyntheticQuandaryPop(std::vector<std::vector<std::string>> &data_names);
+    // Real 3-level population data 
+    void loadData_Tant3Pop(std::vector<std::vector<std::string>> &data_names);
 
     /* Get control parameters that were used for data generation. Note: pulse_num is global. */
     std::vector<double> getControls(int ipulse_global); 
