@@ -65,7 +65,7 @@ class Output{
      * @brief Writes optimization progress to history file.
      *
      * Called at every optimization iteration to log convergence data. 
-     * Optimization history will be written to <datadir>/optim_history.dat.
+     * Optimization history will be written to `<datadir>/optim_history.dat`.
      *
      * @param optim_iter Current optimization iteration
      * @param objective Total objective function value
@@ -85,8 +85,8 @@ class Output{
      * @brief Writes current control pulses per oscillator and control parameters.
      *
      * Called every optim_monitor_freq optimization iterations. 
-     * Control pulses are written to <datadir>/control<ioscillator>.dat
-     * Control parameters are written to <datadir>/params.dat
+     * Control pulses are written to `<datadir>/control<ioscillator>.dat`
+     * Control parameters are written to `<datadir>/params.dat`
      *
      * @param params Current parameter vector
      * @param mastereq Pointer to master equation solver
@@ -98,7 +98,7 @@ class Output{
     /**
      * @brief Writes gradient vector for debugging adjoint calculations.
      * 
-     * Gradient is written to <datadir>/grad.dat
+     * Gradient is written to `<datadir>/grad.dat`
      *
      * @param grad Gradient vector to output
      */

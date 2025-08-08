@@ -83,12 +83,10 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   for (size_t i=0; i<ninit; i++) scaleweights += obj_weights[i];
   for (size_t i=0; i<ninit; i++) obj_weights[i] = obj_weights[i] / scaleweights;
   // Distribute over mpi_init processes 
-  double sendbuf[obj_weights.size()];
-  double recvbuf[obj_weights.size()];
-  for (size_t i = 0; i < obj_weights.size(); i++) sendbuf[i] = obj_weights[i];
-  for (size_t i = 0; i < obj_weights.size(); i++) recvbuf[i] = obj_weights[i];
+  std::vector<double> sendbuf = obj_weights;
+  std::vector<double> recvbuf = obj_weights;
   int nscatter = ninit_local;
-  MPI_Scatter(sendbuf, nscatter, MPI_DOUBLE, recvbuf, nscatter,  MPI_DOUBLE, 0, comm_init);
+  MPI_Scatter(sendbuf.data(), nscatter, MPI_DOUBLE, recvbuf.data(), nscatter,  MPI_DOUBLE, 0, comm_init);
   for (int i = 0; i < nscatter; i++) obj_weights[i] = recvbuf[i];
   for (size_t i=nscatter; i < obj_weights.size(); i++) obj_weights[i] = 0.0;
 
