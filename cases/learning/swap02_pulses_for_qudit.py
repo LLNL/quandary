@@ -7,8 +7,8 @@ from quandary import *
 
 ## One qudit test case: Swap the 0 and 2 state of a three-level qudit ##
 
-Ne = [4]  # Number of essential energy levels
-Ng = [0]  # Number of extra guard levels
+Ne = [3]  # Number of essential energy levels
+Ng = [1]  # Number of extra guard levels
 
 # Frequency scaling factor relative to GHz and ns (1e-6 sec)
 freq_scale = 1.0 # 
@@ -37,14 +37,18 @@ maxctrl = 7.0e-3*freq_scale
 initctrl = 1.0e-3*freq_scale
 
 # Set up a target gate (in essential level dimensions)
-# unitary = [[0,0,1],[0,1,0],[1,0,0]]  # Swaps first and last level
-unitary = [[0,0,1,0],[0,1,0,0],[1,0,0,0],[0,0,0,1]]  # Swaps first and third level
-# unitary = [[0,1,0,0],[1,0,0,0],[0,0,1,0],[0,0,0,1]] # X-gate
-# print(unitary)
+# Set up a target gate (in essential level dimensions)
+if Ne[0] == 3:
+	unitary = [[0,0,1],[0,1,0],[1,0,0]]  # 3 essential levels: Swaps first and third levels
+elif Ne[0] == 4:
+	unitary = [[0,0,1,0],[0,1,0,0],[1,0,0,0],[0,0,0,1]]  # 4 essential levels: Swaps first and third levels
+else:
+	print("Wrong number of essential levels")
+	stop
 
 rand_seed = 1235
 # Prepare Quandary with those options. This sets default options for all member variables and overwrites those that are passed through the constructor here. Use help(Quandary) to see all options.
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, initctrl= initctrl, maxctrl=maxctrl, targetgate=unitary, T=T, control_enforce_BC=True, rand_seed=rand_seed, cw_prox_thres=0.5*abs(selfkerr[0]), verbose=True)
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, initctrl= initctrl, maxctrl=maxctrl, targetgate=unitary, T=T, control_enforce_BC=True, rand_seed=rand_seed, cw_prox_thres=0.5*abs(selfkerr[0]), gamma_leakage=600.0, verbose=True)
 
 # Turn off verbosity after the carrier frequencies have been reported
 quandary.verbose = False

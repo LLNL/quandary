@@ -7,7 +7,6 @@ np.set_printoptions( linewidth=800)
 
 maxcores=8 # Maximum number of cores to be used
 
-do_datageneration = False # True
 do_sanityTest = True # False
 do_training = True # False 
 
@@ -16,13 +15,11 @@ do_analyze = False
 do_prune = False
 do_plotResults = True
 
-do_lindblad = False
+# NOTE: The setup of the quandary object needs to be identical to that in 'swap02_pulses_for_qudit.py'
 
 # Both 3 & 4 essential levels work. Data was generated with 4 essential levels
-Ne = [4]  # Number of essential energy levels
-Ng = [0]  # Number of extra guard levels
-# Ne = [3]  # Number of essential energy levels
-# Ng = [1]  # Number of extra guard levels
+Ne = [3]  # Number of essential energy levels
+Ng = [1]  # Number of extra guard levels
 
 # Frequency scaling factor relative to GHz and ns (1e-9 sec)
 freq_scale = 1.0 # 
@@ -64,8 +61,12 @@ else:
 # print(unitary)
 
 rand_seed = 1235
-# Prepare Quandary with those options. This sets default options for all member variables and overwrites those that are passed through the constructor here. Use help(Quandary) to see all options.
-quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, initctrl= initctrl, maxctrl=maxctrl, targetgate=unitary, T=T, control_enforce_BC=True, rand_seed=rand_seed, cw_prox_thres=0.5*abs(selfkerr[0]), gamma_leakage=600.0, verbose=True)
+
+cwd = os.getcwd()
+datadir= cwd + "/SWAP02_optimize"
+pcof_opt_file = datadir + "/params.dat"
+# Prepare Quandary with those options. This sets default options for all member variables and overwrites those that are passed through the constructor below. Use help(Quandary) to see all options.
+quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, pcof0_filename=pcof_opt_file, maxctrl=maxctrl, targetgate=unitary, T=T, control_enforce_BC=True, rand_seed=rand_seed, cw_prox_thres=0.5*abs(selfkerr[0]), gamma_leakage=600.0, verbose=True)
 
 # Turn off verbosity after the carrier frequencies have been reported
 quandary.verbose = False
@@ -75,12 +76,11 @@ quandary.carrier_frequency[0] = quandary.carrier_frequency[0][0:2]
 print("Carrier freq: ", quandary.carrier_frequency) 
 
 # Execute quandary. Default number of executing cores is the essential Hilbert space dimension. Limit the number of cores by passing ncores=<int>. Use help(quandary.optimize) to see all arguments.
-datadir="./SWAP02_optimize"
-t, pt, qt, infidelity, expectedEnergy, population = quandary.optimize(datadir=datadir, maxcores=maxcores)
-print(f"\nFidelity = {1.0 - infidelity}")
-pcof_opt = quandary.popt # get the optimized control vector
 
-print("Optimized pulse with Schroedinger's eqn, dir = ", datadir)
+t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir+"_FWD", maxcores=maxcores)
+print(f"\nSimulated Fidelity = {1.0 - infidelity}")
+
+pcof_opt = quandary.popt # get the optimized control vector
 
 if do_plotResults:
 	plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
@@ -95,45 +95,13 @@ dirprefix = "SWAP02_" + initialcondition # add a prefix for run directories
 verbose = False
 
 # We only have data for 3 levels
-Ne = [3]  # Number of essential energy levels
-Ng = [1]  # Number of extra guard levels
-unitary = [[0,0,1],[0,1,0],[1,0,0]] 
-
-if do_lindblad:
-	quandary2 = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl=maxctrl, targetgate=unitary, T=T, pcof0=pcof_opt, verbose=verbose, rand_seed=rand_seed,  initialcondition=initialcondition, output_frequency=output_frequency, T1=T1, T2=T2)
-else: 
-	quandary2 = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, rotfreq=rotfreq, selfkerr=selfkerr, maxctrl=maxctrl, targetgate=unitary, T=T, pcof0=pcof_opt, verbose=verbose, rand_seed=rand_seed,  initialcondition=initialcondition, output_frequency=output_frequency)
+# Ne = [3]  # Number of essential energy levels
+# Ng = [1]  # Number of extra guard levels
+# unitary = [[0,0,1],[0,1,0],[1,0,0]] 
 
 
-cwd = os.getcwd()
-datadir_test = cwd+"/vibranium_data/Aug5-25-scaled" # Data directory
+datadir_test = cwd+"/vibranium_data/Aug8-25" # Data directory
 
-pfact = [0.8, 1.2] # [0.75, 1.5] #
-
-# if do_datageneration:
-# 	# Perturb the controls: Scale each carrier wave component
-# 	# One system, 2 frequencies in this test
-# 	Nfirst = round(len(pcof_opt)/2) # Number of elements for the first carrier frequency
-
-# 	pcof_pert = np.zeros(2*Nfirst)
-# 	pcof_pert[0:Nfirst] = [pcofi * pfact[0] for pcofi in pcof_opt[0:Nfirst]]
-# 	pcof_pert[Nfirst:2*Nfirst] = [pcofi * pfact[1] for pcofi in pcof_opt[Nfirst:2*Nfirst]]	# original control vector in pcof_opt
-
-# 	# Perturb the Hamiltonian in the quandary2 object (order MHz)
-# 	pert_freq01 = -1*freq_scale
-# 	pert_selfkerr = -2*freq_scale
-# 	quandary2.freq01 = [freqi  + pert_freq01 for freqi in freq01] 
-# 	quandary2.selfkerr= [selfi + pert_selfkerr for selfi in selfkerr]
-
-# 	# Generate training data: Simulate perturbed controls
-# 	print("Generate data in ", datadir_test)
-# 	t, pt, qt, infidelity_pert, expectedEnergy, population = quandary2.simulate(pcof0=pcof_pert, maxcores=maxcores, datadir=datadir_test)
-# 	# plot_results_1osc(quandary2, pt[0], qt[0], expectedEnergy[0], population[0])
-
-# 	print("-> Generated trajectory for perturbed pulse amplitude with perturbation factor:", pfact, " AND perturbed Hamiltonian with freq01 += ", pert_freq01, " selfkerr += ", pert_selfkerr)
-# 	# print("->   Unperturbed pulse trajectory directory:", datadir_orig, " Fidelity:", 1.0 - infidelity)
-# 	print("->   Perturbed pulse (training data) directory:", datadir_test, " Fidelity:", 1.0 - infidelity_pert,"\n")
- 
 ################
 # NOW DO TRAINING! 
 ################
@@ -167,17 +135,17 @@ for filename in data_filenames:
 	trainingdata[0] +=  ", " + filename
 
 # Set training optimization parameters
-quandary2.gamma_tik0 = 1e-9
-quandary2.gamma_tik0_onenorm = tik0_onenorm
-quandary2.loss_scaling_factor = loss_scaling_factor
-quandary2.tol_grad_abs = 1e-7
-quandary2.tol_grad_rel = 1e-7
-quandary2.tol_costfunc = 1e-8
-quandary2.tol_infidelity = 1e-7
-quandary2.gamma_leakage = 0.0
-quandary2.gamma_energy = 0.0
-quandary2.gamma_dpdm = 0.0
-quandary2.maxiter = 500
+quandary.gamma_tik0 = 1e-9
+quandary.gamma_tik0_onenorm = tik0_onenorm
+quandary.loss_scaling_factor = loss_scaling_factor
+quandary.tol_grad_abs = 1e-7
+quandary.tol_grad_rel = 1e-7
+quandary.tol_costfunc = 1e-8
+quandary.tol_infidelity = 1e-7
+quandary.gamma_leakage = 0.0
+quandary.gamma_energy = 0.0
+quandary.gamma_dpdm = 0.0
+quandary.maxiter = 500
 
 learnparams_identity = np.zeros(2) 
 learnparams_identity[0] = 1.0 # 0.9 
@@ -186,20 +154,21 @@ learnparams_identity[1] = 1.0 # 1.1
 if do_sanityTest:
 	# maxcores=1
 
-	quandary2.UDEsimulate(pcof0=pcof_opt, trainingdata=trainingdata, UDEmodel=UDEmodel, learn_params=learnparams_identity, maxcores=maxcores, datadir=UDEdatadir+"_identitytransfer")
+	quandary.UDEsimulate(pcof0=pcof_opt, trainingdata=trainingdata, UDEmodel=UDEmodel, learn_params=learnparams_identity, maxcores=maxcores, datadir=UDEdatadir+"_identitytransfer")
 	print("learnparams = ", learnparams_identity, " CHECK: Above loss!\n")
 
 if do_training:
-	print("\nStarting UDE training for UDE model = ", UDEmodel, " initial_params: ", learnparams_identity, "...")
+	print("\nStarting UDE training for UDE model = ", UDEmodel, " initial_params: ", learnparams_identity, " result-directory = ", UDEdatadir, "...")
 
 	# Start training, use the unperturbed control parameters in pcof_opt
-	quandary2.training(pcof0=pcof_opt, trainingdata=trainingdata, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=learnparams_identity, maxcores=maxcores) 
+	quandary.training(pcof0=pcof_opt, trainingdata=trainingdata, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=learnparams_identity, maxcores=maxcores) 
 
 	filename = UDEdatadir + "/params.dat"
 	learnparams_opt = np.loadtxt(filename)
 	print("Training finished. Learned transfer function parameters: ", learnparams_opt, "\n")
 
 	# Simulate forward with optimized paramters to write out the Training data evolutions and the learned evolution
-	print("\n -> Eval loss of optimized UDE model.")
-	quandary2.UDEsimulate(trainingdata=trainingdata, UDEmodel=UDEmodel, datadir=UDEdatadir+"/FWD_opt", T_train=quandary2.T, learn_params=learnparams_opt, maxcores=maxcores)
+	fwd_dir = UDEdatadir+"/FWD_opt"
+	print("\n -> Eval loss of optimized UDE model. Results (populations) in dir: ", fwd_dir)
+	quandary.UDEsimulate(trainingdata=trainingdata, UDEmodel=UDEmodel, datadir=fwd_dir, T_train=quandary.T, learn_params=learnparams_opt, maxcores=maxcores)
 
