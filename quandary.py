@@ -322,9 +322,26 @@ class Quandary:
         
 
         if len(pt0) > 0 and len(qt0) > 0:
+            nsplines_org = self.nsplines
+            spline_knot_spacing_org = self.spline_knot_spacing
+            cw_org = self.carrier_frequency.copy()
+            self.carrier_frequency = [[0.0] for _ in range(len(self.Ne))]
+            spline_order_org = self.spline_order
+            self.spline_order = 0
+            self.spline_knot_spacing = self.dT 
+            self.nsplines = np.max([2,int(np.ceil(self.nsteps*self.dT/self.spline_knot_spacing + 1))])
+
             pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
-        return self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash,mpi_exec=mpi_exec, batchargs=batchargs)
+        result = self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash,mpi_exec=mpi_exec, batchargs=batchargs)
+
+        if len(pt0) > 0 and len(qt0) > 0:
+            self.nsplines = nsplines_org
+            self.spline_knot_spacing = spline_knot_spacing_org
+            self.spline_order = spline_order_org
+            self.carrier_frequency = cw_org.copy()
+        
+        return result
 
 
     def optimize(self, *, pcof0=[], pt0=[], qt0=[], maxcores=-1, datadir="./run_dir", quandary_exec="", cygwinbash="", mpi_exec="mpirun -np ", batchargs=[]):
@@ -351,11 +368,27 @@ class Quandary:
         expectedEnergy  :  Evolution of the expected energy of each oscillator and each initial condition. Acces: expectedEnergy[oscillator][initialcondition]
         population      :  Evolution of the population of each oscillator, of each initial condition. (expectedEnergy[oscillator][initialcondition])
         """
-
+        
         if len(pt0) > 0 and len(qt0) > 0:
+            nsplines_org = self.nsplines
+            spline_knot_spacing_org = self.spline_knot_spacing
+            spline_order_org = self.spline_order
+            cw_org = self.carrier_frequency.copy()
+            self.carrier_frequency = [[0.0] for _ in range(len(self.Ne))]
+            self.spline_order = 0
+            self.spline_knot_spacing = self.dT 
+            self.nsplines = np.max([2,int(np.ceil(self.nsteps*self.dT/self.spline_knot_spacing + 1))])
             pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
-        return self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, mpi_exec=mpi_exec, batchargs=batchargs)
+        result = self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, mpi_exec=mpi_exec, batchargs=batchargs)
+
+        if len(pt0) > 0 and len(qt0) > 0:
+            self.nsplines = nsplines_org
+            self.spline_knot_spacing = spline_knot_spacing_org       
+            self.spline_order = spline_order_org
+            self.carrier_frequency = cw_org.copy()
+        
+        return result
     
 
     def evalControls(self, *, pcof0=[], points_per_ns=1,datadir="./run_dir", quandary_exec="", mpi_exec="mpirun -np ", cygwinbash=""):
@@ -407,8 +440,6 @@ class Quandary:
     def downsample_pulses(self, *, pt0=[], qt0=[]):
         if self.spline_order == 0: #specifying (pt, qt) only makes sense for piecewise constant B-splines
             Nsys = len(self.Ne)
-            self.nsplines = np.max([2,int(np.ceil(self.nsteps*self.dT/self.spline_knot_spacing + 1))])
-            self.spline_knot_spacing = self.nsteps*self.dT / (self.nsplines-1)
             if len(pt0) == Nsys and len(qt0) == Nsys:
                 sizes_ok = True
                 for iosc in range(Nsys):
@@ -1224,6 +1255,7 @@ def plot_expectedEnergy(Ne, time, expectedEnergy):
     plt.subplots_adjust(hspace=0.5)
     plt.subplots_adjust(wspace=0.5)
     plt.draw()
+    plt.pause(0.01)
     print("\nPlotting expected energy dynamics")
     print("-> Press <enter> to proceed.")
     plt.waitforbuttonpress(1); 
@@ -1263,6 +1295,7 @@ def plot_population(Ne, time, population):
     plt.subplots_adjust(hspace=0.5)
     plt.subplots_adjust(wspace=0.5)
     plt.draw()
+    plt.pause(0.01)
     print("\nPlotting population dynamics")
     print("-> Press <enter> to proceed.")
     plt.waitforbuttonpress(1); 
@@ -1335,6 +1368,7 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     ax[row, col].grid()
 
     plt.draw()
+    plt.pause(0.01)
     print("\nPlotting results...")
     print("-> Press <enter> to proceed.")
     plt.waitforbuttonpress(1); 
