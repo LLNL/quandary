@@ -17,7 +17,7 @@ do_plotResults = True
 
 # NOTE: The setup of the quandary object needs to be identical to that in 'swap02_pulses_for_qudit.py'
 
-# Both 3 & 4 essential levels work. Data was generated with 4 essential levels
+# Both 3 & 4 essential levels work in simulations. Data was generated with 3 essential levels
 Ne = [3]  # Number of essential energy levels
 Ng = [1]  # Number of extra guard levels
 
@@ -66,6 +66,8 @@ cwd = os.getcwd()
 datadir= cwd + "/SWAP02_optimize"
 pcof_opt_file = datadir + "/params.dat"
 # Prepare Quandary with those options. This sets default options for all member variables and overwrites those that are passed through the constructor below. Use help(Quandary) to see all options.
+# NOTE: when using the 'pcof0_filename' keyword, it is only passed to C++. It does NOT copy the result
+# back to python and quandary.pcof0 is NOT assigned
 quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, pcof0_filename=pcof_opt_file, maxctrl=maxctrl, targetgate=unitary, T=T, control_enforce_BC=True, rand_seed=rand_seed, cw_prox_thres=0.5*abs(selfkerr[0]), gamma_leakage=600.0, verbose=True)
 
 # Turn off verbosity after the carrier frequencies have been reported
@@ -75,15 +77,25 @@ quandary.verbose = False
 quandary.carrier_frequency[0] = quandary.carrier_frequency[0][0:2]
 print("Carrier freq: ", quandary.carrier_frequency) 
 
-# Execute quandary. Default number of executing cores is the essential Hilbert space dimension. Limit the number of cores by passing ncores=<int>. Use help(quandary.optimize) to see all arguments.
+# Execute quandary. Default number of executing cores is the essential Hilbert space dimension. Limit the number of cores by passing ncores=<int>. Use help(quandary.simulate) to see all arguments.
 
 t, pt, qt, infidelity, expectedEnergy, population = quandary.simulate(datadir=datadir+"_FWD", maxcores=maxcores)
 print(f"\nSimulated Fidelity = {1.0 - infidelity}")
 
-pcof_opt = quandary.popt # get the optimized control vector
+# Get control vector from file
+filename = os.path.join(datadir, "params.dat")
+try:
+	pcof_opt = np.loadtxt(filename).astype(float)
+except:
+	if not ignore_failure:
+		print("Can't read control coefficients from ", filename)
+	pcof_opt=[]
+    
 
 if do_plotResults:
 	plot_results_1osc(quandary, pt[0], qt[0], expectedEnergy[0], population[0])
+
+print("after plot_results: len(quandary.popt) = ", len(quandary.popt))
 
 # Modify quandary options for data generation & training (Use Lindblad's eqn)
 initialcondition =  "diagonal"  # "pure, 0" "diagonal" "basis" # Initial condition at t=0: Groundstate
@@ -91,14 +103,6 @@ T1 = [100.0] # Decoherence times [us]
 T2 = [40.0]
 output_frequency = 1  # write every x-th timestep
 dirprefix = "SWAP02_" + initialcondition # add a prefix for run directories
-
-verbose = False
-
-# We only have data for 3 levels
-# Ne = [3]  # Number of essential energy levels
-# Ng = [1]  # Number of extra guard levels
-# unitary = [[0,0,1],[0,1,0],[1,0,0]] 
-
 
 datadir_test = cwd+"/vibranium_data/Aug8-25" # Data directory
 
@@ -152,16 +156,17 @@ learnparams_identity[0] = 1.0 # 0.9
 learnparams_identity[1] = 1.0 # 1.1 
 
 if do_sanityTest:
-	# maxcores=1
-
-	quandary.UDEsimulate(pcof0=pcof_opt, trainingdata=trainingdata, UDEmodel=UDEmodel, learn_params=learnparams_identity, maxcores=maxcores, datadir=UDEdatadir+"_identitytransfer")
+	# NOTE: the initial control vector is read from pcof0_filename, set above 
+	quandary.UDEsimulate(trainingdata=trainingdata, UDEmodel=UDEmodel, learn_params=learnparams_identity, maxcores=maxcores, datadir=UDEdatadir+"_identitytransfer")
 	print("learnparams = ", learnparams_identity, " CHECK: Above loss!\n")
 
 if do_training:
 	print("\nStarting UDE training for UDE model = ", UDEmodel, " initial_params: ", learnparams_identity, " result-directory = ", UDEdatadir, "...")
 
-	# Start training, use the unperturbed control parameters in pcof_opt
-	quandary.training(pcof0=pcof_opt, trainingdata=trainingdata, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=learnparams_identity, maxcores=maxcores) 
+	# Start training
+	# NOTE: the initial control vector is read from pcof0_filename, set above
+	# The result of the training end up in quandary.popt 
+	quandary.training(trainingdata=trainingdata, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=learnparams_identity, maxcores=maxcores) 
 
 	filename = UDEdatadir + "/params.dat"
 	learnparams_opt = np.loadtxt(filename)
@@ -170,5 +175,53 @@ if do_training:
 	# Simulate forward with optimized paramters to write out the Training data evolutions and the learned evolution
 	fwd_dir = UDEdatadir+"/FWD_opt"
 	print("\n -> Eval loss of optimized UDE model. Results (populations) in dir: ", fwd_dir)
+	# NOTE: the initial control vector is read from pcof0_filename, set above 
 	quandary.UDEsimulate(trainingdata=trainingdata, UDEmodel=UDEmodel, datadir=fwd_dir, T_train=quandary.T, learn_params=learnparams_opt, maxcores=maxcores)
+
+
+# 
+# scale the ctrl vector (pcof_opt)
+#
+pcof_opt_scaled = np.zeros(len(pcof_opt))
+
+Nosc = len(Ne)
+assert(Nosc == 1)
+
+osc=0
+Nfreq = len(quandary.carrier_frequency[osc])
+assert(Nfreq == len(learnparams_opt))
+
+# Are we scaling the right array???
+start = 0
+nparams = 2*quandary.nsplines
+for cf in range(Nfreq):
+	scale_fact = 1/learnparams_opt[cf]
+	print("cf = ", cf, " scale_fact = ", scale_fact)
+	pcof_opt_scaled[start:start+nparams] = [x * scale_fact for x in pcof_opt[start:start+nparams]]
+	start += nparams
+
+print("ctrl vect[5]: pcof_opt = ", pcof_opt[5], " pcof_opt_scaled = ", pcof_opt_scaled[5])
+
+
+
+# Evaluate the control pulses on a fine grid in time using a specific sampling rate
+# When running evalControls(), are the 'learn_params' coefficient still active???
+points_per_ns = 64
+eval_datadir = UDEdatadir + "_eval"
+t1, p1_list, q1_list = quandary.evalControls(pcof0=pcof_opt_scaled, points_per_ns=points_per_ns, datadir=eval_datadir)
+
+# Remove last time point (just to be consistent with the QuDIT scripts)
+# can we make it cell-centered instead?
+
+t1 = t1[0:-1]
+p1 = p1_list[0][0:-1]
+q1 = q1_list[0][0:-1]
+
+
+# save p1 and q1 arrays on separate ASCII files
+np.savetxt('p_ctrl_scaled.dat', p1, fmt='%20.10e')
+np.savetxt('q_ctrl_scaled.dat', q1, fmt='%20.10e')
+
+print("Saved scaled control vectors in files p_ctrl_scaled.dat and q_ctrl_scaled.dat")
+
 

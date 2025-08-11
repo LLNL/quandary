@@ -93,32 +93,10 @@ q1 = q1_list[0][0:-1]
 # p1 = p1_list[0]
 # q1 = q1_list[0]
 
-# Sanity check (requires Qutip): Plot the time evolution using mesolve, starting from initial ground state. This plot should look a lot like the plot in the lower left corner of the above figure (population from |0>)
-# nstates = 4
-# starting = 0
-
-# Htot = generate_Hamiltonian(nstates)
-# xpath, ypath = np.array(p1), np.array(q1)
-# samplerate = 64
-# t = np.arange(0, len(xpath), 1)/samplerate
-
-# concat_pulse = np.stack((xpath,ypath), axis=-1) *2*np.pi*1e-3    
-# prob_me_time, prob_me_gate, numgate = qt_mesolve(Htot, nstates, starting, concat_pulse, t, cop=True)
-
-# fig, ax = plt.subplots()
-# for i in range(3):
-#     ax.plot(t, prob_me_time[i].real, '--', label=str(i))
-#     ax.grid()
-#     ax.set_xlabel('Time (ns)')
-#     ax.set_ylabel('Population') 
-
-
 # save p1 and q1 arrays on separate ASCII files
 np.savetxt('p_ctrl.dat', p1, fmt='%20.10e')
 np.savetxt('q_ctrl.dat', q1, fmt='%20.10e')
 
 print("Saved control arrays on files")
 
-# Notes:
-# When running on vibranium, the population is saved every 1 ns, with the first data point at 4 ns.
 

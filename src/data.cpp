@@ -567,26 +567,13 @@ void Data::loadData_Tant3Pop(std::vector<std::vector<std::string>> &data_names){
       /* Update the final time stamp */
       tstop = std::min(time_pop, tstop);
 
-      std::cout << "Read " << count << " data lines from population file" << std::endl;
+      // std::cout << "Read " << count << " data lines from population file" << std::endl;
 
       // Close files
       infile_pop.close();            
     }
   }
 
-  // // TEST what was loaded
-  // printf("\nDATA POINTS:\n");
-  // for (int ipulse=0; ipulse<data.size(); ipulse++){
-  //   printf("Control amplutidue: %f %f\n", controlparams[ipulse][0], controlparams[ipulse][1]);
-  //   for (int i=0; i<data[ipulse].size(); i++){
-  //     for (int j=0; j<data[ipulse][i].size(); i++){
-  //       VecView(data[ipulse][i][j], NULL);
-  //      }
-  //   }
-  //   printf("\n");
-  // }
-  // printf("END DATA POINTS.\n\n");
-  // exit(1);
   if (mpirank_world == 0) printf("-> Data loaded sucessfully. Data dt = %f, tstop = %f\n", dt, tstop);
 }
 
