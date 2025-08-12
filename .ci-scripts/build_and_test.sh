@@ -199,7 +199,7 @@ then
     # We set the MPI tests command to allow overlapping.
     # Shared allocation: Allows build_and_test.sh to run within a sub-allocation (see CI config).
     cmake_options=""
-    if [[ "${truehostname}" == "ruby" || "${truehostname}" == "poodle" ]]
+    if [[ "${truehostname}" == "dane" ]]
     then
         cmake_options="-DBLT_MPI_COMMAND_APPEND:STRING=--overlap"
     fi
