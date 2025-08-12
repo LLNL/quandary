@@ -15,10 +15,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose build type" FORCE)
 endif()
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(ENABLE_WARNINGS_AS_ERRORS ON CACHE BOOL "Enable warnings as errors")
-endif()
-
 set(BLT_CXX_STD "c++14" CACHE STRING "Version of C++ standard")
 set(CMAKE_CXX_STANDARD 14)
 
