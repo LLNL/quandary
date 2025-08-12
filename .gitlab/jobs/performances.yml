@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: (MIT)
 ###############################################################################
 
-clang_14_0_6:
+clang_14_0_6_perf:
   extends: .perf_on_ruby
   variables:
     PERFORMANCE_TESTS: "true"
