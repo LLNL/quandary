@@ -6,7 +6,7 @@
 ###############################################################################
 
 # Override reproducer section to define project specific variables.
-.ruby_reproducer_vars:
+.dane_reproducer_vars:
   script:
     - !reference [.reproducer_vars, script]
 
@@ -15,19 +15,19 @@
 ########################
 oneapi_2023_2_1:
   variables:
-    ON_RUBY: "OFF"
-  extends: .job_on_ruby
+    ON_DANE: "OFF"
+  extends: .job_on_dane
 
 # Force mvapich2 to be built with gcc
 gcc_10_3_1:
   variables:
-    SPEC: "${PROJECT_RUBY_VARIANTS} %gcc@=10.3.1 ${PROJECT_RUBY_DEPS} ^mvapich2%gcc@=10.3.1"
-  extends: .job_on_ruby
+    SPEC: "${PROJECT_DANE_VARIANTS} %gcc@=10.3.1 ${PROJECT_DANE_DEPS} ^mvapich2%gcc@=10.3.1"
+  extends: .job_on_dane
 
 ########################
 # Extra jobs
 ########################
 gcc_10_3_1_int64:
   variables:
-    SPEC: "${PROJECT_RUBY_VARIANTS} +int64 %gcc@=10.3.1 ${PROJECT_RUBY_DEPS} ^mvapich2%gcc@=10.3.1"
-  extends: .job_on_ruby
+    SPEC: "${PROJECT_DANE_VARIANTS} +int64 %gcc@=10.3.1 ${PROJECT_DANE_DEPS} ^mvapich2%gcc@=10.3.1"
+  extends: .job_on_dane

@@ -32,12 +32,12 @@ generate-job-lists:
     RADIUSS_JOBS_PATH: ".ci-scripts/radiuss-spack-configs/gitlab/radiuss-jobs"
     LOCAL_JOBS_PATH: ".gitlab/jobs"
   script:
-    - cat ${RADIUSS_JOBS_PATH}/ruby.yml ${LOCAL_JOBS_PATH}/ruby.yml > ruby-jobs.yml
+    - cat ${RADIUSS_JOBS_PATH}/dane.yml ${LOCAL_JOBS_PATH}/dane.yml > dane-jobs.yml
     - cat ${RADIUSS_JOBS_PATH}/lassen.yml ${LOCAL_JOBS_PATH}/lassen.yml > lassen-jobs.yml
     - cat ${RADIUSS_JOBS_PATH}/tioga.yml ${LOCAL_JOBS_PATH}/tioga.yml > tioga-jobs.yml
   artifacts:
     paths:
-      - ruby-jobs.yml
+      - dane-jobs.yml
       - lassen-jobs.yml
       - tioga-jobs.yml
 
@@ -46,16 +46,16 @@ generate-job-lists:
 # Comment the jobs for machines you don’t need.
 ###
 
-# RUBY
-ruby-up-check:
+# DANE
+dane-up-check:
   variables:
-    CI_MACHINE: "ruby"
+    CI_MACHINE: "dane"
   extends: [.machine-check]
 
-ruby-build-and-test:
+dane-build-and-test:
   variables:
-    CI_MACHINE: "ruby"
-  needs: [ruby-up-check, generate-job-lists]
+    CI_MACHINE: "dane"
+  needs: [dane-up-check, generate-job-lists]
   extends: [.build-and-test]
 
 # TIOGA
@@ -83,7 +83,7 @@ lassen-build-and-test:
   extends: [.build-and-test]
 
 # PERFORMANCE
-ruby-performance-test:
+dane-performance-test:
   variables:
-    CI_MACHINE: "ruby"
+    CI_MACHINE: "dane"
   extends: [.performance-test]
