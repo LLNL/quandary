@@ -1216,12 +1216,7 @@ def plot_pulse(Ne, time, pt, qt):
     # plt.grid()
     plt.subplots_adjust(hspace=0.6)
     plt.draw()
-    plt.pause(0.01)
-    print("\nPlotting control pulses.")
-    print("-> Press <enter> to proceed.")
-    plt.waitforbuttonpress(1); 
-    input(); 
-    # plt.close(fig)
+    plt.show() 
 
 def plot_expectedEnergy(Ne, time, expectedEnergy):
     """ Plot evolution of expected energy levels """
@@ -1255,13 +1250,7 @@ def plot_expectedEnergy(Ne, time, expectedEnergy):
     plt.subplots_adjust(hspace=0.5)
     plt.subplots_adjust(wspace=0.5)
     plt.draw()
-    plt.pause(0.01)
-    print("\nPlotting expected energy dynamics")
-    print("-> Press <enter> to proceed.")
-    plt.waitforbuttonpress(1); 
-    input(); 
-    # plt.close(fig)
-
+    plt.show()
 
 def plot_population(Ne, time, population):
     """ Plot evolution of population """ 
@@ -1295,13 +1284,7 @@ def plot_population(Ne, time, population):
     plt.subplots_adjust(hspace=0.5)
     plt.subplots_adjust(wspace=0.5)
     plt.draw()
-    plt.pause(0.01)
-    print("\nPlotting population dynamics")
-    print("-> Press <enter> to proceed.")
-    plt.waitforbuttonpress(1); 
-    input(); 
-    # plt.close(fig)
-
+    plt.show()
 
 def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     """ Plot all results of one oscillator """
@@ -1368,13 +1351,7 @@ def plot_results_1osc(myconfig, p, q, expectedEnergy, population):
     ax[row, col].grid()
 
     plt.draw()
-    plt.pause(0.01)
-    print("\nPlotting results...")
-    print("-> Press <enter> to proceed.")
-    plt.waitforbuttonpress(1); 
-    input(); 
-    # plt.close(fig)
-
+    plt.show()
 
 def timestep_richardson_est(quandary, tol=1e-8, order=2, quandary_exec=""):
     """ Decrease timestep size until Richardson error estimate meets threshold """
