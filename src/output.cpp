@@ -278,8 +278,8 @@ void Output::writeTrajectoryDataFiles(int timestep, double time, const Vec state
         const PetscScalar *x;
         VecGetArrayRead(state, &x);
         for (int i=0; i<mastereq->getDim(); i++) {
-          fprintf(ufile, "%1.10e  ", x[getIndexReal(i)]);  
-          fprintf(vfile, "%1.10e  ", x[getIndexImag(i)]);  
+          fprintf(ufile, "%1.10e  ", x[i]);  
+          fprintf(vfile, "%1.10e  ", x[i + mastereq->getDim()]);  
         }
         fprintf(ufile, "\n");
         fprintf(vfile, "\n");

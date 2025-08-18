@@ -19,6 +19,7 @@
  * and vectorized system matrix to a state vector.
  */
 typedef struct {
+  PetscInt dim; ///< Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
   std::vector<int> nlevels; ///< Number of levels per oscillator
   IS *isu, *isv; ///< Vector strides for accessing real and imaginary parts
   Oscillator** oscil_vec; ///< Array of pointers to the oscillators
@@ -92,9 +93,9 @@ int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y); ///< Transpose sparse m
 class MasterEq{
 
   protected:
-    int dim; ///< Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
-    int dim_rho; ///< Dimension of Hilbert space = N
-    int dim_ess; ///< Dimension of essential levels = N_e
+    PetscInt dim; ///< Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
+    PetscInt dim_rho; ///< Dimension of Hilbert space = N
+    PetscInt dim_ess; ///< Dimension of essential levels = N_e
     int noscillators; ///< Number of oscillators in the system
     Oscillator** oscil_vec; ///< Array of pointers to oscillator objects
 
@@ -112,12 +113,18 @@ class MasterEq{
     std::vector<double> eta; ///< Frequency differences in rotating frame (rad/time) for dipole-dipole coupling
     bool addT1, addT2; ///< Flags for including T1 decay and T2 dephasing Lindblad operators
 
-    int mpirank_petsc; ///< Rank of PETSc's communicator
     int mpirank_world; ///< Rank of global MPI communicator
+    int mpirank_petsc; ///< Rank of PETSc's communicator
+    int mpisize_petsc; ///< Size of PETSc's communicator
+    PetscInt localsize_u; ///< Size of local sub vector u or v in state x=[u,v]
+    PetscInt ilow; ///< First index of the local sub vector u,v
+    PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
+
     IS isu, isv; ///< Vector strides for accessing real and imaginary parts u=Re(x), v=Im(x)
     Vec aux; ///< Auxiliary vector for computations
     bool quietmode; ///< Flag for quiet mode operation
-    std::string hamiltonian_file; ///< Filename if a custom Hamiltonian is read from file ('none' if standard Hamiltonian is used)
+    std::string hamiltonian_file_Hsys; ///< Filename if a custom system Hamiltonian is read from file ('none' if standard Hamiltonian is used)
+    std::string hamiltonian_file_Hc; ///< Filename if a custom control Hamiltonians are read from file ('none' if standard Hamiltonian is used)
 
   public:
     std::vector<int> nlevels; ///< Number of levels per oscillator
@@ -143,10 +150,11 @@ class MasterEq{
      * @param eta_ Frequency differences for rotating frame
      * @param lindbladtype_ Type of Lindblad operators to include
      * @param usematfree_ Flag to use matrix-free solver
-     * @param hamiltonian_file Filename for Hamiltonian data
+     * @param hamiltonian_file_Hsys Filename for system Hamiltonian data
+     * @param hamiltonian_file_Hc Filename for control Hamiltonian data
      * @param quietmode Flag for quiet operation (default: false)
      */
-    MasterEq(const std::vector<int>& nlevels, const std::vector<int>& nessential, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, bool x_is_control, Learning* learning, const std::string& hamiltonian_file, bool quietmode=false);
+    MasterEq(const std::vector<int>& nlevels, const std::vector<int>& nessential, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, bool x_is_control, Learning* learning, const std::string& hamiltonian_file_Hsys, const std::string& hamiltonian_file_Hc, bool quietmode=false);
 
     ~MasterEq();
 
@@ -181,23 +189,23 @@ class MasterEq{
     /**
      * @brief Retrieves the dimension of the vectorized system.
      *
-     * @return int \f$N^2\f$ for Lindblad solver, \f$N\f$ for Schroedinger solver
+     * @return PetscInt \f$N^2\f$ for Lindblad solver, \f$N\f$ for Schroedinger solver
      */
-    int getDim(){ return dim; }
+    PetscInt getDim(){ return dim; }
 
     /**
      * @brief Retrieves the dimension of the essential level system.
      *
-     * @return int Dimension N_e of essential levels
+     * @return PetscInt Dimension N_e of essential levels
      */
-    int getDimEss(){ return dim_ess; }
+    PetscInt getDimEss(){ return dim_ess; }
 
     /**
      * @brief Retrieves the dimension of the density matrix.
      *
-     * @return int Dimension N of the Hilbert space
+     * @return PetscInt Dimension N of the Hilbert space
      */
-    int getDimRho(){ return dim_rho; }
+    PetscInt getDimRho(){ return dim_rho; }
 
     /**
      * @brief Assembles the real-valued system matrix (RHS) at time t.
@@ -284,6 +292,8 @@ class MasterEq{
  * @param[in] nlevels Number of energy levels per subsystem 
  * @param[in] isu Index stride to access real parts of a state vector
  * @param[in] isv Index stride to access imaginar parts of a state vector
+ * @param[in] Ac_vec Vector of real parts of control matrices per oscillator
+ * @param[in] Bc_vec Vector of imaginary parts of control matrices per oscillator
  * @param[in] aux Auxiliary vector for computations 
  * @param[in] oscil_vec Vector of quantum oscilators
  */
@@ -295,6 +305,7 @@ void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec x_bar, 
  * Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar in a matrix-free 
  * manner. See @ref compute_dRHS_dParams_sparsemat for the sparse-matrix version of this routine.
  *
+ * @param[in] dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param[in] t Current time
  * @param[in] x State vector
  * @param[in] x_bar Adjoint state vector
@@ -304,7 +315,7 @@ void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec x_bar, 
  * @param[in] lindbladtype Type of Lindblad decoherence operators, or NONE
  * @param[in] oscil_vec Vector of quantum oscillators 
  */
-void compute_dRHS_dParams_matfree(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad, std::vector<int>& nlevels, LindbladType lindbladtype, Oscillator** oscil_vec, bool x_is_control, Learning* learning);
+void compute_dRHS_dParams_matfree(const PetscInt dim, const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad, std::vector<int>& nlevels, LindbladType lindbladtype, Oscillator** oscil_vec, bool x_is_control, Learning* learning);
 
 
 
@@ -540,6 +551,7 @@ inline int TensorGetIndex(const int nlevels0, const int nlevels1, const int nlev
  *
  * Computes coefficients for gradient computation with respect to control parameters.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param n Number of levels for current oscillator
  * @param np Number of levels for conjugate oscillator
@@ -553,7 +565,7 @@ inline int TensorGetIndex(const int nlevels0, const int nlevels1, const int nlev
  * @param res_q_re Pointer to store real part of q result
  * @param res_q_im Pointer to store imaginary part of q result
  */
-inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int i, const int ip, const int stridei, const int strideip, const double* xptr, double* res_p_re, double* res_p_im, double* res_q_re, double* res_q_im) {
+inline void dRHSdp_getcoeffs(const PetscInt dim, const int it, const int n, const int np, const int i, const int ip, const int stridei, const int strideip, const double* xptr, double* res_p_re, double* res_p_im, double* res_q_re, double* res_q_im) {
 
   *res_p_re = 0.0;
   *res_p_im = 0.0;
@@ -563,8 +575,8 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int 
   /* ik+1..,ik'.. term */
   if (i < n-1) {
     int itx = it + stridei;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(i + 1);
     *res_p_re +=   sq * xim;
     *res_p_im += - sq * xre;
@@ -574,8 +586,8 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int 
   /* \rho(ik..,ik'+1..) */
   if (ip < np-1) {
     int itx = it + strideip;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(ip + 1);
     *res_p_re += - sq * xim;
     *res_p_im += + sq * xre;
@@ -585,8 +597,8 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int 
   /* \rho(ik-1..,ik'..) */
   if (i > 0) {
     int itx = it - stridei;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(i);
     *res_p_re += + sq * xim;
     *res_p_im += - sq * xre;
@@ -596,8 +608,8 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int 
   /* \rho(ik..,ik'-1..) */
   if (ip > 0) {
     int itx = it - strideip;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(ip);
     *res_p_re += - sq * xim;
     *res_p_im += + sq * xre;
@@ -611,6 +623,7 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int 
  *
  * Implements J_kl coupling terms in the rotating frame between oscillator i and j.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param ni Number of levels for oscillator i
  * @param nj Number of levels for oscillator j
@@ -631,13 +644,13 @@ inline void dRHSdp_getcoeffs(const int it, const int n, const int np, const int 
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
+inline void Jkl_coupling(const PetscInt dim, const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
   if (fabs(Jij)>1e-10) {
     //  1) J_kl (-icos + sin) * ρ_{E−k+l i, i′}
     if (i > 0 && j < nj-1) {
       int itx = it - stridei + stridej;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(i * (j + 1));
       // sin u + cos v + i ( -cos u + sin v)
       *yre += Jij * sq * (   cosij * xim + sinij * xre);
@@ -646,8 +659,8 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip
     // 2) J_kl (−icos − sin)sqrt(il*(ik +1)) ρ_{E+k−li,i′}
     if (i < ni-1 && j > 0) {
       int itx = it + stridei - stridej;  // E+k-l i, i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(j * (i + 1)); // sqrt( il*(ik+1))
       // -sin u + cos v + i (-cos u - sin v)
       *yre += Jij * sq * (   cosij * xim - sinij * xre);
@@ -656,8 +669,8 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip
     // 3) J_kl ( icos + sin)sqrt(ik'*(il' +1)) ρ_{i,E-k+li'}
     if (ip > 0 && jp < njp-1) {
       int itx = it - strideip + stridejp;  // i, E-k+l i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(ip * (jp + 1)); // sqrt( ik'*(il'+1))
       //  sin u - cos v + i ( cos u + sin v)
       *yre += Jij * sq * ( - cosij * xim + sinij * xre);
@@ -666,8 +679,8 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip
     // 4) J_kl ( icos - sin)sqrt(il'*(ik' +1)) ρ_{i,E+k-li'}
     if (ip < nip-1 && jp > 0) {
       int itx = it + strideip - stridejp;  // i, E+k-l i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(jp * (ip + 1)); // sqrt( il'*(ik'+1))
       // - sin u - cos v + i ( cos u - sin v)
       *yre += Jij * sq * ( - cosij * xim - sinij * xre);
@@ -679,6 +692,7 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip
 /**
  * @brief Transpose of dipole-dipole coupling for adjoint computations.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param ni Number of levels for oscillator i
  * @param nj Number of levels for oscillator j
@@ -699,13 +713,13 @@ inline void Jkl_coupling(const int it, const int ni, const int nj, const int nip
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
+inline void Jkl_coupling_T(const PetscInt dim, const int it, const int ni, const int nj, const int nip, const int njp, const int i, const int ip, const int j, const int jp, const int stridei, const int strideip, const int stridej, const int stridejp, const double* xptr, const double Jij, const double cosij, const double sinij, double* yre, double* yim) {
   if (fabs(Jij)>1e-10) {
     //  1) [...] * \bar y_{E+k-l i, i′}
     if (i < ni-1 && j > 0) {
       int itx = it + stridei - stridej;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(j * (i + 1));
       *yre += Jij * sq * ( - cosij * xim + sinij * xre);
       *yim += Jij * sq * ( + cosij * xre + sinij * xim);
@@ -713,8 +727,8 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int n
     // 2) J_kl (−icos − sin)sqrt(ik*(il +1)) \bar y_{E-k+li,i′}
     if (i > 0 && j < nj-1) {
       int itx = it - stridei + stridej;  // E-k+l i, i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(i * (j + 1)); // sqrt( ik*(il+1))
       *yre += Jij * sq * ( - cosij * xim - sinij * xre);
       *yim += Jij * sq * ( + cosij * xre - sinij * xim);
@@ -722,8 +736,8 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int n
     // 3) J_kl ( icos + sin)sqrt(il'*(ik' +1)) \bar y_{i,E+k-li'}
     if (ip < nip-1 && jp > 0) {
       int itx = it + strideip - stridejp;  // i, E+k-l i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(jp * (ip + 1)); // sqrt( il'*(ik'+1))
       *yre += Jij * sq * (   cosij * xim + sinij * xre);
       *yim += Jij * sq * ( - cosij * xre + sinij * xim);
@@ -731,8 +745,8 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int n
     // 4) J_kl ( icos - sin)sqrt(ik'*(il' +1)) \bar y_{i,E-k+li'}
     if (ip > 0 && jp < njp-1) {
       int itx = it - strideip + stridejp;  // i, E-k+l i'
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(ip * (jp + 1)); // sqrt( ik'*(il'+1))
       *yre += Jij * sq * (   cosij * xim - sinij * xre);
       *yim += Jij * sq * ( - cosij * xre - sinij * xim);
@@ -744,6 +758,7 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int n
 /**
  * @brief Matrix-free solver inline for off-diagonal L1 decay term.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param n Number of levels
  * @param i Occupation number (bra)
@@ -755,13 +770,13 @@ inline void Jkl_coupling_T(const int it, const int ni, const int nj, const int n
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void L1decay(const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
+inline void L1decay(const PetscInt dim, const int it, const int n, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
   if  (fabs(decayi) > 1e-12) {
     if (i < n-1 && ip < n-1) {
       double l1off = decayi * sqrt((i+1)*(ip+1));
       int itx = it + stridei + strideip;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       *yre += l1off * xre;
       *yim += l1off * xim;
     }
@@ -772,6 +787,7 @@ inline void L1decay(const int it, const int n, const int i, const int ip, const 
 /**
  * @brief Matrix-free inline Transpose of off-diagonal L1 decay for adjoint computations.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param i Occupation number (bra)
  * @param ip Occupation number (ket)
@@ -782,13 +798,13 @@ inline void L1decay(const int it, const int n, const int i, const int ip, const 
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void L1decay_T(const int it, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
+inline void L1decay_T(const PetscInt dim, const int it, const int i, const int ip, const int stridei, const int strideip, const double* xptr, const double decayi, double* yre, double* yim){
   if (fabs(decayi) > 1e-12) {
       if (i > 0 && ip > 0) {
         double l1off = decayi * sqrt(i*ip);
         int itx = it - stridei - strideip;
-        double xre = xptr[2 * itx];
-        double xim = xptr[2 * itx + 1];
+        double xre = xptr[itx];
+        double xim = xptr[itx+dim];
         *yre += l1off * xre;
         *yim += l1off * xim;
       }
@@ -800,6 +816,7 @@ inline void L1decay_T(const int it, const int i, const int ip, const int stridei
  *
  * Applies control Hamiltonian terms (ladder operators) to the state.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param n Number of levels
  * @param i Occupation number (bra)
@@ -813,12 +830,12 @@ inline void L1decay_T(const int it, const int i, const int ip, const int stridei
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void control(const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
+inline void control(const PetscInt dim, const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
   /* \rho(ik+1..,ik'..) term */
   if (i < n-1) {
       int itx = it + stridei;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(i + 1);
       *yre += sq * (   pt * xim + qt * xre);
       *yim += sq * ( - pt * xre + qt * xim);
@@ -826,8 +843,8 @@ inline void control(const int it, const int n, const int i, const int np, const 
     /* \rho(ik..,ik'+1..) */
     if (ip < np-1) {
       int itx = it + strideip;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(ip + 1);
       *yre += sq * ( -pt * xim + qt * xre);
       *yim += sq * (  pt * xre + qt * xim);
@@ -835,8 +852,8 @@ inline void control(const int it, const int n, const int i, const int np, const 
     /* \rho(ik-1..,ik'..) */
     if (i > 0) {
       int itx = it - stridei;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(i);
       *yre += sq * (  pt * xim - qt * xre);
       *yim += sq * (- pt * xre - qt * xim);
@@ -844,8 +861,8 @@ inline void control(const int it, const int n, const int i, const int np, const 
     /* \rho(ik..,ik'-1..) */
     if (ip > 0) {
       int itx = it - strideip;
-      double xre = xptr[2 * itx];
-      double xim = xptr[2 * itx + 1];
+      double xre = xptr[itx];
+      double xim = xptr[itx+dim];
       double sq = sqrt(ip);
       *yre += sq * (- pt * xim - qt * xre);
       *yim += sq * (  pt * xre - qt * xim);
@@ -856,6 +873,7 @@ inline void control(const int it, const int n, const int i, const int np, const 
 /**
  * @brief Matrix-free Transpose of control terms for adjoint computations.
  *
+ * @param dim Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
  * @param it Current tensor index
  * @param n Number of levels
  * @param i Occupation number (bra)
@@ -869,12 +887,12 @@ inline void control(const int it, const int n, const int i, const int np, const 
  * @param yre Pointer to store real part of result
  * @param yim Pointer to store imaginary part of result
  */
-inline void control_T(const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
+inline void control_T(const PetscInt dim, const int it, const int n, const int i, const int np, const int ip, const int stridei, const int strideip, const double* xptr, const double pt, const double qt, double* yre, double* yim){
   /* \rho(ik+1..,ik'..) term */
   if (i > 0) {
     int itx = it - stridei;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(i);
     *yre += sq * ( - pt * xim + qt * xre);
     *yim += sq * (   pt * xre + qt * xim);
@@ -882,8 +900,8 @@ inline void control_T(const int it, const int n, const int i, const int np, cons
   /* \rho(ik..,ik'+1..) */
   if (ip > 0) {
     int itx = it - strideip;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(ip);
     *yre += sq * (  pt * xim + qt * xre);
     *yim += sq * ( -pt * xre + qt * xim);
@@ -891,8 +909,8 @@ inline void control_T(const int it, const int n, const int i, const int np, cons
   /* \rho(ik-1..,ik'..) */
   if (i < n-1) {
     int itx = it + stridei;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(i+1);
     *yre += sq * (- pt * xim - qt * xre);
     *yim += sq * (  pt * xre - qt * xim);
@@ -900,8 +918,8 @@ inline void control_T(const int it, const int n, const int i, const int np, cons
   /* \rho(ik..,ik'-1..) */
   if (ip < np-1) {
     int itx = it + strideip;
-    double xre = xptr[2 * itx];
-    double xim = xptr[2 * itx + 1];
+    double xre = xptr[itx];
+    double xim = xptr[itx+dim];
     double sq = sqrt(ip+1);
     *yre += sq * (+ pt * xim - qt * xre);
     *yim += sq * (- pt * xre - qt * xim);

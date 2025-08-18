@@ -58,7 +58,7 @@ class OptimProblem {
   MPI_Comm comm_init; ///< MPI communicator for initial condition parallelization
   MPI_Comm comm_optim; ///< MPI communicator for optimization parallelization, currently not used (size 1)
   int mpirank_optim, mpisize_optim; ///< MPI rank and size for optimization communicator
-  int mpirank_space, mpisize_space; ///< MPI rank and size for spatial parallelization (PETSc)
+  int mpirank_petsc, mpisize_petsc; ///< MPI rank and size for spatial parallelization (PETSc)
   int mpirank_world, mpisize_world; ///< MPI rank and size for global communicator
   int mpirank_init, mpisize_init; ///< MPI rank and size for initial condition communicator
 
