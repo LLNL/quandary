@@ -372,7 +372,7 @@ double TimeStepper::penaltyDpDm(Vec x, Vec xm1, Vec xm2){
 void TimeStepper::penaltyDpDm_diff(int n, Vec xbar, double Jbar){
 
     const PetscScalar *xptr, *xm1ptr, *xm2ptr, *xp1ptr, *xp2ptr;
-    Vec x, xm1, xm2, xp1, xp2;
+    Vec x = nullptr, xm1 = nullptr, xm2 = nullptr, xp1 = nullptr, xp2 = nullptr;
 
     int k = ntime - n;
     int idx = 4-(k+4)%5;

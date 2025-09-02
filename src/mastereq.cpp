@@ -107,7 +107,7 @@ MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nes
       addT2 = true;
       break;
     default:
-      printf("ERROR! Wrong lindblad type: %d\n", lindbladtype);
+      printf("ERROR! Wrong lindblad type: %d\n", static_cast<int>(lindbladtype));
       exit(1);
   }
 
