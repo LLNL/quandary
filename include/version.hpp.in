@@ -1,0 +1,3 @@
+#pragma once
+
+#define QUANDARY_FULL_VERSION_STRING "@FULL_VERSION@"
