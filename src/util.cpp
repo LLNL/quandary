@@ -779,7 +779,12 @@ int read_vector(const char *filename, double *var, int dim, bool quietmode, int 
     /* Scip first <skiplines> lines */
     char buffer[51]; // need one extra element because fscanf adds a '\0' at the end
     for (int ix = 0; ix < skiplines; ix++) {
-      fscanf(file, "%50[^\n]%*c", buffer); // // NOTE: &buffer[50] is a pointer to buffer[50] (i.e. its last element)
+      int ret = fscanf(file, "%50[^\n]%*c", buffer); // // NOTE: &buffer[50] is a pointer to buffer[50] (i.e. its last element)
+      if (ret == EOF) {
+        printf("ERROR: EOF reached while skipping lines in file %s.\n", filename);
+        fclose(file);
+        return success;
+      }
       // printf("Skipping %d lines: %s \n:", skiplines, buffer);
     }
 
