@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1755808092336,
+  "lastUpdate": 1757017198939,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1319,6 +1319,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4265.71,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "47fab2cec5a6ff435c01315dbde5a7d9127396a2",
+          "message": "Merge pull request #84 from LLNL/replace-ruby-in-ci\n\nReplace ruby with dane in CI jobs",
+          "timestamp": "2025-08-21T19:23:13Z",
+          "url": "https://github.com/LLNL/quandary/commit/47fab2cec5a6ff435c01315dbde5a7d9127396a2"
+        },
+        "date": 1757017197618,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.764829680499588,
+            "unit": "seconds",
+            "range": "0.6324653594581883"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 87.75,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 5.277122672000587,
+            "unit": "seconds",
+            "range": "0.07921635883641058"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4263.68,
             "unit": "MB"
           }
         ]
