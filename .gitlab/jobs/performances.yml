@@ -16,7 +16,7 @@ process_results:
   variables:
     PERF_PROCESSING_CMD: "tests/performance/convert_benchmark_format.py"
   dependencies:
-    - clang_14_0_6
+    - clang_14_0_6_perf
 
 report_results:
   extends: .report_to_gh_benchmark
