@@ -1,17 +1,23 @@
-name: Deploy Doxygen Documentation to GitHub Pages
+name: Doxygen Documentation
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy Doxygen Docs
+  build:
+    name: Build Doxygen Documentation
     runs-on: ubuntu-latest
 
     steps:
@@ -30,7 +36,8 @@ jobs:
         cmake -DENABLE_MPI=OFF -DBUILD_QUANDARY=OFF ..
         cmake --build . --target quandary_doxygen
 
-    - name: Deploy to GitHub Pages
+    - name: Deploy to GitHub Pages on main branch
+      if: github.ref == 'refs/heads/main'
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
