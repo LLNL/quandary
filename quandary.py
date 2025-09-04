@@ -357,7 +357,7 @@ class Quandary:
 
             pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
-        result = self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash,mpi_exec=mpi_exec, batchargs=batchargs, UDEmodel=UDEmodel, learn_params=learn_params)
+        result = self.__run(pcof0=pcof0, runtype="simulation", overwrite_popt=False, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, batchargs=batchargs, UDEmodel=UDEmodel, learn_params=learn_params)
 
         if len(pt0) > 0 and len(qt0) > 0:
             self.nsplines = nsplines_org
