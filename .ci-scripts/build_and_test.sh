@@ -200,9 +200,11 @@ then
     timed_message "Building Quandary"
     # We set the MPI tests command to allow overlapping.
     # Shared allocation: Allows build_and_test.sh to run within a sub-allocation (see CI config).
+    mpi_opt=""
     cmake_options=""
     if [[ "${truehostname}" == "dane" ]]
     then
+        mpi_opt="--overlap"
         cmake_options="-DBLT_MPI_COMMAND_APPEND:STRING=--overlap"
     fi
 
@@ -286,7 +288,7 @@ then
     timed_message "Run performance tests"
 
     mpi_exe=$(grep 'MPIEXEC_EXECUTABLE' "${hostconfig_path}" | cut -d'"' -f2 | sed 's/;/ /g')
-    pytest -v -s -m performance --mpi-exec="${mpi_exe}" --benchmark-json=benchmark_results.json
+    pytest -v -s -m performance --mpi-exec="${mpi_exe}" --mpi-opt="${mpi_opt}" --benchmark-json=benchmark_results.json
 
     if [[ -d "${perf_artifact_dir}" ]]
     then
