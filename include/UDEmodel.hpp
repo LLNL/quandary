@@ -43,6 +43,7 @@ class UDEmodel {
 /* Hamiltonian paramterization via generalized Gellman matrices */
 class HamiltonianModel : public UDEmodel {
   bool shifted_diag; // Optional: Turn of shifting of the diagonal elements
+  bool diagonal_only; // Optional: Use only diagonal Gellmann matrices (for dephasing noise models)
 
   public:
     HamiltonianModel(int dim_rho_, bool shifted_diag_, LindbladType lindbladtype_);

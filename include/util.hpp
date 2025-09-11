@@ -10,7 +10,7 @@
 #pragma once
 
 /* Create the generalized Gellmann matrices. Must be destroyed after usage. */
-void createGellmannMats(int dim_rho, bool upper_only, bool real_only, bool shifted_diag, bool includeIdentity, std::vector<Mat>& Mats_Re, std::vector<Mat>& Mats_Im);
+void createGellmannMats(int dim_rho, bool upper_only, bool real_only, bool shifted_diag, bool includeIdentity, std::vector<Mat>& Mats_Re, std::vector<Mat>& Mats_Im, bool diagonal_only=false);
 
 /* Create Basise matrices E_ij = e_i e_j^' . Must be destroyed after usage. */
 void createEijBasisMats(int dim_rho, bool includeIdentity, std::vector<Mat>& Mats_Re, std::vector<Mat>& Mats_Im);
