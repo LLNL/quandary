@@ -6,15 +6,15 @@ on:
       benchmark_data:
         description: 'Base64 encoded benchmark data'
         required: true
+      benchmark_name:
+        description: 'Name for benchmark group on the dashboard'
+        required: false
+        default: 'Quandary benchmarks'
 
 permissions:
   checks: write
   contents: write
   pull-requests: write
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   store-and-visualize:
@@ -31,16 +31,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Decode benchmark data
-        run: echo "${{ github.event.inputs.benchmark_data }}" | base64 -d > pytest_benchmark.json
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Convert benchmark format
-        run: |
-          python tests/performance/convert_benchmark_format.py pytest_benchmark.json benchmark.json
+        run: echo "${{ github.event.inputs.benchmark_data }}" | base64 -d > benchmark.json
 
       - name: Store benchmark result
         id: benchmark

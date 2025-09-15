@@ -17,6 +17,8 @@ variables:
   DANE_SHARED_ALLOC: "--exclusive --reservation=ci --time=15 --nodes=1"
 # Arguments for job level allocation
   DANE_JOB_ALLOC: "--reservation=ci --overlap --nodes=1"
+# Arguments for performance job allocation (dedicated allocation with no overlapping).
+  DANE_PERF_ALLOC: "--exclusive --reservation=ci --time=15 --nodes=1"
 # Project specific variants for dane
   PROJECT_DANE_VARIANTS: "+test"
 # Project specific deps for dane
@@ -49,23 +51,12 @@ variables:
     reports:
       junit: junit.xml
 
-.performance_job:
-  artifacts:
-    paths:
-      - benchmark_results.json
-  after_script:
-    - |
-      if [ -f "benchmark_results.json" ]; then
-        echo "Sending benchmark results to GitHub..."
-        BENCHMARK_DATA=$(base64 -w 0 benchmark_results.json)
-        curl -X POST \
-        -H "Authorization: token $GITHUB_TOKEN" \
-        -H "Accept: application/vnd.github.v3+json" \
-        https://api.github.com/repos/${GITHUB_PROJECT_ORG}/${GITHUB_PROJECT_NAME}/actions/workflows/benchmark.yml/dispatches \
-        -d "{\"ref\":\"${CI_COMMIT_REF_NAME}\",\"inputs\":{\"benchmark_data\":\"$BENCHMARK_DATA\"}}"
-      else
-        echo "benchmark_results.json not found, skipping GitHub API integration."
-      fi
+# Configuration shared by performance jobs specific to this project.
+# Not all configuration can be shared. Here projects can fine tune the
+# CI behavior.
+.custom_perf:
+  variables:
+    JOB_TEMPLATE_CANNOT_BE_EMPTY: "True"
 
 .reproducer_vars:
   script:
