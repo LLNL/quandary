@@ -12,7 +12,7 @@ clang_14_0_6_perf:
     SPEC: "${PROJECT_DANE_VARIANTS} %clang@=14.0.6 ${PROJECT_DANE_DEPS}"
 
 process_results:
-  extends: .pytest_to_gh_benchmark
+  extends: .convert_to_gh_benchmark
   variables:
     PERF_PROCESSING_CMD: "tests/performance/convert_benchmark_format.py"
   dependencies:
