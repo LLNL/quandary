@@ -14,7 +14,7 @@ clang_14_0_6_perf:
 process_results:
   extends: .convert_to_gh_benchmark
   variables:
-    PERF_PROCESSING_CMD: "tests/performance/convert_benchmark_format.py"
+    PERF_PROCESSING_CMD: "${CI_PROJECT_DIR}/tests/performance/convert_benchmark_format.py"
   dependencies:
     - clang_14_0_6_perf
 
