@@ -288,7 +288,7 @@ then
     timed_message "Run performance tests"
 
     mpi_exe=$(grep 'MPIEXEC_EXECUTABLE' "${hostconfig_path}" | cut -d'"' -f2 | sed 's/;/ /g')
-    pytest -v -s -m performance --mpi-exec="${mpi_exe}" --mpi-opt="${mpi_opt}" --benchmark-json=benchmark_results.json
+    pytest -v -s -m performance --mpi-exec="${mpi_exe}" --mpi-opt="${mpi_opt}" --benchmark-json=${perf_results_file}
 
     if [[ -d "${perf_artifact_dir}" ]]
     then
