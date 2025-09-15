@@ -6,6 +6,10 @@ on:
       benchmark_data:
         description: 'Base64 encoded benchmark data'
         required: true
+      benchmark_name:
+        description: 'Name for benchmark group on the dashboard'
+        required: false
+        default: 'Quandary benchmarks'
 
 permissions:
   checks: write
