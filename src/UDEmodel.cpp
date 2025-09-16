@@ -643,9 +643,12 @@ void LindbladModel::writeOperator(std::vector<double>& learnparamsL, std::string
 TransferModel::TransferModel(int dim_rho_, int ncarrierwaves_, LindbladType lindblad_type) : UDEmodel(dim_rho_, lindblad_type) {
   ncarrierwaves = ncarrierwaves_;
 
+  //std::cout << "TransferModel constructor, dim_rho = " << dim_rho << " ncarriers = " << ncarrierwaves << std::endl;
+
   if (dim_rho_ <= 0){
     nparams = 0;
-  } return;
+    return;
+  } 
 
   /* Set the Number of learnable parameters for this oscillator */
   // Here, a linear transfer model is applied to each carrier wave*/
