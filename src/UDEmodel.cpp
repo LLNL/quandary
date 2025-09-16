@@ -33,6 +33,9 @@ UDEmodel::~UDEmodel(){
 HamiltonianModel::HamiltonianModel(int dim_rho_, bool shifted_diag_, LindbladType lindbladtype) : UDEmodel(dim_rho_, lindbladtype) {
   shifted_diag = shifted_diag_;
 
+  // Hardcoded switch to use only the diagonal Hamiltonian basis matrices
+  diagonal_only = true; 
+
   /* Assemble system Matrices */
   createSystemMats(lindbladtype);
 
@@ -62,7 +65,8 @@ void HamiltonianModel::createSystemMats(LindbladType lindbladtype){
 
   /* Create the Gellmann matrices*/
   std::vector<Mat> BasisMats_Re, BasisMats_Im;
-  createGellmannMats(dim_rho, false, false, shifted_diag, true, BasisMats_Re, BasisMats_Im);
+
+  createGellmannMats(dim_rho, false, false, shifted_diag, true, BasisMats_Re, BasisMats_Im, diagonal_only);
   // Note BasisMats[0] contains the identity. Grab it here:
   Mat Id = BasisMats_Re[0];
 
@@ -189,7 +193,7 @@ void HamiltonianModel::writeOperator(std::vector<double>& learnparamsH, std::str
 
   /* Create the Gellmann matrices*/
   std::vector<Mat> BasisMats_Re, BasisMats_Im;
-  createGellmannMats(dim_rho, false, false, shifted_diag, false, BasisMats_Re, BasisMats_Im);
+  createGellmannMats(dim_rho, false, false, shifted_diag, false, BasisMats_Re, BasisMats_Im, diagonal_only);
 
   /* Extract pointers to params that correspond to SystemMats_A vs _B */
   // Assume learnparams = [learnparams_re, learnparams_Im]

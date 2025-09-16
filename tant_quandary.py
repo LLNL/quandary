@@ -264,12 +264,12 @@ def learnTransferFunction(quandary, pcof_opt, *, quandary_exec="", maxcores=1, d
         learnparams_identity[0] = 1.0
         learnparams_identity[1] = 1.0 
     elif UDEmodel == "hamiltonian":
-        learnparams_identity = np.zeros(15) 
+        learnparams_identity = np.zeros(3) # Only 3 adjustable diagonal elements in a 4x4 Hamiltonian matrix
     else:
-        # Hamiltonian (15) + TF (2)
-        learnparams_identity = np.zeros(17) 
-        learnparams_identity[15] = 1.0 
-        learnparams_identity[16] = 1.0
+        # Hamiltonian (3) + TF (2)
+        learnparams_identity = np.zeros(5) 
+        learnparams_identity[3] = 1.0 
+        learnparams_identity[4] = 1.0
     
     print("\nStarting training for UDE model = ", UDEmodel, " initial_params: ", learnparams_identity, " result-directory = ", UDEdatadir, "...")
     
