@@ -45,25 +45,41 @@ def setup_quandary_1d(f01=3.416634567, f12=3.2074712470, Tduration=220.0, target
     return quandary
 
 ####################################
-def scaleEvalControlPulse(quandary, pcof, *, quandary_exec="", samplerate=64, freq_weights=[1.0, 1.0], MHz_scalefact = 1e3):
+def scaleQuandaryCtrlVec(quandary, pcof, freq_weights):
     # allocate the scaled ctrl vector (pcof_opt)
     pcof_scaled = np.zeros(len(pcof))
     
     start = 0
     nparams = 2*quandary.nsplines
-    tf_indices = [0, 1] # Only TF
+    
+    for cf in range(2): # assumes 2 carrier freqs, 1 oscillator
+    	scale_fact = freq_weights[cf]
+    	print("cf = ", cf, " scale_fact = ", scale_fact)
+    	pcof_scaled[start:start+nparams] = [x * scale_fact for x in pcof[start:start+nparams]]
+    	start += nparams
+ 
+    return pcof_scaled
+
+####################################
+def invScaleQuandaryCtrlVec(quandary, pcof, freq_weights):
+    # allocate the scaled ctrl vector (pcof_opt)
+    pcof_scaled = np.zeros(len(pcof))
+    
+    start = 0
+    nparams = 2*quandary.nsplines
     
     for cf in range(2): # assumes 2 carrier freqs, 1 oscillator
     	scale_fact = 1/freq_weights[cf]
     	print("cf = ", cf, " scale_fact = ", scale_fact)
     	pcof_scaled[start:start+nparams] = [x * scale_fact for x in pcof[start:start+nparams]]
     	start += nparams
-    
+ 
+    return pcof_scaled
+
+####################################
+def evalControlPulse(quandary, pcof_scaled, *, quandary_exec="", samplerate=64, MHz_scalefact = 1e3):
     # Evaluate the control pulses on a fine grid in time using a specific sampling rate
-    # When running evalControls(), are the 'learn_params' coefficient still active???
-    points_per_ns = samplerate
-    #eval_datadir = datadir + "_eval"
-    t1, p1_list, q1_list = quandary.evalControls(pcof0=pcof_scaled, points_per_ns=points_per_ns, quandary_exec=quandary_exec) # , datadir=eval_datadir
+    t1, p1_list, q1_list = quandary.evalControls(pcof0=pcof_scaled, points_per_ns=samplerate, quandary_exec=quandary_exec) # , datadir=eval_datadir
     
     # Remove last time point (just to be consistent with other Tant/QuDIT scripts)
     # can we make it cell-centered instead?
@@ -120,17 +136,18 @@ def extract_pop_data(new_path, clf=None, correction=[[1,0,0],[0,1,0],[0,0,1]]):
         return tsteps, p_avg
 
 ####################################
-def my_plot_time_evolution(tsteps, p_avg, p_avg_c, myconfig, time, population, iinit):
+def my_plot_time_evolution(tsteps, p_avg, p_avg_c, time, population, iinit, *, figfile=""):
     '''    
     Parameters
     ----------
     tsteps: array of data time-levels
     p_avg:  array of shot-averaged populations
     p_avg_c: array of shot-averaged corrected populations
-    myconfig: quandary object
+
     time: array of simulated time-levels
     population: array of simulated populations
     iinit: initial state (0, 1, 2)
+    figfile: (optional), filename for saving the figure
 
     Returns
     -------
@@ -165,11 +182,10 @@ def my_plot_time_evolution(tsteps, p_avg, p_avg_c, myconfig, time, population, i
     ax[1].legend()
 
     # Add simulated populations
-    Ne = myconfig.Ne
     ninit = len(population[0])
-    iosc = 0 # for iosc in range(len(Ne)): # Ne=[3] gives len(Ne) = 1, range(1) = [0]
-    for istate in range(Ne[0]):
-        label = 'Qubit '+str(iosc) if len(Ne)>1 else ''
+    iosc = 0 # only one oscillator here
+    for istate in range(3):
+        label = 'Qubit ' + str(iosc)
         label = label + " |"+str(istate)+">"
         ax[0].plot(time, population[iosc][iinit][istate], '--', label=label)
         ax[1].plot(time, population[iosc][iinit][istate], '--', label=label)
@@ -197,7 +213,8 @@ def my_plot_time_evolution(tsteps, p_avg, p_avg_c, myconfig, time, population, i
     ax[1].set_title(f'After correction, L2-diff = {l2diff_c:.3f}')
 
     # Save the plot as a PNG file with high resolution
-    # plt.savefig('sine_wave_plot.png', dpi=200, bbox_inches='tight')
+    if len(figfile)>0:
+        plt.savefig(figfile, dpi=200, bbox_inches='tight')
 
     plt.show()
     return [l2diff, l2diff_c]
@@ -246,6 +263,8 @@ def learnTransferFunction(quandary, pcof_opt, *, quandary_exec="", maxcores=1, d
         learnparams_identity = np.zeros(2) 
         learnparams_identity[0] = 1.0
         learnparams_identity[1] = 1.0 
+    elif UDEmodel == "hamiltonian":
+        learnparams_identity = np.zeros(15) 
     else:
         # Hamiltonian (15) + TF (2)
         learnparams_identity = np.zeros(17) 
