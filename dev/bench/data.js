@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1757017198939,
+  "lastUpdate": 1758138178656,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1363,6 +1363,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4263.68,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Stefanie Guenther",
+            "username": "steffi7574",
+            "email": "guenther5@llnl.gov"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "1ff2ee5827cfdb03751cc6d7e719bf91f8f3b4d9",
+          "message": "Merge pull request #82 from LLNL/bugfix-gaterotation\n\nChange the default gate rotation to be zero.",
+          "timestamp": "2025-09-17T19:18:30Z",
+          "url": "https://github.com/LLNL/quandary/commit/1ff2ee5827cfdb03751cc6d7e719bf91f8f3b4d9"
+        },
+        "date": 1758138177033,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7556250016205013,
+            "range": "0.47516711946087575",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 87.88,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 5.396109561203048,
+            "range": "0.08991582502303776",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4264.09,
             "unit": "MB"
           }
         ]
