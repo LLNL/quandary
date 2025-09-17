@@ -68,9 +68,8 @@ class Config {
     int mpi_rank; ///< MPI rank of the current process.
 
     // General options
-    // TODO size_t instead of int
-    std::vector<int> nlevels;  ///< Number of levels per subsystem
-    std::vector<int> nessential;  ///< Number of essential levels per subsystem (Default: same as nlevels)
+    std::vector<size_t> nlevels;  ///< Number of levels per subsystem
+    std::vector<size_t> nessential;  ///< Number of essential levels per subsystem (Default: same as nlevels)
     int ntime = 1000;  ///< Number of time steps used for time-integration
     double dt = 0.1;  ///< Time step size (ns). Determines final time: T=ntime*dt
     std::vector<double> transfreq;  ///< Fundamental transition frequencies for each oscillator (GHz)
@@ -142,8 +141,8 @@ class Config {
     void printConfig() const;
 
     // getters
-    const std::vector<int>& getNLevels() const { return nlevels; }
-    const std::vector<int>& getNEssential() const { return nessential; }
+    const std::vector<size_t>& getNLevels() const { return nlevels; }
+    const std::vector<size_t>& getNEssential() const { return nessential; }
     int getNTime() const { return ntime; }
     double getDt() const { return dt; }
     const std::vector<double>& getTransFreq() const { return transfreq; }
@@ -205,8 +204,8 @@ class Config {
     const std::string& getHamiltonianFileHc() const { return hamiltonian_file_Hc; }
 
     // setters
-    void setNLevels(const std::vector<int>& value) { nlevels = value; }
-    void setNEssential(const std::vector<int>& value) { nessential = value; }
+    void setNLevels(const std::vector<size_t>& value) { nlevels = value; }
+    void setNEssential(const std::vector<size_t>& value) { nessential = value; }
     void setNTime(int value) { ntime = value; }
     void setDt(double value) { dt = value; }
     void setTransFreq(const std::vector<double>& value) { transfreq = value; }
