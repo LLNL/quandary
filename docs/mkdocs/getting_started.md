@@ -20,7 +20,7 @@ This automatically handles all dependencies including PETSc and MPI.
 - **PETSc** (Portable, Extensible Toolkit for Scientific Computation)
 - **MPI** implementation for parallel execution
 - **CMake** 3.23 or later
-- **C++ compiler** with C++14 support
+- **C++ compiler** with C++17 support
 
 **Steps:**
 
