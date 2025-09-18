@@ -16,7 +16,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(BLT_CXX_STD "c++17" CACHE STRING "Version of C++ standard")
-set(CMAKE_CXX_STANDARD 17)
 
 set(ENABLE_MPI ON CACHE BOOL "")
 
