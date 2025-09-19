@@ -277,13 +277,16 @@ int main(int argc,char **argv)
       double dt_tmp = dt;
       double Tduration = ntime*dt;
       dt = data->suggestTimeStepSize(dt_tmp);
-      if (abs(dt - dt_tmp) > 1e-8 && !quietmode){
-        printf(" -> Updated dt from %1.14e to %1.14e\n", dt_tmp, dt);
+      if (abs(dt - dt_tmp) > 1e-8){
+        //if (!quietmode) 
+        if (mpirank_world == 0) printf(" -> Updated dt from %1.14e to %1.14e\n", dt_tmp, dt);
+      
         if (dt*ntime < Tduration){
           // need to increase the number of time steps 
           int ntime_tmp = ntime;
           ntime = static_cast<int>(std::ceil(Tduration/dt));
-          printf(" -> Updated #time-steps from %d to %d\n", ntime_tmp, ntime);
+          //if (!quietmode)
+          if (mpirank_world == 0) printf(" -> Updated #time-steps from %d to %d\n", ntime_tmp, ntime);
         }
       } 
     } else {
