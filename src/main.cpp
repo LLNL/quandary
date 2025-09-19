@@ -275,8 +275,17 @@ int main(int argc,char **argv)
 
       /* Update the time-integration step-size such that it is an integer divisor of the data sampling size  */
       double dt_tmp = dt;
+      double Tduration = ntime*dt;
       dt = data->suggestTimeStepSize(dt_tmp);
-      if (abs(dt - dt_tmp) > 1e-8 && !quietmode) printf(" -> Updated dt from %1.14e to %1.14e\n", dt_tmp, dt);
+      if (abs(dt - dt_tmp) > 1e-8 && !quietmode){
+        printf(" -> Updated dt from %1.14e to %1.14e\n", dt_tmp, dt);
+        if (dt*ntime < Tduration){
+          // need to increase the number of time steps 
+          int ntime_tmp = ntime;
+          ntime = static_cast<int>(std::ceil(Tduration/dt));
+          printf(" -> Updated #time-steps from %d to %d\n", ntime_tmp, ntime);
+        }
+      } 
     } else {
       data = new Data(); // Dummy
     }
