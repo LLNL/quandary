@@ -2,7 +2,7 @@ from quandary import *
 from OC_load_libraries import *
 
 ## Helper routine for simplified setup on Tant/QuDIT
-def setup_quandary_1d(f01=3.416634567, f12=3.2074712470, Tduration=220.0, targetgate=np.eye(3), max_amp=5e-3, dt_knot=44.0):
+def setup_quandary_1d(f01=3.416634567, f12=3.2074712470, frot=3.416634567, Tduration=220.0, targetgate=np.eye(3), max_amp=5e-3, dt_knot=44.0):
     # NOTE: Tduration [ns] must be divisible by 4 [ns]
     
     Ne = [3]  # Number of essential energy levels
@@ -22,7 +22,7 @@ def setup_quandary_1d(f01=3.416634567, f12=3.2074712470, Tduration=220.0, target
     selfkerr = [f01-f12]
     
     # Frequency of frame rotation 
-    rotfreq = [f01] # [0.5*(f01+f12)]
+    rotfreq = [frot] # [0.5*(f01+f12)]
     
     # Bounds on the control pulse (in rotational frame, p and q) per oscillator
     max_amp = max_amp*freq_scale
@@ -45,12 +45,12 @@ def setup_quandary_1d(f01=3.416634567, f12=3.2074712470, Tduration=220.0, target
     return quandary
 
 ####################################
-def scaleQuandaryCtrlVec(quandary, pcof, freq_weights):
+def scaleQuandaryCtrlVec(nsplines, pcof, freq_weights):
     # allocate the scaled ctrl vector (pcof_opt)
     pcof_scaled = np.zeros(len(pcof))
     
     start = 0
-    nparams = 2*quandary.nsplines
+    nparams = 2*nsplines
     
     for cf in range(2): # assumes 2 carrier freqs, 1 oscillator
     	scale_fact = freq_weights[cf]
@@ -61,12 +61,12 @@ def scaleQuandaryCtrlVec(quandary, pcof, freq_weights):
     return pcof_scaled
 
 ####################################
-def invScaleQuandaryCtrlVec(quandary, pcof, freq_weights):
+def invScaleQuandaryCtrlVec(nsplines, pcof, freq_weights):
     # allocate the scaled ctrl vector (pcof_opt)
     pcof_scaled = np.zeros(len(pcof))
     
     start = 0
-    nparams = 2*quandary.nsplines
+    nparams = 2*nsplines
     
     for cf in range(2): # assumes 2 carrier freqs, 1 oscillator
     	scale_fact = 1/freq_weights[cf]
@@ -220,32 +220,26 @@ def my_plot_time_evolution(tsteps, p_avg, p_avg_c, time, population, iinit, *, f
     return [l2diff, l2diff_c]
 
     ##############################################
-def learnTransferFunction(quandary, pcof_opt, *, quandary_exec="", maxcores=1, datadir="./Data", data_filenames=["init_0_pop_cor.dat", "init_1_pop_cor.dat", "init_2_pop_cor.dat"], UDEmodel="transferLinear"):
-    # Modify quandary options for data generation & training (Use Lindblad's eqn)
-    initialcondition =  "diagonal"  # "pure, 0" "diagonal" "basis" # Initial condition at t=0: Groundstate
-    T1 = [100.0] # Decoherence times [us]
-    T2 = [40.0]
+def learnTransferFunction(quandary, pcof_opt, *, quandary_exec="", maxcores=1, datadir="./Data", data_filenames=["pop0.dat", "pop1.dat", "pop2.dat"], UDEmodel="transferLinear", UDErundir = "run_dir_UDE"):
+
     output_frequency = 1  # write every x-th timestep
-    dirprefix = "population_training_" + initialcondition # add a prefix for run directories
+
+    # NOTE: Initial condition at t=0: Groundstate
+
+    # Set training data identifier and all filenames (all initial conditions)
+    data_identifier = "Tant3Pop" # 3-level population data from "Tant"
+    trainingdata = [data_identifier + ", " + datadir]
+    for filename in data_filenames:
+    	trainingdata[0] +=  ", " + filename
     
     # Set the training time domain
     T_train = quandary.T # can be shorter than the full duration  
-    
-    # Set training data identifier and all filenames (all initial conditions)
-    data_identifier = "Tant3Pop" # 3-level population data from "Tant"
     
     # Switch between tikhonov regularization norms (L1 or L2 norm)
     tik0_onenorm = True 			#  Use L1 for sparsification property
     loss_scaling_factor = 1e3 # Factor to scale the loss objective function value
     
-    # Output directory for training
-    cwd = os.getcwd()
-    UDEdatadir = cwd + "/" + dirprefix+ "_UDE"
-    
-    trainingdata = [data_identifier + ", " + datadir]
-    for filename in data_filenames:
-    	trainingdata[0] +=  ", " + filename
-    
+
     # Set training optimization parameters
     quandary.gamma_tik0 = 1e-1 # 1e-9
     quandary.gamma_tik0_onenorm = tik0_onenorm
@@ -271,22 +265,38 @@ def learnTransferFunction(quandary, pcof_opt, *, quandary_exec="", maxcores=1, d
         learnparams_identity[3] = 1.0 
         learnparams_identity[4] = 1.0
     
-    print("\nStarting training for UDE model = ", UDEmodel, " initial_params: ", learnparams_identity, " result-directory = ", UDEdatadir, "...")
+    print("\nStarting training for UDE model = ", UDEmodel, " initial_params: ", learnparams_identity, " result-directory = ", UDErundir, "...")
     
     # Start training
     # NOTE: the optimized control vector 'pcof_opt' is saved from initial control optimization 
     # The result of the training end up in quandary.popt 
-    quandary.training(pcof0=pcof_opt, trainingdata=trainingdata, UDEmodel=UDEmodel, datadir=UDEdatadir, T_train=T_train, learn_params=learnparams_identity, maxcores=maxcores, quandary_exec=quandary_exec) 
+    quandary.training(pcof0=pcof_opt, trainingdata=trainingdata, UDEmodel=UDEmodel, datadir=UDErundir, T_train=T_train, learn_params=learnparams_identity, maxcores=maxcores, quandary_exec=quandary_exec) 
     
     # read training result from file, save in learnparams_opt
-    filename = UDEdatadir + "/params.dat"
+    filename = UDErundir + "/params.dat"
     learnparams_opt = np.loadtxt(filename)
     print("\n *** Training finished. Learned parameters: ", learnparams_opt, "\n")
     
     # Simulate forward with optimized paramters to write out the Training data evolutions and the learned evolution
-    fwd_dir = UDEdatadir+"/FWD_sim"
+    fwd_dir = UDErundir+"/FWD_sim"
     print("\n -> Eval loss of optimized UDE model. Results (populations) in dir: ", fwd_dir)
     # NOTE: the initial control vector is read from pcof0_filename, set above 
     time, pt, qt, cost, energy, pop = quandary.UDEsimulate(pcof0=pcof_opt, trainingdata=trainingdata, UDEmodel=UDEmodel, datadir=fwd_dir, T_train=quandary.T, learn_params=learnparams_opt, maxcores=maxcores, quandary_exec=quandary_exec)
 
     return learnparams_opt, time, pop
+
+#######################
+def getDiagHam(filename="HamFile.dat"):
+    HamDiag = np.zeros(4)
+    with open(filename, "r") as f:
+        next(f)  # Skips the 1st line (header)
+        next(f)  # Skips the 2nd line (header)
+        q = 0
+        for line in f:
+            # Process the remaining lines (data)
+            oneline = line.strip() # strips off leading and trailing white spaces
+            # print(f"oneline: {oneline}, type: {type(oneline)}")
+            words = oneline.split(' ')
+            HamDiag[q] = float(words[q]) # only get the diagonal elements
+            q=q+1
+    return HamDiag
