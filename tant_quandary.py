@@ -2,7 +2,7 @@ from quandary import *
 from OC_load_libraries import *
 
 ## Helper routine for simplified setup on Tant/QuDIT
-def setup_quandary_1d(f01=3.416634567, f12=3.2074712470, frot=3.416634567, Tduration=220.0, targetgate=np.eye(3), max_amp=5e-3, dt_knot=44.0):
+def setup_quandary_1d(f01=3.416634567, f12=3.2074712470, frot=3.416634567, Tduration=220.0, targetgate=np.eye(3), max_amp=5e-3, dt_knot=44.0, nsteps=-1):
     # NOTE: Tduration [ns] must be divisible by 4 [ns]
     
     Ne = [3]  # Number of essential energy levels
@@ -37,9 +37,10 @@ def setup_quandary_1d(f01=3.416634567, f12=3.2074712470, frot=3.416634567, Tdura
     dpdm_coeff = 10.0 # 0.1 # 10.0
     energy_coeff = 0.1 # 10.0
     control_enforce_BC = False
+    verbose = False
     # Prepare Quandary with the above options. This sets default options for all member variables and overwrites those that are passed through the constructor here. Use help(Quandary) to see all options.
 
-    quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, rotfreq=rotfreq, initctrl=init_amp, maxctrl=max_amp, targetgate=targetgate, T=Tduration, control_enforce_BC=control_enforce_BC, rand_seed=rand_seed, cw_prox_thres=0.5*abs(selfkerr[0]), spline_knot_spacing=dt_knot, gamma_leakage=leakage_coeff, gamma_tik0=tikhonov_coeff, gamma_dpdm=dpdm_coeff, gamma_energy=energy_coeff, tol_infidelity=tol_infidelity, verbose=True)
+    quandary = Quandary(Ne=Ne, Ng=Ng, freq01=freq01, selfkerr=selfkerr, rotfreq=rotfreq, initctrl=init_amp, maxctrl=max_amp, targetgate=targetgate, T=Tduration, control_enforce_BC=control_enforce_BC, rand_seed=rand_seed, cw_prox_thres=0.5*abs(selfkerr[0]), spline_knot_spacing=dt_knot, gamma_leakage=leakage_coeff, gamma_tik0=tikhonov_coeff, gamma_dpdm=dpdm_coeff, gamma_energy=energy_coeff, tol_infidelity=tol_infidelity, nsteps=nsteps, verbose=verbose)
     # Turn off verbosity after the carrier frequencies have been reported
     quandary.verbose = False
     return quandary
@@ -70,14 +71,16 @@ def invScaleQuandaryCtrlVec(nsplines, pcof, freq_weights):
     
     for cf in range(2): # assumes 2 carrier freqs, 1 oscillator
     	scale_fact = 1/freq_weights[cf]
-    	print("cf = ", cf, " scale_fact = ", scale_fact)
+    	#print("cf = ", cf, " scale_fact = ", scale_fact)
     	pcof_scaled[start:start+nparams] = [x * scale_fact for x in pcof[start:start+nparams]]
     	start += nparams
  
     return pcof_scaled
 
 ####################################
-def evalControlPulse(quandary, pcof_scaled, *, quandary_exec="", samplerate=64, MHz_scalefact = 1e3):
+def evalControlPulse(quandary, pcof, *, quandary_exec="", samplerate=64, MHz_scalefact = 1e3, freq_weights = [1.0, 1.0], ampFactor = 1.0):
+    # scale the control pulse with frequency weights
+    pcof_scaled = invScaleQuandaryCtrlVec(quandary.nsplines, pcof, freq_weights)
     # Evaluate the control pulses on a fine grid in time using a specific sampling rate
     t1, p1_list, q1_list = quandary.evalControls(pcof0=pcof_scaled, points_per_ns=samplerate, quandary_exec=quandary_exec) # , datadir=eval_datadir
     
@@ -88,11 +91,60 @@ def evalControlPulse(quandary, pcof_scaled, *, quandary_exec="", samplerate=64, 
     p1 = p1_list[0][0:-1]
     q1 = q1_list[0][0:-1]
 
-    # convert optimized pulse amplitudes to [MHz]    
-    pp = MHz_scalefact*np.array(p1, dtype=np.float64)
-    qq = MHz_scalefact*np.array(q1, dtype=np.float64)
+    # convert optimized pulse amplitudes to [MHz] and scale by ampFactor  
+    pp = ampFactor*MHz_scalefact*np.array(p1, dtype=np.float64)
+    qq = ampFactor*MHz_scalefact*np.array(q1, dtype=np.float64)
     
     return t1, pp, qq
+
+####################################
+def accumulateFreqWeights(freq_weights0=[1.0, 1.0], learnparams_opt=[1.0, 1.0]):
+    # accumulate the frequency weights from the initial guess
+    freq_weights1 = freq_weights0.copy()
+
+    # find the freq_weights in the learned parameters
+    offs = len(learnparams_opt)-2
+    #print(f"offset: {offs}")
+    learned_weights = learnparams_opt[offs:]
+
+    for q in range(2):
+        freq_weights1[q] = freq_weights1[q] * learned_weights[q]
+
+    print(f"Initial freq_weights0: {freq_weights0}")
+    print(f"Learned weights: {learned_weights}")
+    print(f"Updated freq_weights1: {freq_weights1}")
+    return freq_weights1
+
+####################################
+def loadPulseConfig(config, pp, qq, *, name='my_pulse', samplerate=64):
+    name_op = name + '_op'
+    gate_op = gate_op=[name_op, 'andrew01']
+
+    # NOTE: pulses will be downsampled to ONE point per ns for OPX
+    pulse_info = [pp, qq, samplerate] 
+
+    # no spectral filter
+    config=upload_pulse(config, 'andrew01', name, pulse_info, scale=None, spectral_filter = False)
+    # For the spectral filter approach
+    #config=upload_pulse(config, 'andrew01', name_short, pulse_info, scale=None, spectral_filter = True, sf_weight=1.6)
+    return gate_op
+
+
+######################################
+def runPopulationExperiments(user, config, gate_op, classifier, *, corrMat=np.eye(3), Nshots=1000):
+    p_avg = [] # list for raw population data
+    p_avg_c = [] # list for corrected population data
+
+    for initialState in range(3):
+        print(f"Starting from initial state: {initialState}")
+        path = time_evolution(config, user, gate_op=gate_op, starting=initialState, Nshots=Nshots, tstep=4)
+        # clear_output(wait=True)
+        tsteps, avg, avg_c = extract_pop_data(path, clf=classifier, correction=corrMat)
+        p_avg.append(avg)
+        p_avg_c.append(avg_c)
+
+    pop_cap = cap01_populations(p_avg_c) # cap the corrected populations to [0,1]
+    return tsteps, p_avg, pop_cap
 
 ####################################
 def extract_pop_data(new_path, clf=None, correction=[[1,0,0],[0,1,0],[0,0,1]]):
@@ -134,6 +186,27 @@ def extract_pop_data(new_path, clf=None, correction=[[1,0,0],[0,1,0],[0,0,1]]):
         return tsteps, p_avg, p_avg_c
     except:
         return tsteps, p_avg
+
+####################################
+def cap01_populations(pop):
+    pop_cap = copy.copy(pop)
+    Ninit = len(pop)
+    for iInit in range(Ninit):
+        shape = pop[iInit].shape
+        #print(f"iInit = {iInit}, shape of pop[iInit]: {shape}")
+        pop_cap[iInit] = np.copy(pop[iInit])
+
+        Ndata = shape[0]
+        Nstate = shape[1]
+        #print(f"Ndata = {Ndata}, Nstate = {Nstate}")
+        for iData in range(Ndata):
+            for iState in range(Nstate):
+                if pop[iInit][iData, iState] < 0.0:
+                    pop_cap[iInit][iData, iState] = 0.0
+                elif pop[iInit][iData, iState] > 1.0:
+                    pop_cap[iInit][iData, iState] = 1.0
+    return pop_cap
+
 
 ####################################
 def my_plot_time_evolution(tsteps, p_avg, p_avg_c, time, population, iinit, *, figfile=""):
@@ -219,7 +292,26 @@ def my_plot_time_evolution(tsteps, p_avg, p_avg_c, time, population, iinit, *, f
     plt.show()
     return [l2diff, l2diff_c]
 
-    ##############################################
+########################################
+def savePopulationData(pop_cap, *, iExp=0, c_name="pop_cap"):
+    # Make sure we are in the home directory
+    home_directory = os.path.expanduser("~")
+    os.chdir(home_directory)
+    cwd = os.getcwd()
+    # save population data on file for running quandary in learning mode
+    datadir = cwd + "/Data" # Data directory for saving experimental populations
+    print(f"Data directory: {datadir}")
+
+    data_filenames = [] # list for storing the file names
+    for initialState in range(3):
+        fname = "exp_" + str(iExp) + "_init_" + str(initialState) + "_" + c_name + ".dat"
+        data_filenames.append(fname)
+        file_path = datadir + "/" + fname
+        np.savetxt(file_path, pop_cap[initialState], fmt='%.18e', delimiter=' ')
+        print(f"Saved population data on file: {file_path}")
+    return datadir, data_filenames
+
+##############################################
 def learnTransferFunction(quandary, pcof_opt, *, quandary_exec="", maxcores=1, datadir="./Data", data_filenames=["pop0.dat", "pop1.dat", "pop2.dat"], UDEmodel="transferLinear", UDErundir = "run_dir_UDE"):
 
     output_frequency = 1  # write every x-th timestep
@@ -236,22 +328,22 @@ def learnTransferFunction(quandary, pcof_opt, *, quandary_exec="", maxcores=1, d
     T_train = quandary.T # can be shorter than the full duration  
     
     # Switch between tikhonov regularization norms (L1 or L2 norm)
-    tik0_onenorm = True 			#  Use L1 for sparsification property
-    loss_scaling_factor = 1e3 # Factor to scale the loss objective function value
+    tik0_onenorm = False # True 			#  Use L1 for sparsification property
+    loss_scaling_factor = 1e1 # Factor to scale the loss objective function value
     
 
     # Set training optimization parameters
-    quandary.gamma_tik0 = 1e-1 # 1e-9
+    quandary.gamma_tik0 = 1e-3 # 1e-9
     quandary.gamma_tik0_onenorm = tik0_onenorm
     quandary.loss_scaling_factor = loss_scaling_factor
-    quandary.tol_grad_abs = 1e-7
-    quandary.tol_grad_rel = 1e-7
-    quandary.tol_costfunc = 1e-8
-    quandary.tol_infidelity = 1e-7
+    quandary.tol_grad_abs = 1e-5 # Do these tolerance need to be this small
+    quandary.tol_grad_rel = 1e-5
+    quandary.tol_costfunc = 1e-5
+    quandary.tol_infidelity = 1e-4
     quandary.gamma_leakage = 0.0
     quandary.gamma_energy = 0.0
     quandary.gamma_dpdm = 0.0
-    quandary.maxiter = 50 # 500
+    quandary.maxiter = 15 # 500
     
     if UDEmodel == "transferLinear":
         learnparams_identity = np.zeros(2) 
@@ -300,3 +392,56 @@ def getDiagHam(filename="HamFile.dat"):
             HamDiag[q] = float(words[q]) # only get the diagonal elements
             q=q+1
     return HamDiag
+
+import h5py
+from scipy.optimize import curve_fit
+##############################
+# this function in the library isn't working properly. Use this one instead.
+def analyze_amp_calib(path, if_q = False, find_min=True):
+    with h5py.File(path, 'r') as f:
+        I = f['OPX_data/output_arrays/I/value'][:]
+        Q = f['OPX_data/output_arrays/Q/value'][:]
+    
+        shots = f['OPX_data/ind_arrays/array_0'][:]
+        amps = f['OPX_data/ind_arrays/array_1'][:]
+    
+        mag = np.sqrt(I**2+Q**2).reshape(len(shots),-1).mean(axis=0)
+    
+        I_rs = I.reshape(len(shots),-1).mean(axis=0)
+        Q_rs = Q.reshape(len(shots),-1).mean(axis=0)
+        fig, ax = plt.subplots(1, 2, figsize=(10,5))
+        fig.subplots_adjust(hspace=0.3)
+
+        ax[0].plot(amps, I_rs, label="I")
+        ax[0].plot(amps, Q_rs, label="Q")
+    
+        def sine(x, f, a, b,c):
+            return a*np.sin(f*x+b)+c            
+
+        try:
+            if if_q:
+                p0=[8, 0.02, 0.1, 0]
+                popt, pcov = curve_fit(sine, amps, Q_rs, p0=p0)
+            else:
+                p0=[8, -0.02, -0.1, 0]
+                popt, pcov = curve_fit(sine, amps, I_rs, p0=p0)
+        except:
+            popt = p0
+            print("Warning: NO convergence in curve_fit")
+        ax[0].plot(amps, sine(amps, *p0), label="Init")
+        ax[0].plot(amps, sine(amps, *popt), "--", label="Fitted")
+        amps_fine = np.linspace(amps.min(), amps.max(), 1000)
+        fit_fine = sine(amps_fine, *popt)
+        if find_min:
+            amp_opt = amps_fine[fit_fine.argmin()]
+        else:
+            amp_opt = amps_fine[fit_fine.argmax()]
+        print(f"Optimal amplitude = {amp_opt:.4f}")
+        ax[0].scatter(amp_opt, sine(amp_opt, *popt), c='blue', label="Opt")
+        ax[0].set_title(f"Optimal amplitude = {amp_opt:.4f}")
+        ax[0].legend()
+
+        ax[1].hist2d(I,Q, bins=160)
+        ax[1].set_xlabel("In-phase")
+        ax[1].set_ylabel("Quadrature")
+        ax[1].set_title("IQ blob")
