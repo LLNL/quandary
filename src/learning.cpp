@@ -342,7 +342,7 @@ void Learning::addToLoss(double time, Vec x, int ipulse_global, int iinit_global
           norm2 += SQR(pop[q] - xdata_ptr[q]);
         }
         current_err = norm2;
-        loss_integral += loss_scaling_factor*0.5*norm2 / (data->getNTime()-1);
+        loss_integral += loss_scaling_factor*0.5*norm2 / (data->getNTime()-1);// add weight function?
         VecRestoreArrayRead(xdata, &xdata_ptr);
 
         // std::cout << "loss_integral: " << loss_integral << std::endl;
@@ -383,7 +383,7 @@ void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int ipulse_glo
 
         std::vector<double> pop;
         oscil_vec[ioscil]->population(xprimal, pop);
-        double n2_bar = Jbar_loss * loss_scaling_factor / (data->getNTime()-1);
+        double n2_bar = Jbar_loss * loss_scaling_factor / (data->getNTime()-1);// scale by weight fcn
 
         for (int q=0; q < data->getDim_hs(); q++){
           pop_bar[q] = n2_bar * (pop[q] - xdata_p[q]);
