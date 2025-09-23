@@ -255,12 +255,18 @@ class Quandary:
             self._ninit = self._ninit**2
         
         # Estimate the number of required time steps
-        if self.dT < 0:
+        # if self.dT < 0:
+        #     self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl=self.maxctrl, Pmin=self.Pmin)
+        #     self.dT = self.T/self.nsteps
+        # else:
+        #     self.nsteps = int(np.ceil(self.T / self.dT))
+        #     self.T = self.nsteps*self.dT
+        if self.nsteps < 0:
+            # Estimate the number of required time steps
             self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl=self.maxctrl, Pmin=self.Pmin)
             self.dT = self.T/self.nsteps
         else:
-            self.nsteps = int(np.ceil(self.T / self.dT))
-            self.T = self.nsteps*self.dT
+            self.dT = self.T/self.nsteps
         if self.verbose:
             print("Final time: ",self.T,", Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps)
             print("Maximum control amplitudes: ", self.maxctrl)
