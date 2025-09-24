@@ -31,7 +31,7 @@ class Gate {
     PetscInt dim_rho; ///< Dimension of system matrix rho (non-vectorized), all levels, N.
 
     double final_time; ///< Final time T. Time of gate rotation.
-    std::vector<double> gate_rot_freq; ///< Frequencies of gate rotation (rad/time). Default: same as the rotational frequencies.
+    std::vector<double> gate_rot_freq; ///< Frequencies of gate rotation (rad/time). Default: 0.0.
 
     LindbladType lindbladtype; ///< Type of Lindblad operators for open system dynamics.
 
