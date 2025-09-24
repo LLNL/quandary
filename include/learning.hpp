@@ -41,13 +41,14 @@ class Learning {
   int noscillators; ///< Number of subsystems (oscillators)
 
   double loss_scaling_factor; /* Scaling the loss function value by this umber. Default=1.0 */
+  double loss_weight_param; ///< Gaussian variance parameter for weighting the contribution of current losses over time. Choosing a small value centers the loss function contributions around the final time. Default: constant 1.0 for all times. */
 
   public: 
     double current_err;
     Data* data;       /* Stores the data */
 
   public: 
-    Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str,  std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data, std::mt19937 rand_engine, bool quietmode, double loss_scaling_factor, Oscillator** oscil_vec_);
+    Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str,  std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data, std::mt19937 rand_engine, bool quietmode, double loss_scaling_factor, double loss_weight_param_, Oscillator** oscil_vec_);
     ~Learning();
 
     void resetLoss(){ loss_integral = 0.0; };

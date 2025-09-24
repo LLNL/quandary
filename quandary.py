@@ -88,6 +88,7 @@ class Quandary:
 
     # Training options
     loss_scaling_factor  # Scales the loss objective function. Default 1.0
+    loss_weight_param    # Gaussian variance for weighting the loss contributions over time. Default: 0.0 (disabled). Choose a small value to focus the loss onto the final time point. 
 
     Internal variables. 
     -------------------
@@ -170,6 +171,7 @@ class Quandary:
     output_frequency       : int  = 1
     # Training options
     loss_scaling_factor    : float = 1.0
+    loss_weight_param      : float = 0.0
     # Internal configuration. Should not be changed by user.
     _ninit                : int         = -1
     _lindblad_solver      : bool        = False
@@ -759,6 +761,7 @@ class Quandary:
         if T_train <= self.T:
             mystring += "data_tstop = " + str(T_train) + "\n"
         mystring += "loss_scaling_factor = " + str(self.loss_scaling_factor) + "\n"
+        mystring += "loss_weight_param = " + str(self.loss_weight_param) + "\n"
         # End training
 
         if self.initialcondition[0:4] == "file":

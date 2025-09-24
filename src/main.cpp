@@ -306,14 +306,15 @@ int main(int argc,char **argv)
     std::vector<std::string> learninit_str;
     config.GetVecStrParam("learnparams_initialization", learninit_str, "random, 0.0");
     double loss_scaling_factor = config.GetDoubleParam("loss_scaling_factor", 1.0, false);
-    learning = new Learning(nlevels, lindbladtype, UDEmodel_str, ncarrierwaves, learninit_str, data, rand_engine, quietmode, loss_scaling_factor, oscil_vec);
+    double loss_weight_param = config.GetDoubleParam("loss_weight_param", 0.0, false);
+    learning = new Learning(nlevels, lindbladtype, UDEmodel_str, ncarrierwaves, learninit_str, data, rand_engine, quietmode, loss_scaling_factor, loss_weight_param, oscil_vec);
 
   } else {
     /* Create dummy learning. Does nothing. */
     Data* data = new Data();
     std::vector<std::string> dummy_learninit_str;
     std::vector<int> dummy_intvec(0);
-    learning = new Learning(dummy_intvec, LindbladType::NONE, UDEmodel_str, dummy_intvec, dummy_learninit_str, data, rand_engine, quietmode, 1.0, oscil_vec); 
+    learning = new Learning(dummy_intvec, LindbladType::NONE, UDEmodel_str, dummy_intvec, dummy_learninit_str, data, rand_engine, quietmode, 1.0, 0.0, oscil_vec); 
   }
 
   /* Set total time */

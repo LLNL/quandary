@@ -1,13 +1,14 @@
 #include "learning.hpp"
 #include "oscillator.hpp"
 
-Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str, std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data_, std::mt19937 rand_engine, bool quietmode_, double loss_scaling_factor_, Oscillator** oscil_vec_){
+Learning::Learning(std::vector<int>& nlevels, LindbladType lindbladtype_, std::vector<std::string>& UDEmodel_str, std::vector<int>& ncarrierwaves, std::vector<std::string>& learninit_str, Data* data_, std::mt19937 rand_engine, bool quietmode_, double loss_scaling_factor_, double loss_weight_param_, Oscillator** oscil_vec_){
   lindbladtype = lindbladtype_;
   quietmode = quietmode_;
   data = data_;
   hamiltonian_model = NULL;
   lindblad_model = NULL;
   loss_scaling_factor=loss_scaling_factor_;
+  loss_weight_param =loss_weight_param_;
   oscil_vec = oscil_vec_;
   noscillators = nlevels.size();
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -302,6 +303,7 @@ void Learning::addToLoss(double time, Vec x, int ipulse_global, int iinit_global
   Vec xdata = data->getData(time, ipulse_global, iinit_global);
 
   // Variable 'xdata' holds the data at t=time
+  double currentloss = 0.0;
   if (xdata != NULL) {
 
     if (data->isDensityData()) { // data consists of the density matrix (or state vector)
@@ -312,7 +314,7 @@ void Learning::addToLoss(double time, Vec x, int ipulse_global, int iinit_global
       double norm; 
       VecNorm(aux2, NORM_2, &norm);
       current_err = norm;
-      loss_integral += loss_scaling_factor*0.5*norm*norm / (data->getNTime()-1);
+      currentloss = 0.5*norm*norm;
 
     } else { // data consists of population values 
 
@@ -322,15 +324,6 @@ void Learning::addToLoss(double time, Vec x, int ipulse_global, int iinit_global
         // Get population from the state variables
         std::vector<double> pop;
         oscil_vec[ioscil]->population(x, pop);
-        // std::cout << "In addToLoss: pop:" << std::endl;
-        // for (int q=0; q<pop.size(); q++)
-        //   std::cout << pop[q] << std::endl;
-
-        // tmp
-        // std::cout << "x_pop:" << std::endl;
-        // VecView(x_pop,NULL);
-        // std::cout << "xdata:" << std::endl;
-        // VecView(xdata,NULL);
 
         // Get pointer to xdata
         const double* xdata_ptr;
@@ -342,13 +335,17 @@ void Learning::addToLoss(double time, Vec x, int ipulse_global, int iinit_global
           norm2 += SQR(pop[q] - xdata_ptr[q]);
         }
         current_err = norm2;
-        loss_integral += loss_scaling_factor*0.5*norm2 / (data->getNTime()-1);// add weight function?
+        currentloss = 0.5*norm2;
         VecRestoreArrayRead(xdata, &xdata_ptr);
-
-        // std::cout << "loss_integral: " << loss_integral << std::endl;
-        // exit(-1);
       }
     }
+
+    // Add to running integral of loss function, multiplied by gaussian weight
+    double weight = 1.0; // Default weight = 1, otherwise gaussian envelop
+    if (loss_weight_param > 1e-13) { 
+      weight = exp(- pow((time - data->getTStop())/loss_weight_param, 2));
+    }
+    loss_integral += weight * loss_scaling_factor * currentloss / (data->getNTime()-1);
   }
 }
 
@@ -358,19 +355,19 @@ void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int ipulse_glo
 
   Vec xdata = data->getData(time, ipulse_global, iinit_global);
   if (xdata != NULL) {
-    if (data->isDensityData()) {
-      // get the population from the density matrix in 'x'
-      // printf("loss_DIFF at time %1.8f \n", time);
-      // VecView(xprimal,NULL);
-      // NOTE: VecAXPY. Computes y = alpha x + y. Usage: VecAXPY(Vec y,PetscScalar alpha,Vec x) 
-      VecAXPY(xbar, Jbar_loss  * loss_scaling_factor / (data->getNTime()-1), xprimal);
-      VecAXPY(xbar, -Jbar_loss * loss_scaling_factor / (data->getNTime()-1), xdata);
+
+    // Add derivative of running integral of loss function, multiplied by gaussian weight
+    double weight = 1.0;
+    if (loss_weight_param> 1e-13) {
+      weight = exp(- pow((time - data->getTStop())/loss_weight_param, 2));
     }
-    else{
-      // tmp
-      // std::cout << "In addToLoss_diff, NOT densityData" << std::endl;
-      // std::cout << "xbar on entry:" << std::endl;
-      // VecView(xbar,NULL);
+    Jbar_loss = Jbar_loss * weight * loss_scaling_factor / (data->getNTime()-1);
+    
+    if (data->isDensityData()) {
+      // NOTE: VecAXPY. Computes y = alpha x + y. Usage: VecAXPY(Vec y,PetscScalar alpha,Vec x) 
+      VecAXPY(xbar,  Jbar_loss, xprimal);
+      VecAXPY(xbar, -Jbar_loss, xdata);
+    } else {
       for(int ioscil=0; ioscil<noscillators; ioscil++){
 
         std::vector<double> pop_bar;
@@ -383,7 +380,7 @@ void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int ipulse_glo
 
         std::vector<double> pop;
         oscil_vec[ioscil]->population(xprimal, pop);
-        double n2_bar = Jbar_loss * loss_scaling_factor / (data->getNTime()-1);// scale by weight fcn
+        double n2_bar = Jbar_loss;// scale by weight fcn
 
         for (int q=0; q < data->getDim_hs(); q++){
           pop_bar[q] = n2_bar * (pop[q] - xdata_p[q]);
