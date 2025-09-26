@@ -202,15 +202,15 @@ OptimTarget::OptimTarget(std::vector<std::string> target_str, const std::string&
   if ( target_str[0].compare("gate") ==0 ) {
     target_type = TargetType::GATE;
 
-    /* Get gate rotation frequencies. Default: use rotational frequencies for the gate. */
+    /* Get gate rotation frequencies. */
     int noscillators = mastereq->nlevels.size();
     copyLast(read_gate_rot, noscillators);
     std::vector<double> gate_rot_freq(noscillators); 
     for (int iosc=0; iosc<noscillators; iosc++) {
-      if (read_gate_rot[0] < 1e20) // the config option exists, use it, else use mastereq rotationnal frequency as default
+      if (read_gate_rot[0] < 1e20) // the config option exists, use it, else use default 0.0 
         gate_rot_freq[iosc] = read_gate_rot[iosc];
       else
-        gate_rot_freq[iosc] = mastereq->getOscillator(iosc)->getRotFreq();
+        gate_rot_freq[iosc] = 0.0;
     }
     /* Initialize the targetgate */
     targetgate = initTargetGate(target_str, mastereq->nlevels, mastereq->nessential, total_time, lindbladtype, gate_rot_freq, quietmode);
