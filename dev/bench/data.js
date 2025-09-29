@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1758138178656,
+  "lastUpdate": 1759176687786,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1407,6 +1407,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4264.09,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Adrien Bernede",
+            "username": "adrienbernede",
+            "email": "51493078+adrienbernede@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "25e2190008fb8f9b320bfe27c661b488ac43bbd4",
+          "message": "Merge pull request #81 from LLNL/woptim/shared-ci-perf-pipeline\n\nSimplify performance pipeline configuration with shared CI integration",
+          "timestamp": "2025-09-29T19:14:29Z",
+          "url": "https://github.com/LLNL/quandary/commit/25e2190008fb8f9b320bfe27c661b488ac43bbd4"
+        },
+        "date": 1759176680127,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7538893385208212,
+            "range": "0.3635644026886531",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 87.85,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 5.317284491960891,
+            "range": "0.039232271520184527",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4264.38,
             "unit": "MB"
           }
         ]
