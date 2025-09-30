@@ -76,7 +76,7 @@ jobs:
         run: exit 1
 
   store-and-visualize-on-main:
-    # if: github.ref == 'refs/heads/main' # TODO uncomment before merging
+    if: github.ref == 'refs/heads/main'
     permissions:
       # Needed to push to gh-pages branch
       contents: write
