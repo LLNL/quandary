@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1759253800767,
+  "lastUpdate": 1759272827817,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1495,6 +1495,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4264.56,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "8244f6b7c182c6000aa976ae2ea2c9c65894a313",
+          "message": "Merge pull request #88 from LLNL/remove-lassen\n\nRemove lassen from CI",
+          "timestamp": "2025-09-30T21:47:48Z",
+          "url": "https://github.com/LLNL/quandary/commit/8244f6b7c182c6000aa976ae2ea2c9c65894a313"
+        },
+        "date": 1759272826847,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7593362145125866,
+            "range": "0.5510583224111993",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 87.75,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 5.339113406953402,
+            "range": "0.12514363809277465",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4266.16,
             "unit": "MB"
           }
         ]
