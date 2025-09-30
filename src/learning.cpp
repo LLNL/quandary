@@ -343,7 +343,7 @@ void Learning::addToLoss(double time, Vec x, int ipulse_global, int iinit_global
     // Add to running integral of loss function, multiplied by gaussian weight
     double weight = 1.0; // Default weight = 1, otherwise gaussian envelop
     if (loss_weight_param > 1e-13) { 
-      weight = exp(- pow((time - data->getTStop())/loss_weight_param, 2));
+      weight = 1.0/loss_weight_param * exp(- pow((time - data->getTStop())/loss_weight_param, 2));
     }
     loss_integral += weight * loss_scaling_factor * currentloss / (data->getNTime()-1);
   }
@@ -359,7 +359,7 @@ void Learning::addToLoss_diff(double time, Vec xbar, Vec xprimal, int ipulse_glo
     // Add derivative of running integral of loss function, multiplied by gaussian weight
     double weight = 1.0;
     if (loss_weight_param> 1e-13) {
-      weight = exp(- pow((time - data->getTStop())/loss_weight_param, 2));
+      weight = 1.0/loss_weight_param * exp(- pow((time - data->getTStop())/loss_weight_param, 2));
     }
     Jbar_loss = Jbar_loss * weight * loss_scaling_factor / (data->getNTime()-1);
     
