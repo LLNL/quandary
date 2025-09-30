@@ -18,8 +18,7 @@ jobs:
       # Needed to write PR check status
       checks: write
       # Need write for commit comments
-      pull-requests: write
-      contents: read
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
