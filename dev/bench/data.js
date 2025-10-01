@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1759272827817,
+  "lastUpdate": 1759337356092,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1629,6 +1629,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4265.26,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "393977a2f457bb903d4c1cf0b6c93022658f0152",
+          "message": "Merge pull request #87 from LLNL/update-workflow-permissions\n\nImprove GitHub benchmark workflow",
+          "timestamp": "2025-10-01T16:07:50Z",
+          "url": "https://github.com/LLNL/quandary/commit/393977a2f457bb903d4c1cf0b6c93022658f0152"
+        },
+        "date": 1759337354859,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7559087954869028,
+            "range": "0.24193577144897724",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 87.86,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 5.36586445197463,
+            "range": "0.08782534064024171",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4267.53,
             "unit": "MB"
           }
         ]
