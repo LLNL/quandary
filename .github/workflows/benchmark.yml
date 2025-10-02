@@ -91,7 +91,6 @@ jobs:
         id: benchmark
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: ${{ github.event.inputs.benchmark_name }}
           tool: 'customSmallerIsBetter'
           output-file-path: benchmark.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
