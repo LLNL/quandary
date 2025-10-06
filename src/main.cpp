@@ -84,11 +84,11 @@ int main(int argc,char **argv)
   export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
 
   /* --- Get some options from the config file --- */
-  const std::vector<int> nlevels = config.getNLevels();
+  const std::vector<size_t> nlevels = config.getNLevels();
   int ntime = config.getNTime();
   double dt = config.getDt();
   RunType runtype = config.getRuntype();
-  std::vector<int> nessential = config.getNEssential();
+  std::vector<size_t> nessential = config.getNEssential();
 
   /* Get type and the total number of initial conditions */
   int ninit = config.getNInitialConditions();
