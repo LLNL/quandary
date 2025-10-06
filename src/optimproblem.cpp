@@ -106,17 +106,14 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   timestepper->optim_target = optim_target;
 
   /* Store optimization bounds */
+  std::vector<std::vector<double>> boundvals = config.getControlBounds();
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
   int col = 0;
   for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    std::vector<std::string> bound_str;
-    config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "10000.0");
     for (size_t iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
-      double boundval = 0.0;
-      if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
-      else boundval = atof(bound_str[iseg].c_str());
+      double boundval = config.getControlBounds(iosc, iseg);
       // Scale bounds by the number of carrier waves, and convert to radians */
       boundval = boundval / (sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies());
       boundval = boundval * 2.0*M_PI;
@@ -141,11 +138,11 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
 
   /* Store the initial guess if read from file */
   std::vector<std::string> controlinit_str;
-  config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0");
-  if ( controlinit_str.size() > 0 && controlinit_str[0].compare("file") == 0 ) {
+  auto control_initialization_file = config.getControlInitializationFile();
+  if (control_initialization_file.has_value()) {
     assert(controlinit_str.size() >=2);
     for (int i=0; i<ndesign; i++) initguess_fromfile.push_back(0.0);
-    if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), ndesign, quietmode);
+    if (mpirank_world == 0) read_vector(control_initialization_file.value().c_str(), initguess_fromfile.data(), ndesign, quietmode);
     MPI_Bcast(initguess_fromfile.data(), ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   }
  

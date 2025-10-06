@@ -46,8 +46,8 @@ Config::Config(MPI_Comm comm_, std::stringstream& logstream, bool quietmode_)
   registerVectorOfVectors("control_segments", control_segments, nlevels.size(), default_seg_str);
   registerScalar("control_enforceBC", control_enforceBC);
   const std::string default_init_str = "constant, 0.0";
-  // registerVectorOfVectors("control_initialization", control_initialization, nlevels.size(), default_init_str); // TODO check default
-  // registerVectorOfVectors("control_bounds", control_bounds, nlevels.size(), std::vector<double>(nlevels.size(), 1e20));
+  registerVectorOfVectors("control_initialization", control_initialization, nlevels.size(), default_init_str); // TODO check default
+  registerVectorOfVectors("control_bounds", control_bounds, nlevels.size(), 10000.0); // TODO default should be last value if shorter
 
   setters["optim_target"] = [this](const std::string& val) { setOptimTarget(val); };
   registerAndFillVector("gate_rot_freq", gate_rot_freq, nlevels.size(), std::vector<double>(nlevels.size(), 0.0));
@@ -317,6 +317,10 @@ void Config::setOptimTarget(const std::string& value) {
       }
     }
   }
+}
+
+void Config::setControlInitialization() {
+
 }
 
 namespace {

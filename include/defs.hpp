@@ -160,6 +160,21 @@ const std::map<std::string, ControlType> CONTROL_TYPE_MAP = {
 };
 
 /**
+ * @brief Types of control initializations
+ */
+enum class ControlInitializationType {
+  CONSTANT, ///< Constant
+  RANDOM,   ///< Random 
+  FILE,     ///< Read from file
+};
+
+const std::map<std::string, ControlInitializationType> CONTROL_INITIALIZATION_TYPE_MAP = {
+    {"constant", ControlInitializationType::CONSTANT},
+    {"random", ControlInitializationType::RANDOM},
+    {"file", ControlInitializationType::FILE},
+};
+
+/**
  * @brief Types of time-stepping methods for evolving quantum states.
  *
  * Defines the numerical methods used to evolve quantum states in time.

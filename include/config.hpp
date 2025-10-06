@@ -7,6 +7,7 @@
 #include <petsc.h>
 #include <sstream>
 #include <set>
+#include <optional>
 
 #pragma once
 
@@ -35,6 +36,12 @@ struct ControlSegment {
   double tstop; ///< Stop time of the control segment
 };
 
+struct ControlPulse {
+  double amplitude;
+  double phase;
+};
+
+// TODO variant?
 /**
  * @brief Structure for defining control segments.
  *
@@ -42,9 +49,9 @@ struct ControlSegment {
  * with corresponding starting and finish times.
  */
 struct ControlInitialization {
-  ControlType type; ///< Type of control segment (e.g., "spline", "step")
-  double amplitude; ///< Initial amplitude for the control segment
-  double phase; ///< Initial phase for the control segment
+  ControlInitializationType type; ///< Type of control initialization
+  std::string filename;
+  std::vector<std::vector<ControlPulse>> control_pulse; ///< Initial control pulse amplitudeand phase, one for each segment
 };
 
 /**
@@ -88,7 +95,8 @@ class Config {
     // Optimization options
     std::vector<std::vector<std::string>> control_segments;  ///< Define the control segments for each oscillator
     bool control_enforceBC = false;  ///< Decide whether control pulses should start and end at zero
-    std::vector<std::vector<std::string>> control_initialization;  ///< Set the initial control pulse parameters for each oscillator
+    std::vector<ControlInitialization> control_initialization;  ///< Set the initial control pulse parameters for each oscillator
+    std::optional<std::string> control_initialization_file;  ///< File to read the control initializations from (optional)
     std::vector<std::vector<double>> control_bounds;  ///< Maximum amplitude bound for the control pulses for each oscillator segment (GHz)
     std::vector<std::vector<double>> carrier_frequencies;  ///< Carrier wave frequencies for each oscillator (GHz)
     // TODO struct or something?
@@ -163,9 +171,12 @@ class Config {
     const std::vector<std::vector<std::string>>& getControlSegments() const { return control_segments; }
     const std::vector<std::string>& getControlSegment(size_t i) const { return control_segments[i]; }
     bool getControlEnforceBC() const { return control_enforceBC; }
-    const std::vector<std::vector<std::string>>& getControlInitialization() const { return control_initialization; }
-    const std::vector<std::string>& getControlInitialization(size_t i) const { return control_initialization[i]; }
+    const std::vector<ControlInitialization>& getControlInitialization() const { return control_initialization; }
+    const ControlInitialization& getControlInitialization(size_t i) const { return control_initialization[i]; }
+    const std::optional<std::string>& getControlInitializationFile() const { return control_initialization_file; }
     const std::vector<std::vector<double>>& getControlBounds() const { return control_bounds; }
+    const std::vector<double>& getControlBounds(size_t i_osc) const { return control_bounds[i_osc]; }
+    double getControlBounds(size_t i_osc, size_t i_seg) const { return control_bounds[i_osc][i_seg]; }
     const std::vector<std::vector<double>>& getCarrierFrequencies() const { return carrier_frequencies; }
     const std::vector<double>& getCarrierFrequency(size_t i) const { return carrier_frequencies[i]; }
     TargetType getOptimTargetType() const { return optim_target_type; }
