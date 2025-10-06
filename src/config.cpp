@@ -78,8 +78,6 @@ Config::Config(MPI_Comm comm_, std::stringstream& logstream, bool quietmode_)
   setters["rand_seed"] = [this](const std::string& val) { setRandSeed(std::stoi(val)); };
   registerScalar("hamiltonian_file_Hsys", hamiltonian_file_Hsys);
   registerScalar("hamiltonian_file_Hc", hamiltonian_file_Hc);
-
-  validate();
 }
 
 Config::~Config(){}
@@ -350,6 +348,7 @@ std::vector<std::string> Config::split(const std::string& str, char delimiter) {
 Config Config::createFromFile(const std::string& filename, MPI_Comm comm, std::stringstream& logstream, bool quietmode) {
   Config config = Config(comm, logstream, quietmode);
   config.loadFromFile(filename);
+  config.validate();
   return config;
 }
 

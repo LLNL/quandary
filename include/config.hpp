@@ -1,5 +1,4 @@
 #include "defs.hpp"
-#include "gate.hpp"
 #include "util.hpp"
 
 #include <cstddef>
@@ -130,6 +129,7 @@ class Config {
     std::string hamiltonian_file_Hc;  ///< File to read the control Hamiltonian from
 
   public:
+    // TODO builder pattern instead of setters and public empty constructor??
     // Constructors
     Config();
     Config(MPI_Comm comm_, std::stringstream& logstream, bool quietmode=false);
