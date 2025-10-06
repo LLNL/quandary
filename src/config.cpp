@@ -50,7 +50,7 @@ Config::Config(MPI_Comm comm_, std::stringstream& logstream, bool quietmode_)
   // registerVectorOfVectors("control_bounds", control_bounds, nlevels.size(), std::vector<double>(nlevels.size(), 1e20));
 
   setters["optim_target"] = [this](const std::string& val) { setOptimTarget(val); };
-  registerAndFillVector("gate_rot_freq", gate_rot_freq, nlevels.size(), rotfreq);
+  registerAndFillVector("gate_rot_freq", gate_rot_freq, nlevels.size(), std::vector<double>(nlevels.size(), 0.0));
   registerScalar("optim_objective", optim_objective);
   registerAndFillVector("optim_weights", optim_weights, n_initial_conditions, std::vector<double>(n_initial_conditions, 1.0));
   registerScalar("optim_atol", optim_atol);
