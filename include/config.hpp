@@ -43,15 +43,14 @@ struct ControlPulse {
 
 // TODO variant?
 /**
- * @brief Structure for defining control segments.
+ * @brief Structure for defining control segments for a single oscillator
  *
  * Defines a controllable segment for an oscillator and the type of parameterization,
  * with corresponding starting and finish times.
  */
 struct ControlInitialization {
   ControlInitializationType type; ///< Type of control initialization
-  std::string filename;
-  std::vector<std::vector<ControlPulse>> control_pulse; ///< Initial control pulse amplitudeand phase, one for each segment
+  std::vector<ControlPulse> control_pulse; ///< Initial control pulse amplitudeand phase, one for each segment
 };
 
 /**
@@ -235,7 +234,7 @@ class Config {
 
     void setControlSegments(const std::vector<std::vector<std::string>>& value) { control_segments = value; }
     void setControlEnforceBC(bool value) { control_enforceBC = value; }
-    void setControlInitialization(const std::vector<std::vector<std::string>>& value) { control_initialization = value; }
+    void setControlInitialization(const std::vector<ControlInitialization>& value) { control_initialization = value; }
     void setControlBounds(const std::vector<std::vector<double>>& value) { control_bounds = value; }
     void setCarrierFrequencies(const std::vector<std::vector<double>>& value) { carrier_frequencies = value; }
     void setOptimTargetType(TargetType value) { optim_target_type = value; }

@@ -8,7 +8,7 @@ Oscillator::Oscillator(){
   control_enforceBC = true;
 }
 
-Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine){
+Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlevels_all_, std::vector<std::string>& controlsegments, const ControlInitialization& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine){
 
   myid = id;
   nlevels = nlevels_all_[id];

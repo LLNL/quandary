@@ -166,10 +166,10 @@ int main(int argc,char **argv)
   for (size_t i = 0; i < nlevels.size(); i++){
     const std::vector<double>& carrier_freq = config.getCarrierFrequency(i);
     std::vector<std::string> controltype_str = config.getControlSegment(i);
-    std::vector<std::string> controlinit_str = config.getControlInitialization(i);
+    ControlInitialization controlinit = config.getControlInitialization(i);
 
     // Create oscillator 
-    oscil_vec[i] = new Oscillator(config, i, nlevels, controltype_str, controlinit_str, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype, rand_engine);
+    oscil_vec[i] = new Oscillator(config, i, nlevels, controltype_str, controlinit, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype, rand_engine);
   }
 
   // Get pi-pulses, if any
