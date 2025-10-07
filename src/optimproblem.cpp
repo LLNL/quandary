@@ -101,7 +101,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   gamma_penalty = config.GetDoubleParam("optim_penalty", 0.0);
   penalty_param = config.GetDoubleParam("optim_penalty_param", 0.5);
   gamma_penalty_energy = config.GetDoubleParam("optim_penalty_energy", 0.0);
-  gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
+  gamma_tik_interpolate = config.GetBoolParam("optim_regul_tik0", false, false);
   gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
   gamma_penalty_variation = config.GetDoubleParam("optim_penalty_variation", 0.01); 
   
