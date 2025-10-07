@@ -129,8 +129,8 @@ class Config {
     double optim_penalty_dpdm = 0.0;  ///< Coefficient for penalizing the integral of the second derivative of state populations
     double optim_penalty_energy = 0.0;  ///< Coefficient for penalizing the control pulse energy integral
     double optim_penalty_variation = 0.01;  ///< Coefficient for penalizing variations in control amplitudes
-    bool optim_regul_interpolate = false;  ///< TODO this isnt in config_template.cfg, use optim_regul_tik0?
-    // bool optim_regul_tik0 = false;  ///< Switch to use Tikhonov regularization with ||x - x_0||^2 instead of ||x||^2 TODO this isnt used
+    bool optim_regul_tik0 = false;  ///< Switch to use Tikhonov regularization with ||x - x_0||^2 instead of ||x||^2
+    // bool optim_regul_interpolate = false;  ///< TODO deprecated version
 
     // Output and runtypes
     std::string datadir = "./data_out";  ///< Directory for output files

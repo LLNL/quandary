@@ -64,7 +64,7 @@ Config::Config(MPI_Comm comm_, std::stringstream& logstream, bool quietmode_)
   registerScalar("optim_penalty_dpdm", optim_penalty_dpdm);
   registerScalar("optim_penalty_energy", optim_penalty_energy);
   registerScalar("optim_penalty_variation", optim_penalty_variation);
-  registerScalar("optim_regul_interpolate", optim_regul_interpolate);
+  registerScalar("optim_regul_tik0", optim_regul_tik0);
 
   registerScalar("datadir", datadir);
   registerVectorOfVectors("output", output, nlevels.size(), {});
