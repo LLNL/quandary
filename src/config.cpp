@@ -247,22 +247,21 @@ void Config::setApplyPiPulse(const std::string& value) {
   while (k < pipulse_str.size()) {
     // Set pipulse for this oscillator
     size_t pipulse_id = std::stoi(pipulse_str[k+0]);
-    PiPulse& pipulse = apply_pipulse[pipulse_id];
-    pipulse.tstart.push_back(std::stod(pipulse_str[k+1]));
-    pipulse.tstop.push_back(std::stod(pipulse_str[k+2]));
-    pipulse.amp.push_back(std::stod(pipulse_str[k+3]));
+    double tstart = std::stod(pipulse_str[k+1]);
+    double tstop = std::stod(pipulse_str[k+2]);
+    double amp = std::stod(pipulse_str[k+3]);
+    PiPulseSegment pipulse = {tstart, tstop, amp};
+    apply_pipulse[pipulse_id].push_back(pipulse);
 
     std::ostringstream message;
-    message << "Applying PiPulse to oscillator " << pipulse_id << " in [" << pipulse.tstart.back() << ","
-      << pipulse.tstop.back() << "]: |p+iq|=" << pipulse.amp.back();
+    message << "Applying PiPulse to oscillator " << pipulse_id << " in [" << pipulse.tstart << ","
+      << pipulse.tstop << "]: |p+iq|=" << pipulse.amp;
     logOutputToRank0(mpi_rank, message.str());
 
     // Set zero control for all other oscillators during this pipulse
-    for (size_t i=0; i<nlevels.size(); i++) {
+    for (size_t i=0; i<nlevels.size(); i++){
       if (i != pipulse_id) {
-        pipulse.tstart.push_back(stod(pipulse_str[k+1]));
-        pipulse.tstop.push_back(stod(pipulse_str[k+2]));
-        pipulse.amp.push_back(0.0);
+        apply_pipulse[i].push_back({tstart, tstop, 0.0});
       }
     }
     k+=4;

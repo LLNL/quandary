@@ -13,14 +13,14 @@
 #pragma once
 
 /**
- * @brief Structure for storing pi-pulse parameters.
+ * @brief Structure for storing pi-pulse parameters for one segment.
  *
  * Stores timing and amplitude information for pi-pulse sequences.
  */
-struct PiPulse {
-  std::vector<double> tstart; ///< Start times for each pulse segment
-  std::vector<double> tstop; ///< Stop times for each pulse segment
-  std::vector<double> amp; ///< Amplitudes for each pulse segment
+struct PiPulseSegment {
+  double tstart; ///< Start time for pulse segment
+  double tstop; ///< Stop time for pulse segment
+  double amp; ///< Amplitude for pulse segment
 };
 
 struct SplineParams {
@@ -100,7 +100,7 @@ class Config {
     int n_initial_conditions;  ///< Number of initial conditions
     std::vector<size_t> initial_condition_IDs;  ///< IDs of initial conditions for pure-state initialization
     std::string initial_condition_file;  ///< File to read initial conditions from (if applicable)
-    std::vector<PiPulse> apply_pipulse;  ///< Apply a pi-pulse to oscillator with specified parameters
+    std::vector<std::vector<PiPulseSegment>> apply_pipulse;  ///< Apply a pi-pulse to oscillator with specified parameters
 
     // Optimization options
     std::vector<std::vector<ControlSegment>> control_segments;  ///< Define the control segments for each oscillator
@@ -175,8 +175,8 @@ class Config {
     int getNInitialConditions() const { return n_initial_conditions; }
     const std::vector<size_t>& getInitialConditionIDs() const { return initial_condition_IDs; }
     const std::string& getInitialConditionFile() const { return initial_condition_file; }
-    const std::vector<PiPulse>& getApplyPiPulse() const { return apply_pipulse; }
-    const PiPulse& getApplyPiPulse(size_t i) const { return apply_pipulse[i]; }
+    const std::vector<std::vector<PiPulseSegment>>& getApplyPiPulse() const { return apply_pipulse; }
+    const std::vector<PiPulseSegment>& getApplyPiPulse(size_t i) const { return apply_pipulse[i]; }
 
     const std::vector<std::vector<ControlSegment>>& getControlSegments() const { return control_segments; }
     const std::vector<ControlSegment>& getControlSegment(size_t i) const { return control_segments[i]; }

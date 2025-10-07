@@ -281,9 +281,9 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
   } 
 
   /* If pipulse: Overwrite controls by constant amplitude */
-  for (size_t ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
-    if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
-      double amp_pq =  pipulse.amp[ipulse] / sqrt(2.0);
+  for (const auto& pipulse_segment : pipulse){
+    if (pipulse_segment.tstart <= t && t <= pipulse_segment.tstop) {
+      double amp_pq =  pipulse_segment.amp / sqrt(2.0);
       *Re_ptr = amp_pq;
       *Im_ptr = amp_pq;
     }
@@ -326,8 +326,8 @@ int Oscillator::evalControl_diff(const double t, double* grad, const double pbar
   } 
 
   /* TODO: Derivative of pipulse? */
-  for (size_t ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
-    if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
+  for (const auto& pipulse_segment : pipulse){
+    if (pipulse_segment.tstart <= t && t <= pipulse_segment.tstop) {
       printf("ERROR: Derivative of pipulse not implemented. Sorry! But also, this should never happen!\n");
       exit(1);
     }
@@ -372,10 +372,10 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
 
 
   /* If inside a pipulse, overwrite lab control */
-  for (size_t ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
-    if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
-      double p = pipulse.amp[ipulse] / sqrt(2.0);
-      double q = pipulse.amp[ipulse] / sqrt(2.0);
+  for (const auto& pipulse_segment : pipulse){
+    if (pipulse_segment.tstart <= t && t <= pipulse_segment.tstop) {
+      double p = pipulse_segment.amp / sqrt(2.0);
+      double q = pipulse_segment.amp / sqrt(2.0);
       *f = 2.0 * p * cos(ground_freq*t) - 2.0 * q * sin(ground_freq*t);
     }
   }
