@@ -224,64 +224,6 @@ class Config {
     const std::string& getHamiltonianFileHsys() const { return hamiltonian_file_Hsys; }
     const std::string& getHamiltonianFileHc() const { return hamiltonian_file_Hc; }
 
-    // setters
-    void setNLevels(const std::vector<size_t>& value) { nlevels = value; }
-    void setNEssential(const std::vector<size_t>& value) { nessential = value; }
-    void setNTime(int value) { ntime = value; }
-    void setDt(double value) { dt = value; }
-    void setTransFreq(const std::vector<double>& value) { transfreq = value; }
-    void setSelfKerr(const std::vector<double>& value) { selfkerr = value; }
-    void setCrossKerr(const std::vector<double>& value) { crosskerr = value; }
-    void setJkl(const std::vector<double>& value) { Jkl = value; }
-    void setRotFreq(const std::vector<double>& value) { rotfreq = value; }
-    void setCollapseType(LindbladType value) { collapse_type = value; }
-    void setDecayTime(const std::vector<double>& value) { decay_time = value; }
-    void setDephaseTime(const std::vector<double>& value) { dephase_time = value; }
-    void setInitialConditionType(InitialConditionType value) { initial_condition_type = value; }
-    void setNInitialConditions(int value) { n_initial_conditions = value; }
-    void setInitialConditionIDs(const std::vector<size_t>& value) { initial_condition_IDs = value; }
-    void setInitialConditionFile(const std::string& value) { initial_condition_file = value; }
-    void setApplyPiPulse(const std::vector<PiPulse>& value) { apply_pipulse = value; }
-
-    void setControlSegments(const std::vector<std::vector<ControlSegment>>& value) { control_segments = value; }
-    void setControlEnforceBC(bool value) { control_enforceBC = value; }
-    void setControlInitialization(const std::vector<std::vector<ControlSegmentInitialization>>& value) { control_initializations = value; }
-    void setControlBounds(const std::vector<std::vector<double>>& value) { control_bounds = value; }
-    void setCarrierFrequencies(const std::vector<std::vector<double>>& value) { carrier_frequencies = value; }
-    void setOptimTargetType(TargetType value) { optim_target_type = value; }
-    void setOptimTargetFile(const std::string& value) { optim_target_file = value; }
-    void setOptimTargetGateType(GateType value) { optim_target_gate_type = value; }
-    void setOptimTargetGateFile(const std::string& value) { optim_target_gate_file = value; }
-    void setOptimTargetPurestateLevels(const std::vector<size_t>& value) { optim_target_purestate_levels = value; }
-    void setGateRotFreq(const std::vector<double>& value) { gate_rot_freq = value; }
-    void setOptimObjective(ObjectiveType value) { optim_objective = value; }
-    void setOptimWeights(const std::vector<double>& value) { optim_weights = value; }
-    void setOptimAtol(double value) { optim_atol = value; }
-    void setOptimRtol(double value) { optim_rtol = value; }
-    void setOptimFtol(double value) { optim_ftol = value; }
-    void setOptimInftol(double value) { optim_inftol = value; }
-    void setOptimMaxiter(int value) { optim_maxiter = value; }
-    void setOptimRegul(double value) { optim_regul = value; }
-    void setOptimPenalty(double value) { optim_penalty = value; }
-    void setOptimPenaltyParam(double value) { optim_penalty_param = value; }
-    void setOptimPenaltyDpdm(double value) { optim_penalty_dpdm = value; }
-    void setOptimPenaltyEnergy(double value) { optim_penalty_energy = value; }
-    void setOptimPenaltyVariation(double value) { optim_penalty_variation = value; }
-    void setOptimRegulInterpolate(bool value) { optim_regul_interpolate = value; }
-
-    void setDataDir(const std::string& value) { datadir = value; }
-    void setOutput(const std::vector<std::vector<OutputType>>& value) { output = value; }
-    void setOutputFrequency(int value) { output_frequency = value; }
-    void setOptimMonitorFrequency(int value) { optim_monitor_frequency = value; }
-    void setRunType(RunType value) { runtype = value; }
-    void setUseMatFree(bool value) { usematfree = value; }
-    void setLinearSolverType(LinearSolverType value) { linearsolver_type = value; }
-    void setLinearSolverMaxiter(int value) { linearsolver_maxiter = value; }
-    void setTimestepperType(TimeStepperType value) { timestepper_type = value; }
-    void setRandSeed(int value);
-    void setHamiltonianFileHsys(const std::string& value) { hamiltonian_file_Hsys = value; }
-    void setHamiltonianFileHc(const std::string& value) { hamiltonian_file_Hc = value; }
-
   private:
     void validate();
 
@@ -291,6 +233,7 @@ class Config {
     void setApplyPiPulse(const std::string& value);
     void setOptimTarget(const std::string& value);
     void setControlInitialization(const std::string& value, ControlType control_type);
+    void setRandSeed(int value);
 
     std::vector<std::string> split(const std::string& str, char delimiter = ',');
 
