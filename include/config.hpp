@@ -8,6 +8,7 @@
 #include <sstream>
 #include <set>
 #include <optional>
+# include <variant>
 
 #pragma once
 
@@ -22,7 +23,26 @@ struct PiPulse {
   std::vector<double> amp; ///< Amplitudes for each pulse segment
 };
 
-// TODO struct useful? maybe some per oscillator settings should be a struct for each osc and a vector of those structs instead of many vectors over osc
+struct SplineParams {
+  size_t nspline; ///< Number of basis functions in this segment
+  double tstart; ///< Start time of the control segment
+  double tstop; ///< Stop time of the control segment
+};
+
+struct SplineAmpParams : SplineParams {
+  double scaling;
+};
+
+struct StepParams {
+  double step_amp1; ///< Real part of amplitude of the step pulse.
+  double step_amp2; ///< Imaginary part of amplitude of the step pulse.
+  double tramp; ///< Ramp time.
+  double tstart; ///< Start time of the control segment
+  double tstop; ///< Stop time of the control segment // TODO default value ntime * dt
+};
+
+using ControlParams = std::variant<SplineParams, SplineAmpParams, StepParams>;
+
 /**
  * @brief Structure for defining control segments.
  *
@@ -31,28 +51,19 @@ struct PiPulse {
  */
 struct ControlSegment {
   ControlType type; ///< Type of control segment
-  size_t num; ///< Number of basis functions in this segment
-  double tstart; ///< Start time of the control segment
-  double tstop; ///< Stop time of the control segment
+  ControlParams params; ///< Parameters for control pulse for segment
 };
 
-struct ControlPulse {
-  double amplitude;
-  double phase;
-};
-
-// TODO variant?
 /**
- * @brief Structure for defining control segments for a single oscillator
- *
- * Defines a controllable segment for an oscillator and the type of parameterization,
- * with corresponding starting and finish times.
+ * @brief Structure for defining a control segment's initialization
  */
-struct ControlInitialization {
+struct ControlSegmentInitialization {
   ControlInitializationType type; ///< Type of control initialization
-  std::vector<ControlPulse> control_pulse; ///< Initial control pulse amplitudeand phase, one for each segment
+  double amplitude; ///< Initial control pulse amplitude
+  double phase; ///< Initial control pulse phase
 };
 
+// TODO make a struct for all per oscillator settings and a vector of these
 /**
  * @brief Configuration parameter management class with typed member variables.
  *
@@ -92,9 +103,9 @@ class Config {
     std::vector<PiPulse> apply_pipulse;  ///< Apply a pi-pulse to oscillator with specified parameters
 
     // Optimization options
-    std::vector<std::vector<std::string>> control_segments;  ///< Define the control segments for each oscillator
+    std::vector<std::vector<ControlSegment>> control_segments;  ///< Define the control segments for each oscillator
     bool control_enforceBC = false;  ///< Decide whether control pulses should start and end at zero
-    std::vector<ControlInitialization> control_initialization;  ///< Set the initial control pulse parameters for each oscillator
+    std::vector<std::vector<ControlSegmentInitialization>> control_initializations;  ///< Set the initial control pulse parameters for each oscillator
     std::optional<std::string> control_initialization_file;  ///< File to read the control initializations from (optional)
     std::vector<std::vector<double>> control_bounds;  ///< Maximum amplitude bound for the control pulses for each oscillator segment (GHz)
     std::vector<std::vector<double>> carrier_frequencies;  ///< Carrier wave frequencies for each oscillator (GHz)
@@ -167,11 +178,11 @@ class Config {
     const std::vector<PiPulse>& getApplyPiPulse() const { return apply_pipulse; }
     const PiPulse& getApplyPiPulse(size_t i) const { return apply_pipulse[i]; }
 
-    const std::vector<std::vector<std::string>>& getControlSegments() const { return control_segments; }
-    const std::vector<std::string>& getControlSegment(size_t i) const { return control_segments[i]; }
+    const std::vector<std::vector<ControlSegment>>& getControlSegments() const { return control_segments; }
+    const std::vector<ControlSegment>& getControlSegment(size_t i) const { return control_segments[i]; }
     bool getControlEnforceBC() const { return control_enforceBC; }
-    const std::vector<ControlInitialization>& getControlInitialization() const { return control_initialization; }
-    const ControlInitialization& getControlInitialization(size_t i) const { return control_initialization[i]; }
+    const std::vector<std::vector<ControlSegmentInitialization>>& getControlInitialization() const { return control_initializations; }
+    const std::vector<ControlSegmentInitialization>& getControlInitialization(size_t i) const { return control_initializations[i]; }
     const std::optional<std::string>& getControlInitializationFile() const { return control_initialization_file; }
     const std::vector<std::vector<double>>& getControlBounds() const { return control_bounds; }
     const std::vector<double>& getControlBounds(size_t i_osc) const { return control_bounds[i_osc]; }
@@ -232,9 +243,9 @@ class Config {
     void setInitialConditionFile(const std::string& value) { initial_condition_file = value; }
     void setApplyPiPulse(const std::vector<PiPulse>& value) { apply_pipulse = value; }
 
-    void setControlSegments(const std::vector<std::vector<std::string>>& value) { control_segments = value; }
+    void setControlSegments(const std::vector<std::vector<ControlSegment>>& value) { control_segments = value; }
     void setControlEnforceBC(bool value) { control_enforceBC = value; }
-    void setControlInitialization(const std::vector<ControlInitialization>& value) { control_initialization = value; }
+    void setControlInitialization(const std::vector<std::vector<ControlSegmentInitialization>>& value) { control_initializations = value; }
     void setControlBounds(const std::vector<std::vector<double>>& value) { control_bounds = value; }
     void setCarrierFrequencies(const std::vector<std::vector<double>>& value) { carrier_frequencies = value; }
     void setOptimTargetType(TargetType value) { optim_target_type = value; }
@@ -279,6 +290,7 @@ class Config {
     void setInitialConditions(const std::string& init_cond_str, LindbladType collapse_type_);
     void setApplyPiPulse(const std::string& value);
     void setOptimTarget(const std::string& value);
+    void setControlInitialization(const std::string& value, ControlType control_type);
 
     std::vector<std::string> split(const std::string& str, char delimiter = ',');
 

@@ -165,11 +165,11 @@ int main(int argc,char **argv)
   // Get control segment types, carrierwaves and control initialization
   for (size_t i = 0; i < nlevels.size(); i++){
     const std::vector<double>& carrier_freq = config.getCarrierFrequency(i);
-    std::vector<std::string> controltype_str = config.getControlSegment(i);
-    ControlInitialization controlinit = config.getControlInitialization(i);
+    const auto& control_seg = config.getControlSegment(i);
+    const auto& control_init = config.getControlInitialization(i);
 
     // Create oscillator 
-    oscil_vec[i] = new Oscillator(config, i, nlevels, controltype_str, controlinit, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype, rand_engine);
+    oscil_vec[i] = new Oscillator(config, i, nlevels, control_seg, control_init, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype, rand_engine);
   }
 
   // Get pi-pulses, if any

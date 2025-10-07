@@ -1,5 +1,7 @@
 #include "oscillator.hpp"
 #include "config.hpp"
+#include "defs.hpp"
+#include <stdexcept>
 
 Oscillator::Oscillator(){
   nlevels = 0;
@@ -8,7 +10,7 @@ Oscillator::Oscillator(){
   control_enforceBC = true;
 }
 
-Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlevels_all_, std::vector<std::string>& controlsegments, const ControlInitialization& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine){
+Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlevels_all_, const std::vector<ControlSegment>& controlsegments, const std::vector<ControlSegmentInitialization>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine){
 
   myid = id;
   nlevels = nlevels_all_[id];
@@ -44,110 +46,65 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
   control_enforceBC = config.getControlEnforceBC();
 
   // Parse for control segments
-  size_t idstr = 0;
   int nparams_per_seg = 0;
-  // TODO move this to config file?
-  while (idstr < controlsegments.size()) {
 
-    if (controlsegments[idstr].compare("step") == 0) {
-      idstr++;
-      if (controlsegments.size() <= idstr+2){
-        printf("ERROR: Wrong setting for control segments: Step Amplitudes or tramp not found.\n");
-        exit(1);
-      }
-      double step_amp1 = atof(controlsegments[idstr].c_str()); idstr++;
-      double step_amp2 = atof(controlsegments[idstr].c_str()); idstr++;
-      double tramp = atof(controlsegments[idstr].c_str()); idstr++;
+  for (auto controlsegment : controlsegments) {
 
-      double tstart = 0.0;
-      double tstop = Tfinal;
-      if (controlsegments.size()>=idstr+2){
-        tstart = atof(controlsegments[idstr].c_str()); idstr++;
-        tstop = atof(controlsegments[idstr].c_str()); idstr++;
-      }
+    switch (controlsegment.type) {
+    case ControlType::STEP: {
+      StepParams params = std::get<StepParams>(controlsegment.params);
+
       // if (mpirank_world == 0) printf("%d: Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", myid, step_amp1, step_amp2, tramp, tstart, tstop);
-      ControlBasis* mystep = new Step(step_amp1, step_amp2, tstart, tstop, tramp, control_enforceBC);
+      ControlBasis* mystep = new Step(params.step_amp1, params.step_amp2, params.tstart, params.tstop, params.tramp, control_enforceBC);
       mystep->setSkip(nparams_per_seg);
       nparams_per_seg += mystep->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mystep);
-      
-    } else if (controlsegments[idstr].compare("spline") == 0) { // Default: splines. Format in string: spline, nsplines, tstart, tstop
-      idstr++;
-      if (controlsegments.size() <= idstr){
-        printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
-        exit(1);
-      }
-      int nspline = atoi(controlsegments[idstr].c_str()); idstr++;
-      double tstart = 0.0;
-      double tstop = Tfinal;
-      if (controlsegments.size()>=idstr+2){
-        tstart = atof(controlsegments[idstr].c_str()); idstr++;
-        tstop = atof(controlsegments[idstr].c_str()); idstr++;
-      }
-      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
-      ControlBasis* mysplinebasis = new BSpline2nd(nspline, tstart, tstop, control_enforceBC);
-      mysplinebasis->setSkip(nparams_per_seg);
-      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
-      basisfunctions.push_back(mysplinebasis);
-      //
-    } else if (controlsegments[idstr].compare("spline0") == 0) { // Format in string: bs0, nsplines, tstart, tstop
-      idstr++;
-      if (controlsegments.size() <= idstr){
-        printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
-        exit(1);
-      }
-      int nspline = atoi(controlsegments[idstr].c_str()); idstr++;
-      double tstart = 0.0;
-      double tstop = Tfinal;
-      if (controlsegments.size()>=idstr+2){
-        tstart = atof(controlsegments[idstr].c_str()); idstr++;
-        tstop = atof(controlsegments[idstr].c_str()); idstr++;
-      }
-      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
-      ControlBasis* mysplinebasis = new BSpline0(nspline, tstart, tstop, control_enforceBC);
-      mysplinebasis->setSkip(nparams_per_seg);
-      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
-      basisfunctions.push_back(mysplinebasis);
-    } else if (controlsegments[idstr].compare("spline_amplitude") == 0) { // Spline on amplitude only. Format in string: spline_amplitude, nsplines, tstart, tstop
-      idstr++;
-      if (controlsegments.size() <= idstr){
-        printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
-        exit(1);
-      }
-      int nspline = atoi(controlsegments[idstr].c_str()); idstr++;
-      double scaling = atof(controlsegments[idstr].c_str()); idstr++;
-      double tstart = 0.0;
-      double tstop = Tfinal;
-      if (controlsegments.size()>=idstr+2){
-        tstart = atof(controlsegments[idstr].c_str()); idstr++;
-        tstop = atof(controlsegments[idstr].c_str()); idstr++;
-      }
-      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
-      ControlBasis* mysplinebasis = new BSpline2ndAmplitude(nspline, scaling, tstart, tstop, control_enforceBC);
-      mysplinebasis->setSkip(nparams_per_seg);
-      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
-      basisfunctions.push_back(mysplinebasis);
-    } else {
-      // if (mpirank_world==0) printf("%d: Non-controllable.\n", myid);
-      idstr++;
+      break;
     }
+    case ControlType::BSPLINE: {
+      SplineParams params = std::get<SplineParams>(controlsegment.params);
+
+      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
+      ControlBasis* mysplinebasis = new BSpline2nd(params.nspline, params.tstart, params.tstop, control_enforceBC);
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
+      basisfunctions.push_back(mysplinebasis);
+      break;
+    }
+    case ControlType::BSPLINE0: {
+      SplineParams params = std::get<SplineParams>(controlsegment.params);
+
+      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
+      ControlBasis* mysplinebasis = new BSpline0(params.nspline, params.tstart, params.tstop, control_enforceBC);
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
+      basisfunctions.push_back(mysplinebasis);
+      break;
+    }
+    case ControlType::BSPLINEAMP: {
+      SplineAmpParams params = std::get<SplineAmpParams>(controlsegment.params);
+
+      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
+      ControlBasis* mysplinebasis = new BSpline2ndAmplitude(params.nspline, params.scaling, params.tstart, params.tstop, control_enforceBC);
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
+      basisfunctions.push_back(mysplinebasis);
+      break;
+    }
+    case ControlType::NONE: {
+      throw std::invalid_argument("Control type 'none' not supported.");
+    }
+    } // end switch
   }
 
   //Initialization of the control parameters for each segment
-  size_t idini = 0;
   for (size_t seg = 0; seg < basisfunctions.size(); seg++) {
-    // Set a default if initialization string is not given for this segment
-    if (controlinitializations.size() < idini+2) {
-      controlinitializations.push_back("constant");
-      if (basisfunctions[seg]->getType() == ControlType::STEP)
-        controlinitializations.push_back("1.0");
-      else 
-        controlinitializations.push_back("0.0");
-    }
+    const auto& controlinitialization = controlinitializations[seg];
+
     // Check config option for 'constant' or 'random' initialization
     // Note, the config amplitude is multiplied by 2pi here!!
-    double initval = atof(controlinitializations[idini+1].c_str())*2.0*M_PI;
-    if (controlinitializations[idini].compare("constant") == 0 ) {
+    double initval = controlinitialization.amplitude*2.0*M_PI;
+    if (controlinitialization.type == ControlInitializationType::CONSTANT) {
       // If STEP: scale to [0,1]
       if (basisfunctions[seg]->getType() == ControlType::STEP){
         initval = std::max(0.0, initval);  
@@ -159,11 +116,10 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
         }
         // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
         if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
-          if (controlinitializations.size() > idini+2) params[params.size()-1] = atof(controlinitializations[idini+2].c_str());
-          else params[params.size()-1] = 0.0;
+          params[params.size()-1] = controlinitialization.phase;
         }
       }
-    } else if (controlinitializations[idini].compare("random") == 0) {
+    } else if (controlinitialization.type == ControlInitializationType::RANDOM) {
 
       // Uniform distribution [0,1)
       std::uniform_real_distribution<double> unit_dist(0.0, 1.0);
@@ -185,8 +141,7 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
         }
         // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
         if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
-          if (controlinitializations.size() > idini+2) params[params.size()-1] = atof(controlinitializations[idini+2].c_str());
-          else params[params.size()-1] = 0.0;
+          params[params.size()-1] = controlinitialization.phase;
         }
       }
     } else {
@@ -194,7 +149,6 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
         params.push_back(0.0);
       }
     }
-    idini += 2; 
   }
 
   /* Make sure the initial guess satisfies the boundary conditions, if needed */

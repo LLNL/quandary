@@ -153,10 +153,10 @@ enum class ControlType {
 
 const std::map<std::string, ControlType> CONTROL_TYPE_MAP = {
     {"none", ControlType::NONE},
-    {"bspline", ControlType::BSPLINE},
-    {"bsplineamp", ControlType::BSPLINEAMP},
+    {"spline", ControlType::BSPLINE},
+    {"spline_amplitude", ControlType::BSPLINEAMP},
     {"step", ControlType::STEP},
-    {"bspline0", ControlType::BSPLINE0}
+    {"spline0", ControlType::BSPLINE0}
 };
 
 /**

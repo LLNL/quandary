@@ -43,10 +43,10 @@ Config::Config(MPI_Comm comm_, std::stringstream& logstream, bool quietmode_)
 
   // TODO check if default is for all oscillators or only the first one
   const std::string default_seg_str = "spline, 10, 0.0, " + std::to_string(ntime * dt);
-  registerVectorOfVectors("control_segments", control_segments, nlevels.size(), default_seg_str);
+  // registerVectorOfVectors("control_segments", control_segments, nlevels.size(), default_seg_str);
+  // setters["control_segments"] = [this](const std::string& val) { setControlSegments(val); };
   registerScalar("control_enforceBC", control_enforceBC);
-  const std::string default_init_str = "constant, 0.0";
-  registerVectorOfVectors("control_initialization", control_initialization, nlevels.size(), default_init_str); // TODO check default
+  // setters["control_initialization"] = [this](const std::string& val) { setControlInitialization(val, control_type); };
   registerVectorOfVectors("control_bounds", control_bounds, nlevels.size(), 10000.0); // TODO default should be last value if shorter
 
   setters["optim_target"] = [this](const std::string& val) { setOptimTarget(val); };
@@ -319,9 +319,36 @@ void Config::setOptimTarget(const std::string& value) {
   }
 }
 
-void Config::setControlInitialization() {
+// void Config::setControlSegments(const std::string& value) {
+//   // if not set tstart should be 0.0 and tstop should be nt * dt
+//   switch (controlsegments.type) {
+//     case ControlType::STEP: {
+//       if (controlsegments.size() <= idstr+2){
+//         printf("ERROR: Wrong setting for control segments: Step Amplitudes or tramp not found.\n");
+//         exit(1);
+//       }
+//       break;
+//     }
+//     case ControlType::BSPLINE: {
+//       if (controlsegments.size() <= idstr){
+//         printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
+//         exit(1);
+//       }
+//     }
+// }
 
-}
+// void Config::setControlInitialization(const std::string& value) {
+//     // phase should be zero if not set
+//     // default should be constant and either 1 (if Control is Step) or 0 (else)
+//     // Set a default if initialization string is not given for this segment
+//     if (controlinitializations.size() < idini+2) {
+//       controlinitializations.push_back("constant");
+//       if (basisfunctions[seg]->getType() == ControlType::STEP)
+//         controlinitializations.push_back("1.0");
+//       else 
+//         controlinitializations.push_back("0.0");
+//     }
+// }
 
 namespace {
 
