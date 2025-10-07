@@ -69,7 +69,7 @@ PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim);
  * @param nessential Number of essential levels per oscillator
  * @return int Corresponding index in full-dimension system
  */
-PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+PetscInt mapEssToFull(const PetscInt i, const std::vector<size_t> &nlevels, const std::vector<size_t> &nessential);
 
 /**
  * @brief Maps index from full dimension to essential dimension system.
@@ -79,7 +79,7 @@ PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const s
  * @param nessential Number of essential levels per oscillator
  * @return int Corresponding index in essential dimension system
  */
-PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+PetscInt mapFullToEss(const PetscInt i, const std::vector<size_t> &nlevels, const std::vector<size_t> &nessential);
 
 /**
  * @brief Tests if density matrix index corresponds to an essential level.
@@ -89,7 +89,7 @@ PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const s
  * @param nessential Number of essential levels per oscillator
  * @return int Non-zero if index corresponds to essential level
  */
-int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+int isEssential(const int i, const std::vector<size_t> &nlevels, const std::vector<size_t> &nessential);
 
 /**
  * @brief Tests if density matrix index corresponds to a guard level.
@@ -102,7 +102,7 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
  * @param nessential Number of essential levels per oscillator
  * @return int Non-zero if index corresponds to guard level
  */
-int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential);
+int isGuardLevel(const int i, const std::vector<size_t> &nlevels, const std::vector<size_t> &nessential);
 
 /**
  * @brief Computes Kronecker product \f$Id \otimes A\f$.

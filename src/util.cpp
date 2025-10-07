@@ -74,7 +74,7 @@ PetscInt getVecID(const PetscInt row, const PetscInt col, const PetscInt dim){
 } 
 
 
-PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+PetscInt mapEssToFull(const PetscInt i, const std::vector<size_t> &nlevels, const std::vector<size_t> &nessential){
 
   PetscInt id = 0;
   PetscInt index = i;
@@ -96,7 +96,7 @@ PetscInt mapEssToFull(const PetscInt i, const std::vector<int> &nlevels, const s
   return id;
 }
 
-PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+PetscInt mapFullToEss(const PetscInt i, const std::vector<size_t> &nlevels, const std::vector<size_t> &nessential){
 
   PetscInt id = 0;
   PetscInt index = i;
@@ -109,7 +109,7 @@ PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const s
     }
     PetscInt iblock = index / postdim;
     index = index % postdim;
-    if (iblock >= nessential[iosc]) return -1; // this row/col belongs to a guard level, no mapping defined. 
+    if (iblock >= static_cast<PetscInt>(nessential[iosc])) return -1; // this row/col belongs to a guard level, no mapping defined. 
     // move id to that block
     id += iblock * postdim_ess;  
   }
@@ -156,7 +156,7 @@ PetscInt mapFullToEss(const PetscInt i, const std::vector<int> &nlevels, const s
 
 // }
 
-int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential) {
+int isEssential(const int i, const std::vector<size_t> &nlevels, const std::vector<size_t> &nessential) {
 
   int isEss = 1;
   int index = i;
@@ -168,7 +168,7 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
     }
     int itest = (int) index / postdim;
     // test if essential for this oscillator
-    if (itest >= nessential[iosc]) {
+    if (itest >= static_cast<int>(nessential[iosc])) {
       isEss = 0;
       break;
     }
@@ -178,7 +178,7 @@ int isEssential(const int i, const std::vector<int> &nlevels, const std::vector<
   return isEss; 
 }
 
-int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector<int> &nessential){
+int isGuardLevel(const int i, const std::vector<size_t> &nlevels, const std::vector<size_t> &nessential){
   int isGuard =  0;
   int index = i;
   for (size_t iosc = 0; iosc < nlevels.size(); iosc++){
@@ -189,7 +189,7 @@ int isGuardLevel(const int i, const std::vector<int> &nlevels, const std::vector
     }
     int itest = (int) index / postdim;   // floor(i/n_post)
     // test if this is a guard level for this oscillator
-    if (itest == nlevels[iosc] - 1 && itest >= nessential[iosc]) {  // last energy level for system 'iosc'
+    if (itest == static_cast<int>(nlevels[iosc]) - 1 && itest >= static_cast<int>(nessential[iosc])) {  // last energy level for system 'iosc'
       isGuard = 1;
       break;
     }

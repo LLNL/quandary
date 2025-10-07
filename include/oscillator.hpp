@@ -48,7 +48,7 @@ struct PiPulse {
 class Oscillator {
   protected:
     int myid; ///< Integer identifier for this oscillator
-    int nlevels; ///< Number of energy levels for this oscillator
+    size_t nlevels; ///< Number of energy levels for this oscillator
     double ground_freq; ///< Fundamental 0-1 transition frequency of this oscillator \f$\omega_k\f$
     double selfkerr; ///< Self-Kerr frequency \f$\xi_k\f$, multiplies \f$a_k^\dagger a_k^\dagger a_k a_k\f$
 
@@ -96,7 +96,7 @@ class Oscillator {
      * @param lindbladtype_ Type of Lindblad operators
      * @param rand_engine Random number generator engine
      */
-    Oscillator(Config config, size_t id, const std::vector<int>& nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine);
+    Oscillator(Config config, size_t id, const std::vector<size_t>& nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine);
 
     virtual ~Oscillator();
 

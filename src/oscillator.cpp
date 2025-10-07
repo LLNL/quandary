@@ -7,7 +7,7 @@ Oscillator::Oscillator(){
   control_enforceBC = true;
 }
 
-Oscillator::Oscillator(Config config, size_t id, const std::vector<int>& nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine){
+Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine){
 
   myid = id;
   nlevels = nlevels_all_[id];
@@ -520,12 +520,12 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
   PetscInt dimN = dim_preOsc * nlevels * dim_postOsc;
   double val;
 
-  assert (pop.size() == static_cast<size_t>(nlevels));
+  assert (pop.size() == nlevels);
 
   std::vector<double> mypop(nlevels, 0.0);
 
   /* Iterate over diagonal elements of the reduced density matrix for this oscillator */
-  for (int i=0; i < nlevels; i++) {
+  for (size_t i=0; i < nlevels; i++) {
     PetscInt identitystartID = i * dim_postOsc;
     /* Sum up elements from all dim_preOsc blocks of size (n_k * dim_postOsc) */
     double sum = 0.0;
@@ -562,5 +562,5 @@ void Oscillator::population(const Vec x, std::vector<double> &pop) {
 
   /* Gather poppulation from all Petsc processors */
   for (size_t i=0; i<mypop.size(); i++) {pop[i] = mypop[i];}
-  MPI_Allreduce(mypop.data(), pop.data(), nlevels, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+  MPI_Allreduce(mypop.data(), pop.data(), static_cast<int>(nlevels), MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }
