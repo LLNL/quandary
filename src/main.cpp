@@ -4,6 +4,7 @@
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
 #include "config.hpp"
+#include "configbuilder.hpp"
 #include <stdlib.h>
 #include <sys/resource.h>
 #include <cassert>
@@ -73,7 +74,7 @@ int main(int argc,char **argv)
     return 0;
   }
   std::stringstream log;
-  Config config = Config::createFromFile(argv[1], MPI_COMM_WORLD, log, quietmode);
+  Config config = Config::fromCfg(filename, &log, quietmode);
   config.printConfig();
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
@@ -81,7 +82,7 @@ int main(int argc,char **argv)
   MPI_Bcast(&rand_seed, 1, MPI_INT, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
   std::mt19937 rand_engine{}; // Use Mersenne Twister for cross-platform reproducibility
   rand_engine.seed(rand_seed);
-  export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
+  export_param(mpirank_world, log, "rand_seed", rand_seed);
 
   /* --- Get some options from the config file --- */
   const std::vector<size_t> nlevels = config.getNLevels();

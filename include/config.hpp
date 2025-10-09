@@ -1,14 +1,12 @@
 #include "defs.hpp"
-#include "util.hpp"
 
 #include <cstddef>
 #include <vector>
 #include <string>
 #include <petsc.h>
 #include <sstream>
-#include <set>
 #include <optional>
-# include <variant>
+#include <variant>
 
 #pragma once
 
@@ -65,23 +63,18 @@ struct ControlSegmentInitialization {
 
 // TODO make a struct for all per oscillator settings and a vector of these
 /**
- * @brief Configuration parameter management class with typed member variables.
+ * @brief Final validated configuration class.
  *
- * The `Config` class provides a type-safe way to manage Quandary configuration
- * parameters. It supports both programmatic configuration and reading from
- * configuration files for backward compatibility.
+ * Contains only validated, typed configuration parameters. All fields are required
+ * and have been validated by ConfigBuilder. This class is immutable after construction.
  */
 class Config {
   public:
-    std::stringstream* log; ///< Pointer to log stream for output messages.
-    bool quietmode; ///< Flag to control verbose output.
-
-  private:
-    std::unordered_map<std::string, std::function<void(const std::string&)>> setters; ///< Setters from config string
-
-    // MPI and logging
+    // MPI and logging (still needed for runtime operations)
     MPI_Comm comm; ///< MPI communicator for parallel operations.
     int mpi_rank; ///< MPI rank of the current process.
+
+  private:
 
     // General options
     std::vector<size_t> nlevels;  ///< Number of levels per subsystem
@@ -147,15 +140,74 @@ class Config {
     std::string hamiltonian_file_Hc;  ///< File to read the control Hamiltonian from
 
   public:
-    // TODO builder pattern instead of setters and public empty constructor??
-    // Constructors
-    Config();
-    Config(MPI_Comm comm_, std::stringstream& logstream, bool quietmode=false);
+    // Constructor takes all validated parameters (to be called by ConfigBuilder)
+    Config(
+        MPI_Comm comm_,
+        // System parameters
+        const std::vector<size_t>& nlevels_,
+        const std::vector<size_t>& nessential_,
+        int ntime_,
+        double dt_,
+        const std::vector<double>& transfreq_,
+        const std::vector<double>& selfkerr_,
+        const std::vector<double>& crosskerr_,
+        const std::vector<double>& Jkl_,
+        const std::vector<double>& rotfreq_,
+        LindbladType collapse_type_,
+        const std::vector<double>& decay_time_,
+        const std::vector<double>& dephase_time_,
+        InitialConditionType initial_condition_type_,
+        int n_initial_conditions_,
+        const std::vector<size_t>& initial_condition_IDs_,
+        const std::string& initial_condition_file_,
+        const std::vector<std::vector<PiPulseSegment>>& apply_pipulse_,
+        // Control parameters
+        const std::vector<std::vector<ControlSegment>>& control_segments_,
+        bool control_enforceBC_,
+        const std::vector<std::vector<ControlSegmentInitialization>>& control_initializations_,
+        const std::optional<std::string>& control_initialization_file_,
+        const std::vector<std::vector<double>>& control_bounds_,
+        const std::vector<std::vector<double>>& carrier_frequencies_,
+        // Optimization parameters
+        TargetType optim_target_type_,
+        const std::string& optim_target_file_,
+        GateType optim_target_gate_type_,
+        const std::string& optim_target_gate_file_,
+        const std::vector<size_t>& optim_target_purestate_levels_,
+        const std::vector<double>& gate_rot_freq_,
+        ObjectiveType optim_objective_,
+        const std::vector<double>& optim_weights_,
+        double optim_atol_,
+        double optim_rtol_,
+        double optim_ftol_,
+        double optim_inftol_,
+        int optim_maxiter_,
+        double optim_regul_,
+        double optim_penalty_,
+        double optim_penalty_param_,
+        double optim_penalty_dpdm_,
+        double optim_penalty_energy_,
+        double optim_penalty_variation_,
+        bool optim_regul_tik0_,
+        // Output parameters
+        const std::string& datadir_,
+        const std::vector<std::vector<OutputType>>& output_,
+        int output_frequency_,
+        int optim_monitor_frequency_,
+        RunType runtype_,
+        bool usematfree_,
+        LinearSolverType linearsolver_type_,
+        int linearsolver_maxiter_,
+        TimeStepperType timestepper_type_,
+        int rand_seed_,
+        const std::string& hamiltonian_file_Hsys_,
+        const std::string& hamiltonian_file_Hc_
+    );
+
     ~Config();
 
-    static Config createFromFile(const std::string& filename, MPI_Comm comm, std::stringstream& logstream, bool quietmode = false);
-    void loadFromFile(const std::string& filename);
-    void applyConfigLine(const std::string& line);
+    static Config fromCfg(std::string filename, std::stringstream* log, bool quietmode = false);
+
     void printConfig() const;
 
     // getters
@@ -208,7 +260,8 @@ class Config {
     double getOptimPenaltyDpdm() const { return optim_penalty_dpdm; }
     double getOptimPenaltyEnergy() const { return optim_penalty_energy; }
     double getOptimPenaltyVariation() const { return optim_penalty_variation; }
-    bool getOptimRegulInterpolate() const { return optim_regul_interpolate; }
+    bool getOptimRegulTik0() const { return optim_regul_tik0; }
+    bool getOptimRegulInterpolate() const { return false; } // Deprecated - always return false
 
     const std::string& getDataDir() const { return datadir; }
     const std::vector<std::vector<OutputType>>& getOutput() const { return output; }
@@ -224,224 +277,4 @@ class Config {
     const std::string& getHamiltonianFileHsys() const { return hamiltonian_file_Hsys; }
     const std::string& getHamiltonianFileHc() const { return hamiltonian_file_Hc; }
 
-  private:
-    void validate();
-
-    // parse and set from string config
-    void setNEssential(const std::string& value);
-    void setInitialConditions(const std::string& init_cond_str, LindbladType collapse_type_);
-    void setApplyPiPulse(const std::string& value);
-    void setOptimTarget(const std::string& value);
-    void setControlInitialization(const std::string& value, ControlType control_type);
-    void setRandSeed(int value);
-
-    std::vector<std::string> split(const std::string& str, char delimiter = ',');
-
-    template<typename T>
-    T convertFromString(const std::string& str) {
-      return str;
-    }
-
-    template<>
-    bool convertFromString<bool>(const std::string& str) {
-      const std::set<std::string> trueValues = {"true", "yes", "1"};
-      std::string lowerStr = str;
-      std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
-      return trueValues.find(lowerStr) != trueValues.end();
-    }
-
-    template<>
-    int convertFromString<int>(const std::string& str) {
-      return std::stoi(str);
-    }
-
-    template<>
-    size_t convertFromString<size_t>(const std::string& str) {
-      return std::stoi(str);
-    }
-
-    template<>
-    double convertFromString<double>(const std::string& str) {
-      return std::stod(str);
-    }
-
-    template<>
-    std::vector<double> convertFromString<std::vector<double>>(const std::string& str) {
-      std::vector<double> vec;
-      auto parts = split(str);
-      vec.reserve(parts.size());
-      for (const auto& part : parts) {
-        vec.push_back(convertFromString<double>(part));
-      }
-      return vec;
-    }
-
-    template<>
-    std::vector<int> convertFromString<std::vector<int>>(const std::string& str) {
-      std::vector<int> vec;
-      auto parts = split(str);
-      vec.reserve(parts.size());
-      for (const auto& part : parts) {
-        vec.push_back(convertFromString<int>(part));
-      }
-      return vec;
-    }
-
-    template<>
-    RunType convertFromString<RunType>(const std::string& str) {
-      auto it = RUN_TYPE_MAP.find(toLower(str));
-      if (it == RUN_TYPE_MAP.end()) {
-        logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown run type: " + str + ".\n");
-        exit(1);
-      }
-      return it->second;
-    }
-
-    template<>
-    LindbladType convertFromString<LindbladType>(const std::string& str) {
-      auto it = LINDBLAD_TYPE_MAP.find(toLower(str));
-      if (it == LINDBLAD_TYPE_MAP.end()) {
-        logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown collapse type: " + str + ".\n");
-        exit(1);
-      }
-      return it->second;
-    }
-
-    template<>
-    LinearSolverType convertFromString<LinearSolverType>(const std::string& str) {
-      auto it = LINEAR_SOLVER_TYPE_MAP.find(toLower(str));
-      if (it == LINEAR_SOLVER_TYPE_MAP.end()) {
-        logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown linear solver type: " + str + ".\n");
-        exit(1);
-      }
-      return it->second;
-    }
-
-    template<>
-    TimeStepperType convertFromString<TimeStepperType>(const std::string& str) {
-      auto it = TIME_STEPPER_TYPE_MAP.find(toLower(str));
-      if (it == TIME_STEPPER_TYPE_MAP.end()) {
-        logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown time stepper type: " + str + ".\n");
-        exit(1);
-      }
-      return it->second;
-    }
-
-    template<>
-    TargetType convertFromString<TargetType>(const std::string& str) {
-      auto it = TARGET_TYPE_MAP.find(toLower(str));
-      if (it == TARGET_TYPE_MAP.end()) {
-        logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown target type: " + str + ".\n");
-        exit(1);
-      }
-      return it->second;
-    }
-
-    template<>
-    InitialConditionType convertFromString<InitialConditionType>(const std::string& str) {
-      auto it = INITCOND_TYPE_MAP.find(toLower(str));
-      if (it == INITCOND_TYPE_MAP.end()) {
-        logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown initial condition type: " + str + ".\n");
-        exit(1);
-      }
-      return it->second;
-    }
-
-    template<>
-    GateType convertFromString<GateType>(const std::string& str) {
-      auto it = GATE_TYPE_MAP.find(toLower(str));
-      if (it == GATE_TYPE_MAP.end()) {
-        logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown gate type: " + str + ".\n");
-        exit(1);
-      }
-      return it->second;
-    }
-
-    template<>
-    OutputType convertFromString<OutputType>(const std::string& str) {
-      auto it = OUTPUT_TYPE_MAP.find(toLower(str));
-      if (it == OUTPUT_TYPE_MAP.end()) {
-        logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown output type: " + str + ".\n");
-        exit(1);
-      }
-      return it->second;
-    }
-
-    template<>
-    ObjectiveType convertFromString<ObjectiveType>(const std::string& str) {
-      auto it = OBJECTIVE_TYPE_MAP.find(toLower(str));
-      if (it == OBJECTIVE_TYPE_MAP.end()) {
-        logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown objective type: " + str + ".\n");
-        exit(1);
-      }
-      return it->second;
-    }
-
-    template<>
-    std::vector<std::string> convertFromString<std::vector<std::string>>(const std::string& str) {
-      std::vector<std::string> vec;
-      auto parts = split(str);
-      vec.reserve(parts.size());
-      for (const auto& part : parts) {
-        vec.push_back(convertFromString<std::string>(part));
-      }
-      return vec;
-    }
-
-    template<typename T>
-    void registerScalar(const std::string& key, T& member) {
-      setters[key] = [this, &member](const std::string& val) {
-        member = convertFromString<T>(val);
-      };
-    }
-
-    template<typename T>
-    void registerVector(const std::string& key, std::vector<T>& member) {
-      setters[key] = [this, &member](const std::string& val) {
-        auto parts = split(val);
-        member.clear();
-        for (const auto& part : parts) {
-          member.push_back(convertFromString<T>(part));
-        }
-      };
-    }
-
-    // Register a vector with a desired size and fill with the last value to desired size
-    // If the vector is empty, it will be set to the default_value
-    template<typename T>
-    void registerAndFillVector(const std::string& key, std::vector<T>& member, size_t desired_size, std::vector<T> default_value) {
-      setters[key] = [this, &member, desired_size, default_value](const std::string& val) {
-        member = convertFromString<std::vector<T>>(val);
-        if (!member.empty()) {
-          member.resize(desired_size, member.back());
-        } else {
-          member = default_value;
-        }
-      };
-    }
-
-    // If empty default to vector with one element of default_value
-    template<typename T>
-    void registerVector(const std::string& key, std::vector<T>& member, T default_value) {
-      setters[key] = [this, &member, default_value](const std::string& val) {
-        if (val.empty()) {
-          member.push_back(default_value);
-        } else {
-          auto parts = split(val);
-          member.clear();
-          for (const auto& part : parts) {
-            member.push_back(convertFromString<T>(part));
-          }
-        }
-      };
-    }
-
-    template<typename T>
-    void registerVectorOfVectors(const std::string& key, std::vector<std::vector<T>>& member, size_t size, T default_value) {
-      member.resize(size);
-      for (size_t i = 0; i < size; i++) {
-        std::string key_i = key + std::to_string(i);
-        registerVector(key_i, member[i], default_value);
-      }
-    }
   };
