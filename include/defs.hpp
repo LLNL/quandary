@@ -234,9 +234,9 @@ enum class OutputType {
 };
 
 const std::map<std::string, OutputType> OUTPUT_TYPE_MAP = {
-  {"expectedEnergy", OutputType::EXPECTED_ENERGY},
-  {"expectedEnergyComposite", OutputType::EXPECTED_ENERGY_COMPOSITE},
+  {"expectedenergy", OutputType::EXPECTED_ENERGY},
+  {"expectedenergycomposite", OutputType::EXPECTED_ENERGY_COMPOSITE},
   {"population", OutputType::POPULATION},
-  {"populationComposite", OutputType::POPULATION_COMPOSITE},
+  {"populationcomposite", OutputType::POPULATION_COMPOSITE},
   {"fullstate", OutputType::FULLSTATE},
 };
