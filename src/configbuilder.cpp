@@ -31,15 +31,18 @@ ConfigBuilder::ConfigBuilder(MPI_Comm comm, std::stringstream& logstream, bool q
   registerConfig("hamiltonian_file_Hc", hamiltonian_file_Hc);
 
   // Optimization options
-  registerConfig("control_segments", control_segments);
   registerConfig("control_enforceBC", control_enforceBC);
-  registerConfig("control_initializations", control_initializations);
-  registerConfig("control_bounds", control_bounds);
-  registerConfig("carrier_frequencies", carrier_frequencies);
   registerConfig("optim_target", optim_target);
   registerConfig("gate_rot_freq", gate_rot_freq);
   registerConfig("optim_objective", optim_objective);
   registerConfig("optim_weights", optim_weights);
+  
+  // Indexed settings (per-oscillator)
+  registerIndexedConfig("control_segments", indexed_control_segments);
+  registerIndexedConfig("control_initialization", indexed_control_init);
+  registerIndexedConfig("control_bounds", indexed_control_bounds);
+  registerIndexedConfig("carrier_frequency", indexed_carrier_frequencies);
+  registerIndexedConfig("output", indexed_output);
   registerConfig("optim_atol", optim_atol);
   registerConfig("optim_rtol", optim_rtol);
   registerConfig("optim_ftol", optim_ftol);
@@ -65,6 +68,30 @@ ConfigBuilder::ConfigBuilder(MPI_Comm comm, std::stringstream& logstream, bool q
   registerConfig("linearsolver_maxiter", linearsolver_maxiter);
   registerConfig("timestepper", timestepper);
   registerConfig("rand_seed", rand_seed);
+}
+
+std::vector<std::vector<double>> ConfigBuilder::convertIndexedToVectorVector(
+    const std::map<int, std::vector<double>>& indexed_map,
+    size_t num_oscillators) {
+  std::vector<std::vector<double>> result(num_oscillators);
+  for (const auto& [osc_idx, values] : indexed_map) {
+    if (static_cast<size_t>(osc_idx) < result.size()) {
+      result[osc_idx] = values;
+    }
+  }
+  return result;
+}
+
+std::vector<std::vector<OutputType>> ConfigBuilder::convertIndexedToOutputVector(
+    const std::map<int, std::vector<OutputType>>& indexed_map,
+    size_t num_oscillators) {
+  std::vector<std::vector<OutputType>> result(num_oscillators);
+  for (const auto& [osc_idx, values] : indexed_map) {
+    if (static_cast<size_t>(osc_idx) < result.size()) {
+      result[osc_idx] = values;
+    }
+  }
+  return result;
 }
 
 Config ConfigBuilder::build() {
@@ -131,61 +158,66 @@ Config ConfigBuilder::build() {
     }
   }
 
-  // Convert ControlSegmentConfig to ControlSegment format
+  // Convert ControlSegmentConfig to ControlSegment format using indexed settings
   std::vector<std::vector<ControlSegment>> converted_control_segments;
-  if (control_segments) {
-    for (const auto& seg_config : *control_segments) {
-      ControlSegment segment;
-      segment.type = seg_config.control_type;
+  size_t num_oscillators = nlevels ? nlevels->size() :
+                           (indexed_control_segments.empty() ? 1 :
+                            indexed_control_segments.rbegin()->first + 1);
+  converted_control_segments.resize(num_oscillators);
 
-      // Create appropriate params variant based on type
-      if (seg_config.control_type == ControlType::BSPLINE ||
-          seg_config.control_type == ControlType::BSPLINE0) {
-        SplineParams params;
-        params.nspline = seg_config.num_basis_functions.value_or(10);
-        params.tstart = seg_config.tstart.value_or(0.0);
-        params.tstop = seg_config.tstop.value_or(ntime.value_or(1000) * dt.value_or(0.1));
-        segment.params = params;
-      } else if (seg_config.control_type == ControlType::BSPLINEAMP) {
-        SplineAmpParams params;
-        params.nspline = seg_config.num_basis_functions.value_or(10);
-        params.tstart = seg_config.tstart.value_or(0.0);
-        params.tstop = seg_config.tstop.value_or(ntime.value_or(1000) * dt.value_or(0.1));
-        params.scaling = seg_config.scaling.value_or(1.0);
-        segment.params = params;
-      } else if (seg_config.control_type == ControlType::STEP) {
-        StepParams params;
-        params.step_amp1 = seg_config.amplitude_1.value_or(0.0);
-        params.step_amp2 = seg_config.amplitude_2.value_or(0.0);
-        params.tramp = 0.0;
-        params.tstart = seg_config.tstart.value_or(0.0);
-        params.tstop = seg_config.tstop.value_or(ntime.value_or(1000) * dt.value_or(0.1));
-        segment.params = params;
-      }
-
-      // For now, assume single oscillator - expand this logic later for multi-oscillator
-      if (converted_control_segments.empty()) {
-        converted_control_segments.resize(1);
-      }
-      converted_control_segments[0].push_back(segment);
+  // Process indexed control segments (control_segments0, control_segments1, etc.)
+  for (const auto& [osc_idx, seg_config] : indexed_control_segments) {
+    if (static_cast<size_t>(osc_idx) >= converted_control_segments.size()) {
+      converted_control_segments.resize(osc_idx + 1);
     }
+
+    ControlSegment segment;
+    segment.type = seg_config.control_type;
+
+    // Create appropriate params variant based on type
+    if (seg_config.control_type == ControlType::BSPLINE ||
+        seg_config.control_type == ControlType::BSPLINE0) {
+      SplineParams params;
+      params.nspline = seg_config.num_basis_functions.value_or(10);
+      params.tstart = seg_config.tstart.value_or(0.0);
+      params.tstop = seg_config.tstop.value_or(ntime.value_or(1000) * dt.value_or(0.1));
+      segment.params = params;
+    } else if (seg_config.control_type == ControlType::BSPLINEAMP) {
+      SplineAmpParams params;
+      params.nspline = seg_config.num_basis_functions.value_or(10);
+      params.tstart = seg_config.tstart.value_or(0.0);
+      params.tstop = seg_config.tstop.value_or(ntime.value_or(1000) * dt.value_or(0.1));
+      params.scaling = seg_config.scaling.value_or(1.0);
+      segment.params = params;
+    } else if (seg_config.control_type == ControlType::STEP) {
+      StepParams params;
+      params.step_amp1 = seg_config.amplitude_1.value_or(0.0);
+      params.step_amp2 = seg_config.amplitude_2.value_or(0.0);
+      params.tramp = 0.0;
+      params.tstart = seg_config.tstart.value_or(0.0);
+      params.tstop = seg_config.tstop.value_or(ntime.value_or(1000) * dt.value_or(0.1));
+      segment.params = params;
+    }
+
+    converted_control_segments[osc_idx].push_back(segment);
   }
 
-  // Convert ControlInitializationConfig to ControlSegmentInitialization format
+  // Convert ControlInitializationConfig to ControlSegmentInitialization format using indexed settings
   std::vector<std::vector<ControlSegmentInitialization>> converted_control_initializations;
-  if (control_initializations) {
-    for (const auto& init_config : *control_initializations) {
-      ControlSegmentInitialization init;
-      init.type = init_config.init_type;
-      init.amplitude = init_config.amplitude.value_or(0.0);
-      init.phase = init_config.phase.value_or(0.0);
+  converted_control_initializations.resize(num_oscillators);
 
-      // For now, assume single oscillator
-      if (converted_control_initializations.empty()) {
-        converted_control_initializations.resize(1);
-      }
-      converted_control_initializations[0].push_back(init);
+  // Process indexed control initializations (control_initialization0, control_initialization1, etc.)
+  for (const auto& [osc_idx, init_config] : indexed_control_init) {
+    if (static_cast<size_t>(osc_idx) >= converted_control_initializations.size()) {
+      converted_control_initializations.resize(osc_idx + 1);
     }
+
+    ControlSegmentInitialization init;
+    init.type = init_config.init_type;
+    init.amplitude = init_config.amplitude.value_or(0.0);
+    init.phase = init_config.phase.value_or(0.0);
+
+    converted_control_initializations[osc_idx].push_back(init);
   }
 
   // Apply defaults for required fields
@@ -219,8 +251,8 @@ Config ConfigBuilder::build() {
     control_enforceBC.value_or(false),
     converted_control_initializations,
     std::optional<std::string>{}, // control_initialization_file
-    control_bounds.value_or(std::vector<std::vector<double>>{}),
-    carrier_frequencies.value_or(std::vector<std::vector<double>>{}),
+    convertIndexedToVectorVector(indexed_control_bounds, num_oscillators),
+    convertIndexedToVectorVector(indexed_carrier_frequencies, num_oscillators),
     // Optimization parameters
     optim_target_type,
     optim_target_file,
@@ -244,7 +276,7 @@ Config ConfigBuilder::build() {
     optim_regul_tik0.value_or(false),
     // Output parameters
     datadir.value_or("./data_out"),
-    output.value_or(std::vector<std::vector<OutputType>>{}),
+    convertIndexedToOutputVector(indexed_output, num_oscillators),
     output_frequency.value_or(1),
     optim_monitor_frequency.value_or(10),
     runtype.value_or(RunType::SIMULATION),
@@ -558,6 +590,7 @@ void ConfigBuilder::applyConfigLine(const std::string& line) {
     std::string key = trimmedLine.substr(0, pos);
     std::string value = trimmedLine.substr(pos + 1);
 
+    // First try exact key match
     if (setters.count(key)) {
       try {
         setters[key](value);
@@ -565,9 +598,41 @@ void ConfigBuilder::applyConfigLine(const std::string& line) {
         logErrorToRank0(mpi_rank, "Error parsing '" + key + "': " + e.what());
       }
     } else {
-      logErrorToRank0(mpi_rank, "Unknown option '" + key + "'");
+      // Try to handle indexed settings (e.g., control_segments0, output1)
+      bool handled = handleIndexedSetting(key, value);
+      if (!handled) {
+        logErrorToRank0(mpi_rank, "Unknown option '" + key + "'");
+      }
     }
   }
+}
+
+bool ConfigBuilder::handleIndexedSetting(const std::string& key, const std::string& value) {
+  // Check if key ends with a digit (indexed setting)
+  if (key.empty() || !std::isdigit(key.back())) {
+    return false;
+  }
+
+  // Find where the index starts
+  size_t index_pos = key.find_last_not_of("0123456789") + 1;
+  if (index_pos == std::string::npos || index_pos >= key.length()) {
+    return false;
+  }
+
+  std::string base_key = key.substr(0, index_pos);
+  int index = std::stoi(key.substr(index_pos));
+
+  // Use the unified indexed setters pattern
+  if (indexed_setters.count(base_key)) {
+    try {
+      indexed_setters[base_key](index, value);
+      return true;
+    } catch (const std::exception& e) {
+      logErrorToRank0(mpi_rank, "Error parsing indexed setting '" + key + "': " + e.what());
+    }
+  }
+
+  return false;
 }
 
 void ConfigBuilder::loadFromFile(const std::string& filename) {

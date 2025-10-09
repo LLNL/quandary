@@ -71,6 +71,7 @@ public:
 
 private:
   std::unordered_map<std::string, std::function<void(const std::string&)>> setters; ///< Setters from config string
+  std::unordered_map<std::string, std::function<void(int, const std::string&)>> indexed_setters; ///< Setters for indexed config strings
 
   // MPI and logging
   MPI_Comm comm; ///< MPI communicator for parallel operations.
@@ -130,6 +131,13 @@ private:
   std::optional<TimeStepperType> timestepper;  ///< The time-stepping algorithm
   std::optional<int> rand_seed;  ///< Fixed seed for the random number generator for reproducibility
 
+  // Indexed settings storage (per-oscillator)
+  std::map<int, ControlSegmentConfig> indexed_control_segments;      ///< control_segments0, control_segments1, etc.
+  std::map<int, ControlInitializationConfig> indexed_control_init;   ///< control_initialization0, control_initialization1, etc.
+  std::map<int, std::vector<double>> indexed_control_bounds;         ///< control_bounds0, control_bounds1, etc.
+  std::map<int, std::vector<double>> indexed_carrier_frequencies;    ///< carrier_frequency0, carrier_frequency1, etc.
+  std::map<int, std::vector<OutputType>> indexed_output;             ///< output0, output1, etc.
+
 public:
   ConfigBuilder(MPI_Comm comm, std::stringstream& logstream, bool quietmode = false);
   void loadFromFile(const std::string& filename);
@@ -138,11 +146,25 @@ public:
 private:
   std::vector<std::string> split(const std::string& str, char delimiter = ',');
   void applyConfigLine(const std::string& line);
+  bool handleIndexedSetting(const std::string& key, const std::string& value);
+  std::vector<std::vector<double>> convertIndexedToVectorVector(
+      const std::map<int, std::vector<double>>& indexed_map,
+      size_t num_oscillators);
+  std::vector<std::vector<OutputType>> convertIndexedToOutputVector(
+      const std::map<int, std::vector<OutputType>>& indexed_map,
+      size_t num_oscillators);
 
   template<typename T>
   void registerConfig(const std::string& key, std::optional<T>& member) {
     setters[key] = [this, &member](const std::string& value) {
       member = convertFromString<T>(value);
+    };
+  }
+
+  template<typename T>
+  void registerIndexedConfig(const std::string& base_key, std::map<int, T>& storage) {
+    indexed_setters[base_key] = [this, &storage](int index, const std::string& value) {
+      storage[index] = convertFromString<T>(value);
     };
   }
 

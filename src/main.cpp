@@ -4,7 +4,6 @@
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
 #include "config.hpp"
-#include "configbuilder.hpp"
 #include <stdlib.h>
 #include <sys/resource.h>
 #include <cassert>
@@ -74,7 +73,8 @@ int main(int argc,char **argv)
     return 0;
   }
   std::stringstream log;
-  Config config = Config::fromCfg(filename, &log, quietmode);
+  std::string config_file = argv[1];
+  Config config = Config::fromCfg(config_file, &log, quietmode);
   config.printConfig();
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
