@@ -1,8 +1,18 @@
 #include "config.hpp"
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "configbuilder.hpp"
+
+// Helper function to convert enum back to string using existing enum maps
+template<typename EnumType>
+std::string enumToString(EnumType value, const std::map<std::string, EnumType>& type_map) {
+  for (const auto& [str, enum_val] : type_map) {
+    if (enum_val == value) return str;
+  }
+  return "unknown";
+}
 
 Config::Config(
   MPI_Comm comm_,
@@ -118,24 +128,140 @@ Config Config::fromCfg(std::string filename, std::stringstream* log, bool quietm
   return builder.build();
 }
 
+namespace {
+  template<typename T>
+  std::string printVector(std::vector<T> vec) {
+    std::string out = "";
+    for (size_t i = 0; i < vec.size(); ++i) {
+      out += std::to_string(vec[i]);
+      if (i < vec.size() - 1) {
+        out += ", ";
+      }
+    }
+    return out;
+  }
+} //namespace
+
 void Config::printConfig() const {
-  std::cout << "Configuration:\n";
+  std::string delim = ", ";
+  std::cout << "# Configuration settings\n";
+  std::cout << "# =============================================\n\n";
 
-  std::cout << "  nlevels = ";
-  for (size_t i = 0; i < nlevels.size(); ++i) {
-    std::cout << nlevels[i];
-    if (i < nlevels.size() - 1) std::cout << ", ";
+  std::cout << "nlevels = " << printVector(nlevels) << "\n";
+  std::cout << "nessential = " << printVector(nessential) << "\n";
+  std::cout << "ntime = " << ntime << "\n";
+  std::cout << "dt = " << dt << "\n";
+  std::cout << "transfreq = " << printVector(transfreq) << "\n";
+  std::cout << "selfkerr = " << printVector(selfkerr) << "\n";
+  std::cout << "crosskerr = " << printVector(crosskerr) << "\n";
+  std::cout << "Jkl = " << printVector(Jkl) << "\n";
+  std::cout << "rotfreq = " << printVector(rotfreq) << "\n";
+  std::cout << "collapse_type = " << enumToString(collapse_type, LINDBLAD_TYPE_MAP) << "\n";
+  std::cout << "decay_time = " << printVector(decay_time) << "\n";
+  std::cout << "dephase_time = " << printVector(dephase_time) << "\n";
+  std::cout << "initialcondition = " << enumToString(initial_condition_type, INITCOND_TYPE_MAP);
+  if (!initial_condition_IDs.empty()) {
+    for (size_t id : initial_condition_IDs) {
+      std::cout << ", " << id;
+    }
+  }
+  std::cout << "\n";
+  for (size_t i = 0; i < apply_pipulse.size(); ++i) {
+    for (const auto& segment : apply_pipulse[i]) {
+      std::cout << "apply_pipulse = " << i
+                << ", " << segment.tstart
+                << ", " << segment.tstop
+                << ", " << segment.amp << "\n";
+    }
+  }
+  if (!hamiltonian_file_Hsys.empty()) {
+    std::cout << "hamiltonian_file_Hsys = " << hamiltonian_file_Hsys << "\n";
+  }
+  if (!hamiltonian_file_Hc.empty()) {
+    std::cout << "hamiltonian_file_Hc = " << hamiltonian_file_Hc << "\n";
+  }
+
+  // Optimization Parameters
+  for (size_t i = 0; i < control_segments.size(); ++i) {
+    if (!control_segments[i].empty()) {
+      const auto& seg = control_segments[i][0];
+      std::cout << "control_segments" << i << " = "
+                << enumToString(seg.type, CONTROL_TYPE_MAP);
+      // Add segment-specific parameters
+      if (std::holds_alternative<SplineParams>(seg.params)) {
+        auto params = std::get<SplineParams>(seg.params);
+        std::cout << ", " << params.nspline;
+      } else if (std::holds_alternative<SplineAmpParams>(seg.params)) {
+        auto params = std::get<SplineAmpParams>(seg.params);
+        std::cout << ", " << params.nspline;
+        if (params.scaling != 1.0) std::cout << ", " << params.scaling;
+      }
+      std::cout << "\n";
+    }
+  }
+  std::cout << "control_enforceBC = " << (control_enforceBC ? "true" : "false") << "\n";
+  for (size_t i = 0; i < control_initializations.size(); ++i) {
+    if (!control_initializations[i].empty()) {
+      const auto& init = control_initializations[i][0];
+      std::cout << "control_initialization" << i
+                << " = " << enumToString(init.type, CONTROL_INITIALIZATION_TYPE_MAP)
+                << ", " << init.amplitude;
+      if (init.phase != 0.0) std::cout << ", " << init.phase;
+      std::cout << "\n";
+    }
+  }
+  for (size_t i = 0; i < control_bounds.size(); ++i) {
+    std::cout << "control_bounds" << i << " = " << printVector(control_bounds[i]) << "\n";
+  }
+  for (size_t i = 0; i < carrier_frequencies.size(); ++i) {
+    std::cout << "carrier_frequency" << i << " = " << printVector(carrier_frequencies[i]) << "\n";
+  }
+
+  std::cout << "runtype = " << enumToString(runtype, RUN_TYPE_MAP) << "\n";
+  std::cout << "optim_target = " << enumToString(optim_target_type, TARGET_TYPE_MAP);
+  if (optim_target_type == TargetType::GATE) {
+    std::cout << ", " << enumToString(optim_target_gate_type, GATE_TYPE_MAP);
   }
   std::cout << "\n";
 
-  std::cout << "  nessential = ";
-  for (size_t i = 0; i < nessential.size(); ++i) {
-    std::cout << nessential[i];
-    if (i < nessential.size() - 1) std::cout << ", ";
+  std::cout << "optim_objective = " << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\n";
+  if (!optim_weights.empty()) {
+    std::cout << "optim_weights = " << printVector(optim_weights) << "\n";
   }
-  std::cout << "\n";
+  std::cout << "optim_atol = " << tolerance.atol << "\n";
+  std::cout << "optim_rtol = " << tolerance.rtol << "\n";
+  std::cout << "optim_ftol = " << tolerance.ftol << "\n";
+  std::cout << "optim_inftol = " << tolerance.inftol << "\n";
+  std::cout << "optim_maxiter = " << tolerance.maxiter << "\n";
+  std::cout << "optim_regul = " << optim_regul << "\n";
+  std::cout << "optim_penalty = " << penalty.penalty << "\n";
+  std::cout << "optim_penalty_param = " << penalty.penalty_param << "\n";
+  std::cout << "optim_penalty_dpdm = " << penalty.penalty_dpdm << "\n";
+  std::cout << "optim_penalty_energy = " << penalty.penalty_energy << "\n";
+  std::cout << "optim_penalty_variation = " << penalty.penalty_variation << "\n";
+  std::cout << "optim_regul_tik0 = " << (optim_regul_tik0 ? "true" : "false") << "\n";
 
-  std::cout << "  ntime = " << ntime << "\n";
-  std::cout << "  dt = " << dt << "\n";
-  std::cout << "\n";
+  std::cout << "datadir = " << datadir << "\n";
+
+  for (size_t i = 0; i < output.size(); ++i) {
+    if (!output[i].empty()) {
+      std::cout << "output" << i << " = ";
+      for (size_t j = 0; j < output[i].size(); ++j) {
+        std::cout << enumToString(output[i][j], OUTPUT_TYPE_MAP);
+        if (j < output[i].size() - 1) std::cout << ", ";
+      }
+      std::cout << "\n";
+    }
+  }
+
+  std::cout << "output_frequency = " << output_frequency << "\n";
+  std::cout << "optim_monitor_frequency = " << optim_monitor_frequency << "\n";
+  std::cout << "runtype = " << enumToString(runtype, RUN_TYPE_MAP) << "\n";
+  std::cout << "usematfree = " << (usematfree ? "true" : "false") << "\n";
+  std::cout << "linearsolver_type = " << enumToString(linearsolver_type, LINEAR_SOLVER_TYPE_MAP) << "\n";
+  std::cout << "linearsolver_maxiter = " << linearsolver_maxiter << "\n";
+  std::cout << "timestepper = " << enumToString(timestepper_type, TIME_STEPPER_TYPE_MAP) << "\n";
+  std::cout << "rand_seed = " << rand_seed << "\n";
+
+  std::cout << "# =============================================\n\n";
 }
