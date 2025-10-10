@@ -36,7 +36,7 @@ ConfigBuilder::ConfigBuilder(MPI_Comm comm, std::stringstream& logstream, bool q
   registerConfig("gate_rot_freq", gate_rot_freq);
   registerConfig("optim_objective", optim_objective);
   registerConfig("optim_weights", optim_weights);
-  
+
   // Indexed settings (per-oscillator)
   registerIndexedConfig("control_segments", indexed_control_segments);
   registerIndexedConfig("control_initialization", indexed_control_init);
