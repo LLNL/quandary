@@ -9,6 +9,7 @@ set(PROJECT_VERSION_SUFFIX "-dev")
 set(FULL_VERSION "${PROJECT_VERSION}${PROJECT_VERSION_SUFFIX}")
 
 option(BUILD_QUANDARY "Build Quandary targets" ON)
+option(ENABLE_TESTS "Run unit tests" ON)
 
 # Set default build type to Release if not specified
 if(NOT CMAKE_BUILD_TYPE)
@@ -53,6 +54,7 @@ configure_file(
 
 if(BUILD_QUANDARY)
   add_subdirectory(src)
+  add_subdirectory(tests/unit)
 endif()
 
 add_subdirectory(docs)

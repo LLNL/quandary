@@ -141,12 +141,22 @@ private:
 public:
   ConfigBuilder(MPI_Comm comm, std::stringstream& logstream, bool quietmode = false);
   void loadFromFile(const std::string& filename);
+  void loadFromString(const std::string& config_content);
   Config build();
 
 private:
   std::vector<std::string> split(const std::string& str, char delimiter = ',');
   void applyConfigLine(const std::string& line);
   bool handleIndexedSetting(const std::string& key, const std::string& value);
+
+  template<typename StreamType>
+  void loadFromStream(StreamType& stream) {
+    std::string line;
+    while (getline(stream, line)) {
+      applyConfigLine(line);
+    }
+  }
+
   std::vector<std::vector<double>> convertIndexedToVectorVector(
       const std::map<int, std::vector<double>>& indexed_map,
       size_t num_oscillators);

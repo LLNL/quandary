@@ -636,18 +636,19 @@ bool ConfigBuilder::handleIndexedSetting(const std::string& key, const std::stri
 }
 
 void ConfigBuilder::loadFromFile(const std::string& filename) {
-  std::string line;
-  std::ifstream file;
-  file.open(filename.c_str());
+  std::ifstream file(filename);
   if (!file.is_open()) {
     logErrorToRank0(mpi_rank, "Unable to read the file " + filename);
     exit(1);
   }
 
-  while (getline(file, line)) {
-    applyConfigLine(line);
-  }
+  loadFromStream(file);
   file.close();
+}
+
+void ConfigBuilder::loadFromString(const std::string& config_content) {
+  std::istringstream stream(config_content);
+  loadFromStream(stream);
 }
 
 // Struct converter implementations
