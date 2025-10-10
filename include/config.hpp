@@ -11,6 +11,32 @@
 #pragma once
 
 /**
+ * @brief Grouped optimization tolerance settings.
+ *
+ * Groups all optimization stopping criteria and iteration limits.
+ */
+struct OptimTolerance {
+  double atol = 1e-8;      ///< Absolute gradient tolerance
+  double rtol = 1e-4;      ///< Relative gradient tolerance
+  double ftol = 1e-8;      ///< Final time cost tolerance
+  double inftol = 1e-5;    ///< Infidelity tolerance
+  int maxiter = 200;       ///< Maximum iterations
+};
+
+/**
+ * @brief Grouped optimization penalty settings.
+ *
+ * Groups all penalty terms used for control pulse regularization.
+ */
+struct OptimPenalty {
+  double penalty = 0.0;           ///< First integral penalty coefficient
+  double penalty_param = 0.5;     ///< Gaussian variance parameter
+  double penalty_dpdm = 0.0;      ///< Second derivative penalty coefficient
+  double penalty_energy = 0.0;    ///< Energy penalty coefficient
+  double penalty_variation = 0.01; ///< Amplitude variation penalty coefficient
+};
+
+/**
  * @brief Structure for storing pi-pulse parameters for one segment.
  *
  * Stores timing and amplitude information for pi-pulse sequences.
@@ -111,17 +137,9 @@ class Config {
     std::vector<double> gate_rot_freq;  ///< Frequency of rotation of the target gate, for each oscillator (GHz)
     ObjectiveType optim_objective = ObjectiveType::JFROBENIUS;  ///< Objective function measure // TODO not used?
     std::vector<double> optim_weights;  ///< Weights for summing up the objective function
-    double optim_atol = 1e-8;  ///< Optimization stopping tolerance based on gradient norm (absolute)
-    double optim_rtol = 1e-4;  ///< Optimization stopping tolerance based on gradient norm (relative)
-    double optim_ftol = 1e-8;  ///< Optimization stopping criterion based on the final time cost (absolute)
-    double optim_inftol = 1e-5;  ///< Optimization stopping criterion based on the infidelity (absolute)
-    int optim_maxiter = 200;  ///< Maximum number of optimization iterations
+    OptimTolerance tolerance;  ///< Grouped optimization stopping criteria and iteration limits
     double optim_regul = 1e-4;  ///< Coefficient of Tikhonov regularization for the design variables
-    double optim_penalty = 0.0;  ///< Coefficient for adding first integral penalty term
-    double optim_penalty_param = 0.5;  ///< Integral penalty parameter inside the weight (gaussian variance a)
-    double optim_penalty_dpdm = 0.0;  ///< Coefficient for penalizing the integral of the second derivative of state populations
-    double optim_penalty_energy = 0.0;  ///< Coefficient for penalizing the control pulse energy integral
-    double optim_penalty_variation = 0.01;  ///< Coefficient for penalizing variations in control amplitudes
+    OptimPenalty penalty;  ///< Grouped optimization penalty coefficients
     bool optim_regul_tik0 = false;  ///< Switch to use Tikhonov regularization with ||x - x_0||^2 instead of ||x||^2
     // bool optim_regul_interpolate = false;  ///< TODO deprecated version
 
@@ -177,17 +195,9 @@ class Config {
       const std::vector<double>& gate_rot_freq_,
       ObjectiveType optim_objective_,
       const std::vector<double>& optim_weights_,
-      double optim_atol_,
-      double optim_rtol_,
-      double optim_ftol_,
-      double optim_inftol_,
-      int optim_maxiter_,
+      const OptimTolerance& tolerance_,
       double optim_regul_,
-      double optim_penalty_,
-      double optim_penalty_param_,
-      double optim_penalty_dpdm_,
-      double optim_penalty_energy_,
-      double optim_penalty_variation_,
+      const OptimPenalty& penalty_,
       bool optim_regul_tik0_,
       // Output parameters
       const std::string& datadir_,
@@ -249,17 +259,9 @@ class Config {
     const std::vector<double>& getGateRotFreq() const { return gate_rot_freq; }
     ObjectiveType getOptimObjective() const { return optim_objective; }
     const std::vector<double>& getOptimWeights() const { return optim_weights; }
-    double getOptimAtol() const { return optim_atol; }
-    double getOptimRtol() const { return optim_rtol; }
-    double getOptimFtol() const { return optim_ftol; }
-    double getOptimInftol() const { return optim_inftol; }
-    int getOptimMaxiter() const { return optim_maxiter; }
+    const OptimTolerance& getOptimTolerance() const { return tolerance; }
     double getOptimRegul() const { return optim_regul; }
-    double getOptimPenalty() const { return optim_penalty; }
-    double getOptimPenaltyParam() const { return optim_penalty_param; }
-    double getOptimPenaltyDpdm() const { return optim_penalty_dpdm; }
-    double getOptimPenaltyEnergy() const { return optim_penalty_energy; }
-    double getOptimPenaltyVariation() const { return optim_penalty_variation; }
+    const OptimPenalty& getOptimPenalty() const { return penalty; }
     bool getOptimRegulTik0() const { return optim_regul_tik0; }
     bool getOptimRegulInterpolate() const { return false; } // Deprecated - always return false
 

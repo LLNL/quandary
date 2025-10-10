@@ -78,18 +78,25 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
 
   /* Store other optimization parameters */
   gamma_tik = config.getOptimRegul();
-  gatol = config.getOptimAtol();
-  fatol = config.getOptimFtol();
-  inftol = config.getOptimInftol();
-  grtol = config.getOptimRtol();
-  maxiter = config.getOptimMaxiter();
-  gamma_penalty = config.getOptimPenalty();
-  penalty_param = config.getOptimPenaltyParam();
-  gamma_penalty_energy = config.getOptimPenaltyEnergy();
+
+  // Get tolerance settings as a group
+  const auto& tolerance = config.getOptimTolerance();
+  gatol = tolerance.atol;
+  fatol = tolerance.ftol;
+  inftol = tolerance.inftol;
+  grtol = tolerance.rtol;
+  maxiter = tolerance.maxiter;
+
+  // Get penalty settings as a group
+  const auto& penalty_config = config.getOptimPenalty();
+  gamma_penalty = penalty_config.penalty;
+  penalty_param = penalty_config.penalty_param;
+  gamma_penalty_energy = penalty_config.penalty_energy;
+  gamma_penalty_dpdm = penalty_config.penalty_dpdm;
+  gamma_penalty_variation = penalty_config.penalty_variation;
+
   gamma_tik_interpolate = config.getOptimRegulInterpolate();
-  gamma_penalty_dpdm = config.getOptimPenaltyDpdm();
-  gamma_penalty_variation = config.getOptimPenaltyVariation();
-  
+
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
     if (mpirank_world == 0 && !quietmode) {

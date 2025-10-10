@@ -262,17 +262,23 @@ Config ConfigBuilder::build() {
     gate_rot_freq.value_or(std::vector<double>{}),
     optim_objective.value_or(ObjectiveType::JFROBENIUS),
     optim_weights.value_or(std::vector<double>{}),
-    optim_atol.value_or(1e-8),
-    optim_rtol.value_or(1e-4),
-    optim_ftol.value_or(1e-8),
-    optim_inftol.value_or(1e-5),
-    optim_maxiter.value_or(200),
+    // Construct OptimTolerance struct
+    OptimTolerance{
+      optim_atol.value_or(1e-8),
+      optim_rtol.value_or(1e-4),
+      optim_ftol.value_or(1e-8),
+      optim_inftol.value_or(1e-5),
+      optim_maxiter.value_or(200)
+    },
     optim_regul.value_or(1e-4),
-    optim_penalty.value_or(0.0),
-    optim_penalty_param.value_or(0.5),
-    optim_penalty_dpdm.value_or(0.0),
-    optim_penalty_energy.value_or(0.0),
-    optim_penalty_variation.value_or(0.01),
+    // Construct OptimPenalty struct
+    OptimPenalty{
+      optim_penalty.value_or(0.0),
+      optim_penalty_param.value_or(0.5),
+      optim_penalty_dpdm.value_or(0.0),
+      optim_penalty_energy.value_or(0.0),
+      optim_penalty_variation.value_or(0.01)
+    },
     optim_regul_tik0.value_or(false),
     // Output parameters
     datadir.value_or("./data_out"),
