@@ -125,12 +125,12 @@ Config::Config(
   hamiltonian_file_Hc(hamiltonian_file_Hc_)
 {
   MPI_Comm_rank(comm, &mpi_rank);
-  validate();
+  finalize();
 }
 
 Config::~Config(){}
 
-void Config::validate() {
+void Config::finalize() {
   // Basic domain requirements
   if (nlevels.empty()) {
     exitWithError(mpi_rank, "ERROR: nlevels cannot be empty");
@@ -152,13 +152,13 @@ void Config::validate() {
       exitWithError(mpi_rank, "\n\n ERROR for initial condition setting: \n When running Schroedingers solver (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'. Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
     }
 
-    // For Schroedinger solver, DIAGONAL and BASIS are equivalent - normalize to DIAGONAL
+    // DIAGONAL and BASIS initial conditions in the Schroedinger case are the same. Overwrite it to DIAGONAL
     if (initial_condition_type == InitialConditionType::BASIS) {
-      const_cast<InitialConditionType&>(initial_condition_type) = InitialConditionType::DIAGONAL;
+      initial_condition_type = InitialConditionType::DIAGONAL;
     }
   }
 
-  // Validate initial condition IDs for pure states
+  // Validate initial conditions
   if (initial_condition_type == InitialConditionType::PURE) {
     if (initial_condition_IDs.size() != nlevels.size()) {
       exitWithError(mpi_rank, "ERROR during pure-state initialization: List of IDs must contain " +
@@ -172,12 +172,19 @@ void Config::validate() {
           " exceeds maximum level " + std::to_string(nlevels[k] - 1));
       }
     }
-  }
-
-  // Validate control segments exist for each oscillator
-  if (control_segments.size() != nlevels.size()) {
-    exitWithError(mpi_rank, "Number of control_segments (" + std::to_string(control_segments.size()) +
-      ") must match number of oscillators (" + std::to_string(nlevels.size()) + ")");
+  } else if (initial_condition_type == InitialConditionType::ENSEMBLE) {
+    // Sanity check for the list in initcond_IDs!
+    if (initial_condition_IDs.empty()) {
+      exitWithError(mpi_rank, "ERROR: initial_condition_IDs cannot be empty for ensemble initialization");
+    }
+    if (initial_condition_IDs.back() >= nlevels.size()) {
+      exitWithError(mpi_rank, "ERROR: Last element in initial_condition_IDs exceeds number of oscillators");
+    }
+    for (size_t i = 0; i < initial_condition_IDs.size() - 1; i++) { // list should be consecutive!
+      if (initial_condition_IDs[i] + 1 != initial_condition_IDs[i + 1]) {
+        exitWithError(mpi_rank, "ERROR: List of oscillators for ensemble initialization should be consecutive!\n");
+      }
+    }
   }
 
   // Validate essential levels don't exceed total levels

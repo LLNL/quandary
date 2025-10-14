@@ -299,60 +299,6 @@ Config ConfigBuilder::build() {
   );
 }
 
-// void Config::validate() {
-//   if ((!hamiltonian_file_Hsys.empty() || !hamiltonian_file_Hc.empty()) && usematfree) {
-//     if (!quietmode) {
-//       std::string message = "# Warning: Matrix-free solver can not be used when Hamiltonian is read from file. Switching to sparse-matrix version.\n";
-//       logOutputToRank0(mpi_rank, message);
-//     }
-//     usematfree = false;
-//   }
-
-//   /* Sanity check for Schrodinger solver initial conditions */
-//   if (collapse_type == LindbladType::NONE){
-//     if (initial_condition_type == InitialConditionType::ENSEMBLE ||
-//         initial_condition_type == InitialConditionType::THREESTATES ||
-//         initial_condition_type == InitialConditionType::NPLUSONE ){
-//           printf("\n\n ERROR for initial condition setting: \n When running Schroedingers solver (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'. Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
-//           exit(1);
-//     } else if (initial_condition_type == InitialConditionType::BASIS) {
-//       // DIAGONAL and BASIS initial conditions in the Schroedinger case are the same. Overwrite it to DIAGONAL
-//       initial_condition_type = InitialConditionType::DIAGONAL;
-//     }
-//   }
-
-//     // Validate initial conditions
-//     if (initial_condition_type == InitialConditionType::PURE) {
-//       if (initial_condition_IDs.size() != nlevels.size()) {
-//         std::string message = "ERROR during pure-state initialization: List of IDs must contain"
-//           + std::to_string(nlevels.size()) + "elements!\n";
-//         logErrorToRank0(mpi_rank, message);
-//         exit(1);
-//       }
-//       for (size_t k=0; k < initial_condition_IDs.size(); k++) {
-//         if (initial_condition_IDs[k] > nlevels[k]-1){
-//           std::string message = "ERROR in config setting. The requested pure state initialization |"
-//             + std::to_string(initial_condition_IDs[k])
-//             + "> exceeds the number of allowed levels for that oscillator ("
-//             + std::to_string(nlevels[k]-1) + ").\n";
-//           logErrorToRank0(mpi_rank, message);
-//           exit(1);
-//         }
-//         assert(initial_condition_IDs[k] < nlevels[k]);
-//       }
-//     } else if (initial_condition_type == InitialConditionType::ENSEMBLE) {
-//       // Sanity check for the list in initcond_IDs!
-//       assert(initial_condition_IDs.size() >= 1); // at least one element
-//       assert(initial_condition_IDs[initial_condition_IDs.size()-1] < nlevels.size()); // last element can't exceed total number of oscillators
-//       for (size_t i=0; i < initial_condition_IDs.size()-1; i++){ // list should be consecutive!
-//         if (initial_condition_IDs[i]+1 != initial_condition_IDs[i+1]) {
-//           logErrorToRank0(mpi_rank, "ERROR: List of oscillators for ensemble initialization should be consecutive!\n");
-//           exit(1);
-//         }
-//       }
-//     }
-// }
-
 // void Config::setNEssential(const std::string& nessential_str) {
 //   /* Get the number of essential levels per oscillator.
 //    * Default: same as number of levels */

@@ -284,5 +284,5 @@ class Config {
     const std::string& getHamiltonianFileHc() const { return hamiltonian_file_Hc; }
 
 private:
-    void validate();
+    void finalize();
 };
