@@ -1,4 +1,5 @@
 #include "util.hpp"
+#include <sstream>
 
 // Suppress compiler warnings about unused parameters in code with #ifdef
 #define UNUSED(expr) (void)(expr)
@@ -667,6 +668,12 @@ void exitWithError(int mpi_rank, const std::string& message) {
 void logOutputToRank0(int mpi_rank, const std::string& message) {
   if (mpi_rank == 0) {
     std::cout << message << std::endl;
+  }
+}
+
+void logOutputToRank0(int mpi_rank, std::stringstream& stream, const std::string& message) {
+  if (mpi_rank == 0) {
+    stream << message << std::endl;
   }
 }
 

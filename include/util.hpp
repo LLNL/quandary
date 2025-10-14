@@ -299,6 +299,15 @@ void exitWithError(int mpi_rank, const std::string& message);
 void logOutputToRank0(int mpi_rank, const std::string& message);
 
 /**
+ * @brief Prints output message to rank 0 for given stream.
+ *
+ * @param mpi_rank MPI rank of the current process.
+ * @param stream Stream to log output to.
+ * @param message Error message to log.
+ */
+void logOutputToRank0(int mpi_rank, std::stringstream& stream, const std::string& message);
+
+/**
  * @brief Returns a lowercase version of the input string.
  *
  * @param str String to convert to lowercase.
