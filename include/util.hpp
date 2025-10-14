@@ -280,6 +280,17 @@ void export_param(int mpi_rank, std::stringstream& log, std::string key, T value
 void logErrorToRank0(int mpi_rank, const std::string& message);
 
 /**
+ * @brief Logs error message to rank 0 and exits program.
+ *
+ * Combines logErrorToRank0 and exit(1) into a single function for fatal errors
+ * in MPI programs. Ensures only rank 0 outputs the error before terminating.
+ *
+ * @param mpi_rank Current MPI rank
+ * @param message Error message to log before exiting
+ */
+void exitWithError(int mpi_rank, const std::string& message);
+
+/**
  * @brief Prints output message to rank 0 cout stream.
  *
  * @param mpi_rank MPI rank of the current process.

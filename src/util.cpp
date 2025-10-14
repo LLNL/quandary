@@ -659,6 +659,11 @@ void logErrorToRank0(int mpi_rank, const std::string& message) {
   }
 }
 
+void exitWithError(int mpi_rank, const std::string& message) {
+  logErrorToRank0(mpi_rank, message);
+  exit(1);
+}
+
 void logOutputToRank0(int mpi_rank, const std::string& message) {
   if (mpi_rank == 0) {
     std::cout << message << std::endl;
