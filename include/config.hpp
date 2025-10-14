@@ -105,7 +105,7 @@ class Config {
     // General options
     std::vector<size_t> nlevels;  ///< Number of levels per subsystem
     std::vector<size_t> nessential;  ///< Number of essential levels per subsystem (Default: same as nlevels)
-    int ntime = 1000;  ///< Number of time steps used for time-integration
+    int ntime = 1000;  ///< Number of time steps used for time-integration // TODO should this be size_t?
     double dt = 0.1;  ///< Time step size (ns). Determines final time: T=ntime*dt
     std::vector<double> transfreq;  ///< Fundamental transition frequencies for each oscillator (GHz)
     std::vector<double> selfkerr;  ///< Self-kerr frequencies for each oscillator (GHz)
@@ -278,4 +278,7 @@ class Config {
     int getRandSeed() const { return rand_seed; }
     const std::string& getHamiltonianFileHsys() const { return hamiltonian_file_Hsys; }
     const std::string& getHamiltonianFileHc() const { return hamiltonian_file_Hc; }
+
+private:
+    void validate();
 };

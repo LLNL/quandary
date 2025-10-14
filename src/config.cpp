@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "configbuilder.hpp"
+#include "util.hpp"
 
 // Helper function to convert enum back to string using existing enum maps
 template<typename EnumType>
@@ -118,9 +119,82 @@ Config::Config(
   hamiltonian_file_Hc(hamiltonian_file_Hc_)
 {
   MPI_Comm_rank(comm, &mpi_rank);
+  validate();
 }
 
 Config::~Config(){}
+
+void Config::validate() {
+  // Basic domain requirements
+  if (nlevels.empty()) {
+    exitWithError(mpi_rank, "ERROR: nlevels cannot be empty");
+  }
+
+  // Hamiltonian file + matrix-free compatibility check
+  if ((!hamiltonian_file_Hsys.empty() || !hamiltonian_file_Hc.empty()) && usematfree) {
+    if (!quietmode) {
+      logOutputToRank0(mpi_rank, "# Warning: Matrix-free solver cannot be used when Hamiltonian is read from file. Switching to sparse-matrix version.\n");
+    }
+    usematfree = false;
+  }
+
+  // Sanity check for Schrodinger solver initial conditions
+  if (collapse_type == LindbladType::NONE) {
+    if (initial_condition_type == InitialConditionType::ENSEMBLE ||
+        initial_condition_type == InitialConditionType::THREESTATES ||
+        initial_condition_type == InitialConditionType::NPLUSONE) {
+      exitWithError(mpi_rank, "\n\n ERROR for initial condition setting: \n When running Schroedingers solver (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'. Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
+    }
+
+    // For Schroedinger solver, DIAGONAL and BASIS are equivalent - normalize to DIAGONAL
+    if (initial_condition_type == InitialConditionType::BASIS) {
+      const_cast<InitialConditionType&>(initial_condition_type) = InitialConditionType::DIAGONAL;
+    }
+  }
+
+  // Validate initial condition IDs for pure states
+  if (initial_condition_type == InitialConditionType::PURE) {
+    if (initial_condition_IDs.size() != nlevels.size()) {
+      exitWithError(mpi_rank, "ERROR during pure-state initialization: List of IDs must contain " +
+        std::to_string(nlevels.size()) + " elements!\n");
+    }
+
+    for (size_t k = 0; k < initial_condition_IDs.size(); k++) {
+      if (initial_condition_IDs[k] >= nlevels[k]) {
+        exitWithError(mpi_rank, "Pure state initialization: ID " + std::to_string(initial_condition_IDs[k]) +
+          " for oscillator " + std::to_string(k) +
+          " exceeds maximum level " + std::to_string(nlevels[k] - 1));
+      }
+    }
+  }
+
+  // Validate control segments exist for each oscillator
+  if (control_segments.size() != nlevels.size()) {
+    exitWithError(mpi_rank, "Number of control_segments (" + std::to_string(control_segments.size()) +
+      ") must match number of oscillators (" + std::to_string(nlevels.size()) + ")");
+  }
+
+  // Validate essential levels don't exceed total levels
+  if (nessential.size() != nlevels.size()) {
+    exitWithError(mpi_rank, "nessential size must match nlevels size");
+  }
+
+  for (size_t i = 0; i < nlevels.size(); i++) {
+    if (nessential[i] > nlevels[i]) {
+      exitWithError(mpi_rank, "nessential[" + std::to_string(i) + "] = " + std::to_string(nessential[i]) +
+        " cannot exceed nlevels[" + std::to_string(i) + "] = " + std::to_string(nlevels[i]));
+    }
+  }
+
+  // Basic sanity checks
+  if (ntime <= 0) {
+    exitWithError(mpi_rank, "ntime must be positive, got " + std::to_string(ntime));
+  }
+
+  if (dt <= 0) {
+    exitWithError(mpi_rank, "dt must be positive, got " + std::to_string(dt));
+  }
+}
 
 Config Config::fromCfg(std::string filename, std::stringstream* log, bool quietmode) {
   ConfigBuilder builder(MPI_COMM_WORLD, *log, quietmode);
