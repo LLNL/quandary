@@ -65,10 +65,6 @@ namespace {
  * and validating configuration parameters.
  */
 class ConfigBuilder {
-public:
-  std::stringstream* log; ///< Pointer to log stream for output messages.
-  bool quietmode; ///< Flag to control verbose output.
-
 private:
   std::unordered_map<std::string, std::function<void(const std::string&)>> setters; ///< Setters from config string
   std::unordered_map<std::string, std::function<void(int, const std::string&)>> indexed_setters; ///< Setters for indexed config strings
@@ -76,6 +72,8 @@ private:
   // MPI and logging
   MPI_Comm comm; ///< MPI communicator for parallel operations.
   int mpi_rank; ///< MPI rank of the current process.
+  std::stringstream* log; ///< Pointer to log stream for output messages.
+  bool quietmode; ///< Flag to control verbose output.
 
   // General options
   std::optional<std::vector<size_t>> nlevels;  ///< Number of levels per subsystem

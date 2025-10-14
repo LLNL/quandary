@@ -95,12 +95,13 @@ struct ControlSegmentInitialization {
  * and have been validated by ConfigBuilder. This class is immutable after construction.
  */
 class Config {
-  public:
+  private:
     // MPI and logging (still needed for runtime operations)
     MPI_Comm comm; ///< MPI communicator for parallel operations.
     int mpi_rank; ///< MPI rank of the current process.
 
-  private:
+    std::stringstream* log; ///< Pointer to log stream for output messages.
+    bool quietmode; ///< Flag to control verbose output.
 
     // General options
     std::vector<size_t> nlevels;  ///< Number of levels per subsystem
@@ -161,6 +162,9 @@ class Config {
     // Constructor takes all validated parameters (to be called by ConfigBuilder)
     Config(
       MPI_Comm comm_,
+      int mpi_rank_,
+      std::stringstream* log_,
+      bool quietmode_,
       // System parameters
       const std::vector<size_t>& nlevels_,
       const std::vector<size_t>& nessential_,

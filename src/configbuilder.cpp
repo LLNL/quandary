@@ -228,6 +228,9 @@ Config ConfigBuilder::build() {
 
   return Config(
     comm,
+    mpi_rank,
+    log,
+    quietmode,
     // System parameters
     final_nlevels,
     final_nessential,

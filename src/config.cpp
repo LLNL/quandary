@@ -17,6 +17,9 @@ std::string enumToString(EnumType value, const std::map<std::string, EnumType>& 
 
 Config::Config(
   MPI_Comm comm_,
+  int mpi_rank_,
+  std::stringstream* log_,
+  bool quietmode_,
   // System parameters
   const std::vector<size_t>& nlevels_,
   const std::vector<size_t>& nessential_,
@@ -70,6 +73,9 @@ Config::Config(
   const std::string& hamiltonian_file_Hc_
 ) :
   comm(comm_),
+  mpi_rank(mpi_rank_),
+  log(log_),
+  quietmode(quietmode_),
   nlevels(nlevels_),
   nessential(nessential_),
   ntime(ntime_),
