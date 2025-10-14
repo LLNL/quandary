@@ -591,7 +591,7 @@ std::vector<std::string> ConfigBuilder::split(const std::string& str, char delim
 
 void ConfigBuilder::applyConfigLine(const std::string& line) {
   std::string trimmedLine = trimWhitespace(line);
-  if (!isComment(trimmedLine)) {
+  if (!trimmedLine.empty() && !isComment(trimmedLine)) {
     int pos = trimmedLine.find('=');
     std::string key = trimmedLine.substr(0, pos);
     std::string value = trimmedLine.substr(pos + 1);
