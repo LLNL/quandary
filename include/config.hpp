@@ -1,4 +1,5 @@
 #include "defs.hpp"
+#include "config_types.hpp"
 
 #include <cstddef>
 #include <vector>
@@ -162,60 +163,59 @@ class Config {
     // Constructor takes all validated parameters (to be called by ConfigBuilder)
     Config(
       MPI_Comm comm_,
-      int mpi_rank_,
-      std::stringstream* log_,
+      std::stringstream& log_,
       bool quietmode_,
-      // System parameters
-      const std::vector<size_t>& nlevels_,
-      const std::vector<size_t>& nessential_,
-      int ntime_,
-      double dt_,
-      const std::vector<double>& transfreq_,
-      const std::vector<double>& selfkerr_,
-      const std::vector<double>& crosskerr_,
-      const std::vector<double>& Jkl_,
-      const std::vector<double>& rotfreq_,
-      LindbladType collapse_type_,
-      const std::vector<double>& decay_time_,
-      const std::vector<double>& dephase_time_,
-      InitialConditionType initial_condition_type_,
-      int n_initial_conditions_,
-      const std::vector<size_t>& initial_condition_IDs_,
-      const std::string& initial_condition_file_,
-      const std::vector<std::vector<PiPulseSegment>>& apply_pipulse_,
-      // Control parameters
-      const std::vector<std::vector<ControlSegment>>& control_segments_,
-      bool control_enforceBC_,
-      const std::vector<std::vector<ControlSegmentInitialization>>& control_initializations_,
-      const std::optional<std::string>& control_initialization_file_,
-      const std::vector<std::vector<double>>& control_bounds_,
-      const std::vector<std::vector<double>>& carrier_frequencies_,
+      // All parameters as optionals (except MPI/logging)
+      const std::optional<std::vector<size_t>>& nlevels_,
+      const std::optional<std::vector<size_t>>& nessential_,
+      const std::optional<int>& ntime_,
+      const std::optional<double>& dt_,
+      const std::optional<std::vector<double>>& transfreq_,
+      const std::optional<std::vector<double>>& selfkerr_,
+      const std::optional<std::vector<double>>& crosskerr_,
+      const std::optional<std::vector<double>>& Jkl_,
+      const std::optional<std::vector<double>>& rotfreq_,
+      const std::optional<LindbladType>& collapse_type_,
+      const std::optional<std::vector<double>>& decay_time_,
+      const std::optional<std::vector<double>>& dephase_time_,
+      const std::optional<InitialConditionConfig>& initialcondition_,
+      const std::optional<std::vector<PiPulseConfig>>& apply_pipulse_,
+      const std::optional<std::string>& hamiltonian_file_Hsys_,
+      const std::optional<std::string>& hamiltonian_file_Hc_,
+      // Control parameters (using optional indexed data)
+      const std::optional<std::map<int, ControlSegmentConfig>>& indexed_control_segments_,
+      const std::optional<bool>& control_enforceBC_,
+      const std::optional<std::map<int, ControlInitializationConfig>>& indexed_control_init_,
+      const std::optional<std::map<int, std::vector<double>>>& indexed_control_bounds_,
+      const std::optional<std::map<int, std::vector<double>>>& indexed_carrier_frequencies_,
       // Optimization parameters
-      TargetType optim_target_type_,
-      const std::string& optim_target_file_,
-      GateType optim_target_gate_type_,
-      const std::string& optim_target_gate_file_,
-      const std::vector<size_t>& optim_target_purestate_levels_,
-      const std::vector<double>& gate_rot_freq_,
-      ObjectiveType optim_objective_,
-      const std::vector<double>& optim_weights_,
-      const OptimTolerance& tolerance_,
-      double optim_regul_,
-      const OptimPenalty& penalty_,
-      bool optim_regul_tik0_,
+      const std::optional<OptimTargetConfig>& optim_target_,
+      const std::optional<std::vector<double>>& gate_rot_freq_,
+      const std::optional<ObjectiveType>& optim_objective_,
+      const std::optional<std::vector<double>>& optim_weights_,
+      const std::optional<double>& optim_atol_,
+      const std::optional<double>& optim_rtol_,
+      const std::optional<double>& optim_ftol_,
+      const std::optional<double>& optim_inftol_,
+      const std::optional<int>& optim_maxiter_,
+      const std::optional<double>& optim_regul_,
+      const std::optional<double>& optim_penalty_,
+      const std::optional<double>& optim_penalty_param_,
+      const std::optional<double>& optim_penalty_dpdm_,
+      const std::optional<double>& optim_penalty_energy_,
+      const std::optional<double>& optim_penalty_variation_,
+      const std::optional<bool>& optim_regul_tik0_,
       // Output parameters
-      const std::string& datadir_,
-      const std::vector<std::vector<OutputType>>& output_,
-      int output_frequency_,
-      int optim_monitor_frequency_,
-      RunType runtype_,
-      bool usematfree_,
-      LinearSolverType linearsolver_type_,
-      int linearsolver_maxiter_,
-      TimeStepperType timestepper_type_,
-      int rand_seed_,
-      const std::string& hamiltonian_file_Hsys_,
-      const std::string& hamiltonian_file_Hc_
+      const std::optional<std::string>& datadir_,
+      const std::optional<std::map<int, std::vector<OutputType>>>& indexed_output_,
+      const std::optional<int>& output_frequency_,
+      const std::optional<int>& optim_monitor_frequency_,
+      const std::optional<RunType>& runtype_,
+      const std::optional<bool>& usematfree_,
+      const std::optional<LinearSolverType>& linearsolver_type_,
+      const std::optional<int>& linearsolver_maxiter_,
+      const std::optional<TimeStepperType>& timestepper_type_,
+      const std::optional<int>& rand_seed_
     );
 
     ~Config();
@@ -285,4 +285,18 @@ class Config {
 
 private:
     void finalize();
+
+    // Conversion helper methods
+    void convertInitialCondition(const std::optional<InitialConditionConfig>& config);
+    void convertOptimTarget(const std::optional<OptimTargetConfig>& config);
+    void convertControlSegments(const std::optional<std::map<int, ControlSegmentConfig>>& indexed);
+    void convertControlInitializations(const std::optional<std::map<int, ControlInitializationConfig>>& indexed);
+    void convertPiPulses(const std::optional<std::vector<PiPulseConfig>>& pulses);
+    void convertIndexedOutput(const std::optional<std::map<int, std::vector<OutputType>>>& indexed);
+    void convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed);
+    void convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed);
+
+    // Helper for indexed map conversion
+    template<typename T>
+    std::vector<std::vector<T>> convertIndexedToVectorVector(const std::optional<std::map<int, std::vector<T>>>& indexed_map);
 };

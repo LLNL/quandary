@@ -17,114 +17,161 @@ std::string enumToString(EnumType value, const std::map<std::string, EnumType>& 
 
 Config::Config(
   MPI_Comm comm_,
-  int mpi_rank_,
-  std::stringstream* log_,
+  std::stringstream& log_,
   bool quietmode_,
-  // System parameters
-  const std::vector<size_t>& nlevels_,
-  const std::vector<size_t>& nessential_,
-  int ntime_,
-  double dt_,
-  const std::vector<double>& transfreq_,
-  const std::vector<double>& selfkerr_,
-  const std::vector<double>& crosskerr_,
-  const std::vector<double>& Jkl_,
-  const std::vector<double>& rotfreq_,
-  LindbladType collapse_type_,
-  const std::vector<double>& decay_time_,
-  const std::vector<double>& dephase_time_,
-  InitialConditionType initial_condition_type_,
-  int n_initial_conditions_,
-  const std::vector<size_t>& initial_condition_IDs_,
-  const std::string& initial_condition_file_,
-  const std::vector<std::vector<PiPulseSegment>>& apply_pipulse_,
-  // Control parameters
-  const std::vector<std::vector<ControlSegment>>& control_segments_,
-  bool control_enforceBC_,
-  const std::vector<std::vector<ControlSegmentInitialization>>& control_initializations_,
-  const std::optional<std::string>& control_initialization_file_,
-  const std::vector<std::vector<double>>& control_bounds_,
-  const std::vector<std::vector<double>>& carrier_frequencies_,
+  // All parameters as optionals
+  const std::optional<std::vector<size_t>>& nlevels_,
+  const std::optional<std::vector<size_t>>& nessential_,
+  const std::optional<int>& ntime_,
+  const std::optional<double>& dt_,
+  const std::optional<std::vector<double>>& transfreq_,
+  const std::optional<std::vector<double>>& selfkerr_,
+  const std::optional<std::vector<double>>& crosskerr_,
+  const std::optional<std::vector<double>>& Jkl_,
+  const std::optional<std::vector<double>>& rotfreq_,
+  const std::optional<LindbladType>& collapse_type_,
+  const std::optional<std::vector<double>>& decay_time_,
+  const std::optional<std::vector<double>>& dephase_time_,
+  const std::optional<InitialConditionConfig>& initialcondition_,
+  const std::optional<std::vector<PiPulseConfig>>& apply_pipulse_,
+  const std::optional<std::string>& hamiltonian_file_Hsys_,
+  const std::optional<std::string>& hamiltonian_file_Hc_,
+  // Control parameters (optional indexed data)
+  const std::optional<std::map<int, ControlSegmentConfig>>& indexed_control_segments_,
+  const std::optional<bool>& control_enforceBC_,
+  const std::optional<std::map<int, ControlInitializationConfig>>& indexed_control_init_,
+  const std::optional<std::map<int, std::vector<double>>>& indexed_control_bounds_,
+  const std::optional<std::map<int, std::vector<double>>>& indexed_carrier_frequencies_,
   // Optimization parameters
-  TargetType optim_target_type_,
-  const std::string& optim_target_file_,
-  GateType optim_target_gate_type_,
-  const std::string& optim_target_gate_file_,
-  const std::vector<size_t>& optim_target_purestate_levels_,
-  const std::vector<double>& gate_rot_freq_,
-  ObjectiveType optim_objective_,
-  const std::vector<double>& optim_weights_,
-  const OptimTolerance& tolerance_,
-  double optim_regul_,
-  const OptimPenalty& penalty_,
-  bool optim_regul_tik0_,
+  const std::optional<OptimTargetConfig>& optim_target_,
+  const std::optional<std::vector<double>>& gate_rot_freq_,
+  const std::optional<ObjectiveType>& optim_objective_,
+  const std::optional<std::vector<double>>& optim_weights_,
+  const std::optional<double>& optim_atol_,
+  const std::optional<double>& optim_rtol_,
+  const std::optional<double>& optim_ftol_,
+  const std::optional<double>& optim_inftol_,
+  const std::optional<int>& optim_maxiter_,
+  const std::optional<double>& optim_regul_,
+  const std::optional<double>& optim_penalty_,
+  const std::optional<double>& optim_penalty_param_,
+  const std::optional<double>& optim_penalty_dpdm_,
+  const std::optional<double>& optim_penalty_energy_,
+  const std::optional<double>& optim_penalty_variation_,
+  const std::optional<bool>& optim_regul_tik0_,
   // Output parameters
-  const std::string& datadir_,
-  const std::vector<std::vector<OutputType>>& output_,
-  int output_frequency_,
-  int optim_monitor_frequency_,
-  RunType runtype_,
-  bool usematfree_,
-  LinearSolverType linearsolver_type_,
-  int linearsolver_maxiter_,
-  TimeStepperType timestepper_type_,
-  int rand_seed_,
-  const std::string& hamiltonian_file_Hsys_,
-  const std::string& hamiltonian_file_Hc_
+  const std::optional<std::string>& datadir_,
+  const std::optional<std::map<int, std::vector<OutputType>>>& indexed_output_,
+  const std::optional<int>& output_frequency_,
+  const std::optional<int>& optim_monitor_frequency_,
+  const std::optional<RunType>& runtype_,
+  const std::optional<bool>& usematfree_,
+  const std::optional<LinearSolverType>& linearsolver_type_,
+  const std::optional<int>& linearsolver_maxiter_,
+  const std::optional<TimeStepperType>& timestepper_type_,
+  const std::optional<int>& rand_seed_
 ) :
   comm(comm_),
-  mpi_rank(mpi_rank_),
-  log(log_),
-  quietmode(quietmode_),
-  nlevels(nlevels_),
-  nessential(nessential_),
-  ntime(ntime_),
-  dt(dt_),
-  transfreq(transfreq_),
-  selfkerr(selfkerr_),
-  crosskerr(crosskerr_),
-  Jkl(Jkl_),
-  rotfreq(rotfreq_),
-  collapse_type(collapse_type_),
-  decay_time(decay_time_),
-  dephase_time(dephase_time_),
-  initial_condition_type(initial_condition_type_),
-  n_initial_conditions(n_initial_conditions_),
-  initial_condition_IDs(initial_condition_IDs_),
-  initial_condition_file(initial_condition_file_),
-  apply_pipulse(apply_pipulse_),
-  control_segments(control_segments_),
-  control_enforceBC(control_enforceBC_),
-  control_initializations(control_initializations_),
-  control_initialization_file(control_initialization_file_),
-  control_bounds(control_bounds_),
-  carrier_frequencies(carrier_frequencies_),
-  optim_target_type(optim_target_type_),
-  optim_target_file(optim_target_file_),
-  optim_target_gate_type(optim_target_gate_type_),
-  optim_target_gate_file(optim_target_gate_file_),
-  optim_target_purestate_levels(optim_target_purestate_levels_),
-  gate_rot_freq(gate_rot_freq_),
-  optim_objective(optim_objective_),
-  optim_weights(optim_weights_),
-  tolerance(tolerance_),
-  optim_regul(optim_regul_),
-  penalty(penalty_),
-  optim_regul_tik0(optim_regul_tik0_),
-  datadir(datadir_),
-  output(output_),
-  output_frequency(output_frequency_),
-  optim_monitor_frequency(optim_monitor_frequency_),
-  runtype(runtype_),
-  usematfree(usematfree_),
-  linearsolver_type(linearsolver_type_),
-  linearsolver_maxiter(linearsolver_maxiter_),
-  timestepper_type(timestepper_type_),
-  rand_seed(rand_seed_),
-  hamiltonian_file_Hsys(hamiltonian_file_Hsys_),
-  hamiltonian_file_Hc(hamiltonian_file_Hc_)
+  log(&log_),
+  quietmode(quietmode_)
 {
   MPI_Comm_rank(comm, &mpi_rank);
+
+  // First validate user-provided settings
+  if (ntime_.has_value() && ntime_.value() <= 0) {
+    exitWithError(mpi_rank, "ERROR: User-specified ntime must be positive, got " + std::to_string(ntime_.value()));
+  }
+
+  if (dt_.has_value() && dt_.value() <= 0) {
+    exitWithError(mpi_rank, "ERROR: User-specified dt must be positive, got " + std::to_string(dt_.value()));
+  }
+
+  // Apply defaults for basic settings
+  nlevels = nlevels_.value_or(std::vector<size_t>{2});
+  if (nlevels.empty()) {
+    exitWithError(mpi_rank, "ERROR: nlevels cannot be empty");
+  }
+
+  nessential = nessential_.value_or(nlevels); // Default: same as nlevels
+  ntime = ntime_.value_or(1000);
+  dt = dt_.value_or(0.1);
+
+  // Physics parameters (can be empty)
+  transfreq = transfreq_.value_or(std::vector<double>{});
+  selfkerr = selfkerr_.value_or(std::vector<double>{});
+  crosskerr = crosskerr_.value_or(std::vector<double>{});
+  Jkl = Jkl_.value_or(std::vector<double>{});
+  rotfreq = rotfreq_.value_or(std::vector<double>{});
+  collapse_type = collapse_type_.value_or(LindbladType::NONE);
+  decay_time = decay_time_.value_or(std::vector<double>{});
+  dephase_time = dephase_time_.value_or(std::vector<double>{});
+
+  // Extract and convert initial condition data
+  if (initialcondition_.has_value()) {
+    initial_condition_type = initialcondition_->type;
+    if (!initialcondition_->params.empty()) {
+      for (int param : initialcondition_->params) {
+        initial_condition_IDs.push_back(static_cast<size_t>(param));
+      }
+    }
+    initial_condition_file = initialcondition_->filename.value_or("");
+    n_initial_conditions = initialcondition_->params.size();
+  } else {
+    initial_condition_type = InitialConditionType::BASIS;
+    n_initial_conditions = 1;
+    initial_condition_file = "";
+  }
+
+  // Convert from parsing structs to runtime format
+  convertInitialCondition(initialcondition_);
+  convertOptimTarget(optim_target_);
+  convertPiPulses(apply_pipulse_);
+  convertControlSegments(indexed_control_segments_);
+  convertControlInitializations(indexed_control_init_);
+  convertIndexedControlBounds(indexed_control_bounds_);
+  convertIndexedCarrierFreqs(indexed_carrier_frequencies_);
+  convertIndexedOutput(indexed_output_);
+
+  // Apply remaining optimization defaults
+  gate_rot_freq = gate_rot_freq_.value_or(std::vector<double>{});
+  optim_objective = optim_objective_.value_or(ObjectiveType::JFROBENIUS);
+  optim_weights = optim_weights_.value_or(std::vector<double>{});
+  control_initialization_file = std::nullopt; // Not used in current design
+
+  // For now, set some basic defaults to prevent compilation errors
+  control_enforceBC = control_enforceBC_.value_or(false);
+  optim_regul = optim_regul_.value_or(1e-4);
+  optim_regul_tik0 = optim_regul_tik0_.value_or(false);
+  datadir = datadir_.value_or("./data_out");
+  output_frequency = output_frequency_.value_or(1);
+  optim_monitor_frequency = optim_monitor_frequency_.value_or(10);
+  runtype = runtype_.value_or(RunType::SIMULATION);
+  usematfree = usematfree_.value_or(false);
+  linearsolver_type = linearsolver_type_.value_or(LinearSolverType::GMRES);
+  linearsolver_maxiter = linearsolver_maxiter_.value_or(10);
+  timestepper_type = timestepper_type_.value_or(TimeStepperType::IMR);
+  rand_seed = rand_seed_.value_or(1234);
+  hamiltonian_file_Hsys = hamiltonian_file_Hsys_.value_or("");
+  hamiltonian_file_Hc = hamiltonian_file_Hc_.value_or("");
+
+  // Build tolerance and penalty structs
+  tolerance = OptimTolerance{
+    optim_atol_.value_or(1e-8),
+    optim_rtol_.value_or(1e-4),
+    optim_ftol_.value_or(1e-8),
+    optim_inftol_.value_or(1e-5),
+    optim_maxiter_.value_or(200)
+  };
+
+  penalty = OptimPenalty{
+    optim_penalty_.value_or(0.0),
+    optim_penalty_param_.value_or(0.5),
+    optim_penalty_dpdm_.value_or(0.0),
+    optim_penalty_energy_.value_or(0.0),
+    optim_penalty_variation_.value_or(0.01)
+  };
+
+  // Run final validation and normalization
   finalize();
 }
 
@@ -307,7 +354,13 @@ void Config::printConfig() const {
   std::cout << "runtype = " << enumToString(runtype, RUN_TYPE_MAP) << "\n";
   std::cout << "optim_target = " << enumToString(optim_target_type, TARGET_TYPE_MAP);
   if (optim_target_type == TargetType::GATE) {
-    std::cout << ", " << enumToString(optim_target_gate_type, GATE_TYPE_MAP);
+    if (!optim_target_gate_file.empty()) {
+      std::cout << ", file, " << optim_target_gate_file;
+    } else {
+      std::cout << ", " << enumToString(optim_target_gate_type, GATE_TYPE_MAP);
+    }
+  } else if (optim_target_type == TargetType::FROMFILE) {
+    std::cout << ", " << optim_target_file;
   }
   std::cout << "\n";
 
@@ -351,4 +404,144 @@ void Config::printConfig() const {
   std::cout << "rand_seed = " << rand_seed << "\n";
 
   std::cout << "# =============================================\n\n";
+}
+
+// Template helper implementation
+template<typename T>
+std::vector<std::vector<T>> Config::convertIndexedToVectorVector(const std::optional<std::map<int, std::vector<T>>>& indexed_map) {
+  if (!indexed_map.has_value()) {
+    return std::vector<std::vector<T>>(nlevels.size()); // Empty vectors for each oscillator
+  }
+
+  std::vector<std::vector<T>> result(nlevels.size());
+  for (const auto& [osc_idx, values] : *indexed_map) {
+    if (static_cast<size_t>(osc_idx) < result.size()) {
+      result[osc_idx] = values;
+    }
+  }
+  return result;
+}
+
+// Conversion helper implementations
+void Config::convertInitialCondition(const std::optional<InitialConditionConfig>& config) {
+  if (config.has_value()) {
+    initial_condition_type = config->type;
+    n_initial_conditions = config->params.size();
+
+    // Convert int params to size_t IDs
+    for (int param : config->params) {
+      initial_condition_IDs.push_back(static_cast<size_t>(param));
+    }
+
+    initial_condition_file = config->filename.value_or("");
+  } else {
+    initial_condition_type = InitialConditionType::BASIS;
+    n_initial_conditions = 1;
+    initial_condition_file = "";
+  }
+}
+
+void Config::convertOptimTarget(const std::optional<OptimTargetConfig>& config) {
+  if (config.has_value()) {
+    optim_target_type = config->target_type;
+    optim_target_gate_type = config->gate_type.value_or(GateType::NONE);
+    optim_target_file = config->filename.value_or("");
+    optim_target_gate_file = config->gate_file.value_or("");
+
+    // Convert int levels to size_t
+    for (int level : config->levels) {
+      optim_target_purestate_levels.push_back(static_cast<size_t>(level));
+    }
+  } else {
+    optim_target_type = TargetType::PURE;
+    optim_target_gate_type = GateType::NONE;
+    optim_target_file = "";
+    optim_target_gate_file = "";
+    optim_target_purestate_levels.clear();
+  }
+}
+
+void Config::convertPiPulses(const std::optional<std::vector<PiPulseConfig>>& pulses) {
+  apply_pipulse.resize(nlevels.size());
+
+  if (pulses.has_value()) {
+    for (const auto& pulse_config : *pulses) {
+      if (pulse_config.oscil_id >= 0 &&
+          static_cast<size_t>(pulse_config.oscil_id) < nlevels.size()) {
+        PiPulseSegment segment;
+        segment.tstart = pulse_config.tstart;
+        segment.tstop = pulse_config.tstop;
+        segment.amp = pulse_config.amp;
+        apply_pipulse[pulse_config.oscil_id].push_back(segment);
+      }
+    }
+  }
+}
+
+void Config::convertControlSegments(const std::optional<std::map<int, ControlSegmentConfig>>& indexed) {
+  control_segments.resize(nlevels.size());
+
+  if (indexed.has_value()) {
+    for (const auto& [osc_idx, seg_config] : *indexed) {
+      if (static_cast<size_t>(osc_idx) < control_segments.size()) {
+        ControlSegment segment;
+        segment.type = seg_config.control_type;
+
+        // Create appropriate params variant based on type
+        if (seg_config.control_type == ControlType::BSPLINE ||
+            seg_config.control_type == ControlType::BSPLINE0) {
+          SplineParams params;
+          params.nspline = seg_config.num_basis_functions.value_or(10);
+          params.tstart = seg_config.tstart.value_or(0.0);
+          params.tstop = seg_config.tstop.value_or(ntime * dt);
+          segment.params = params;
+        } else if (seg_config.control_type == ControlType::BSPLINEAMP) {
+          SplineAmpParams params;
+          params.nspline = seg_config.num_basis_functions.value_or(10);
+          params.tstart = seg_config.tstart.value_or(0.0);
+          params.tstop = seg_config.tstop.value_or(ntime * dt);
+          params.scaling = seg_config.scaling.value_or(1.0);
+          segment.params = params;
+        } else if (seg_config.control_type == ControlType::STEP) {
+          StepParams params;
+          params.step_amp1 = seg_config.amplitude_1.value_or(0.0);
+          params.step_amp2 = seg_config.amplitude_2.value_or(0.0);
+          params.tramp = 0.0;
+          params.tstart = seg_config.tstart.value_or(0.0);
+          params.tstop = seg_config.tstop.value_or(ntime * dt);
+          segment.params = params;
+        }
+
+        control_segments[osc_idx].push_back(segment);
+      }
+    }
+  }
+}
+
+void Config::convertControlInitializations(const std::optional<std::map<int, ControlInitializationConfig>>& indexed) {
+  control_initializations.resize(nlevels.size());
+
+  if (indexed.has_value()) {
+    for (const auto& [osc_idx, init_config] : *indexed) {
+      if (static_cast<size_t>(osc_idx) < control_initializations.size()) {
+        ControlSegmentInitialization init;
+        init.type = init_config.init_type;
+        init.amplitude = init_config.amplitude.value_or(0.0);
+        init.phase = init_config.phase.value_or(0.0);
+        control_initializations[osc_idx].push_back(init);
+      }
+    }
+  }
+}
+
+void Config::convertIndexedOutput(const std::optional<std::map<int, std::vector<OutputType>>>& indexed) {
+  output = convertIndexedToVectorVector(indexed);
+}
+
+void Config::convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed) {
+  control_bounds = convertIndexedToVectorVector(indexed);
+}
+
+void Config::convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed) {
+  carrier_frequencies = convertIndexedToVectorVector(indexed);
 }

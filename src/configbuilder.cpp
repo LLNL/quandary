@@ -95,207 +95,64 @@ std::vector<std::vector<OutputType>> ConfigBuilder::convertIndexedToOutputVector
 }
 
 Config ConfigBuilder::build() {
-  // Extract and convert struct-based config to primitive types
-
-  // Extract initial condition data
-  InitialConditionType initial_condition_type = initialcondition
-    ? initialcondition->type
-    : InitialConditionType::BASIS;
-
-  int n_initial_conditions = 1; // Default
-  std::vector<size_t> initial_condition_IDs;
-  std::string initial_condition_file;
-
-  if (initialcondition) {
-    // Convert int params to size_t IDs
-    for (int param : initialcondition->params) {
-      initial_condition_IDs.push_back(static_cast<size_t>(param));
-    }
-    if (initialcondition->filename) {
-      initial_condition_file = *initialcondition->filename;
-    }
-  }
-
-  // Extract optimization target data
-  TargetType optim_target_type = optim_target
-    ? optim_target->target_type
-    : TargetType::PURE;
-
-  std::string optim_target_file;
-  GateType optim_target_gate_type = GateType::NONE;
-  std::string optim_target_gate_file;
-  std::vector<size_t> optim_target_purestate_levels;
-
-  if (optim_target) {
-    if (optim_target->filename) {
-      optim_target_file = *optim_target->filename;
-    }
-    if (optim_target->gate_type) {
-      optim_target_gate_type = *optim_target->gate_type;
-    }
-    // Convert int levels to size_t
-    for (int level : optim_target->levels) {
-      optim_target_purestate_levels.push_back(static_cast<size_t>(level));
-    }
-  }
-
-  // Convert PiPulseConfig to PiPulseSegment format
-  std::vector<std::vector<PiPulseSegment>> converted_apply_pipulse;
-  if (apply_pipulse) {
-    // Determine number of oscillators from nlevels
-    size_t num_oscillators = nlevels ? nlevels->size() : 1;
-    converted_apply_pipulse.resize(num_oscillators);
-
-    for (const auto& pulse_config : *apply_pipulse) {
-      if (pulse_config.oscil_id >= 0 &&
-          static_cast<size_t>(pulse_config.oscil_id) < num_oscillators) {
-        PiPulseSegment segment;
-        segment.tstart = pulse_config.tstart;
-        segment.tstop = pulse_config.tstop;
-        segment.amp = pulse_config.amp;
-        converted_apply_pipulse[pulse_config.oscil_id].push_back(segment);
-      }
-    }
-  }
-
-  // Convert ControlSegmentConfig to ControlSegment format using indexed settings
-  std::vector<std::vector<ControlSegment>> converted_control_segments;
-  size_t num_oscillators = nlevels ? nlevels->size() :
-                           (indexed_control_segments.empty() ? 1 :
-                            indexed_control_segments.rbegin()->first + 1);
-  converted_control_segments.resize(num_oscillators);
-
-  // Process indexed control segments (control_segments0, control_segments1, etc.)
-  for (const auto& [osc_idx, seg_config] : indexed_control_segments) {
-    if (static_cast<size_t>(osc_idx) >= converted_control_segments.size()) {
-      converted_control_segments.resize(osc_idx + 1);
-    }
-
-    ControlSegment segment;
-    segment.type = seg_config.control_type;
-
-    // Create appropriate params variant based on type
-    if (seg_config.control_type == ControlType::BSPLINE ||
-        seg_config.control_type == ControlType::BSPLINE0) {
-      SplineParams params;
-      params.nspline = seg_config.num_basis_functions.value_or(10);
-      params.tstart = seg_config.tstart.value_or(0.0);
-      params.tstop = seg_config.tstop.value_or(ntime.value_or(1000) * dt.value_or(0.1));
-      segment.params = params;
-    } else if (seg_config.control_type == ControlType::BSPLINEAMP) {
-      SplineAmpParams params;
-      params.nspline = seg_config.num_basis_functions.value_or(10);
-      params.tstart = seg_config.tstart.value_or(0.0);
-      params.tstop = seg_config.tstop.value_or(ntime.value_or(1000) * dt.value_or(0.1));
-      params.scaling = seg_config.scaling.value_or(1.0);
-      segment.params = params;
-    } else if (seg_config.control_type == ControlType::STEP) {
-      StepParams params;
-      params.step_amp1 = seg_config.amplitude_1.value_or(0.0);
-      params.step_amp2 = seg_config.amplitude_2.value_or(0.0);
-      params.tramp = 0.0;
-      params.tstart = seg_config.tstart.value_or(0.0);
-      params.tstop = seg_config.tstop.value_or(ntime.value_or(1000) * dt.value_or(0.1));
-      segment.params = params;
-    }
-
-    converted_control_segments[osc_idx].push_back(segment);
-  }
-
-  // Convert ControlInitializationConfig to ControlSegmentInitialization format using indexed settings
-  std::vector<std::vector<ControlSegmentInitialization>> converted_control_initializations;
-  converted_control_initializations.resize(num_oscillators);
-
-  // Process indexed control initializations (control_initialization0, control_initialization1, etc.)
-  for (const auto& [osc_idx, init_config] : indexed_control_init) {
-    if (static_cast<size_t>(osc_idx) >= converted_control_initializations.size()) {
-      converted_control_initializations.resize(osc_idx + 1);
-    }
-
-    ControlSegmentInitialization init;
-    init.type = init_config.init_type;
-    init.amplitude = init_config.amplitude.value_or(0.0);
-    init.phase = init_config.phase.value_or(0.0);
-
-    converted_control_initializations[osc_idx].push_back(init);
-  }
-
-  // Apply defaults for required fields
-  std::vector<size_t> final_nlevels = nlevels.value_or(std::vector<size_t>{2});
-  std::vector<size_t> final_nessential = nessential.value_or(final_nlevels);
-  int final_ntime = ntime.value_or(1000);
-  double final_dt = dt.value_or(0.1);
+  // ConfigBuilder now just passes parsed data to Config
+  // Config handles validation, defaults, and conversions
 
   return Config(
     comm,
-    mpi_rank,
-    log,
+    *log,
     quietmode,
-    // System parameters
-    final_nlevels,
-    final_nessential,
-    final_ntime,
-    final_dt,
-    transfreq.value_or(std::vector<double>{}),
-    selfkerr.value_or(std::vector<double>{}),
-    crosskerr.value_or(std::vector<double>{}),
-    Jkl.value_or(std::vector<double>{}),
-    rotfreq.value_or(std::vector<double>{}),
-    collapse_type.value_or(LindbladType::NONE),
-    decay_time.value_or(std::vector<double>{}),
-    dephase_time.value_or(std::vector<double>{}),
-    initial_condition_type,
-    n_initial_conditions,
-    initial_condition_IDs,
-    initial_condition_file,
-    converted_apply_pipulse,
-    // Control parameters
-    converted_control_segments,
-    control_enforceBC.value_or(false),
-    converted_control_initializations,
-    std::optional<std::string>{}, // control_initialization_file
-    convertIndexedToVectorVector(indexed_control_bounds, num_oscillators),
-    convertIndexedToVectorVector(indexed_carrier_frequencies, num_oscillators),
+    // General options
+    nlevels,
+    nessential,
+    ntime,
+    dt,
+    transfreq,
+    selfkerr,
+    crosskerr,
+    Jkl,
+    rotfreq,
+    collapse_type,
+    decay_time,
+    dephase_time,
+    initialcondition,
+    apply_pipulse,
+    hamiltonian_file_Hsys,
+    hamiltonian_file_Hc,
+    // Indexed control parameters
+    indexed_control_segments.empty() ? std::nullopt : std::make_optional(indexed_control_segments),
+    control_enforceBC,
+    indexed_control_init.empty() ? std::nullopt : std::make_optional(indexed_control_init),
+    indexed_control_bounds.empty() ? std::nullopt : std::make_optional(indexed_control_bounds),
+    indexed_carrier_frequencies.empty() ? std::nullopt : std::make_optional(indexed_carrier_frequencies),
     // Optimization parameters
-    optim_target_type,
-    optim_target_file,
-    optim_target_gate_type,
-    optim_target_gate_file,
-    optim_target_purestate_levels,
-    gate_rot_freq.value_or(std::vector<double>{}),
-    optim_objective.value_or(ObjectiveType::JFROBENIUS),
-    optim_weights.value_or(std::vector<double>{}),
-    // Construct OptimTolerance struct
-    OptimTolerance{
-      optim_atol.value_or(1e-8),
-      optim_rtol.value_or(1e-4),
-      optim_ftol.value_or(1e-8),
-      optim_inftol.value_or(1e-5),
-      optim_maxiter.value_or(200)
-    },
-    optim_regul.value_or(1e-4),
-    // Construct OptimPenalty struct
-    OptimPenalty{
-      optim_penalty.value_or(0.0),
-      optim_penalty_param.value_or(0.5),
-      optim_penalty_dpdm.value_or(0.0),
-      optim_penalty_energy.value_or(0.0),
-      optim_penalty_variation.value_or(0.01)
-    },
-    optim_regul_tik0.value_or(false),
+    optim_target,
+    gate_rot_freq,
+    optim_objective,
+    optim_weights,
+    optim_atol,
+    optim_rtol,
+    optim_ftol,
+    optim_inftol,
+    optim_maxiter,
+    optim_regul,
+    optim_penalty,
+    optim_penalty_param,
+    optim_penalty_dpdm,
+    optim_penalty_energy,
+    optim_penalty_variation,
+    optim_regul_tik0,
     // Output parameters
-    datadir.value_or("./data_out"),
-    convertIndexedToOutputVector(indexed_output, num_oscillators),
-    output_frequency.value_or(1),
-    optim_monitor_frequency.value_or(10),
-    runtype.value_or(RunType::SIMULATION),
-    usematfree.value_or(false),
-    linearsolver_type.value_or(LinearSolverType::GMRES),
-    linearsolver_maxiter.value_or(10),
-    timestepper.value_or(TimeStepperType::IMR),
-    rand_seed.value_or(1234),
-    hamiltonian_file_Hsys.value_or(""),
-    hamiltonian_file_Hc.value_or("")
+    datadir,
+    indexed_output.empty() ? std::nullopt : std::make_optional(indexed_output),
+    output_frequency,
+    optim_monitor_frequency,
+    runtype,
+    usematfree,
+    linearsolver_type,
+    linearsolver_maxiter,
+    timestepper,
+    rand_seed
   );
 }
 
@@ -639,11 +496,18 @@ OptimTargetConfig ConfigBuilder::convertFromString<OptimTargetConfig>(const std:
 
   if (parts.size() > 1) {
     if (config.target_type == TargetType::GATE) {
-      config.gate_type = convertFromString<GateType>(parts[1]);
+      if (parts.size() >= 3 && parts[1] == "file") {
+        // Case: "optim_target = gate, file, /path/to/gate.dat"
+        config.gate_file = parts[2];
+      } else {
+        // Case: "optim_target = gate, cnot"
+        config.gate_type = convertFromString<GateType>(parts[1]);
+      }
     } else if (config.target_type == TargetType::FROMFILE) {
+      // Case: "optim_target = file, /path/to/target.dat"
       config.filename = parts[1];
     } else if (config.target_type == TargetType::PURE) {
-      // Parse pure state levels
+      // Case: "optim_target = pure, 0, 1"
       for (size_t i = 1; i < parts.size(); ++i) {
         config.levels.push_back(convertFromString<int>(parts[i]));
       }
