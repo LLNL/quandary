@@ -126,6 +126,11 @@ Config::Config(
   convertInitialCondition(initialcondition_);
   convertOptimTarget(optim_target_);
   convertPiPulses(apply_pipulse_);
+
+  // Initialize oscillators vector if needed
+  if (oscillator_optimization.size() != nlevels.size()) {
+    oscillator_optimization.resize(nlevels.size());
+  }
   convertControlSegments(indexed_control_segments_);
   convertControlInitializations(indexed_control_init_);
   convertIndexedControlBounds(indexed_control_bounds_);
@@ -316,9 +321,9 @@ void Config::printConfig() const {
   }
 
   // Optimization Parameters
-  for (size_t i = 0; i < control_segments.size(); ++i) {
-    if (!control_segments[i].empty()) {
-      const auto& seg = control_segments[i][0];
+  for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
+    if (!oscillator_optimization[i].control_segments.empty()) {
+      const auto& seg = oscillator_optimization[i].control_segments[0];
       std::cout << "control_segments" << i << " = "
                 << enumToString(seg.type, CONTROL_TYPE_MAP);
       // Add segment-specific parameters
@@ -334,33 +339,33 @@ void Config::printConfig() const {
     }
   }
   std::cout << "control_enforceBC = " << (control_enforceBC ? "true" : "false") << "\n";
-  for (size_t i = 0; i < control_initializations.size(); ++i) {
-    if (!control_initializations[i].empty()) {
-      const auto& init = control_initializations[i][0];
+  for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
+    if (!oscillator_optimization[i].control_initializations.empty()) {
+      const auto& init = oscillator_optimization[i].control_initializations[0];
       std::cout << "control_initialization" << i
                 << " = " << enumToString(init.type, CONTROL_INITIALIZATION_TYPE_MAP)
                 << ", " << init.amplitude;
       if (init.phase != 0.0) std::cout << ", " << init.phase;
       std::cout << "\n";
     }
-  }
-  for (size_t i = 0; i < control_bounds.size(); ++i) {
-    std::cout << "control_bounds" << i << " = " << printVector(control_bounds[i]) << "\n";
-  }
-  for (size_t i = 0; i < carrier_frequencies.size(); ++i) {
-    std::cout << "carrier_frequency" << i << " = " << printVector(carrier_frequencies[i]) << "\n";
+    if (!oscillator_optimization[i].control_bounds.empty()) {
+      std::cout << "control_bounds" << i << " = " << printVector(oscillator_optimization[i].control_bounds) << "\n";
+    }
+    if (!oscillator_optimization[i].carrier_frequencies.empty()) {
+      std::cout << "carrier_frequency" << i << " = " << printVector(oscillator_optimization[i].carrier_frequencies) << "\n";
+    }
   }
 
   std::cout << "runtype = " << enumToString(runtype, RUN_TYPE_MAP) << "\n";
-  std::cout << "optim_target = " << enumToString(optim_target_type, TARGET_TYPE_MAP);
-  if (optim_target_type == TargetType::GATE) {
-    if (!optim_target_gate_file.empty()) {
-      std::cout << ", file, " << optim_target_gate_file;
+  std::cout << "optim_target = " << enumToString(target.type, TARGET_TYPE_MAP);
+  if (target.type == TargetType::GATE) {
+    if (!target.gate_file.empty()) {
+      std::cout << ", file, " << target.gate_file;
     } else {
-      std::cout << ", " << enumToString(optim_target_gate_type, GATE_TYPE_MAP);
+      std::cout << ", " << enumToString(target.gate_type, GATE_TYPE_MAP);
     }
-  } else if (optim_target_type == TargetType::FROMFILE) {
-    std::cout << ", " << optim_target_file;
+  } else if (target.type == TargetType::FROMFILE) {
+    std::cout << ", " << target.file;
   }
   std::cout << "\n";
 
@@ -443,21 +448,21 @@ void Config::convertInitialCondition(const std::optional<InitialConditionConfig>
 
 void Config::convertOptimTarget(const std::optional<OptimTargetConfig>& config) {
   if (config.has_value()) {
-    optim_target_type = config->target_type;
-    optim_target_gate_type = config->gate_type.value_or(GateType::NONE);
-    optim_target_file = config->filename.value_or("");
-    optim_target_gate_file = config->gate_file.value_or("");
+    target.type = config->target_type;
+    target.gate_type = config->gate_type.value_or(GateType::NONE);
+    target.file = config->filename.value_or("");
+    target.gate_file = config->gate_file.value_or("");
 
     // Convert int levels to size_t
     for (int level : config->levels) {
-      optim_target_purestate_levels.push_back(static_cast<size_t>(level));
+      target.purestate_levels.push_back(static_cast<size_t>(level));
     }
   } else {
-    optim_target_type = TargetType::PURE;
-    optim_target_gate_type = GateType::NONE;
-    optim_target_file = "";
-    optim_target_gate_file = "";
-    optim_target_purestate_levels.clear();
+    target.type = TargetType::PURE;
+    target.gate_type = GateType::NONE;
+    target.file = "";
+    target.gate_file = "";
+    target.purestate_levels.clear();
   }
 }
 
@@ -479,11 +484,9 @@ void Config::convertPiPulses(const std::optional<std::vector<PiPulseConfig>>& pu
 }
 
 void Config::convertControlSegments(const std::optional<std::map<int, ControlSegmentConfig>>& indexed) {
-  control_segments.resize(nlevels.size());
-
   if (indexed.has_value()) {
     for (const auto& [osc_idx, seg_config] : *indexed) {
-      if (static_cast<size_t>(osc_idx) < control_segments.size()) {
+      if (static_cast<size_t>(osc_idx) < oscillator_optimization.size()) {
         ControlSegment segment;
         segment.type = seg_config.control_type;
 
@@ -512,23 +515,21 @@ void Config::convertControlSegments(const std::optional<std::map<int, ControlSeg
           segment.params = params;
         }
 
-        control_segments[osc_idx].push_back(segment);
+        oscillator_optimization[osc_idx].control_segments.push_back(segment);
       }
     }
   }
 }
 
 void Config::convertControlInitializations(const std::optional<std::map<int, ControlInitializationConfig>>& indexed) {
-  control_initializations.resize(nlevels.size());
-
   if (indexed.has_value()) {
     for (const auto& [osc_idx, init_config] : *indexed) {
-      if (static_cast<size_t>(osc_idx) < control_initializations.size()) {
+      if (static_cast<size_t>(osc_idx) < oscillator_optimization.size()) {
         ControlSegmentInitialization init;
         init.type = init_config.init_type;
         init.amplitude = init_config.amplitude.value_or(0.0);
         init.phase = init_config.phase.value_or(0.0);
-        control_initializations[osc_idx].push_back(init);
+        oscillator_optimization[osc_idx].control_initializations.push_back(init);
       }
     }
   }
@@ -539,9 +540,21 @@ void Config::convertIndexedOutput(const std::optional<std::map<int, std::vector<
 }
 
 void Config::convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed) {
-  control_bounds = convertIndexedToVectorVector(indexed);
+  if (indexed.has_value()) {
+    for (const auto& [osc_idx, bounds] : *indexed) {
+      if (static_cast<size_t>(osc_idx) < oscillator_optimization.size()) {
+        oscillator_optimization[osc_idx].control_bounds = bounds;
+      }
+    }
+  }
 }
 
 void Config::convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed) {
-  carrier_frequencies = convertIndexedToVectorVector(indexed);
+  if (indexed.has_value()) {
+    for (const auto& [osc_idx, freqs] : *indexed) {
+      if (static_cast<size_t>(osc_idx) < oscillator_optimization.size()) {
+        oscillator_optimization[osc_idx].carrier_frequencies = freqs;
+      }
+    }
+  }
 }

@@ -72,16 +72,17 @@ TEST_F(ConfigBuilderTest, ParseIndexedSettings) {
   Config config = builder.build();
 
   // Verify control segments were parsed correctly
-  auto control_segments = config.getControlSegments();
-  EXPECT_EQ(control_segments.size(), 2); // 2 oscillators
+  EXPECT_EQ(config.getOscillators().size(), 2); // 2 oscillators
 
   // Check first oscillator
-  EXPECT_EQ(control_segments[0].size(), 1); // 1 segment
-  EXPECT_EQ(control_segments[0][0].type, ControlType::BSPLINE);
+  const auto& osc0 = config.getOscillator(0);
+  EXPECT_EQ(osc0.control_segments.size(), 1); // 1 segment
+  EXPECT_EQ(osc0.control_segments[0].type, ControlType::BSPLINE);
 
   // Check second oscillator
-  EXPECT_EQ(control_segments[1].size(), 1); // 1 segment
-  EXPECT_EQ(control_segments[1][0].type, ControlType::STEP);
+  const auto& osc1 = config.getOscillator(1);
+  EXPECT_EQ(osc1.control_segments.size(), 1); // 1 segment
+  EXPECT_EQ(osc1.control_segments[0].type, ControlType::STEP);
 
   // Verify output settings
   auto output = config.getOutput();

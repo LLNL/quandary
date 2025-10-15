@@ -52,7 +52,7 @@ Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nosc
   for (int i=0; i<noscillators; i++) writePopulation.push_back(false);
 
   /* Check the output strings for each oscillator to determine which files should be written */
-  const std::vector<std::vector<OutputType>>& output = config.getOutput();
+  const auto& output = config.getOutput();
   for (int i=0; i<noscillators; i++) { // iterates over oscillators
     for (size_t j=0; j<outputstr[i].size(); j++) { // iterates over output stings for this oscillator
       switch (output[i][j]) {

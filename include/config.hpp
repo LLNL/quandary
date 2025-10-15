@@ -38,6 +38,19 @@ struct OptimPenalty {
 };
 
 /**
+ * @brief Grouped optimization target configuration settings.
+ *
+ * Groups all optimization target configuration into a single struct.
+ */
+struct OptimTargetSettings {
+  TargetType type = TargetType::PURE;           ///< Target type (gate, pure, file)
+  std::string file;                             ///< Target file (for file targets)
+  GateType gate_type = GateType::NONE;          ///< Gate type (for gate targets)
+  std::string gate_file;                        ///< Gate file (for gate from file)
+  std::vector<size_t> purestate_levels;         ///< Pure state levels (for pure targets)
+};
+
+/**
  * @brief Structure for storing pi-pulse parameters for one segment.
  *
  * Stores timing and amplitude information for pi-pulse sequences.
@@ -76,7 +89,7 @@ using ControlParams = std::variant<SplineParams, SplineAmpParams, StepParams>;
  */
 struct ControlSegment {
   ControlType type; ///< Type of control segment
-  ControlParams params; ///< Parameters for control pulse for segment
+  ControlParams params; ///< Parameters for control pulse for segment // TODO use variant?
 };
 
 /**
@@ -88,7 +101,17 @@ struct ControlSegmentInitialization {
   double phase; ///< Initial control pulse phase
 };
 
-// TODO make a struct for all per oscillator settings and a vector of these
+/**
+ * @brief Per-oscillator optimization configuration settings.
+ *
+ * Groups all optimization-related settings for a single oscillator.
+ */
+struct OscillatorOptimization {
+  std::vector<ControlSegment> control_segments;                    ///< Control segments for this oscillator
+  std::vector<ControlSegmentInitialization> control_initializations; ///< Control initializations for this oscillator
+  std::vector<double> control_bounds;                              ///< Control bounds for this oscillator for each segment
+  std::vector<double> carrier_frequencies;                         ///< Carrier frequencies for this oscillator
+};
 /**
  * @brief Final validated configuration class.
  *
@@ -124,18 +147,10 @@ class Config {
     std::vector<std::vector<PiPulseSegment>> apply_pipulse;  ///< Apply a pi-pulse to oscillator with specified parameters
 
     // Optimization options
-    std::vector<std::vector<ControlSegment>> control_segments;  ///< Define the control segments for each oscillator
     bool control_enforceBC = false;  ///< Decide whether control pulses should start and end at zero
-    std::vector<std::vector<ControlSegmentInitialization>> control_initializations;  ///< Set the initial control pulse parameters for each oscillator
     std::optional<std::string> control_initialization_file;  ///< File to read the control initializations from (optional)
-    std::vector<std::vector<double>> control_bounds;  ///< Maximum amplitude bound for the control pulses for each oscillator segment (GHz)
-    std::vector<std::vector<double>> carrier_frequencies;  ///< Carrier wave frequencies for each oscillator (GHz)
-    // TODO struct or something?
-    TargetType optim_target_type = TargetType::PURE;  ///< Optimization target
-    std::string optim_target_file;  ///< File to read the target state from (if applicable)
-    GateType optim_target_gate_type = GateType::NONE;  ///< Target gate for gate optimization (if applicable)
-    std::string optim_target_gate_file;  ///< File to read the target gate matrix from (if applicable)
-    std::vector<size_t> optim_target_purestate_levels;  ///< Levels of each oscillator for pure states (if applicable)
+    std::vector<OscillatorOptimization> oscillator_optimization;  ///< Optimization configuration for each oscillator
+    OptimTargetSettings target;  ///< Grouped optimization target configuration
     std::vector<double> gate_rot_freq;  ///< Frequency of rotation of the target gate, for each oscillator (GHz)
     ObjectiveType optim_objective = ObjectiveType::JFROBENIUS;  ///< Objective function measure // TODO not used?
     std::vector<double> optim_weights;  ///< Weights for summing up the objective function
@@ -244,22 +259,22 @@ class Config {
     const std::vector<std::vector<PiPulseSegment>>& getApplyPiPulse() const { return apply_pipulse; }
     const std::vector<PiPulseSegment>& getApplyPiPulse(size_t i) const { return apply_pipulse[i]; }
 
-    const std::vector<std::vector<ControlSegment>>& getControlSegments() const { return control_segments; }
-    const std::vector<ControlSegment>& getControlSegment(size_t i) const { return control_segments[i]; }
+    const std::vector<OscillatorOptimization>& getOscillators() const { return oscillator_optimization; }
+    const OscillatorOptimization& getOscillator(size_t i) const { return oscillator_optimization[i]; }
+    const std::vector<ControlSegment>& getControlSegments(size_t i_osc) const { return oscillator_optimization[i_osc].control_segments; }
     bool getControlEnforceBC() const { return control_enforceBC; }
-    const std::vector<std::vector<ControlSegmentInitialization>>& getControlInitialization() const { return control_initializations; }
-    const std::vector<ControlSegmentInitialization>& getControlInitialization(size_t i) const { return control_initializations[i]; }
+    const std::vector<ControlSegmentInitialization>& getControlInitializations(size_t i_osc) const { return oscillator_optimization[i_osc].control_initializations; }
     const std::optional<std::string>& getControlInitializationFile() const { return control_initialization_file; }
-    const std::vector<std::vector<double>>& getControlBounds() const { return control_bounds; }
-    const std::vector<double>& getControlBounds(size_t i_osc) const { return control_bounds[i_osc]; }
-    double getControlBounds(size_t i_osc, size_t i_seg) const { return control_bounds[i_osc][i_seg]; }
-    const std::vector<std::vector<double>>& getCarrierFrequencies() const { return carrier_frequencies; }
-    const std::vector<double>& getCarrierFrequency(size_t i) const { return carrier_frequencies[i]; }
-    TargetType getOptimTargetType() const { return optim_target_type; }
-    const std::string& getOptimTargetFile() const { return optim_target_file; }
-    GateType getOptimTargetGateType() const { return optim_target_gate_type; }
-    const std::string& getOptimTargetGateFile() const { return optim_target_gate_file; }
-    const std::vector<size_t>& getOptimTargetPurestateLevels() const { return optim_target_purestate_levels; }
+    const std::vector<double>& getControlBounds(size_t i_osc) const { return oscillator_optimization[i_osc].control_bounds; }
+    double getControlBound(size_t i_osc, size_t i_seg) const { return oscillator_optimization[i_osc].control_bounds[i_seg]; }
+    const std::vector<double>& getCarrierFrequencies(size_t i_osc) const { return oscillator_optimization[i_osc].carrier_frequencies; }
+    double getCarrierFrequency(size_t i_osc, size_t i_seg) const { return oscillator_optimization[i_osc].carrier_frequencies[i_seg]; }
+    const OptimTargetSettings& getOptimTarget() const { return target; }
+    TargetType getOptimTargetType() const { return target.type; }
+    const std::string& getOptimTargetFile() const { return target.file; }
+    GateType getOptimTargetGateType() const { return target.gate_type; }
+    const std::string& getOptimTargetGateFile() const { return target.gate_file; }
+    const std::vector<size_t>& getOptimTargetPurestateLevels() const { return target.purestate_levels; }
     const std::vector<double>& getGateRotFreq() const { return gate_rot_freq; }
     ObjectiveType getOptimObjective() const { return optim_objective; }
     const std::vector<double>& getOptimWeights() const { return optim_weights; }
