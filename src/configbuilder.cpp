@@ -119,12 +119,12 @@ Config ConfigBuilder::build() {
     apply_pipulse,
     hamiltonian_file_Hsys,
     hamiltonian_file_Hc,
-    // Indexed control parameters
-    indexed_control_segments.empty() ? std::nullopt : std::make_optional(indexed_control_segments),
+    // Indexed control parameters (pass optionals directly)
+    indexed_control_segments,
     control_enforceBC,
-    indexed_control_init.empty() ? std::nullopt : std::make_optional(indexed_control_init),
-    indexed_control_bounds.empty() ? std::nullopt : std::make_optional(indexed_control_bounds),
-    indexed_carrier_frequencies.empty() ? std::nullopt : std::make_optional(indexed_carrier_frequencies),
+    indexed_control_init,
+    indexed_control_bounds,
+    indexed_carrier_frequencies,
     // Optimization parameters
     optim_target,
     gate_rot_freq,
@@ -144,7 +144,7 @@ Config ConfigBuilder::build() {
     optim_regul_tik0,
     // Output parameters
     datadir,
-    indexed_output.empty() ? std::nullopt : std::make_optional(indexed_output),
+    indexed_output,
     output_frequency,
     optim_monitor_frequency,
     runtype,

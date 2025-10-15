@@ -95,11 +95,11 @@ private:
   std::optional<int> rand_seed;  ///< Fixed seed for the random number generator for reproducibility
 
   // Indexed settings storage (per-oscillator)
-  std::map<int, ControlSegmentConfig> indexed_control_segments;      ///< control_segments0, control_segments1, etc.
-  std::map<int, ControlInitializationConfig> indexed_control_init;   ///< control_initialization0, control_initialization1, etc.
-  std::map<int, std::vector<double>> indexed_control_bounds;         ///< control_bounds0, control_bounds1, etc.
-  std::map<int, std::vector<double>> indexed_carrier_frequencies;    ///< carrier_frequency0, carrier_frequency1, etc.
-  std::map<int, std::vector<OutputType>> indexed_output;             ///< output0, output1, etc.
+  std::optional<std::map<int, ControlSegmentConfig>> indexed_control_segments;      ///< control_segments0, control_segments1, etc.
+  std::optional<std::map<int, ControlInitializationConfig>> indexed_control_init;   ///< control_initialization0, control_initialization1, etc.
+  std::optional<std::map<int, std::vector<double>>> indexed_control_bounds;         ///< control_bounds0, control_bounds1, etc.
+  std::optional<std::map<int, std::vector<double>>> indexed_carrier_frequencies;    ///< carrier_frequency0, carrier_frequency1, etc.
+  std::optional<std::map<int, std::vector<OutputType>>> indexed_output;             ///< output0, output1, etc.
 
 public:
   ConfigBuilder(MPI_Comm comm, std::stringstream& logstream, bool quietmode = false);
@@ -135,9 +135,12 @@ private:
   }
 
   template<typename T>
-  void registerIndexedConfig(const std::string& base_key, std::map<int, T>& storage) {
+  void registerIndexedConfig(const std::string& base_key, std::optional<std::map<int, T>>& storage) {
     indexed_setters[base_key] = [this, &storage](int index, const std::string& value) {
-      storage[index] = convertFromString<T>(value);
+      if (!storage.has_value()) {
+        storage = std::map<int, T>{};
+      }
+      (*storage)[index] = convertFromString<T>(value);
     };
   }
 
