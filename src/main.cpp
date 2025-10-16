@@ -203,8 +203,8 @@ int main(int argc,char **argv)
     }
   }
   // Check if Hamiltonian should be read from file
-  std::string hamiltonian_file_Hsys = config.getHamiltonianFileHsys();
-  std::string hamiltonian_file_Hc = config.getHamiltonianFileHc();
+  const auto& hamiltonian_file_Hsys = config.getHamiltonianFileHsys();
+  const auto& hamiltonian_file_Hc = config.getHamiltonianFileHc();
 
   // Initialize Master equation
   MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, hamiltonian_file_Hsys, hamiltonian_file_Hc, quietmode);

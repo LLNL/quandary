@@ -11,7 +11,7 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(const std::vector<size_t>& nlevels_, const std::vector<size_t>& nessential_, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_Hsys_, const std::string& hamiltonian_file_Hc_, bool quietmode_) {
+MasterEq::MasterEq(const std::vector<size_t>& nlevels_, const std::vector<size_t>& nessential_, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::optional<std::string>& hamiltonian_file_Hsys_, const std::optional<std::string>& hamiltonian_file_Hc_, bool quietmode_) {
   nlevels = nlevels_;
   nessential = nessential_;
   noscillators = nlevels.size();
@@ -270,7 +270,7 @@ void MasterEq::initSparseMatSolver(){
   PetscInt dimmat = dim_rho; // this is N!
 
   /* If a Hamiltonian file is given, read the system matrices from file. */ 
-  if (hamiltonian_file_Hsys.compare("none") != 0 || hamiltonian_file_Hc.compare("none") != 0) {
+  if (hamiltonian_file_Hsys.has_value() || hamiltonian_file_Hc.has_value()) {
     if (mpirank_world==0 && !quietmode) printf("\n# Reading Hamiltonian model from files.\n");
 
     /* Read Hamiltonians from file */

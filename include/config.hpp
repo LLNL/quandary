@@ -145,6 +145,8 @@ class Config {
     std::vector<size_t> initial_condition_IDs;  ///< IDs of initial conditions for pure-state initialization
     std::string initial_condition_file;  ///< File to read initial conditions from (if applicable)
     std::vector<std::vector<PiPulseSegment>> apply_pipulse;  ///< Apply a pi-pulse to oscillator with specified parameters
+    std::optional<std::string> hamiltonian_file_Hsys;  ///< File to read the system Hamiltonian from
+    std::optional<std::string> hamiltonian_file_Hc;  ///< File to read the control Hamiltonian from
 
     // Optimization options
     bool control_enforceBC = false;  ///< Decide whether control pulses should start and end at zero
@@ -171,8 +173,6 @@ class Config {
     int linearsolver_maxiter;  ///< Set maximum number of iterations for the linear solver
     TimeStepperType timestepper_type;  ///< The time-stepping algorithm
     int rand_seed;  ///< Fixed seed for the random number generator for reproducability
-    std::string hamiltonian_file_Hsys;  ///< File to read the system Hamiltonian from
-    std::string hamiltonian_file_Hc;  ///< File to read the control Hamiltonian from
 
   public:
     // Constructor takes all validated parameters (to be called by ConfigBuilder)
@@ -258,6 +258,8 @@ class Config {
     const std::string& getInitialConditionFile() const { return initial_condition_file; }
     const std::vector<std::vector<PiPulseSegment>>& getApplyPiPulse() const { return apply_pipulse; }
     const std::vector<PiPulseSegment>& getApplyPiPulse(size_t i) const { return apply_pipulse[i]; }
+    const std::optional<std::string>& getHamiltonianFileHsys() const { return hamiltonian_file_Hsys; }
+    const std::optional<std::string>& getHamiltonianFileHc() const { return hamiltonian_file_Hc; }
 
     const std::vector<OscillatorOptimization>& getOscillators() const { return oscillator_optimization; }
     const OscillatorOptimization& getOscillator(size_t i) const { return oscillator_optimization[i]; }
@@ -295,8 +297,6 @@ class Config {
     int getLinearSolverMaxiter() const { return linearsolver_maxiter; }
     TimeStepperType getTimestepperType() const { return timestepper_type; }
     int getRandSeed() const { return rand_seed; }
-    const std::string& getHamiltonianFileHsys() const { return hamiltonian_file_Hsys; }
-    const std::string& getHamiltonianFileHc() const { return hamiltonian_file_Hc; }
 
 private:
     void finalize();

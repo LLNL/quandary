@@ -1,6 +1,7 @@
 #include "defs.hpp"
 #include "oscillator.hpp"
 #include "util.hpp"
+#include <optional>
 #include <petscts.h>
 #include <vector>
 #include <assert.h>
@@ -121,8 +122,8 @@ class MasterEq{
     IS isu, isv; ///< Vector strides for accessing real and imaginary parts u=Re(x), v=Im(x)
     Vec aux; ///< Auxiliary vector for computations
     bool quietmode; ///< Flag for quiet mode operation
-    std::string hamiltonian_file_Hsys; ///< Filename if a custom system Hamiltonian is read from file ('none' if standard Hamiltonian is used)
-    std::string hamiltonian_file_Hc; ///< Filename if a custom control Hamiltonians are read from file ('none' if standard Hamiltonian is used)
+    std::optional<std::string> hamiltonian_file_Hsys; ///< Filename if a custom system Hamiltonian is read from file
+    std::optional<std::string> hamiltonian_file_Hc; ///< Filename if a custom control Hamiltonians are read from file
 
   public:
     std::vector<size_t> nlevels; ///< Number of levels per oscillator
@@ -148,7 +149,7 @@ class MasterEq{
      * @param hamiltonian_file_Hc Filename for control Hamiltonian data
      * @param quietmode Flag for quiet operation (default: false)
      */
-    MasterEq(const std::vector<size_t>& nlevels, const std::vector<size_t>& nessential, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_Hsys, const std::string& hamiltonian_file_Hc, bool quietmode=false);
+    MasterEq(const std::vector<size_t>& nlevels, const std::vector<size_t>& nessential, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::optional<std::string>& hamiltonian_file_Hsys, const std::optional<std::string>& hamiltonian_file_Hc, bool quietmode=false);
 
     ~MasterEq();
 

@@ -147,6 +147,10 @@ Config::Config(
 
   // Convert from parsing structs to runtime format
   convertInitialCondition(initialcondition_);
+
+  hamiltonian_file_Hsys = hamiltonian_file_Hsys_.value_or("");
+  hamiltonian_file_Hc = hamiltonian_file_Hc_.value_or("");
+
   convertOptimTarget(optim_target_);
   convertPiPulses(apply_pipulse_);
 
@@ -179,8 +183,6 @@ Config::Config(
   linearsolver_maxiter = linearsolver_maxiter_.value_or(10);
   timestepper_type = timestepper_type_.value_or(TimeStepperType::IMR);
   rand_seed = rand_seed_.value_or(1234);
-  hamiltonian_file_Hsys = hamiltonian_file_Hsys_.value_or("");
-  hamiltonian_file_Hc = hamiltonian_file_Hc_.value_or("");
 
   // Build tolerance and penalty structs
   tolerance = OptimTolerance{
@@ -212,7 +214,7 @@ void Config::finalize() {
   }
 
   // Hamiltonian file + matrix-free compatibility check
-  if ((!hamiltonian_file_Hsys.empty() || !hamiltonian_file_Hc.empty()) && usematfree) {
+  if ((hamiltonian_file_Hsys.has_value() || hamiltonian_file_Hc.has_value()) && usematfree) {
     if (!quietmode) {
       logOutputToRank0(mpi_rank, "# Warning: Matrix-free solver cannot be used when Hamiltonian is read from file. Switching to sparse-matrix version.\n");
     }
@@ -336,11 +338,11 @@ void Config::printConfig() const {
                 << ", " << segment.amp << "\n";
     }
   }
-  if (!hamiltonian_file_Hsys.empty()) {
-    std::cout << "hamiltonian_file_Hsys = " << hamiltonian_file_Hsys << "\n";
+  if (hamiltonian_file_Hsys.has_value()) {
+    std::cout << "hamiltonian_file_Hsys = " << hamiltonian_file_Hsys.value() << "\n";
   }
-  if (!hamiltonian_file_Hc.empty()) {
-    std::cout << "hamiltonian_file_Hc = " << hamiltonian_file_Hc << "\n";
+  if (hamiltonian_file_Hc.has_value()) {
+    std::cout << "hamiltonian_file_Hc = " << hamiltonian_file_Hc.value() << "\n";
   }
 
   // Optimization Parameters
