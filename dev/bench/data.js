@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1759436896588,
+  "lastUpdate": 1760658071719,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1627,6 +1627,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4262.81,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "13452998fe44f48dc5a9cc360b0cbe1cdd66c5f6",
+          "message": "Merge pull request #93 from LLNL/fix-gh-workflow\n\nUse fixed runner version in GitHub workflow",
+          "timestamp": "2025-10-16T23:06:09Z",
+          "url": "https://github.com/LLNL/quandary/commit/13452998fe44f48dc5a9cc360b0cbe1cdd66c5f6"
+        },
+        "date": 1760658070691,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7516139994841069,
+            "range": "0.31729942364431446",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 87.88,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 5.401575268013403,
+            "range": "0.07667149463782905",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4266.42,
             "unit": "MB"
           }
         ]
