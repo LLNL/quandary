@@ -14,7 +14,7 @@
 
 struct InitialConditionConfig {
   InitialConditionType type;  ///< Type of initial condition
-  std::vector<int> params;    ///< Additional integer parameters
+  std::vector<size_t> params;    ///< Additional parameters
   std::optional<std::string> filename;  ///< Filename (if type is FILE)
 };
 
@@ -23,11 +23,11 @@ struct OptimTargetConfig {
   std::optional<GateType> gate_type;    ///< Gate type (for "gate, cnot")
   std::optional<std::string> filename;  ///< Filename (for "file, path.dat")
   std::optional<std::string> gate_file; ///< Gate filename (for "gate, file, path.dat")
-  std::vector<int> levels;              ///< Pure state levels (for "pure, 0, 1")
+  std::vector<size_t> levels;           ///< Pure state levels (for "pure, 0, 1")
 };
 
 struct PiPulseConfig {
-  int oscil_id;     ///< Oscillator ID
+  size_t oscil_id;  ///< Oscillator ID
   double tstart;    ///< Start time
   double tstop;     ///< Stop time
   double amp;       ///< Amplitude
@@ -35,7 +35,7 @@ struct PiPulseConfig {
 
 struct ControlSegmentConfig {
   ControlType control_type;             ///< Type of control segment
-  std::optional<int> num_basis_functions; ///< Number of basis functions
+  std::optional<size_t> num_basis_functions; ///< Number of basis functions
   std::optional<double> tstart;         ///< Start time (optional)
   std::optional<double> tstop;          ///< Stop time (optional)
   std::optional<double> scaling;        ///< Scaling factor (for spline_amplitude)

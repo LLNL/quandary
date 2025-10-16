@@ -496,8 +496,7 @@ void Config::convertPiPulses(const std::optional<std::vector<PiPulseConfig>>& pu
 
   if (pulses.has_value()) {
     for (const auto& pulse_config : *pulses) {
-      if (pulse_config.oscil_id >= 0 &&
-          static_cast<size_t>(pulse_config.oscil_id) < nlevels.size()) {
+      if (pulse_config.oscil_id < nlevels.size()) {
         PiPulseSegment segment;
         segment.tstart = pulse_config.tstart;
         segment.tstop = pulse_config.tstop;

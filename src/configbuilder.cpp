@@ -526,7 +526,7 @@ PiPulseConfig ConfigBuilder::convertFromString<PiPulseConfig>(const std::string&
   }
 
   PiPulseConfig config;
-  config.oscil_id = convertFromString<int>(parts[0]);
+  config.oscil_id = convertFromString<size_t>(parts[0]);
   config.tstart = convertFromString<double>(parts[1]);
   config.tstop = convertFromString<double>(parts[2]);
   config.amp = convertFromString<double>(parts[3]);
@@ -544,7 +544,7 @@ ControlSegmentConfig ConfigBuilder::convertFromString<ControlSegmentConfig>(cons
 
   ControlSegmentConfig config;
   config.control_type = convertFromString<ControlType>(parts[0]);
-  config.num_basis_functions = convertFromString<int>(parts[1]); // TODO
+  config.num_basis_functions = convertFromString<size_t>(parts[1]); // TODO
 
   // Parse optional parameters based on control type and available parts
   if (parts.size() > 2) {
