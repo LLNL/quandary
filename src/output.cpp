@@ -10,7 +10,7 @@ Output::Output(){
   quietmode = false;
 }
 
-Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode_) : Output() {
+Output::Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode_) : Output() {
 
   /* Get communicator ranks */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -52,10 +52,10 @@ Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nosc
   for (int i=0; i<noscillators; i++) writePopulation.push_back(false);
 
   /* Check the output strings for each oscillator to determine which files should be written */
-  const auto& output = config.getOutput();
+  output = config.getOutput();
   for (int i=0; i<noscillators; i++) { // iterates over oscillators
-    for (size_t j=0; j<outputstr[i].size(); j++) { // iterates over output stings for this oscillator
-      switch (output[i][j]) {
+    for (auto output_type : output[i]) { // iterates over output stings for this oscillator
+      switch (output_type) {
         case OutputType::EXPECTED_ENERGY: writeExpectedEnergy[i] = true;
         case OutputType::EXPECTED_ENERGY_COMPOSITE: writeExpectedEnergy_comp = true;
         case OutputType::POPULATION: writePopulation[i] = true;
@@ -161,7 +161,7 @@ void Output::openTrajectoryDataFiles(std::string prefix, int initid){
   if (mpirank_petsc == 0) {
 
     // Expected energy per oscillator  
-    for (size_t i=0; i<outputstr.size(); i++) { // iterates over oscillators
+    for (size_t i=0; i<output.size(); i++) { // iterates over oscillators
       if (writeExpectedEnergy[i]) {
         snprintf(filename, 254, "%s/expected%zu.iinit%04d.dat", datadir.c_str(), i, initid);
         expectedfile[i] = fopen(filename, "w");
@@ -175,7 +175,7 @@ void Output::openTrajectoryDataFiles(std::string prefix, int initid){
       fprintf(expectedfile_comp, "#\"time\"      \"expected energy level\"\n");
     }
     // Populations per oscillator
-    for (size_t i=0; i<outputstr.size(); i++) { // iterates over oscillators
+    for (size_t i=0; i<output.size(); i++) { // iterates over oscillators
       if (writePopulation[i]) {
         snprintf(filename, 254, "%s/population%zu.iinit%04d.dat", datadir.c_str(), i, initid);
         populationfile[i] = fopen(filename, "w");

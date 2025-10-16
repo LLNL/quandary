@@ -24,7 +24,7 @@ class Output{
   
   FILE* optimfile; ///< Output file for logging optimization progress
   int output_frequency; ///< Time domain output frequency (write every N time steps)
-  std::vector<std::vector<std::string> > outputstr; ///< List of output specifications for each oscillator
+  std::vector<std::vector<OutputType>> output; ///< List of output specifications for each oscillator
 
   bool writeFullState; ///< Flag to determine if evolution of full state vector should be written to file
   std::vector<bool> writeExpectedEnergy; ///< Flag to determine if evolution of expected energy per oscillator should be written to files
@@ -57,7 +57,7 @@ class Output{
      * @param noscillators Number of oscillators in the system
      * @param quietmode Flag for reduced output (default: false)
      */
-    Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false);
+    Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false);
 
     ~Output();
 
