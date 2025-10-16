@@ -130,8 +130,8 @@ class Config {
     // General options
     std::vector<size_t> nlevels;  ///< Number of levels per subsystem
     std::vector<size_t> nessential;  ///< Number of essential levels per subsystem (Default: same as nlevels)
-    int ntime = 1000;  ///< Number of time steps used for time-integration // TODO should this be size_t?
-    double dt = 0.1;  ///< Time step size (ns). Determines final time: T=ntime*dt
+    int ntime;  ///< Number of time steps used for time-integration // TODO should this be size_t?
+    double dt;  ///< Time step size (ns). Determines final time: T=ntime*dt
     std::vector<double> transfreq;  ///< Fundamental transition frequencies for each oscillator (GHz)
     std::vector<double> selfkerr;  ///< Self-kerr frequencies for each oscillator (GHz)
     std::vector<double> crosskerr;  ///< Cross-kerr coupling frequencies for each oscillator coupling (GHz)
@@ -155,21 +155,21 @@ class Config {
     ObjectiveType optim_objective = ObjectiveType::JFROBENIUS;  ///< Objective function measure // TODO not used?
     std::vector<double> optim_weights;  ///< Weights for summing up the objective function
     OptimTolerance tolerance;  ///< Grouped optimization stopping criteria and iteration limits
-    double optim_regul = 1e-4;  ///< Coefficient of Tikhonov regularization for the design variables
+    double optim_regul;  ///< Coefficient of Tikhonov regularization for the design variables
     OptimPenalty penalty;  ///< Grouped optimization penalty coefficients
-    bool optim_regul_tik0 = false;  ///< Switch to use Tikhonov regularization with ||x - x_0||^2 instead of ||x||^2
+    bool optim_regul_tik0;  ///< Switch to use Tikhonov regularization with ||x - x_0||^2 instead of ||x||^2
     // bool optim_regul_interpolate = false;  ///< TODO deprecated version
 
     // Output and runtypes
-    std::string datadir = "./data_out";  ///< Directory for output files
+    std::string datadir;  ///< Directory for output files
     std::vector<std::vector<OutputType>> output;  ///< Specify the desired output for each oscillator
-    int output_frequency = 1;  ///< Output frequency in the time domain: write output every <num> time-step
-    int optim_monitor_frequency = 10;  ///< Frequency of writing output during optimization iterations
-    RunType runtype = RunType::SIMULATION;  ///< Runtype options: simulation, gradient, or optimization
-    bool usematfree = false;  ///< Use matrix free solver, instead of sparse matrix implementation
-    LinearSolverType linearsolver_type = LinearSolverType::GMRES;  ///< Solver type for solving the linear system at each time step
-    int linearsolver_maxiter = 10;  ///< Set maximum number of iterations for the linear solver
-    TimeStepperType timestepper_type = TimeStepperType::IMR;  ///< The time-stepping algorithm
+    int output_frequency;  ///< Output frequency in the time domain: write output every <num> time-step
+    int optim_monitor_frequency;  ///< Frequency of writing output during optimization iterations
+    RunType runtype;  ///< Runtype options: simulation, gradient, or optimization
+    bool usematfree;  ///< Use matrix free solver, instead of sparse matrix implementation
+    LinearSolverType linearsolver_type;  ///< Solver type for solving the linear system at each time step
+    int linearsolver_maxiter;  ///< Set maximum number of iterations for the linear solver
+    TimeStepperType timestepper_type;  ///< The time-stepping algorithm
     int rand_seed;  ///< Fixed seed for the random number generator for reproducability
     std::string hamiltonian_file_Hsys;  ///< File to read the system Hamiltonian from
     std::string hamiltonian_file_Hc;  ///< File to read the control Hamiltonian from
