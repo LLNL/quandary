@@ -87,24 +87,47 @@ Config::Config(
   }
 
   // Apply defaults for basic settings
-  nlevels = nlevels_.value_or(std::vector<size_t>{2});
-  if (nlevels.empty()) {
+  if (!nlevels_.has_value()) {
     exitWithError(mpi_rank, "ERROR: nlevels cannot be empty");
   }
+  nlevels = nlevels_.value();
 
   nessential = nessential_.value_or(nlevels); // Default: same as nlevels
   ntime = ntime_.value_or(1000);
   dt = dt_.value_or(0.1);
 
-  // Physics parameters (can be empty)
-  transfreq = transfreq_.value_or(std::vector<double>{});
-  selfkerr = selfkerr_.value_or(std::vector<double>{});
-  crosskerr = crosskerr_.value_or(std::vector<double>{});
-  Jkl = Jkl_.value_or(std::vector<double>{});
-  rotfreq = rotfreq_.value_or(std::vector<double>{});
+  // Physics parameters
+  size_t num_osc = nlevels.size();
+  size_t num_pairs_osc = (num_osc - 1) * num_osc / 2;
+
+  if (!transfreq_.has_value()) {
+    exitWithError(mpi_rank, "ERROR: transfreq cannot be empty");
+  }
+  transfreq = transfreq_.value();
+  copyLast(transfreq, num_osc);
+
+  selfkerr = selfkerr_.value_or(std::vector<double>(num_osc, 0.0));
+  copyLast(selfkerr, num_osc);
+
+  crosskerr = crosskerr_.value_or(std::vector<double>(num_pairs_osc, 0.0));
+  copyLast(crosskerr, num_pairs_osc);
+
+  Jkl = Jkl_.value_or(std::vector<double>(num_pairs_osc, 0.0));
+  copyLast(Jkl, num_pairs_osc);
+
+  if (!rotfreq_.has_value()) {
+    exitWithError(mpi_rank, "ERROR: rotfreq cannot be empty");
+  }
+  rotfreq = rotfreq_.value();
+  copyLast(rotfreq, num_osc);
+
   collapse_type = collapse_type_.value_or(LindbladType::NONE);
-  decay_time = decay_time_.value_or(std::vector<double>{});
-  dephase_time = dephase_time_.value_or(std::vector<double>{});
+
+  decay_time = decay_time_.value_or(std::vector<double>(num_osc, 0.0));
+  copyLast(decay_time, num_osc);
+
+  dephase_time = dephase_time_.value_or(std::vector<double>(num_osc, 0.0));
+  copyLast(dephase_time, num_osc);
 
   // Extract and convert initial condition data
   if (initialcondition_.has_value()) {
