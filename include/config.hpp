@@ -89,7 +89,7 @@ using ControlParams = std::variant<SplineParams, SplineAmpParams, StepParams>;
  */
 struct ControlSegment {
   ControlType type; ///< Type of control segment
-  ControlParams params; ///< Parameters for control pulse for segment // TODO use variant?
+  ControlParams params; ///< Parameters for control pulse for segment
 };
 
 /**
@@ -261,7 +261,7 @@ class Config {
     const std::optional<std::string>& getHamiltonianFileHsys() const { return hamiltonian_file_Hsys; }
     const std::optional<std::string>& getHamiltonianFileHc() const { return hamiltonian_file_Hc; }
 
-    const std::vector<OscillatorOptimization>& getOscillators() const { return oscillator_optimization; }
+    const std::vector<OscillatorOptimization>& getOscillators() const { return oscillator_optimization; } // TODO rename
     const OscillatorOptimization& getOscillator(size_t i) const { return oscillator_optimization[i]; }
     const std::vector<ControlSegment>& getControlSegments(size_t i_osc) const { return oscillator_optimization[i_osc].control_segments; }
     bool getControlEnforceBC() const { return control_enforceBC; }
