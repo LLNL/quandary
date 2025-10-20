@@ -126,18 +126,18 @@ Functions</h2></td></tr>
 <tr class="memitem:a25c8efa290eddfe75dc334e06f59f161" id="r_a25c8efa290eddfe75dc334e06f59f161"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a25c8efa290eddfe75dc334e06f59f161">getVecID</a> (const PetscInt row, const PetscInt col, const PetscInt dim)</td></tr>
 <tr class="memdesc:a25c8efa290eddfe75dc334e06f59f161"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns vectorized index for matrix element (row,col).  <br /></td></tr>
 <tr class="separator:a25c8efa290eddfe75dc334e06f59f161"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae3f5a6346e785a0a2f8cad04f9699b6c" id="r_ae3f5a6346e785a0a2f8cad04f9699b6c"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#ae3f5a6346e785a0a2f8cad04f9699b6c">mapEssToFull</a> (const PetscInt i, const std::vector&lt; int &gt; &amp;nlevels, const std::vector&lt; int &gt; &amp;nessential)</td></tr>
-<tr class="memdesc:ae3f5a6346e785a0a2f8cad04f9699b6c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maps index from essential level system to full-dimension system.  <br /></td></tr>
-<tr class="separator:ae3f5a6346e785a0a2f8cad04f9699b6c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae613a07b81a9c32e94883022d6c64c10" id="r_ae613a07b81a9c32e94883022d6c64c10"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#ae613a07b81a9c32e94883022d6c64c10">mapFullToEss</a> (const PetscInt i, const std::vector&lt; int &gt; &amp;nlevels, const std::vector&lt; int &gt; &amp;nessential)</td></tr>
-<tr class="memdesc:ae613a07b81a9c32e94883022d6c64c10"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maps index from full dimension to essential dimension system.  <br /></td></tr>
-<tr class="separator:ae613a07b81a9c32e94883022d6c64c10"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4c67cd06b21b66d2b447fa85d322048e" id="r_a4c67cd06b21b66d2b447fa85d322048e"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a4c67cd06b21b66d2b447fa85d322048e">isEssential</a> (const int i, const std::vector&lt; int &gt; &amp;nlevels, const std::vector&lt; int &gt; &amp;nessential)</td></tr>
-<tr class="memdesc:a4c67cd06b21b66d2b447fa85d322048e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Tests if density matrix index corresponds to an essential level.  <br /></td></tr>
-<tr class="separator:a4c67cd06b21b66d2b447fa85d322048e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afb1f24e57ec89d405c3c8ff98b0493f8" id="r_afb1f24e57ec89d405c3c8ff98b0493f8"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#afb1f24e57ec89d405c3c8ff98b0493f8">isGuardLevel</a> (const int i, const std::vector&lt; int &gt; &amp;nlevels, const std::vector&lt; int &gt; &amp;nessential)</td></tr>
-<tr class="memdesc:afb1f24e57ec89d405c3c8ff98b0493f8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Tests if density matrix index corresponds to a guard level.  <br /></td></tr>
-<tr class="separator:afb1f24e57ec89d405c3c8ff98b0493f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8994e3a9161a618115fb5af472fbf644" id="r_a8994e3a9161a618115fb5af472fbf644"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a8994e3a9161a618115fb5af472fbf644">mapEssToFull</a> (const PetscInt i, const std::vector&lt; size_t &gt; &amp;nlevels, const std::vector&lt; size_t &gt; &amp;nessential)</td></tr>
+<tr class="memdesc:a8994e3a9161a618115fb5af472fbf644"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maps index from essential level system to full-dimension system.  <br /></td></tr>
+<tr class="separator:a8994e3a9161a618115fb5af472fbf644"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0261d05a88b758a0b25a68bc7318c068" id="r_a0261d05a88b758a0b25a68bc7318c068"><td class="memItemLeft" align="right" valign="top">PetscInt&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a0261d05a88b758a0b25a68bc7318c068">mapFullToEss</a> (const PetscInt i, const std::vector&lt; size_t &gt; &amp;nlevels, const std::vector&lt; size_t &gt; &amp;nessential)</td></tr>
+<tr class="memdesc:a0261d05a88b758a0b25a68bc7318c068"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maps index from full dimension to essential dimension system.  <br /></td></tr>
+<tr class="separator:a0261d05a88b758a0b25a68bc7318c068"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae3ebf9986d1de7cabeedb4254cc9ab6d" id="r_ae3ebf9986d1de7cabeedb4254cc9ab6d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#ae3ebf9986d1de7cabeedb4254cc9ab6d">isEssential</a> (const int i, const std::vector&lt; size_t &gt; &amp;nlevels, const std::vector&lt; size_t &gt; &amp;nessential)</td></tr>
+<tr class="memdesc:ae3ebf9986d1de7cabeedb4254cc9ab6d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Tests if density matrix index corresponds to an essential level.  <br /></td></tr>
+<tr class="separator:ae3ebf9986d1de7cabeedb4254cc9ab6d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab0878f8a4f83a7a5a23ada73f1bd4689" id="r_ab0878f8a4f83a7a5a23ada73f1bd4689"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#ab0878f8a4f83a7a5a23ada73f1bd4689">isGuardLevel</a> (const int i, const std::vector&lt; size_t &gt; &amp;nlevels, const std::vector&lt; size_t &gt; &amp;nessential)</td></tr>
+<tr class="memdesc:ab0878f8a4f83a7a5a23ada73f1bd4689"><td class="mdescLeft">&#160;</td><td class="mdescRight">Tests if density matrix index corresponds to a guard level.  <br /></td></tr>
+<tr class="separator:ab0878f8a4f83a7a5a23ada73f1bd4689"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4c711ee9f82fa1fa0a0608bc523e1d1a" id="r_a4c711ee9f82fa1fa0a0608bc523e1d1a"><td class="memItemLeft" align="right" valign="top">PetscErrorCode&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a4c711ee9f82fa1fa0a0608bc523e1d1a">Ikron</a> (const Mat A, const int dimI, const double alpha, Mat *Out, InsertMode insert_mode)</td></tr>
 <tr class="memdesc:a4c711ee9f82fa1fa0a0608bc523e1d1a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes Kronecker product \(Id \otimes A\).  <br /></td></tr>
 <tr class="separator:a4c711ee9f82fa1fa0a0608bc523e1d1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -511,8 +511,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a4c67cd06b21b66d2b447fa85d322048e" name="a4c67cd06b21b66d2b447fa85d322048e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4c67cd06b21b66d2b447fa85d322048e">&#9670;&#160;</a></span>isEssential()</h2>
+<a id="ae3ebf9986d1de7cabeedb4254cc9ab6d" name="ae3ebf9986d1de7cabeedb4254cc9ab6d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae3ebf9986d1de7cabeedb4254cc9ab6d">&#9670;&#160;</a></span>isEssential()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -526,13 +526,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramtype">const std::vector&lt; size_t &gt; &amp;&#160;</td>
           <td class="paramname"><em>nlevels</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramtype">const std::vector&lt; size_t &gt; &amp;&#160;</td>
           <td class="paramname"><em>nessential</em>&#160;</td>
         </tr>
         <tr>
@@ -556,8 +556,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="afb1f24e57ec89d405c3c8ff98b0493f8" name="afb1f24e57ec89d405c3c8ff98b0493f8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afb1f24e57ec89d405c3c8ff98b0493f8">&#9670;&#160;</a></span>isGuardLevel()</h2>
+<a id="ab0878f8a4f83a7a5a23ada73f1bd4689" name="ab0878f8a4f83a7a5a23ada73f1bd4689"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab0878f8a4f83a7a5a23ada73f1bd4689">&#9670;&#160;</a></span>isGuardLevel()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -571,13 +571,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramtype">const std::vector&lt; size_t &gt; &amp;&#160;</td>
           <td class="paramname"><em>nlevels</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramtype">const std::vector&lt; size_t &gt; &amp;&#160;</td>
           <td class="paramname"><em>nessential</em>&#160;</td>
         </tr>
         <tr>
@@ -701,8 +701,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ae3f5a6346e785a0a2f8cad04f9699b6c" name="ae3f5a6346e785a0a2f8cad04f9699b6c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae3f5a6346e785a0a2f8cad04f9699b6c">&#9670;&#160;</a></span>mapEssToFull()</h2>
+<a id="a8994e3a9161a618115fb5af472fbf644" name="a8994e3a9161a618115fb5af472fbf644"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8994e3a9161a618115fb5af472fbf644">&#9670;&#160;</a></span>mapEssToFull()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -716,13 +716,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramtype">const std::vector&lt; size_t &gt; &amp;&#160;</td>
           <td class="paramname"><em>nlevels</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramtype">const std::vector&lt; size_t &gt; &amp;&#160;</td>
           <td class="paramname"><em>nessential</em>&#160;</td>
         </tr>
         <tr>
@@ -746,8 +746,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ae613a07b81a9c32e94883022d6c64c10" name="ae613a07b81a9c32e94883022d6c64c10"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae613a07b81a9c32e94883022d6c64c10">&#9670;&#160;</a></span>mapFullToEss()</h2>
+<a id="a0261d05a88b758a0b25a68bc7318c068" name="a0261d05a88b758a0b25a68bc7318c068"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0261d05a88b758a0b25a68bc7318c068">&#9670;&#160;</a></span>mapFullToEss()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -761,13 +761,13 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramtype">const std::vector&lt; size_t &gt; &amp;&#160;</td>
           <td class="paramname"><em>nlevels</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">const std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramtype">const std::vector&lt; size_t &gt; &amp;&#160;</td>
           <td class="paramname"><em>nessential</em>&#160;</td>
         </tr>
         <tr>

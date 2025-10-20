@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['gate_0',['gate',['../classGate.html#a5cf7e8b1eb541064760541f6d18fc382',1,'Gate::Gate(const std::vector&lt; int &gt; &amp;nlevels_, const std::vector&lt; int &gt; &amp;nessential_, double time_, const std::vector&lt; double &gt; &amp;gate_rot_freq, LindbladType lindbladtype_, bool quietmode=false)'],['../classGate.html#a4fc24ecebc0ca8252bf7ab96a705e58a',1,'Gate::Gate()']]],
+  ['gate_0',['gate',['../classGate.html#a9e8b586e452b086985820b871a8fdf75',1,'Gate::Gate(const std::vector&lt; size_t &gt; &amp;nlevels_, const std::vector&lt; size_t &gt; &amp;nessential_, double time_, const std::vector&lt; double &gt; &amp;gate_rot_freq, LindbladType lindbladtype_, bool quietmode=false)'],['../classGate.html#a4fc24ecebc0ca8252bf7ab96a705e58a',1,'Gate::Gate()']]],
   ['getboolparam_1',['GetBoolParam',['../classConfig.html#a636e08fe2e0495dc01e6b7627b73eec8',1,'Config']]],
   ['getcontroltype_2',['getControlType',['../classOscillator.html#aae35a43a87241613d14657a7c04bbaa9',1,'Oscillator']]],
   ['getcostt_3',['getCostT',['../classOptimProblem.html#a68760cc16e11427d3e8280ad43ca265c',1,'OptimProblem']]],

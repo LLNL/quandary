@@ -273,12 +273,12 @@ Functions</h2></td></tr>
 <tr class="memitem:aeaaf83cf2c38deabfb4f076b5e013b4d" id="r_aeaaf83cf2c38deabfb4f076b5e013b4d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aeaaf83cf2c38deabfb4f076b5e013b4d">applyRHS_sparsemat_transpose</a> (Mat RHS, Vec x, Vec y)</td></tr>
 <tr class="memdesc:aeaaf83cf2c38deabfb4f076b5e013b4d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Transpose sparse matrix MatMult.  <br /></td></tr>
 <tr class="separator:aeaaf83cf2c38deabfb4f076b5e013b4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa77e13c9a94d0ac25e730935925a0cff" id="r_aa77e13c9a94d0ac25e730935925a0cff"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aa77e13c9a94d0ac25e730935925a0cff">compute_dRHS_dParams_sparsemat</a> (const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad, std::vector&lt; int &gt; &amp;nlevels, IS isu, IS isv, std::vector&lt; Mat &gt; &amp;Ac_vec, std::vector&lt; Mat &gt; &amp;Bc_vec, Vec aux, <a class="el" href="classOscillator.html">Oscillator</a> **oscil_vec)</td></tr>
-<tr class="memdesc:aa77e13c9a94d0ac25e730935925a0cff"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Sparse-matrix version to compute gradient of RHS with respect to parameters  <br /></td></tr>
-<tr class="separator:aa77e13c9a94d0ac25e730935925a0cff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad07e79fe88ae679ea14d6772b91458aa" id="r_ad07e79fe88ae679ea14d6772b91458aa"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#ad07e79fe88ae679ea14d6772b91458aa">compute_dRHS_dParams_matfree</a> (const PetscInt dim, const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad, std::vector&lt; int &gt; &amp;nlevels, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype, <a class="el" href="classOscillator.html">Oscillator</a> **oscil_vec)</td></tr>
-<tr class="memdesc:ad07e79fe88ae679ea14d6772b91458aa"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Matrix free version to compute gradient of RHS with respect to parameters  <br /></td></tr>
-<tr class="separator:ad07e79fe88ae679ea14d6772b91458aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3540dc45b5f689860c2ad0d44c90e2f3" id="r_a3540dc45b5f689860c2ad0d44c90e2f3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a3540dc45b5f689860c2ad0d44c90e2f3">compute_dRHS_dParams_sparsemat</a> (const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad, std::vector&lt; size_t &gt; &amp;nlevels, IS isu, IS isv, std::vector&lt; Mat &gt; &amp;Ac_vec, std::vector&lt; Mat &gt; &amp;Bc_vec, Vec aux, <a class="el" href="classOscillator.html">Oscillator</a> **oscil_vec)</td></tr>
+<tr class="memdesc:a3540dc45b5f689860c2ad0d44c90e2f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Sparse-matrix version to compute gradient of RHS with respect to parameters  <br /></td></tr>
+<tr class="separator:a3540dc45b5f689860c2ad0d44c90e2f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a88ac8a58d0a20b95cbf13b094b7b9d59" id="r_a88ac8a58d0a20b95cbf13b094b7b9d59"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#a88ac8a58d0a20b95cbf13b094b7b9d59">compute_dRHS_dParams_matfree</a> (const PetscInt dim, const double t, const Vec x, const Vec x_bar, const double alpha, Vec grad, std::vector&lt; size_t &gt; &amp;nlevels, <a class="el" href="defs_8hpp.html#a5e46e0fe90abc6230f71928a43849bd2">LindbladType</a> lindbladtype, <a class="el" href="classOscillator.html">Oscillator</a> **oscil_vec)</td></tr>
+<tr class="memdesc:a88ac8a58d0a20b95cbf13b094b7b9d59"><td class="mdescLeft">&#160;</td><td class="mdescRight">: Matrix free version to compute gradient of RHS with respect to parameters  <br /></td></tr>
+<tr class="separator:a88ac8a58d0a20b95cbf13b094b7b9d59"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aebbda51dfa3b2ccda3c86e83efb422f3" id="r_aebbda51dfa3b2ccda3c86e83efb422f3"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="mastereq_8hpp.html#aebbda51dfa3b2ccda3c86e83efb422f3">H_detune</a> (const double detuning0, const int a)</td></tr>
 <tr class="memdesc:aebbda51dfa3b2ccda3c86e83efb422f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline for Matrix-free RHS to Compute detuning for 1 oscillator.  <br /></td></tr>
 <tr class="separator:aebbda51dfa3b2ccda3c86e83efb422f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -804,8 +804,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ad07e79fe88ae679ea14d6772b91458aa" name="ad07e79fe88ae679ea14d6772b91458aa"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad07e79fe88ae679ea14d6772b91458aa">&#9670;&#160;</a></span>compute_dRHS_dParams_matfree()</h2>
+<a id="a88ac8a58d0a20b95cbf13b094b7b9d59" name="a88ac8a58d0a20b95cbf13b094b7b9d59"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a88ac8a58d0a20b95cbf13b094b7b9d59">&#9670;&#160;</a></span>compute_dRHS_dParams_matfree()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -849,7 +849,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramtype">std::vector&lt; size_t &gt; &amp;&#160;</td>
           <td class="paramname"><em>nlevels</em>, </td>
         </tr>
         <tr>
@@ -873,7 +873,7 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>: Matrix free version to compute gradient of RHS with respect to parameters </p>
-<p>Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar in a matrix-free manner. See <a class="el" href="mastereq_8cpp.html#af2f40d837405f8e22f2e1ae3746d5678">compute_dRHS_dParams_sparsemat</a> for the sparse-matrix version of this routine.</p>
+<p>Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar in a matrix-free manner. See <a class="el" href="mastereq_8cpp.html#a4c243742ac5547b195eb31e7614a5bb7">compute_dRHS_dParams_sparsemat</a> for the sparse-matrix version of this routine.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">dim</td><td>Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger </td></tr>
@@ -891,8 +891,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="aa77e13c9a94d0ac25e730935925a0cff" name="aa77e13c9a94d0ac25e730935925a0cff"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa77e13c9a94d0ac25e730935925a0cff">&#9670;&#160;</a></span>compute_dRHS_dParams_sparsemat()</h2>
+<a id="a3540dc45b5f689860c2ad0d44c90e2f3" name="a3540dc45b5f689860c2ad0d44c90e2f3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3540dc45b5f689860c2ad0d44c90e2f3">&#9670;&#160;</a></span>compute_dRHS_dParams_sparsemat()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -930,7 +930,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::vector&lt; int &gt; &amp;&#160;</td>
+          <td class="paramtype">std::vector&lt; size_t &gt; &amp;&#160;</td>
           <td class="paramname"><em>nlevels</em>, </td>
         </tr>
         <tr>
@@ -978,7 +978,7 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>: Sparse-matrix version to compute gradient of RHS with respect to parameters </p>
-<p>Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar with sparse-matrix version of RHS. Compare <a class="el" href="mastereq_8cpp.html#ad3dd9cf141f58de662dadeae99538791">compute_dRHS_dParams_matfree</a> for the matrix-free version of this routine.</p>
+<p>Updates grad += alpha * x^T * (d RHS / d params)^T * x_bar with sparse-matrix version of RHS. Compare <a class="el" href="mastereq_8cpp.html#a496cf4f7ed5040eebef071c06ce8eca7">compute_dRHS_dParams_matfree</a> for the matrix-free version of this routine.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">t</td><td>Current time </td></tr>
