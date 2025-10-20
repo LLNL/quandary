@@ -88,8 +88,9 @@ int main(int argc,char **argv)
   export_param(mpirank_world, *config.log, "rand_seed", rand_seed);
 
   /* --- Get some options from the config file --- */
-  std::vector<int> nlevels;
-  config.GetVecIntParam("nlevels", nlevels, 0);
+  std::vector<int> nlevels_int;
+  config.GetVecIntParam("nlevels", nlevels_int, 0);
+  std::vector<size_t> nlevels(nlevels_int.begin(), nlevels_int.end());
   int ntime = config.GetIntParam("ntime", 1000);
   double dt    = config.GetDoubleParam("dt", 0.01);
   RunType runtype;
@@ -105,15 +106,15 @@ int main(int argc,char **argv)
 
   /* Get the number of essential levels per oscillator. 
    * Default: same as number of levels */  
-  std::vector<int> nessential(nlevels.size());
+  std::vector<size_t> nessential(nlevels.size());
   for (size_t iosc = 0; iosc<nlevels.size(); iosc++) nessential[iosc] = nlevels[iosc];
   /* Overwrite if config option is given */
   std::vector<int> read_nessential;
   config.GetVecIntParam("nessential", read_nessential, -1);
   if (read_nessential[0] > -1) {
     for (size_t iosc = 0; iosc<nlevels.size(); iosc++){
-      if (iosc < read_nessential.size()) nessential[iosc] = read_nessential[iosc];
-      else                               nessential[iosc] = read_nessential[read_nessential.size()-1];
+      if (iosc < read_nessential.size()) nessential[iosc] = static_cast<size_t>(read_nessential[iosc]);
+      else                               nessential[iosc] = static_cast<size_t>(read_nessential[read_nessential.size()-1]);
       if (nessential[iosc] > nlevels[iosc]) nessential[iosc] = nlevels[iosc];
     }
   }

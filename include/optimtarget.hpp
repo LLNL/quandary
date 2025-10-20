@@ -89,7 +89,7 @@ class OptimTarget{
      * @param rho0 Vector to store the initial condition
      * @return int Identifier for this initial condition (element number in matrix vectorization)
      */
-    int prepareInitialState(const int iinit, const int ninit, const std::vector<int>& nlevels, const std::vector<int>& nessential,  Vec rho0);
+    int prepareInitialState(const int iinit, const int ninit, const std::vector<size_t>& nlevels, const std::vector<size_t>& nessential,  Vec rho0);
 
     /**
      * @brief Prepares the target state for gate optimization.

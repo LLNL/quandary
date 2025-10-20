@@ -447,7 +447,7 @@ void OptimTarget::HilbertSchmidtOverlap_diff(Vec statebar, bool scalebypurity, c
 }
 
 
-int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std::vector<int>& nlevels, const std::vector<int>& nessential, Vec rho0){
+int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std::vector<size_t>& nlevels, const std::vector<size_t>& nessential, Vec rho0){
 
   PetscInt elemID;
   double val;

@@ -19,7 +19,7 @@
  */
 typedef struct {
   PetscInt dim; ///< Dimension of full vectorized system: N^2 if Lindblad, N if Schroedinger
-  std::vector<int> nlevels; ///< Number of levels per oscillator
+  std::vector<size_t> nlevels; ///< Number of levels per oscillator
   IS *isu, *isv; ///< Vector strides for accessing real and imaginary parts
   Oscillator** oscil_vec; ///< Array of pointers to the oscillators
   std::vector<double> crosskerr; ///< Cross-Kerr coupling coefficients
@@ -125,8 +125,8 @@ class MasterEq{
     std::string hamiltonian_file_Hc; ///< Filename if a custom control Hamiltonians are read from file ('none' if standard Hamiltonian is used)
 
   public:
-    std::vector<int> nlevels; ///< Number of levels per oscillator
-    std::vector<int> nessential; ///< Number of essential levels per oscillator
+    std::vector<size_t> nlevels; ///< Number of levels per oscillator
+    std::vector<size_t> nessential; ///< Number of essential levels per oscillator
     bool usematfree; ///< Flag for using matrix-free solver
     LindbladType lindbladtype; ///< Type of Lindblad operators to include (NONE means Schroedinger equation)
 
@@ -148,7 +148,7 @@ class MasterEq{
      * @param hamiltonian_file_Hc Filename for control Hamiltonian data
      * @param quietmode Flag for quiet operation (default: false)
      */
-    MasterEq(const std::vector<int>& nlevels, const std::vector<int>& nessential, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_Hsys, const std::string& hamiltonian_file_Hc, bool quietmode=false);
+    MasterEq(const std::vector<size_t>& nlevels, const std::vector<size_t>& nessential, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_Hsys, const std::string& hamiltonian_file_Hc, bool quietmode=false);
 
     ~MasterEq();
 
@@ -282,7 +282,7 @@ class MasterEq{
  * @param[in] aux Auxiliary vector for computations 
  * @param[in] oscil_vec Vector of quantum oscilators
  */
-void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad, std::vector<int>& nlevels, IS isu, IS isv, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec, Vec aux, Oscillator** oscil_vec);
+void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad, std::vector<size_t>& nlevels, IS isu, IS isv, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec, Vec aux, Oscillator** oscil_vec);
 
 /**
  * @brief: Matrix free version to compute gradient of RHS with respect to parameters 
@@ -300,7 +300,7 @@ void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec x_bar, 
  * @param[in] lindbladtype Type of Lindblad decoherence operators, or NONE
  * @param[in] oscil_vec Vector of quantum oscillators 
  */
-void compute_dRHS_dParams_matfree(const PetscInt dim, const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad, std::vector<int>& nlevels, LindbladType lindbladtype, Oscillator** oscil_vec);
+void compute_dRHS_dParams_matfree(const PetscInt dim, const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad, std::vector<size_t>& nlevels, LindbladType lindbladtype, Oscillator** oscil_vec);
 
 
 

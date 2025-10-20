@@ -11,7 +11,7 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(const std::vector<int>& nlevels_, const std::vector<int>& nessential_, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_Hsys_, const std::string& hamiltonian_file_Hc_, bool quietmode_) {
+MasterEq::MasterEq(const std::vector<size_t>& nlevels_, const std::vector<size_t>& nessential_, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::string& hamiltonian_file_Hsys_, const std::string& hamiltonian_file_Hc_, bool quietmode_) {
   nlevels = nlevels_;
   nessential = nessential_;
   noscillators = nlevels.size();
@@ -922,7 +922,7 @@ int applyRHS_sparsemat_transpose(Mat RHS, Vec x, Vec y) {
 }
 
 // Compute gradient of RHS wrt parameters (Sparse matrix version)
-void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec xbar, const double alpha, Vec grad, std::vector<int>& nlevels, IS isu, IS isv, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec, Vec aux, Oscillator** oscil_vec) {
+void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec xbar, const double alpha, Vec grad, std::vector<size_t>& nlevels, IS isu, IS isv, std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec, Vec aux, Oscillator** oscil_vec) {
    int noscillators = nlevels.size();
 
     /* Get real and imaginary part from x and xbar */
@@ -967,7 +967,7 @@ void compute_dRHS_dParams_sparsemat(const double t,const Vec x,const Vec xbar, c
 }
 
 // Compute gradient of RHS wrt parameters (Matrix-free version)
-void compute_dRHS_dParams_matfree(const PetscInt dim, const double t,const Vec x,const Vec xbar, const double alpha, Vec grad, std::vector<int>& nlevels, LindbladType lindbladtype, Oscillator** oscil_vec){
+void compute_dRHS_dParams_matfree(const PetscInt dim, const double t,const Vec x,const Vec xbar, const double alpha, Vec grad, std::vector<size_t>& nlevels, LindbladType lindbladtype, Oscillator** oscil_vec){
   double res_p_re,  res_p_im, res_q_re, res_q_im;
 
   int noscillators = nlevels.size();
