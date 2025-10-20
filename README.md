@@ -12,7 +12,7 @@ Quandary targets deployment on High-Performance Computing platforms, offering va
 Feel free to reach out to Stefanie Guenther [guenther5@llnl.gov] for any question you may have. 
 
 # Documentation
-Both user and code documentation is available [here](https://software.llnl.gov/quandary).
+Both user and code documentation is available [here](https://software.llnl.gov/quandary/).
 
 # Building
 Quandary uses CMake and [BLT](https://github.com/LLNL/blt) to handle builds. Since BLT is included as a
