@@ -3,8 +3,14 @@ name: Build and Test
 on:
   pull_request:
     branches: ['main']
+    paths-ignore: &ignore-docs
+      - '*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
   push:
     branches: ['main']
+    paths-ignore: *ignore-docs
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
