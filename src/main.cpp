@@ -34,7 +34,7 @@ int main(int argc,char **argv)
 
   if (argc > 1 && std::string(argv[1]) == "--version") {
     if (mpirank_world == 0) {
-      printf("Quandary %s\n", QUANDARY_FULL_VERSION_STRING);
+      printf("Quandary %s %s\n", QUANDARY_FULL_VERSION_STRING, QUANDARY_GIT_SHA);
     }
     MPI_Finalize();
     return 0;
