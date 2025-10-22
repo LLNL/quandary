@@ -3,8 +3,14 @@ name: Build and Test
 on:
   pull_request:
     branches: ['main']
+    paths-ignore: &ignore-docs
+      - '*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
   push:
     branches: ['main']
+    paths-ignore: *ignore-docs
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -25,16 +31,25 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+
     - name: Set up Spack
       uses: spack/setup-spack@v2
+      with:
+        ref: v1.0.2
 
     - name: Configure Spack
       run: |
         spack mirror add --type binary --unsigned --oci-username GITHUB_USER --oci-password-variable GITHUB_TOKEN local-buildcache oci://ghcr.io/LLNL/quandary-spack-buildcache
 
-    - name: Add only use GCC on macOS
+    - name: Add only use GCC/clang on macOS
       if: runner.os == 'macOS'
       run: |
+        ls $(brew --prefix llvm@18)/bin
+        spack compiler find $(brew --prefix llvm@18)/bin
         spack compiler find /opt/homebrew/bin
 
     - name: Install
