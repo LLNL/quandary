@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1760990000391,
+  "lastUpdate": 1761160908249,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1759,6 +1759,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4265.31,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "9a0c00af028c0a69710ca517564d6708c982604f",
+          "message": "Merge pull request #94 from LLNL/pin-spack-version-ci\n\nMinor improvements for GitHub workflow",
+          "timestamp": "2025-10-22T18:42:47Z",
+          "url": "https://github.com/LLNL/quandary/commit/9a0c00af028c0a69710ca517564d6708c982604f"
+        },
+        "date": 1761160906178,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.767291554948315,
+            "range": "0.34503431371236504",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 87.71,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 5.327775028999895,
+            "range": "0.7134382760584129",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4263.4,
             "unit": "MB"
           }
         ]
