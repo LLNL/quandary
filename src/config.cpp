@@ -129,23 +129,6 @@ Config::Config(
   dephase_time = dephase_time_.value_or(std::vector<double>(num_osc, 0.0));
   copyLast(dephase_time, num_osc);
 
-  // Extract and convert initial condition data
-  if (initialcondition_.has_value()) {
-    initial_condition_type = initialcondition_->type;
-    if (!initialcondition_->params.empty()) {
-      for (int param : initialcondition_->params) {
-        initial_condition_IDs.push_back(static_cast<size_t>(param));
-      }
-    }
-    initial_condition_file = initialcondition_->filename.value_or("");
-    n_initial_conditions = initialcondition_->params.size();
-  } else {
-    initial_condition_type = InitialConditionType::BASIS;
-    n_initial_conditions = 1;
-    initial_condition_file = "";
-  }
-
-  // Convert from parsing structs to runtime format
   convertInitialCondition(initialcondition_);
 
   hamiltonian_file_Hsys = hamiltonian_file_Hsys_.value_or("");
@@ -221,49 +204,6 @@ void Config::finalize() {
     usematfree = false;
   }
 
-  // Sanity check for Schrodinger solver initial conditions
-  if (collapse_type == LindbladType::NONE) {
-    if (initial_condition_type == InitialConditionType::ENSEMBLE ||
-        initial_condition_type == InitialConditionType::THREESTATES ||
-        initial_condition_type == InitialConditionType::NPLUSONE) {
-      exitWithError(mpi_rank, "\n\n ERROR for initial condition setting: \n When running Schroedingers solver (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'. Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
-    }
-
-    // DIAGONAL and BASIS initial conditions in the Schroedinger case are the same. Overwrite it to DIAGONAL
-    if (initial_condition_type == InitialConditionType::BASIS) {
-      initial_condition_type = InitialConditionType::DIAGONAL;
-    }
-  }
-
-  // Validate initial conditions
-  if (initial_condition_type == InitialConditionType::PURE) {
-    if (initial_condition_IDs.size() != nlevels.size()) {
-      exitWithError(mpi_rank, "ERROR during pure-state initialization: List of IDs must contain " +
-        std::to_string(nlevels.size()) + " elements!\n");
-    }
-
-    for (size_t k = 0; k < initial_condition_IDs.size(); k++) {
-      if (initial_condition_IDs[k] >= nlevels[k]) {
-        exitWithError(mpi_rank, "Pure state initialization: ID " + std::to_string(initial_condition_IDs[k]) +
-          " for oscillator " + std::to_string(k) +
-          " exceeds maximum level " + std::to_string(nlevels[k] - 1));
-      }
-    }
-  } else if (initial_condition_type == InitialConditionType::ENSEMBLE) {
-    // Sanity check for the list in initcond_IDs!
-    if (initial_condition_IDs.empty()) {
-      exitWithError(mpi_rank, "ERROR: initial_condition_IDs cannot be empty for ensemble initialization");
-    }
-    if (initial_condition_IDs.back() >= nlevels.size()) {
-      exitWithError(mpi_rank, "ERROR: Last element in initial_condition_IDs exceeds number of oscillators");
-    }
-    for (size_t i = 0; i < initial_condition_IDs.size() - 1; i++) { // list should be consecutive!
-      if (initial_condition_IDs[i] + 1 != initial_condition_IDs[i + 1]) {
-        exitWithError(mpi_rank, "ERROR: List of oscillators for ensemble initialization should be consecutive!\n");
-      }
-    }
-  }
-
   // Validate essential levels don't exceed total levels
   if (nessential.size() != nlevels.size()) {
     exitWithError(mpi_rank, "nessential size must match nlevels size");
@@ -304,6 +244,13 @@ namespace {
     }
     return out;
   }
+
+  std::string print(const InitialCondition& initial_condition) {
+    return std::visit([](const auto& opt) {
+        return opt.toString();
+    }, initial_condition);
+  }
+
 } //namespace
 
 void Config::printConfig() const {
@@ -323,12 +270,8 @@ void Config::printConfig() const {
   std::cout << "collapse_type = " << enumToString(collapse_type, LINDBLAD_TYPE_MAP) << "\n";
   std::cout << "decay_time = " << printVector(decay_time) << "\n";
   std::cout << "dephase_time = " << printVector(dephase_time) << "\n";
-  std::cout << "initialcondition = " << enumToString(initial_condition_type, INITCOND_TYPE_MAP);
-  if (!initial_condition_IDs.empty()) {
-    for (size_t id : initial_condition_IDs) {
-      std::cout << ", " << id;
-    }
-  }
+  std::cout << "initialcondition = " << print(initial_condition) << "\n";
+
   std::cout << "\n";
   for (size_t i = 0; i < apply_pipulse.size(); ++i) {
     for (const auto& segment : apply_pipulse[i]) {
@@ -452,23 +395,81 @@ std::vector<std::vector<T>> Config::convertIndexedToVectorVector(const std::opti
   return result;
 }
 
+InitialCondition Config::convertInitialCondition(const InitialConditionConfig& config) {
+  const auto& params = config.params;
+
+    /* Sanity check for Schrodinger solver initial conditions */
+  if (collapse_type == LindbladType::NONE){
+    if (config.type == InitialConditionType::ENSEMBLE ||
+        config.type == InitialConditionType::THREESTATES ||
+        config.type == InitialConditionType::NPLUSONE ){
+          exitWithError(mpi_rank, "\n\n ERROR for initial condition setting: \n When running Schroedingers solver"
+            " (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'."
+            " Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
+    }
+  }
+
+  switch (config.type) {
+    case InitialConditionType::FROMFILE:
+      if (!config.filename.has_value()) {
+        exitWithError(mpi_rank, "ERROR: initialcondition of type FROMFILE must have a filename");
+      }
+      return FromFileInitialCondition{config.filename.value()};
+    case InitialConditionType::PURE:
+      if (params.size() != nlevels.size()) {
+        exitWithError(mpi_rank, "ERROR: initialcondition of type PURE must have exactly " +
+          std::to_string(nlevels.size()) + " parameters, got " + std::to_string(params.size()));
+      }
+      for (size_t k=0; k < params.size(); k++) {
+        if (params[k] >= nlevels[k]){
+          exitWithError(mpi_rank, "ERROR in config setting. The requested pure state initialization "
+            + std::to_string(params[k]) + " exceeds the number of allowed levels for that oscillator ("
+            + std::to_string(nlevels[k]) + ").\n");
+        }
+      }
+      return PureInitialCondition{params};
+
+    case InitialConditionType::BASIS:
+      if (collapse_type == LindbladType::NONE) {
+        // DIAGONAL and BASIS initial conditions in the Schroedinger case are the same. Overwrite it to DIAGONAL
+        return DiagonalInitialCondition{params};
+      }
+      return BasisInitialCondition{params};
+
+    case InitialConditionType::ENSEMBLE:
+      if (params.back() >= nlevels.size()) {
+        exitWithError(mpi_rank, "ERROR: Last element in initialcondition params exceeds number of oscillators");
+      }
+
+      for (size_t i = 1; i < params.size()-1; i++){
+        if (params[i]+1 != params[i+1]) {
+          exitWithError(mpi_rank, "ERROR: List of oscillators for ensemble initialization should be consecutive!\n");
+        }
+      }
+      return EnsembleInitialCondition{params};
+
+    case InitialConditionType::DIAGONAL:
+      return DiagonalInitialCondition{params};
+
+    case InitialConditionType::THREESTATES:
+      return ThreeStatesInitialCondition{};
+
+    case InitialConditionType::NPLUSONE:
+      return NPlusOneInitialCondition{};
+
+    case InitialConditionType::PERFORMANCE:
+      return PerformanceInitialCondition{};
+  }
+}
+
 // Conversion helper implementations
 void Config::convertInitialCondition(const std::optional<InitialConditionConfig>& config) {
-  if (config.has_value()) {
-    initial_condition_type = config->type;
-    n_initial_conditions = config->params.size();
-
-    // Convert int params to size_t IDs
-    for (int param : config->params) {
-      initial_condition_IDs.push_back(static_cast<size_t>(param));
-    }
-
-    initial_condition_file = config->filename.value_or("");
-  } else {
-    initial_condition_type = InitialConditionType::BASIS;
-    n_initial_conditions = 1;
-    initial_condition_file = "";
+  if (!config.has_value()) {
+    initial_condition = BasisInitialCondition{}; // Default
+    return;
   }
+
+  initial_condition = convertInitialCondition(config.value());
 }
 
 void Config::convertOptimTarget(const std::optional<OptimTargetConfig>& config) {

@@ -105,7 +105,10 @@ TEST_F(ConfigBuilderTest, ParseStructSettings) {
   EXPECT_EQ(config.getOptimTargetType(), TargetType::GATE);
   EXPECT_EQ(config.getOptimTargetGateType(), GateType::CNOT);
 
-  EXPECT_EQ(config.getInitialConditionType(), InitialConditionType::DIAGONAL);
+  const auto& initcond = config.getInitialCondition();
+  EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
+  const auto& diag_init = std::get<DiagonalInitialCondition>(initcond);
+  EXPECT_EQ(diag_init.osc_IDs, std::vector<size_t>{0});
 }
 
 TEST_F(ConfigBuilderTest, ApplyDefaults) {
