@@ -1,4 +1,5 @@
 #include "optimtarget.hpp"
+#include "config.hpp"
 #include "defs.hpp"
 #include <string>
 
@@ -9,7 +10,6 @@ OptimTarget::OptimTarget(){
   noscillators = 0;
   target_type = TargetType::GATE;
   objective_type = ObjectiveType::JTRACE;
-  initcond_type = InitialConditionType::BASIS;
   lindbladtype = LindbladType::NONE;
   targetgate = NULL;
   purity_rho0 = 1.0;
@@ -41,19 +41,20 @@ OptimTarget::OptimTarget(const Config& config, MasterEq* mastereq, double total_
   iupp = ilow + localsize_u;         
 
   /* Get initial condition type and IDs */
-  initcond_type = config.getInitialConditionType();
-  initcond_IDs = config.getInitialConditionIDs();
+  initcond = config.getInitialCondition();
 
   /* Prepare initial state rho_t0 if PURE or FROMFILE or ENSEMBLE initialization. Otherwise they are set within prepareInitialState during evalF. */
-  if (initcond_type == InitialConditionType::PURE) { 
+  if (std::holds_alternative<PureInitialCondition>(initcond)) {
+    const auto& pure_init = std::get<PureInitialCondition>(initcond);
+    const auto& level_indices = pure_init.level_indices;
     // Find the id within the global composite system 
     PetscInt diag_id = 0;
-    for (size_t k=0; k < initcond_IDs.size(); k++) {
+    for (size_t k=0; k < level_indices.size(); k++) {
       PetscInt dim_postkron = 1;
-      for (size_t m=k+1; m < initcond_IDs.size(); m++) {
+      for (size_t m=k+1; m < level_indices.size(); m++) {
         dim_postkron *= mastereq->getOscillator(m)->getNLevels();
       }
-      diag_id += initcond_IDs[k] * dim_postkron;
+      diag_id += level_indices[k] * dim_postkron;
     }
     // Vectorize if lindblad solver
     PetscInt vec_id = diag_id;
@@ -64,14 +65,14 @@ OptimTarget::OptimTarget(const Config& config, MasterEq* mastereq, double total_
       VecSetValue(rho_t0, id_global_x, 1.0, INSERT_VALUES);
     }
   }
-  else if (initcond_type == InitialConditionType::FROMFILE) { 
+  else if (std::holds_alternative<FromFileInitialCondition>(initcond)) {
     /* Read initial condition from file */
     int nelems = 0;
     if (mastereq->lindbladtype != LindbladType::NONE) nelems = 2*dim_ess*dim_ess;
     else nelems = 2 * dim_ess;
     double * vec = new double[nelems];
     if (mpirank_world == 0) {
-      std::string filename = config.getInitialConditionFile();
+      std::string filename = std::get<FromFileInitialCondition>(initcond).filename;
       read_vector(filename.c_str(), vec, nelems, quietmode);
     }
     MPI_Bcast(vec, nelems, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -104,12 +105,15 @@ OptimTarget::OptimTarget(const Config& config, MasterEq* mastereq, double total_
       }
     }
     delete [] vec;
-  } else if (initcond_type == InitialConditionType::ENSEMBLE) {
-    // get dimension of subsystems defined by initcond_IDs, as well as the one before and after. Span in essential levels only.
+  } else if (std::holds_alternative<EnsembleInitialCondition>(initcond)) {
+    const auto& ensemble_init = std::get<EnsembleInitialCondition>(initcond);
+    const auto& osc_IDs = ensemble_init.osc_IDs;
+
+    // get dimension of subsystems defined by ensemble_init.level_indices, as well as the one before and after. Span in essential levels only.
     PetscInt dimpost = 1;
     PetscInt dimsub = 1;
     for (size_t i=0; i<mastereq->getNOscillators(); i++){
-      if (initcond_IDs[0] <= i && i <= initcond_IDs[initcond_IDs.size()-1]) dimsub *= mastereq->nessential[i];
+      if (osc_IDs[0] <= i && i <= osc_IDs[osc_IDs.size()-1]) dimsub *= mastereq->nessential[i];
       else dimpost *= mastereq->nessential[i];
     }
     PetscInt dimrho = mastereq->getDimRho();
@@ -380,245 +384,231 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
   PetscInt dim_post;
   int initID = 0;    // Output: ID for this initial condition */
 
-  /* Switch over type of initial condition */
-  switch (initcond_type) {
+  /* Conditionals over type of initial condition */
+  if (std::holds_alternative<PerformanceInitialCondition>(initcond)) {
+    /* Set up Input state psi = 1/sqrt(2N)*(Ones(N) + im*Ones(N)) or rho = psi*psi^\dag */
+    VecZeroEntries(rho0);
 
-    case InitialConditionType::PERFORMANCE:
-      /* Set up Input state psi = 1/sqrt(2N)*(Ones(N) + im*Ones(N)) or rho = psi*psi^\dag */
-      VecZeroEntries(rho0);
-
-      for (PetscInt i=0; i<dim_rho; i++){
-        if (lindbladtype == LindbladType::NONE) {
-          double val = 1./ sqrt(2.*dim_rho);
-          if (ilow <= i && i < iupp) {
-            PetscInt id_global_x =  i + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
-            VecSetValue(rho0, id_global_x, val, INSERT_VALUES);
-            VecSetValue(rho0, id_global_x + localsize_u, val, INSERT_VALUES);
-          }
-        } else {
-          PetscInt elem_re = getVecID(i, i, dim_rho);
-          double val = 1./ dim_rho;
-          if (ilow <= elem_re && elem_re < iupp) {
-            PetscInt id_global_x =  i + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
-            VecSetValue(rho0, id_global_x, val, INSERT_VALUES);
-          }
-        }
-      }
-      break;
-
-    case InitialConditionType::FROMFILE:
-      /* Do nothing. Init cond is already stored */
-      break;
-
-    case InitialConditionType::PURE:
-      /* Do nothing. Init cond is already stored */
-      break;
-
-    case InitialConditionType::ENSEMBLE:
-      /* Do nothing. Init cond is already stored */
-      break;
-
-    case InitialConditionType::THREESTATES:
-      assert(lindbladtype != LindbladType::NONE);
-      VecZeroEntries(rho0);
-
-      /* Set the <iinit>'th initial state */
-      if (iinit == 0) {
-        // 1st initial state: rho(0)_IJ = 2(N-i)/(N(N+1)) Delta_IJ
-        initID = 1;
-        for (PetscInt i_full = 0; i_full<dim_rho; i_full++) {
-          PetscInt diagID = getVecID(i_full,i_full,dim_rho);
-          double val = 2.*(dim_rho - i_full) / (dim_rho * (dim_rho + 1));
-          if (ilow <= diagID && diagID < iupp) {
-            PetscInt id_global_x =  diagID + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
-            VecSetValue(rho0, id_global_x, val, INSERT_VALUES);
-          }
-        }
-      } else if (iinit == 1) {
-        // 2nd initial state: rho(0)_IJ = 1/N
-        initID = 2;
-        for (PetscInt i_full = 0; i_full<dim_rho; i_full++) {
-          for (PetscInt j_full = 0; j_full<dim_rho; j_full++) {
-            double val = 1./dim_rho;
-            PetscInt index = getVecID(i_full,j_full,dim_rho);
-            if (ilow <= index && index < iupp) {
-              PetscInt id_global_x =  index + mpirank_petsc*localsize_u;
-              VecSetValue(rho0, id_global_x, val, INSERT_VALUES); 
-            }
-          }
-        }
-      } else if (iinit == 2) {
-        // 3rd initial state: rho(0)_IJ = 1/N Delta_IJ
-        initID = 3;
-        for (PetscInt i_full = 0; i_full<dim_rho; i_full++) {
-          PetscInt diagID = getVecID(i_full,i_full,dim_rho);
-          double val = 1./ dim_rho;
-          if (ilow <= diagID && diagID < iupp) {
-            PetscInt id_global_x =  diagID + mpirank_petsc*localsize_u;
-            VecSetValue(rho0, id_global_x, val, INSERT_VALUES);
-          }
+    for (PetscInt i=0; i<dim_rho; i++){
+      if (lindbladtype == LindbladType::NONE) {
+        double val = 1./ sqrt(2.*dim_rho);
+        if (ilow <= i && i < iupp) {
+          PetscInt id_global_x =  i + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
+          VecSetValue(rho0, id_global_x, val, INSERT_VALUES);
+          VecSetValue(rho0, id_global_x + localsize_u, val, INSERT_VALUES);
         }
       } else {
-        printf("ERROR: Wrong initial condition setting! Should never happen.\n");
-        exit(1);
-      }
-      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-      break;
-
-    case InitialConditionType::NPLUSONE:
-      assert(lindbladtype != LindbladType::NONE);
-
-      if (iinit < dim_rho) {// Diagonal e_j e_j^\dag
-        VecZeroEntries(rho0);
-        elemID = getVecID(iinit, iinit, dim_rho);
-        val = 1.0;
-        if (ilow <= elemID && elemID < iupp) {
-          PetscInt id_global_x = elemID+ mpirank_petsc*localsize_u;
-          VecSetValues(rho0, 1, &id_global_x, &val, INSERT_VALUES);
+        PetscInt elem_re = getVecID(i, i, dim_rho);
+        double val = 1./ dim_rho;
+        if (ilow <= elem_re && elem_re < iupp) {
+          PetscInt id_global_x =  i + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
+          VecSetValue(rho0, id_global_x, val, INSERT_VALUES);
         }
       }
-      else if (iinit == dim_rho) { // fully rotated 1/d*Ones(d)
-        for (PetscInt i=0; i<dim_rho; i++){
-          for (PetscInt j=0; j<dim_rho; j++){
-            elemID = getVecID(i,j,dim_rho);
-            val = 1.0 / dim_rho;
-            if (ilow <= elemID && elemID < iupp) {
-              PetscInt id_global_x = elemID + mpirank_petsc*localsize_u;
-              VecSetValues(rho0, 1, &id_global_x, &val, INSERT_VALUES);
-            }
+    }
+  } else if(std::holds_alternative<FromFileInitialCondition>(initcond)) {
+    /* Do nothing. Init cond is already stored */
+  } else if(std::holds_alternative<PureInitialCondition>(initcond)) {
+    /* Do nothing. Init cond is already stored */
+  } else if(std::holds_alternative<EnsembleInitialCondition>(initcond)) {
+    /* Do nothing. Init cond is already stored */
+  } else if (std::holds_alternative<ThreeStatesInitialCondition>(initcond)) {
+    assert(lindbladtype != LindbladType::NONE);
+    VecZeroEntries(rho0);
+
+    /* Set the <iinit>'th initial state */
+    if (iinit == 0) {
+      // 1st initial state: rho(0)_IJ = 2(N-i)/(N(N+1)) Delta_IJ
+      initID = 1;
+      for (PetscInt i_full = 0; i_full<dim_rho; i_full++) {
+        PetscInt diagID = getVecID(i_full,i_full,dim_rho);
+        double val = 2.*(dim_rho - i_full) / (dim_rho * (dim_rho + 1));
+        if (ilow <= diagID && diagID < iupp) {
+          PetscInt id_global_x =  diagID + mpirank_petsc*localsize_u; // Global index of u_i in x=[u,v]
+          VecSetValue(rho0, id_global_x, val, INSERT_VALUES);
+        }
+      }
+    } else if (iinit == 1) {
+      // 2nd initial state: rho(0)_IJ = 1/N
+      initID = 2;
+      for (PetscInt i_full = 0; i_full<dim_rho; i_full++) {
+        for (PetscInt j_full = 0; j_full<dim_rho; j_full++) {
+          double val = 1./dim_rho;
+          PetscInt index = getVecID(i_full,j_full,dim_rho);
+          if (ilow <= index && index < iupp) {
+            PetscInt id_global_x =  index + mpirank_petsc*localsize_u;
+            VecSetValue(rho0, id_global_x, val, INSERT_VALUES); 
           }
         }
       }
-      else {
-        printf("Wrong initial condition index. Should never happen!\n");
-        exit(1);
+    } else if (iinit == 2) {
+      // 3rd initial state: rho(0)_IJ = 1/N Delta_IJ
+      initID = 3;
+      for (PetscInt i_full = 0; i_full<dim_rho; i_full++) {
+        PetscInt diagID = getVecID(i_full,i_full,dim_rho);
+        double val = 1./ dim_rho;
+        if (ilow <= diagID && diagID < iupp) {
+          PetscInt id_global_x =  diagID + mpirank_petsc*localsize_u;
+          VecSetValue(rho0, id_global_x, val, INSERT_VALUES);
+        }
       }
-      initID = iinit;
-      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-      break;
+    } else {
+      printf("ERROR: Wrong initial condition setting! Should never happen.\n");
+      exit(1);
+    }
+    VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+  } else if (std::holds_alternative<NPlusOneInitialCondition>(initcond)) {
+    assert(lindbladtype != LindbladType::NONE);
 
-    case InitialConditionType::DIAGONAL:
-      PetscInt diagelem;
+    if (iinit < dim_rho) {// Diagonal e_j e_j^\dag
       VecZeroEntries(rho0);
-
-      /* Get dimension of partial system behind last oscillator ID (essential levels only) */
-      dim_post = 1;
-      for (size_t k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
-        // dim_post *= getOscillator(k)->getNLevels();
-        dim_post *= nessential[k];
-      }
-
-      /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
-      diagelem = iinit * dim_post;
-      if (dim_ess < dim_rho)  diagelem = mapEssToFull(diagelem, nlevels, nessential);
-
-      // Vectorize if Lindblad
-      elemID = diagelem;
-      if (lindbladtype != LindbladType::NONE) elemID = getVecID(diagelem, diagelem, dim_rho); 
+      elemID = getVecID(iinit, iinit, dim_rho);
       val = 1.0;
+      if (ilow <= elemID && elemID < iupp) {
+        PetscInt id_global_x = elemID+ mpirank_petsc*localsize_u;
+        VecSetValues(rho0, 1, &id_global_x, &val, INSERT_VALUES);
+      }
+    }
+    else if (iinit == dim_rho) { // fully rotated 1/d*Ones(d)
+      for (PetscInt i=0; i<dim_rho; i++){
+        for (PetscInt j=0; j<dim_rho; j++){
+          elemID = getVecID(i,j,dim_rho);
+          val = 1.0 / dim_rho;
+          if (ilow <= elemID && elemID < iupp) {
+            PetscInt id_global_x = elemID + mpirank_petsc*localsize_u;
+            VecSetValues(rho0, 1, &id_global_x, &val, INSERT_VALUES);
+          }
+        }
+      }
+    }
+    else {
+      printf("Wrong initial condition index. Should never happen!\n");
+      exit(1);
+    }
+    initID = iinit;
+    VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+  } else if (std::holds_alternative<DiagonalInitialCondition>(initcond)) {
+    const auto& diag_init = std::get<DiagonalInitialCondition>(initcond);
+    const auto& initcond_IDs = diag_init.osc_IDs;
+    PetscInt diagelem;
+    VecZeroEntries(rho0);
+
+    /* Get dimension of partial system behind last oscillator ID (essential levels only) */
+    dim_post = 1;
+    for (size_t k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
+      // dim_post *= getOscillator(k)->getNLevels();
+      dim_post *= nessential[k];
+    }
+
+    /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
+    diagelem = iinit * dim_post;
+    if (dim_ess < dim_rho)  diagelem = mapEssToFull(diagelem, nlevels, nessential);
+
+    // Vectorize if Lindblad
+    elemID = diagelem;
+    if (lindbladtype != LindbladType::NONE) elemID = getVecID(diagelem, diagelem, dim_rho); 
+    val = 1.0;
+    if (ilow <= elemID && elemID < iupp) {
+      PetscInt id_global_x =  elemID + mpirank_petsc*localsize_u; 
+      VecSetValues(rho0, 1, &id_global_x, &val, INSERT_VALUES);
+    }
+    VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+
+    /* Set initial conditon ID */
+    if (lindbladtype != LindbladType::NONE) initID = iinit * ninit + iinit;
+    else initID = iinit;
+
+  } else if (std::holds_alternative<BasisInitialCondition>(initcond)) {
+    const auto& basis_init = std::get<BasisInitialCondition>(initcond);
+    const auto& initcond_IDs = basis_init.osc_IDs;
+
+    assert(lindbladtype != LindbladType::NONE); // should never happen. For Schroedinger: BASIS equals DIAGONAL, and should go into the above switch case. 
+
+    /* Reset the initial conditions */
+    VecZeroEntries(rho0);
+
+    /* Get dimension of partial system behind last oscillator ID (essential levels only) */
+    dim_post = 1;
+    for (size_t k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
+      dim_post *= nessential[k];
+    }
+
+    /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
+    PetscInt k, j;
+    k = iinit % ( (int) sqrt(ninit) );
+    j = iinit / ( (int) sqrt(ninit) );
+
+    /* Set initial condition ID */
+    initID = j * ( (int) sqrt(ninit)) + k;
+
+    /* Set position in rho */
+    k = k*dim_post;
+    j = j*dim_post;
+    if (dim_ess < dim_rho) { 
+      k = mapEssToFull(k, nlevels, nessential);
+      j = mapEssToFull(j, nlevels, nessential);
+    }
+
+    if (k == j) {
+      /* B_{kk} = E_{kk} -> set only one element at (k,k) */
+      elemID = getVecID(k, k, dim_rho); 
+      double val = 1.0;
       if (ilow <= elemID && elemID < iupp) {
         PetscInt id_global_x =  elemID + mpirank_petsc*localsize_u; 
         VecSetValues(rho0, 1, &id_global_x, &val, INSERT_VALUES);
       }
-      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+    } else {
+    //   /* B_{kj} contains four non-zeros, two per row */
+      PetscInt* rows = new PetscInt[4];
+      PetscScalar* vals = new PetscScalar[4];
 
-      /* Set initial conditon ID */
-      if (lindbladtype != LindbladType::NONE) initID = iinit * ninit + iinit;
-      else initID = iinit;
+      /* Get storage index of Re(x) */
+      rows[0] = getVecID(k, k, dim_rho); // (k,k)
+      rows[1] = getVecID(j, j, dim_rho); // (j,j)
+      rows[2] = getVecID(k, j, dim_rho); // (k,j)
+      rows[3] = getVecID(j, k, dim_rho); // (j,k)
 
-      break;
-
-    case InitialConditionType::BASIS:
-      assert(lindbladtype != LindbladType::NONE); // should never happen. For Schroedinger: BASIS equals DIAGONAL, and should go into the above switch case. 
-
-      /* Reset the initial conditions */
-      VecZeroEntries(rho0);
-
-      /* Get dimension of partial system behind last oscillator ID (essential levels only) */
-      dim_post = 1;
-      for (size_t k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
-        dim_post *= nessential[k];
-      }
-
-      /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
-      PetscInt k, j;
-      k = iinit % ( (int) sqrt(ninit) );
-      j = iinit / ( (int) sqrt(ninit) );
-
-      /* Set initial condition ID */
-      initID = j * ( (int) sqrt(ninit)) + k;
-
-      /* Set position in rho */
-      k = k*dim_post;
-      j = j*dim_post;
-      if (dim_ess < dim_rho) { 
-        k = mapEssToFull(k, nlevels, nessential);
-        j = mapEssToFull(j, nlevels, nessential);
-      }
-
-      if (k == j) {
-        /* B_{kk} = E_{kk} -> set only one element at (k,k) */
-        elemID = getVecID(k, k, dim_rho); 
-        double val = 1.0;
-        if (ilow <= elemID && elemID < iupp) {
-          PetscInt id_global_x =  elemID + mpirank_petsc*localsize_u; 
-          VecSetValues(rho0, 1, &id_global_x, &val, INSERT_VALUES);
+      if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
+        vals[0] = 0.5;
+        vals[1] = 0.5;
+        vals[2] = 0.5;
+        vals[3] = 0.5;
+        for (int i=0; i<4; i++) {
+          if (ilow <= rows[i] && rows[i] < iupp) {
+            PetscInt id_global_x =  rows[i]+ mpirank_petsc*localsize_u; 
+            VecSetValues(rho0, 1, &id_global_x, &(vals[i]), INSERT_VALUES);
+          }
         }
-      } else {
-      //   /* B_{kj} contains four non-zeros, two per row */
-        PetscInt* rows = new PetscInt[4];
-        PetscScalar* vals = new PetscScalar[4];
-
-        /* Get storage index of Re(x) */
-        rows[0] = getVecID(k, k, dim_rho); // (k,k)
-        rows[1] = getVecID(j, j, dim_rho); // (j,j)
+      } else {  // B_{kj} = 1/2(E_kk + E_jj) + i/2(E_jk - E_kj)
+        vals[0] = 0.5;
+        vals[1] = 0.5;
+        for (int i=0; i<2; i++) {
+          if (ilow <= rows[i] && rows[i] < iupp) {
+            PetscInt id_global_x =  rows[i]+ mpirank_petsc*localsize_u; 
+            VecSetValues(rho0, 1, &id_global_x, &(vals[i]), INSERT_VALUES);
+          }
+        }
+        vals[2] = -0.5;
+        vals[3] = 0.5;
         rows[2] = getVecID(k, j, dim_rho); // (k,j)
         rows[3] = getVecID(j, k, dim_rho); // (j,k)
-
-        if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
-          vals[0] = 0.5;
-          vals[1] = 0.5;
-          vals[2] = 0.5;
-          vals[3] = 0.5;
-          for (int i=0; i<4; i++) {
-            if (ilow <= rows[i] && rows[i] < iupp) {
-              PetscInt id_global_x =  rows[i]+ mpirank_petsc*localsize_u; 
-              VecSetValues(rho0, 1, &id_global_x, &(vals[i]), INSERT_VALUES);
-            }
-          }
-        } else {  // B_{kj} = 1/2(E_kk + E_jj) + i/2(E_jk - E_kj)
-          vals[0] = 0.5;
-          vals[1] = 0.5;
-          for (int i=0; i<2; i++) {
-            if (ilow <= rows[i] && rows[i] < iupp) {
-              PetscInt id_global_x =  rows[i]+ mpirank_petsc*localsize_u; 
-              VecSetValues(rho0, 1, &id_global_x, &(vals[i]), INSERT_VALUES);
-            }
-          }
-          vals[2] = -0.5;
-          vals[3] = 0.5;
-          rows[2] = getVecID(k, j, dim_rho); // (k,j)
-          rows[3] = getVecID(j, k, dim_rho); // (j,k)
-          for (int i=2; i<4; i++) {
-            if (ilow <= rows[i] && rows[i] < iupp) {
-              PetscInt id_global_x =  rows[i]+ mpirank_petsc*localsize_u + localsize_u; 
-              VecSetValues(rho0, 1, &id_global_x, &(vals[i]), INSERT_VALUES);
-            }
+        for (int i=2; i<4; i++) {
+          if (ilow <= rows[i] && rows[i] < iupp) {
+            PetscInt id_global_x =  rows[i]+ mpirank_petsc*localsize_u + localsize_u; 
+            VecSetValues(rho0, 1, &id_global_x, &(vals[i]), INSERT_VALUES);
           }
         }
-        delete [] rows;
-        delete [] vals;
       }
+      delete [] rows;
+      delete [] vals;
+    }
 
-      /* Assemble rho0 */
-      VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
-
-      break;
-
-    default:
-      printf("ERROR! Wrong initial condition type: %d\n This should never happen!\n", static_cast<int>(initcond_type));
-      exit(1);
-  }
+    /* Assemble rho0 */
+    VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
+  } else {
+    printf("ERROR! Wrong initial condition type.\n This should never happen!\n");
+    exit(1);
+}
 
   return initID;
 }

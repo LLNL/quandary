@@ -11,6 +11,85 @@
 
 #pragma once
 
+// Individual structs for each initial condition type
+struct FromFileInitialCondition {
+  std::string filename; ///< File to read initial condition from
+
+  std::string toString() const {
+    return "file, " + filename;
+  }
+};
+
+struct PureInitialCondition {
+  std::vector<size_t> level_indices; ///< Quantum level for each oscillator
+
+  std::string toString() const {
+    std::string out = "pure";
+    for (size_t idx : level_indices) {
+      out += ", " + std::to_string(idx);
+    }
+    return out;
+  }
+};
+
+struct OscillatorIDsInitialCondition {
+  std::vector<size_t> osc_IDs; ///< Oscillator IDs
+
+    std::string toString(std::string name) const {
+    std::string out = name;
+    for (size_t idx : osc_IDs) {
+      out += ", " + std::to_string(idx);
+    }
+    return out;
+  }
+};
+struct EnsembleInitialCondition : public OscillatorIDsInitialCondition {
+  std::string toString() const {
+    return OscillatorIDsInitialCondition::toString("ensemble");
+  }
+};
+
+struct DiagonalInitialCondition : public OscillatorIDsInitialCondition {
+  std::string toString() const {
+    return OscillatorIDsInitialCondition::toString("ensemble");
+  }
+};
+
+struct BasisInitialCondition : public OscillatorIDsInitialCondition {
+  std::string toString() const {
+    return OscillatorIDsInitialCondition::toString("basis");
+  }
+};
+
+struct ThreeStatesInitialCondition {
+  std::string toString() const {
+    return "threestates";
+  }
+};
+
+struct NPlusOneInitialCondition {
+  std::string toString() const {
+    return "nplusone";
+  }
+};
+
+struct PerformanceInitialCondition {
+  std::string toString() const {
+    return "performance";
+  }
+};
+
+using InitialCondition = std::variant<
+  FromFileInitialCondition,
+  PureInitialCondition,
+  EnsembleInitialCondition,
+  DiagonalInitialCondition,
+  BasisInitialCondition,
+  ThreeStatesInitialCondition,
+  NPlusOneInitialCondition,
+  PerformanceInitialCondition
+>;
+
 /**
  * @brief Grouped optimization tolerance settings.
  *
@@ -140,10 +219,8 @@ class Config {
     LindbladType collapse_type = LindbladType::NONE;  ///< Switch between Schroedinger and Lindblad solver
     std::vector<double> decay_time;  ///< Time of decay collapse operation (T1) per oscillator (for Lindblad solver)
     std::vector<double> dephase_time;  ///< Time of dephase collapse operation (T2) per oscillator (for Lindblad solver)
-    InitialConditionType initial_condition_type = InitialConditionType::BASIS;  ///< Type of initial condition
     int n_initial_conditions;  ///< Number of initial conditions
-    std::vector<size_t> initial_condition_IDs;  ///< IDs of initial conditions for pure-state initialization
-    std::string initial_condition_file;  ///< File to read initial conditions from (if applicable)
+    InitialCondition initial_condition;  ///< Initial condition configuration
     std::vector<std::vector<PiPulseSegment>> apply_pipulse;  ///< Apply a pi-pulse to oscillator with specified parameters
     std::optional<std::string> hamiltonian_file_Hsys;  ///< File to read the system Hamiltonian from
     std::optional<std::string> hamiltonian_file_Hc;  ///< File to read the control Hamiltonian from
@@ -252,10 +329,8 @@ class Config {
     LindbladType getCollapseType() const { return collapse_type; }
     const std::vector<double>& getDecayTime() const { return decay_time; }
     const std::vector<double>& getDephaseTime() const { return dephase_time; }
-    InitialConditionType getInitialConditionType() const { return initial_condition_type; }
     int getNInitialConditions() const { return n_initial_conditions; }
-    const std::vector<size_t>& getInitialConditionIDs() const { return initial_condition_IDs; }
-    const std::string& getInitialConditionFile() const { return initial_condition_file; }
+    const InitialCondition& getInitialCondition() const { return initial_condition; }
     const std::vector<std::vector<PiPulseSegment>>& getApplyPiPulse() const { return apply_pipulse; }
     const std::vector<PiPulseSegment>& getApplyPiPulse(size_t i) const { return apply_pipulse[i]; }
     const std::optional<std::string>& getHamiltonianFileHsys() const { return hamiltonian_file_Hsys; }
@@ -302,6 +377,7 @@ private:
     void finalize();
 
     // Conversion helper methods
+    InitialCondition convertInitialCondition(const InitialConditionConfig& config);
     void convertInitialCondition(const std::optional<InitialConditionConfig>& config);
     void convertOptimTarget(const std::optional<OptimTargetConfig>& config);
     void convertControlSegments(const std::optional<std::map<int, ControlSegmentConfig>>& indexed);
