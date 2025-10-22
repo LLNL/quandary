@@ -31,6 +31,11 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+
     - name: Set up Spack
       uses: spack/setup-spack@v2
       with:
