@@ -37,7 +37,7 @@ jobs:
         python-version: "3.14"
 
     - name: Set up Spack
-      uses: spack/setup-spack@v2
+      uses: spack/setup-spack@main
       with:
         repository: alalazo/spack
         ref: bugfix/buildcache-and-python-314
