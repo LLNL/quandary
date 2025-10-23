@@ -453,9 +453,6 @@ InitialCondition Config::convertInitialCondition(const InitialConditionConfig& c
       return DiagonalInitialCondition{params};
 
     case InitialConditionType::THREESTATES:
-      if (collapse_type != LindbladType::NONE) {
-        exitWithError(mpi_rank, "ERROR: THREESTATES initial condition can only be used with Lindblad solver");
-      }
       return ThreeStatesInitialCondition{};
 
     case InitialConditionType::NPLUSONE:
