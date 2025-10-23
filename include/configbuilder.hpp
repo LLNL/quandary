@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <set>
 #include <sstream>
 #include <type_traits>
@@ -43,7 +44,7 @@ private:
   // General options
   std::optional<std::vector<size_t>> nlevels;  ///< Number of levels per subsystem
   std::optional<std::vector<size_t>> nessential;  ///< Number of essential levels per subsystem
-  std::optional<int> ntime;  ///< Number of time steps used for time-integration
+  std::optional<size_t> ntime;  ///< Number of time steps used for time-integration
   std::optional<double> dt;  ///< Time step size (ns). Determines final time: T=ntime*dt
   std::optional<std::vector<double>> transfreq;  ///< Fundamental transition frequencies for each oscillator (GHz)
   std::optional<std::vector<double>> selfkerr;  ///< Self-kerr frequencies for each oscillator (GHz)
@@ -72,7 +73,7 @@ private:
   std::optional<double> optim_rtol;  ///< Optimization stopping tolerance based on gradient norm (relative)
   std::optional<double> optim_ftol;  ///< Optimization stopping criterion based on the final time cost (absolute)
   std::optional<double> optim_inftol;  ///< Optimization stopping criterion based on the infidelity (absolute)
-  std::optional<int> optim_maxiter;  ///< Maximum number of optimization iterations
+  std::optional<size_t> optim_maxiter;  ///< Maximum number of optimization iterations
   std::optional<double> optim_regul;  ///< Coefficient of Tikhonov regularization for the design variables
   std::optional<double> optim_penalty;  ///< Coefficient for adding first integral penalty term
   std::optional<double> optim_penalty_param;  ///< Integral penalty parameter inside the weight (gaussian variance a)
@@ -90,7 +91,7 @@ private:
   std::optional<RunType> runtype;  ///< Runtype options: simulation, gradient, or optimization
   std::optional<bool> usematfree;  ///< Use matrix free solver, instead of sparse matrix implementation
   std::optional<LinearSolverType> linearsolver_type;  ///< Solver type for solving the linear system at each time step
-  std::optional<int> linearsolver_maxiter;  ///< Set maximum number of iterations for the linear solver
+  std::optional<size_t> linearsolver_maxiter;  ///< Set maximum number of iterations for the linear solver
   std::optional<TimeStepperType> timestepper;  ///< The time-stepping algorithm
   std::optional<int> rand_seed;  ///< Fixed seed for the random number generator for reproducibility
 
