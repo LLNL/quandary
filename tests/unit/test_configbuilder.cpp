@@ -22,6 +22,9 @@ TEST_F(ConfigBuilderTest, ParseBasicSettings) {
 
   // Test basic setting parsing
   builder.loadFromString(R"(
+    nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
     ntime = 500
     dt = 0.05
     collapse_type = none
@@ -41,6 +44,7 @@ TEST_F(ConfigBuilderTest, ParseVectorSettings) {
   builder.loadFromString(R"(
     nlevels = 2, 3
     transfreq = 4.1, 4.8, 5.2
+    rotfreq = 0.0, 0.0
   )");
 
   Config config = builder.build();
@@ -63,6 +67,8 @@ TEST_F(ConfigBuilderTest, ParseIndexedSettings) {
   // Test indexed setting parsing
   builder.loadFromString(R"(
     nlevels = 2, 2
+    transfreq = 4.1, 4.8
+    rotfreq = 0.0, 0.0
     control_segments0 = spline, 150
     control_segments1 = step, 10
     output0 = population
@@ -96,6 +102,9 @@ TEST_F(ConfigBuilderTest, ParseStructSettings) {
 
   // Test struct parsing (multi-parameter settings)
   builder.loadFromString(R"(
+    nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
     optim_target = gate, cnot
     initialcondition = diagonal, 0
   )");
@@ -117,6 +126,8 @@ TEST_F(ConfigBuilderTest, ApplyDefaults) {
   // Provide minimal config, test that defaults are applied
   builder.loadFromString(R"(
     nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
   )");
 
   Config config = builder.build();
@@ -125,4 +136,157 @@ TEST_F(ConfigBuilderTest, ApplyDefaults) {
   EXPECT_EQ(config.getNTime(), 1000); // Default ntime
   EXPECT_DOUBLE_EQ(config.getDt(), 0.1); // Default dt
   EXPECT_EQ(config.getCollapseType(), LindbladType::NONE); // Default
+}
+
+TEST_F(ConfigBuilderTest, InitialConditionCount_FromFile) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
+    initialcondition = fromfile, test.dat
+  )");
+
+  Config config = builder.build();
+  EXPECT_EQ(config.getNInitialConditions(), 1);
+}
+
+TEST_F(ConfigBuilderTest, InitialConditionCount_Pure) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 3, 2
+    transfreq = 4.1, 4.8
+    rotfreq = 0.0, 0.0
+    initialcondition = pure, 1, 0
+  )");
+
+  Config config = builder.build();
+  EXPECT_EQ(config.getNInitialConditions(), 1);
+}
+
+TEST_F(ConfigBuilderTest, InitialConditionCount_Performance) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
+    initialcondition = performance
+  )");
+
+  Config config = builder.build();
+  EXPECT_EQ(config.getNInitialConditions(), 1);
+}
+
+TEST_F(ConfigBuilderTest, InitialConditionCount_Ensemble) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 3, 2
+    transfreq = 4.1, 4.8
+    rotfreq = 0.0, 0.0
+    collapse_type = decay
+    initialcondition = ensemble, 0, 1
+  )");
+
+  Config config = builder.build();
+  EXPECT_EQ(config.getNInitialConditions(), 1);
+}
+
+TEST_F(ConfigBuilderTest, InitialConditionCount_ThreeStates) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+  builder.loadFromString(R"(
+    nlevels = 3
+    transfreq = 4.1
+    rotfreq = 0.0
+    collapse_type = decay
+    initialcondition = threestates
+  )");
+  Config config = builder.build();
+  EXPECT_EQ(config.getNInitialConditions(), 3);
+}
+
+TEST_F(ConfigBuilderTest, InitialConditionCount_NPlusOne_SingleOscillator) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 3
+    transfreq = 4.1
+    rotfreq = 0.0
+    collapse_type = decay
+    initialcondition = nplusone
+  )");
+
+  Config config = builder.build();
+  // For nlevels = [3], system dimension N = 3, so n_initial_conditions = N + 1 = 4
+  EXPECT_EQ(config.getNInitialConditions(), 4);
+}
+
+TEST_F(ConfigBuilderTest, InitialConditionCount_NPlusOne_MultipleOscillators) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2, 3
+    transfreq = 4.1, 4.8
+    rotfreq = 0.0, 0.0
+    collapse_type = decay
+    initialcondition = nplusone
+  )");
+
+  Config config = builder.build();
+  // For nlevels = [2, 3], system dimension N = 2 * 3 = 6, so n_initial_conditions = N + 1 = 7
+  EXPECT_EQ(config.getNInitialConditions(), 7);
+}
+
+TEST_F(ConfigBuilderTest, InitialConditionCount_Diagonal_Schrodinger) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 3, 2
+    nessential = 3, 2
+    transfreq = 4.1, 4.8
+    rotfreq = 0.0, 0.0
+    collapse_type = none
+    initialcondition = diagonal, 1
+  )");
+
+  Config config = builder.build();
+  // For Schrodinger solver (collapse_type = none), n_initial_conditions = nessential[1] = 2
+  EXPECT_EQ(config.getNInitialConditions(), 2);
+}
+
+TEST_F(ConfigBuilderTest, InitialConditionCount_Basis_Schrodinger) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 3, 2
+    nessential = 3, 2
+    transfreq = 4.1, 4.8
+    rotfreq = 0.0, 0.0
+    collapse_type = none
+    initialcondition = basis, 1
+  )");
+
+  Config config = builder.build();
+  // For Schrodinger solver, BASIS is converted to DIAGONAL, so n_initial_conditions = nessential[1] = 2
+  EXPECT_EQ(config.getNInitialConditions(), 2);
+}
+
+TEST_F(ConfigBuilderTest, InitialConditionCount_Basis_Lindblad) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 3, 2
+    nessential = 3, 2
+    transfreq = 4.1, 4.8
+    rotfreq = 0.0, 0.0
+    collapse_type = decay
+    initialcondition = basis, 1
+  )");
+
+  Config config = builder.build();
+  // Current implementation: For Lindblad solver, n_initial_conditions = nessential[1] = 2
+  EXPECT_EQ(config.getNInitialConditions(), 2);
 }
