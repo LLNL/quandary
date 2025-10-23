@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <gtest/gtest.h>
 #include <sstream>
 #include <mpi.h>
@@ -327,23 +328,20 @@ TEST_F(ConfigBuilderTest, ParsePiPulseSettings_Structure) {
 
   // Test basic pi-pulse data structure initialization
   builder.loadFromString(R"(
-    nlevels = 2
+    nlevels = 2, 2
     transfreq = 4.1
     rotfreq = 0.0
+    apply_pipulse = 0, 0.5, 1.0, 0.8
   )");
 
   Config config = builder.build();
 
-  // Just verify the pi-pulse accessor methods work
   const auto& pulses = config.getApplyPiPulses();
+  EXPECT_EQ(pulses.size(), 2);
+  EXPECT_EQ(pulses[0].size(), 1);
+  EXPECT_EQ(pulses[1].size(), 0);
 
-  // Test that we can access at least the first element without crashing
-  if (pulses.size() > 0) {
-    const auto& osc0_pulses = config.getApplyPiPulse(0);
-    // In the default case with no pi-pulses configured, should be empty
-    EXPECT_TRUE(osc0_pulses.empty());
-  }
-
-  // Test passes if we reach here without crashing
-  SUCCEED();
+  EXPECT_DOUBLE_EQ(pulses[0][0].tstart, 0.5);
+  EXPECT_DOUBLE_EQ(pulses[0][0].tstop, 1.0);
+  EXPECT_DOUBLE_EQ(pulses[0][0].amp, 0.8);
 }
