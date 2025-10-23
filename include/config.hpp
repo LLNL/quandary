@@ -249,7 +249,7 @@ class Config {
     LinearSolverType linearsolver_type;  ///< Solver type for solving the linear system at each time step
     size_t linearsolver_maxiter;  ///< Set maximum number of iterations for the linear solver
     TimeStepperType timestepper_type;  ///< The time-stepping algorithm
-    int rand_seed;  ///< Fixed seed for the random number generator for reproducability
+    int rand_seed;  ///< Fixed seed for the random number generator for reproducibility
 
   public:
     // Constructor takes all validated parameters (to be called by ConfigBuilder)
