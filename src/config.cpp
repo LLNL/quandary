@@ -130,6 +130,7 @@ Config::Config(
   copyLast(dephase_time, num_osc);
 
   convertInitialCondition(initialcondition_);
+  setNumInitialConditions();
 
   hamiltonian_file_Hsys = hamiltonian_file_Hsys_.value_or("");
   hamiltonian_file_Hc = hamiltonian_file_Hc_.value_or("");
@@ -581,5 +582,37 @@ void Config::convertIndexedCarrierFreqs(const std::optional<std::map<int, std::v
         oscillator_optimization[osc_idx].carrier_frequencies = freqs;
       }
     }
+  }
+}
+
+void Config::setNumInitialConditions() {
+  if      (std::holds_alternative<FromFileInitialCondition>(initial_condition) ) n_initial_conditions = 1;
+  else if (std::holds_alternative<PureInitialCondition>(initial_condition) ) n_initial_conditions = 1;
+  else if (std::holds_alternative<PerformanceInitialCondition>(initial_condition) ) n_initial_conditions = 1;
+  else if (std::holds_alternative<EnsembleInitialCondition>(initial_condition) ) n_initial_conditions = 1;
+  else if (std::holds_alternative<ThreeStatesInitialCondition>(initial_condition) ) n_initial_conditions = 3;
+  else if (std::holds_alternative<NPlusOneInitialCondition>(initial_condition) )  {
+    // compute system dimension N
+    n_initial_conditions = 1;
+    for (size_t i=0; i<nlevels.size(); i++){
+      n_initial_conditions *= nlevels[i];
+    }
+    n_initial_conditions +=1;
+  }
+  else if (std::holds_alternative<DiagonalInitialCondition>(initial_condition) ||
+           std::holds_alternative<BasisInitialCondition>(initial_condition) ) {
+    /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
+    n_initial_conditions = 1;
+    for (size_t oscilID = 1; oscilID<nlevels.size(); oscilID++){
+      if (oscilID < nessential.size()) n_initial_conditions *= nessential[oscilID];
+    }
+    if (std::holds_alternative<BasisInitialCondition>(initial_condition)  ) {
+      // if Schroedinger solver: ninit = N, do nothing.
+      // else Lindblad solver: ninit = N^2
+      if (collapse_type == LindbladType::NONE) n_initial_conditions = (int) pow(n_initial_conditions,2.0);
+    }
+  }
+  if (!quietmode) {
+    logOutputToRank0(mpi_rank, "Number of initial conditions: " + std::to_string(n_initial_conditions) + "\n");
   }
 }

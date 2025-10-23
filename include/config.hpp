@@ -387,6 +387,8 @@ private:
     void convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed);
     void convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed);
 
+    void setNumInitialConditions();
+
     // Helper for indexed map conversion
     template<typename T>
     std::vector<std::vector<T>> convertIndexedToVectorVector(const std::optional<std::map<int, std::vector<T>>>& indexed_map);
