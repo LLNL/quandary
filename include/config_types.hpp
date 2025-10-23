@@ -27,7 +27,7 @@ struct OptimTargetConfig {
 };
 
 struct PiPulseConfig {
-  int oscil_id;     ///< Oscillator ID
+  size_t oscil_id;  ///< Oscillator ID
   double tstart;    ///< Start time
   double tstop;     ///< Stop time
   double amp;       ///< Amplitude
