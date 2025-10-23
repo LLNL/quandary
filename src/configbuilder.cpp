@@ -475,9 +475,16 @@ InitialConditionConfig ConfigBuilder::convertFromString<InitialConditionConfig>(
   InitialConditionConfig config;
   config.type = convertFromString<InitialConditionType>(parts[0]);
 
-  // Parse remaining parameters as integers
-  for (size_t i = 1; i < parts.size(); ++i) {
-    config.params.push_back(convertFromString<int>(parts[i]));
+  if (config.type == InitialConditionType::FROMFILE) {
+    if (parts.size() < 2) {
+      logErrorToRank0(mpi_rank, "ERROR: initialcondition of type FROMFILE must have a filename");
+    }
+    config.filename = parts[1];
+  } else {
+    // Parse remaining parameters as integers
+    for (size_t i = 1; i < parts.size(); ++i) {
+      config.params.push_back(convertFromString<int>(parts[i]));
+    }
   }
 
   return config;
