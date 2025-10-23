@@ -34,12 +34,13 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.12"
+        python-version: "3.14"
 
     - name: Set up Spack
-      uses: spack/setup-spack@v2
+      uses: spack/setup-spack@main
       with:
-        ref: v1.0.2
+        repository: alalazo/spack
+        ref: bugfix/buildcache-and-python-314
 
     - name: Configure Spack
       run: |
