@@ -329,7 +329,7 @@ class Config {
     LindbladType getCollapseType() const { return collapse_type; }
     const std::vector<double>& getDecayTime() const { return decay_time; }
     const std::vector<double>& getDephaseTime() const { return dephase_time; }
-    int getNInitialConditions() const { return n_initial_conditions; } // TODO set these
+    int getNInitialConditions() const { return n_initial_conditions; }
     const InitialCondition& getInitialCondition() const { return initial_condition; }
     const std::vector<std::vector<PiPulseSegment>>& getApplyPiPulse() const { return apply_pipulse; }
     const std::vector<PiPulseSegment>& getApplyPiPulse(size_t i) const { return apply_pipulse[i]; }
