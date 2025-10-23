@@ -312,7 +312,7 @@ private:
   OptimTargetConfig convertFromString<OptimTargetConfig>(const std::string& str);
 
   template<>
-  PiPulseConfig convertFromString<PiPulseConfig>(const std::string& str);
+  std::vector<PiPulseConfig> convertFromString<std::vector<PiPulseConfig>>(const std::string& str);
 
   template<>
   ControlSegmentConfig convertFromString<ControlSegmentConfig>(const std::string& str);
