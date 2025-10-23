@@ -335,7 +335,7 @@ TEST_F(ConfigBuilderTest, ParsePiPulseSettings_Structure) {
   Config config = builder.build();
 
   // Just verify the pi-pulse accessor methods work
-  const auto& pulses = config.getApplyPiPulse();
+  const auto& pulses = config.getApplyPiPulses();
 
   // Test that we can access at least the first element without crashing
   if (pulses.size() > 0) {

@@ -331,8 +331,8 @@ class Config {
     const std::vector<double>& getDephaseTime() const { return dephase_time; }
     size_t getNInitialConditions() const { return n_initial_conditions; }
     const InitialCondition& getInitialCondition() const { return initial_condition; }
-    const std::vector<std::vector<PiPulseSegment>>& getApplyPiPulse() const { return apply_pipulse; }
-    const std::vector<PiPulseSegment>& getApplyPiPulse(size_t i) const { return apply_pipulse[i]; }
+    const std::vector<std::vector<PiPulseSegment>>& getApplyPiPulses() const { return apply_pipulse; }
+    const std::vector<PiPulseSegment>& getApplyPiPulse(size_t i_osc) const { return apply_pipulse[i_osc]; }
     const std::optional<std::string>& getHamiltonianFileHsys() const { return hamiltonian_file_Hsys; }
     const std::optional<std::string>& getHamiltonianFileHc() const { return hamiltonian_file_Hc; }
 
