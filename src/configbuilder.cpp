@@ -3,6 +3,7 @@
 #include "configbuilder.hpp"
 #include "config.hpp"
 #include "defs.hpp"
+#include "util.hpp"
 
 ConfigBuilder::ConfigBuilder(MPI_Comm comm, std::stringstream& logstream, bool quietmode) {
   // Initialize MPI and logging members
@@ -525,20 +526,23 @@ OptimTargetConfig ConfigBuilder::convertFromString<OptimTargetConfig>(const std:
 }
 
 template<>
-PiPulseConfig ConfigBuilder::convertFromString<PiPulseConfig>(const std::string& str) {
+std::vector<PiPulseConfig> ConfigBuilder::convertFromString<std::vector<PiPulseConfig>>(const std::string& str) {
   auto parts = split(str);
-  if (parts.size() != 4) {
-    logErrorToRank0(mpi_rank, "ERROR: PiPulse requires 4 parameters: oscil_id, tstart, tstop, amp");
-    exit(1);
+  if (parts.size() % 4 != 0) {
+    exitWithError(mpi_rank, "ERROR: PiPulse vector requires multiples of 4 parameters: oscil_id, tstart, tstop, amp");
   }
 
-  PiPulseConfig config;
-  config.oscil_id = convertFromString<size_t>(parts[0]);
-  config.tstart = convertFromString<double>(parts[1]);
-  config.tstop = convertFromString<double>(parts[2]);
-  config.amp = convertFromString<double>(parts[3]);
+  std::vector<PiPulseConfig> configs;
+  for (size_t i = 0; i < parts.size(); i += 4) {
+    PiPulseConfig config;
+    config.oscil_id = convertFromString<size_t>(parts[i]);
+    config.tstart = convertFromString<double>(parts[i+1]);
+    config.tstop = convertFromString<double>(parts[i+2]);
+    config.amp = convertFromString<double>(parts[i+3]);
+    configs.push_back(config);
+  }
 
-  return config;
+  return configs;
 }
 
 template<>
