@@ -57,13 +57,13 @@ enum class InitialConditionType {
 };
 
 const std::map<std::string, InitialConditionType> INITCOND_TYPE_MAP = {
-    {"fromfile", InitialConditionType::FROMFILE},
+    {"file", InitialConditionType::FROMFILE},
     {"pure", InitialConditionType::PURE},
     {"ensemble", InitialConditionType::ENSEMBLE},
     {"diagonal", InitialConditionType::DIAGONAL},
     {"basis", InitialConditionType::BASIS},
-    {"threestates", InitialConditionType::THREESTATES},
-    {"nplusone", InitialConditionType::NPLUSONE},
+    {"3states", InitialConditionType::THREESTATES},
+    {"nplus1", InitialConditionType::NPLUSONE},
     {"performance", InitialConditionType::PERFORMANCE}
 };
 
