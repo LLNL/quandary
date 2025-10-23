@@ -338,10 +338,15 @@ TEST_F(ConfigBuilderTest, ParsePiPulseSettings_Structure) {
 
   const auto& pulses = config.getApplyPiPulses();
   EXPECT_EQ(pulses.size(), 2);
-  EXPECT_EQ(pulses[0].size(), 1);
-  EXPECT_EQ(pulses[1].size(), 0);
 
+  EXPECT_EQ(pulses[0].size(), 1);
   EXPECT_DOUBLE_EQ(pulses[0][0].tstart, 0.5);
   EXPECT_DOUBLE_EQ(pulses[0][0].tstop, 1.0);
   EXPECT_DOUBLE_EQ(pulses[0][0].amp, 0.8);
+
+  // zero pulse for other oscillator
+  EXPECT_EQ(pulses[1].size(), 1);
+  EXPECT_DOUBLE_EQ(pulses[1][0].tstart, 0.5);
+  EXPECT_DOUBLE_EQ(pulses[1][0].tstop, 1.0);
+  EXPECT_DOUBLE_EQ(pulses[1][0].amp, 0.0);
 }
