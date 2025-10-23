@@ -494,6 +494,10 @@ void Config::convertOptimTarget(const std::optional<OptimTargetConfig>& config) 
 }
 
 void Config::convertPiPulses(const std::optional<std::vector<PiPulseConfig>>& pulses) {
+  std::cout << "# Converting pi-pulse configurations...\n";
+  std::cout << "# Number of oscillators: " << nlevels.size() << "\n";
+  std::cout << "# Number of pi-pulse segments: "
+            << (pulses.has_value() ? std::to_string(pulses->size()) : "0") << "\n";
   apply_pipulse.resize(nlevels.size());
 
   if (pulses.has_value()) {
