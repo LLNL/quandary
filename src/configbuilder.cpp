@@ -183,42 +183,6 @@ Config ConfigBuilder::build() {
 //   }
 // }
 
-// void Config::setApplyPiPulse(const std::string& value) {
-//   std::vector<std::string> pipulse_str = convertFromString<std::vector<std::string>>(value);
-
-//   if (pipulse_str.size() % 4 != 0) {
-//     std::string message = "Wrong pi-pulse configuration. Number of elements must be multiple of 4!\n";
-//     message += "apply_pipulse config option: <oscilID>, <tstart>, <tstop>, <amp>, <anotherOscilID>, <anotherTstart>, <anotherTstop>, <anotherAmp> ...\n";
-//     logErrorToRank0(mpi_rank, message);
-//     exit(1);
-//   }
-//   apply_pipulse.resize(nlevels.size());
-
-//   size_t k=0;
-//   while (k < pipulse_str.size()) {
-//     // Set pipulse for this oscillator
-//     size_t pipulse_id = std::stoi(pipulse_str[k+0]);
-//     double tstart = std::stod(pipulse_str[k+1]);
-//     double tstop = std::stod(pipulse_str[k+2]);
-//     double amp = std::stod(pipulse_str[k+3]);
-//     PiPulseSegment pipulse = {tstart, tstop, amp};
-//     apply_pipulse[pipulse_id].push_back(pipulse);
-
-//     std::ostringstream message;
-//     message << "Applying PiPulse to oscillator " << pipulse_id << " in [" << pipulse.tstart << ","
-//       << pipulse.tstop << "]: |p+iq|=" << pipulse.amp;
-//     logOutputToRank0(mpi_rank, message.str());
-
-//     // Set zero control for all other oscillators during this pipulse
-//     for (size_t i=0; i<nlevels.size(); i++){
-//       if (i != pipulse_id) {
-//         apply_pipulse[i].push_back({tstart, tstop, 0.0});
-//       }
-//     }
-//     k+=4;
-//   }
-// }
-
 // void Config::setOptimTarget(const std::string& value) {
 //   std::vector<std::string> target_str = Config::split(value);
 

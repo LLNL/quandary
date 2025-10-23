@@ -503,11 +503,27 @@ void Config::convertPiPulses(const std::optional<std::vector<PiPulseConfig>>& pu
   if (pulses.has_value()) {
     for (const auto& pulse_config : *pulses) {
       if (pulse_config.oscil_id < nlevels.size()) {
+        // Set pipulse for this oscillator
         PiPulseSegment segment;
         segment.tstart = pulse_config.tstart;
         segment.tstop = pulse_config.tstop;
         segment.amp = pulse_config.amp;
         apply_pipulse[pulse_config.oscil_id].push_back(segment);
+
+        logOutputToRank0(mpi_rank, "Applying PiPulse to oscillator " +
+          std::to_string(pulse_config.oscil_id) + " in [" + std::to_string(segment.tstart) +
+          ", " + std::to_string(segment.tstop) + "]: |p+iq|=" + std::to_string(segment.amp) + "\n");
+
+        // Set zero control for all other oscillators during this pipulse
+        for (size_t i = 0; i < nlevels.size(); i++){
+          if (i != pulse_config.oscil_id) {
+            PiPulseSegment zero_segment;
+            zero_segment.tstart = pulse_config.tstart;
+            zero_segment.tstop = pulse_config.tstop;
+            zero_segment.amp = 0.0;
+            apply_pipulse[i].push_back(zero_segment);
+          }
+        }
       }
     }
   }
