@@ -329,7 +329,7 @@ class Config {
     LindbladType getCollapseType() const { return collapse_type; }
     const std::vector<double>& getDecayTime() const { return decay_time; }
     const std::vector<double>& getDephaseTime() const { return dephase_time; }
-    int getNInitialConditions() const { return n_initial_conditions; }
+    int getNInitialConditions() const { return n_initial_conditions; } // TODO set these
     const InitialCondition& getInitialCondition() const { return initial_condition; }
     const std::vector<std::vector<PiPulseSegment>>& getApplyPiPulse() const { return apply_pipulse; }
     const std::vector<PiPulseSegment>& getApplyPiPulse(size_t i) const { return apply_pipulse[i]; }
@@ -386,6 +386,8 @@ private:
     void convertIndexedOutput(const std::optional<std::map<int, std::vector<OutputType>>>& indexed);
     void convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed);
     void convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed);
+
+    void setNumInitialConditions();
 
     // Helper for indexed map conversion
     template<typename T>
