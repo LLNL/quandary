@@ -63,13 +63,13 @@ struct BasisInitialCondition : public OscillatorIDsInitialCondition {
 
 struct ThreeStatesInitialCondition {
   std::string toString() const {
-    return "threestates";
+    return "3states";
   }
 };
 
 struct NPlusOneInitialCondition {
   std::string toString() const {
-    return "nplusone";
+    return "nplus1";
   }
 };
 
