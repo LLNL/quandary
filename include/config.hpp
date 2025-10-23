@@ -100,7 +100,7 @@ struct OptimTolerance {
   double rtol = 1e-4;      ///< Relative gradient tolerance
   double ftol = 1e-8;      ///< Final time cost tolerance
   double inftol = 1e-5;    ///< Infidelity tolerance
-  int maxiter = 200;       ///< Maximum iterations
+  size_t maxiter = 200;       ///< Maximum iterations
 };
 
 /**
@@ -209,7 +209,7 @@ class Config {
     // General options
     std::vector<size_t> nlevels;  ///< Number of levels per subsystem
     std::vector<size_t> nessential;  ///< Number of essential levels per subsystem (Default: same as nlevels)
-    int ntime;  ///< Number of time steps used for time-integration // TODO should this be size_t?
+    size_t ntime;  ///< Number of time steps used for time-integration // TODO should this be size_t?
     double dt;  ///< Time step size (ns). Determines final time: T=ntime*dt
     std::vector<double> transfreq;  ///< Fundamental transition frequencies for each oscillator (GHz)
     std::vector<double> selfkerr;  ///< Self-kerr frequencies for each oscillator (GHz)
@@ -219,7 +219,7 @@ class Config {
     LindbladType collapse_type = LindbladType::NONE;  ///< Switch between Schroedinger and Lindblad solver
     std::vector<double> decay_time;  ///< Time of decay collapse operation (T1) per oscillator (for Lindblad solver)
     std::vector<double> dephase_time;  ///< Time of dephase collapse operation (T2) per oscillator (for Lindblad solver)
-    int n_initial_conditions;  ///< Number of initial conditions
+    size_t n_initial_conditions;  ///< Number of initial conditions
     InitialCondition initial_condition;  ///< Initial condition configuration
     std::vector<std::vector<PiPulseSegment>> apply_pipulse;  ///< Apply a pi-pulse to oscillator with specified parameters
     std::optional<std::string> hamiltonian_file_Hsys;  ///< File to read the system Hamiltonian from
@@ -242,12 +242,12 @@ class Config {
     // Output and runtypes
     std::string datadir;  ///< Directory for output files
     std::vector<std::vector<OutputType>> output;  ///< Specify the desired output for each oscillator
-    int output_frequency;  ///< Output frequency in the time domain: write output every <num> time-step
-    int optim_monitor_frequency;  ///< Frequency of writing output during optimization iterations
+    size_t output_frequency;  ///< Output frequency in the time domain: write output every <num> time-step
+    size_t optim_monitor_frequency;  ///< Frequency of writing output during optimization iterations
     RunType runtype;  ///< Runtype options: simulation, gradient, or optimization
     bool usematfree;  ///< Use matrix free solver, instead of sparse matrix implementation
     LinearSolverType linearsolver_type;  ///< Solver type for solving the linear system at each time step
-    int linearsolver_maxiter;  ///< Set maximum number of iterations for the linear solver
+    size_t linearsolver_maxiter;  ///< Set maximum number of iterations for the linear solver
     TimeStepperType timestepper_type;  ///< The time-stepping algorithm
     int rand_seed;  ///< Fixed seed for the random number generator for reproducability
 
@@ -260,7 +260,7 @@ class Config {
       // All parameters as optionals (except MPI/logging)
       const std::optional<std::vector<size_t>>& nlevels_,
       const std::optional<std::vector<size_t>>& nessential_,
-      const std::optional<int>& ntime_,
+      const std::optional<size_t>& ntime_,
       const std::optional<double>& dt_,
       const std::optional<std::vector<double>>& transfreq_,
       const std::optional<std::vector<double>>& selfkerr_,
@@ -289,7 +289,7 @@ class Config {
       const std::optional<double>& optim_rtol_,
       const std::optional<double>& optim_ftol_,
       const std::optional<double>& optim_inftol_,
-      const std::optional<int>& optim_maxiter_,
+      const std::optional<size_t>& optim_maxiter_,
       const std::optional<double>& optim_regul_,
       const std::optional<double>& optim_penalty_,
       const std::optional<double>& optim_penalty_param_,
@@ -300,12 +300,12 @@ class Config {
       // Output parameters
       const std::optional<std::string>& datadir_,
       const std::optional<std::map<int, std::vector<OutputType>>>& indexed_output_,
-      const std::optional<int>& output_frequency_,
-      const std::optional<int>& optim_monitor_frequency_,
+      const std::optional<size_t>& output_frequency_,
+      const std::optional<size_t>& optim_monitor_frequency_,
       const std::optional<RunType>& runtype_,
       const std::optional<bool>& usematfree_,
       const std::optional<LinearSolverType>& linearsolver_type_,
-      const std::optional<int>& linearsolver_maxiter_,
+      const std::optional<size_t>& linearsolver_maxiter_,
       const std::optional<TimeStepperType>& timestepper_type_,
       const std::optional<int>& rand_seed_
     );
@@ -319,7 +319,7 @@ class Config {
     // getters
     const std::vector<size_t>& getNLevels() const { return nlevels; }
     const std::vector<size_t>& getNEssential() const { return nessential; }
-    int getNTime() const { return ntime; }
+    size_t getNTime() const { return ntime; }
     double getDt() const { return dt; }
     const std::vector<double>& getTransFreq() const { return transfreq; }
     const std::vector<double>& getSelfKerr() const { return selfkerr; }
@@ -329,7 +329,7 @@ class Config {
     LindbladType getCollapseType() const { return collapse_type; }
     const std::vector<double>& getDecayTime() const { return decay_time; }
     const std::vector<double>& getDephaseTime() const { return dephase_time; }
-    int getNInitialConditions() const { return n_initial_conditions; }
+    size_t getNInitialConditions() const { return n_initial_conditions; }
     const InitialCondition& getInitialCondition() const { return initial_condition; }
     const std::vector<std::vector<PiPulseSegment>>& getApplyPiPulse() const { return apply_pipulse; }
     const std::vector<PiPulseSegment>& getApplyPiPulse(size_t i) const { return apply_pipulse[i]; }
@@ -364,12 +364,12 @@ class Config {
     const std::string& getDataDir() const { return datadir; }
     const std::vector<std::vector<OutputType>>& getOutput() const { return output; }
     const std::vector<OutputType>& getOutput(size_t i) const { return output[i]; }
-    int getOutputFrequency() const { return output_frequency; }
-    int getOptimMonitorFrequency() const { return optim_monitor_frequency; }
+    size_t getOutputFrequency() const { return output_frequency; }
+    size_t getOptimMonitorFrequency() const { return optim_monitor_frequency; }
     RunType getRuntype() const { return runtype; }
     bool getUseMatFree() const { return usematfree; }
     LinearSolverType getLinearSolverType() const { return linearsolver_type; }
-    int getLinearSolverMaxiter() const { return linearsolver_maxiter; }
+    size_t getLinearSolverMaxiter() const { return linearsolver_maxiter; }
     TimeStepperType getTimestepperType() const { return timestepper_type; }
     int getRandSeed() const { return rand_seed; }
 

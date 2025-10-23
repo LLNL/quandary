@@ -1,4 +1,5 @@
 #include "config.hpp"
+#include <cstddef>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -22,7 +23,7 @@ Config::Config(
   // All parameters as optionals
   const std::optional<std::vector<size_t>>& nlevels_,
   const std::optional<std::vector<size_t>>& nessential_,
-  const std::optional<int>& ntime_,
+  const std::optional<size_t>& ntime_,
   const std::optional<double>& dt_,
   const std::optional<std::vector<double>>& transfreq_,
   const std::optional<std::vector<double>>& selfkerr_,
@@ -51,7 +52,7 @@ Config::Config(
   const std::optional<double>& optim_rtol_,
   const std::optional<double>& optim_ftol_,
   const std::optional<double>& optim_inftol_,
-  const std::optional<int>& optim_maxiter_,
+  const std::optional<size_t>& optim_maxiter_,
   const std::optional<double>& optim_regul_,
   const std::optional<double>& optim_penalty_,
   const std::optional<double>& optim_penalty_param_,
@@ -62,12 +63,12 @@ Config::Config(
   // Output parameters
   const std::optional<std::string>& datadir_,
   const std::optional<std::map<int, std::vector<OutputType>>>& indexed_output_,
-  const std::optional<int>& output_frequency_,
-  const std::optional<int>& optim_monitor_frequency_,
+  const std::optional<size_t>& output_frequency_,
+  const std::optional<size_t>& optim_monitor_frequency_,
   const std::optional<RunType>& runtype_,
   const std::optional<bool>& usematfree_,
   const std::optional<LinearSolverType>& linearsolver_type_,
-  const std::optional<int>& linearsolver_maxiter_,
+  const std::optional<size_t>& linearsolver_maxiter_,
   const std::optional<TimeStepperType>& timestepper_type_,
   const std::optional<int>& rand_seed_
 ) :
@@ -480,8 +481,7 @@ void Config::convertOptimTarget(const std::optional<OptimTargetConfig>& config) 
     target.file = config->filename.value_or("");
     target.gate_file = config->gate_file.value_or("");
 
-    // Convert int levels to size_t
-    for (int level : config->levels) {
+    for (auto level : config->levels) {
       target.purestate_levels.push_back(static_cast<size_t>(level));
     }
   } else {
