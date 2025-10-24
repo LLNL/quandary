@@ -350,3 +350,47 @@ TEST_F(ConfigBuilderTest, ParsePiPulseSettings_Structure) {
   EXPECT_DOUBLE_EQ(pulses[1][0].tstop, 1.0);
   EXPECT_DOUBLE_EQ(pulses[1][0].amp, 0.0);
 }
+
+TEST_F(ConfigBuilderTest, ControlSegments_Defaults) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  // Test control segment parsing
+  builder.loadFromString(R"(
+    nlevels = 2, 2, 2
+    transfreq = 4.1, 4.8
+    rotfreq = 0.0, 0.0
+    control_segments1 = spline0, 150, 0.0, 1.0
+  )");
+
+  Config config = builder.build();
+
+  // Verify control segments were parsed correctly
+  EXPECT_EQ(config.getOscillators().size(), 3); // 2 oscillators
+
+  // Check first oscillator has default settings
+  const auto& osc0 = config.getOscillator(0);
+  EXPECT_EQ(osc0.control_segments.size(), 1); // 1 segment
+  EXPECT_EQ(osc0.control_segments[0].type, ControlType::BSPLINE);
+  SplineParams params0 = std::get<SplineParams>(osc0.control_segments[0].params);
+  EXPECT_EQ(params0.nspline, 10);
+  EXPECT_DOUBLE_EQ(params0.tstart, 0.0);
+  EXPECT_DOUBLE_EQ(params0.tstop, config.getNTime() * config.getDt());
+
+  // Check second oscillator given settings
+  const auto& osc1 = config.getOscillator(1);
+  EXPECT_EQ(osc1.control_segments.size(), 1); // 1 segment
+  EXPECT_EQ(osc1.control_segments[0].type, ControlType::BSPLINE0);
+  SplineParams params1 = std::get<SplineParams>(osc1.control_segments[0].params);
+  EXPECT_EQ(params1.nspline, 150);
+  EXPECT_DOUBLE_EQ(params1.tstart, 0.0);
+  EXPECT_DOUBLE_EQ(params1.tstop, 1.0);
+
+  // Check third oscillator defaults to the second's settings
+  const auto& osc2 = config.getOscillator(2);
+  EXPECT_EQ(osc2.control_segments.size(), 1); // 1 segment
+  EXPECT_EQ(osc2.control_segments[0].type, ControlType::BSPLINE0);
+  SplineParams params2 = std::get<SplineParams>(osc2.control_segments[0].params);
+  EXPECT_EQ(params2.nspline, 150);
+  EXPECT_DOUBLE_EQ(params2.tstart, 0.0);
+  EXPECT_DOUBLE_EQ(params2.tstop, 1.0);
+}

@@ -155,7 +155,7 @@ struct StepParams {
   double step_amp2; ///< Imaginary part of amplitude of the step pulse.
   double tramp; ///< Ramp time.
   double tstart; ///< Start time of the control segment
-  double tstop; ///< Stop time of the control segment // TODO default value ntime * dt
+  double tstop; ///< Stop time of the control segment
 };
 
 using ControlParams = std::variant<SplineParams, SplineAmpParams, StepParams>;
@@ -275,7 +275,7 @@ class Config {
       const std::optional<std::string>& hamiltonian_file_Hsys_,
       const std::optional<std::string>& hamiltonian_file_Hc_,
       // Control parameters (using optional indexed data)
-      const std::optional<std::map<int, ControlSegmentConfig>>& indexed_control_segments_,
+      const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed_control_segments_,
       const std::optional<bool>& control_enforceBC_,
       const std::optional<std::map<int, ControlInitializationConfig>>& indexed_control_init_,
       const std::optional<std::map<int, std::vector<double>>>& indexed_control_bounds_,
@@ -380,7 +380,7 @@ private:
     InitialCondition convertInitialCondition(const InitialConditionConfig& config);
     void convertInitialCondition(const std::optional<InitialConditionConfig>& config);
     void convertOptimTarget(const std::optional<OptimTargetConfig>& config);
-    void convertControlSegments(const std::optional<std::map<int, ControlSegmentConfig>>& indexed);
+    void convertControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed);
     void convertControlInitializations(const std::optional<std::map<int, ControlInitializationConfig>>& indexed);
     void convertPiPulses(const std::optional<std::vector<PiPulseConfig>>& pulses);
     void convertIndexedOutput(const std::optional<std::map<int, std::vector<OutputType>>>& indexed);

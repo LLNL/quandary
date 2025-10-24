@@ -96,7 +96,7 @@ private:
   std::optional<int> rand_seed;  ///< Fixed seed for the random number generator for reproducibility
 
   // Indexed settings storage (per-oscillator)
-  std::optional<std::map<int, ControlSegmentConfig>> indexed_control_segments;      ///< control_segments0, control_segments1, etc.
+  std::optional<std::map<int, std::vector<ControlSegmentConfig>>> indexed_control_segments;      ///< control_segments0, control_segments1, etc.
   std::optional<std::map<int, ControlInitializationConfig>> indexed_control_init;   ///< control_initialization0, control_initialization1, etc.
   std::optional<std::map<int, std::vector<double>>> indexed_control_bounds;         ///< control_bounds0, control_bounds1, etc.
   std::optional<std::map<int, std::vector<double>>> indexed_carrier_frequencies;    ///< carrier_frequency0, carrier_frequency1, etc.
@@ -315,7 +315,7 @@ private:
   std::vector<PiPulseConfig> convertFromString<std::vector<PiPulseConfig>>(const std::string& str);
 
   template<>
-  ControlSegmentConfig convertFromString<ControlSegmentConfig>(const std::string& str);
+  std::vector<ControlSegmentConfig> convertFromString<std::vector<ControlSegmentConfig>>(const std::string& str);
 
   template<>
   ControlInitializationConfig convertFromString<ControlInitializationConfig>(const std::string& str);

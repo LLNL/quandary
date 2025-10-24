@@ -276,6 +276,10 @@ bool isComment(const std::string& line) {
   return line.size() > 0 && (line[0] == '#' || line[0] == '/');
 }
 
+bool isValidControlType(const std::string& str) {
+  return CONTROL_TYPE_MAP.find(toLower(str)) != CONTROL_TYPE_MAP.end();
+}
+
 } // namespace
 
 std::vector<std::string> ConfigBuilder::split(const std::string& str, char delimiter) {
@@ -440,37 +444,52 @@ std::vector<PiPulseConfig> ConfigBuilder::convertFromString<std::vector<PiPulseC
 }
 
 template<>
-ControlSegmentConfig ConfigBuilder::convertFromString<ControlSegmentConfig>(const std::string& str) {
-  auto parts = split(str);
-  if (parts.size() < 2) {
-    logErrorToRank0(mpi_rank, "ERROR: ControlSegment requires at least control_type and num_basis_functions");
-    exit(1);
-  }
+std::vector<ControlSegmentConfig> ConfigBuilder::convertFromString<std::vector<ControlSegmentConfig>>(const std::string& str) {
+  const auto parts = split(str);
 
-  ControlSegmentConfig config;
-  config.control_type = convertFromString<ControlType>(parts[0]);
-  config.num_basis_functions = convertFromString<size_t>(parts[1]); // TODO
+  std::vector<ControlSegmentConfig> segments;
+  size_t i = 0;
 
-  // Parse optional parameters based on control type and available parts
-  if (parts.size() > 2) {
-    if (config.control_type == ControlType::BSPLINEAMP) {
-      config.scaling = convertFromString<double>(parts[2]);
-      if (parts.size() > 3) {
-        config.tstart = convertFromString<double>(parts[3]);
-        if (parts.size() > 4) {
-          config.tstop = convertFromString<double>(parts[4]);
-        }
-      }
-    } else {
-      // For other control types, parameters 2 and 3 are tstart, tstop
-      config.tstart = convertFromString<double>(parts[2]);
-      if (parts.size() > 3) {
-        config.tstop = convertFromString<double>(parts[3]);
-      }
+  while (i < parts.size()) {
+    if (!isValidControlType(parts[i])) {
+      exitWithError(mpi_rank, "ERROR: Expected control type, got: " + parts[i]);
     }
+
+    ControlSegmentConfig segment;
+    segment.control_type = convertFromString<ControlType>(parts[i++]);
+
+    // Parse parameters until next ControlType or end
+    while (i < parts.size() && !isValidControlType(parts[i])) {
+      segment.parameters.push_back(convertFromString<double>(parts[i++]));
+    }
+
+    // Validate minimum parameter count
+    size_t min_params = 1;
+    switch (segment.control_type) {
+      case ControlType::STEP:
+        min_params = 3; // step_amp1, step_amp2, tramp
+        break;
+      case ControlType::BSPLINE:
+      case ControlType::BSPLINE0:
+        min_params = 1; // num_basis_functions
+        break;
+      case ControlType::BSPLINEAMP:
+        min_params = 2; // nspline, scaling
+        break;
+      case ControlType::NONE:
+        exitWithError(mpi_rank, "ERROR: Control segment type NONE is not valid for configuration.");
+        break;
+    }
+
+    if (segment.parameters.size() < min_params) {
+      exitWithError(mpi_rank, "ERROR: Control type requires at least " + std::to_string(min_params) +
+        " parameters, got " + std::to_string(segment.parameters.size()));
+    }
+
+    segments.push_back(segment);
   }
 
-  return config;
+  return segments;
 }
 
 template<>
