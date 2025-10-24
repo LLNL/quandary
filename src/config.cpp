@@ -4,7 +4,9 @@
 #include <string>
 #include <vector>
 
+#include "config_types.hpp"
 #include "configbuilder.hpp"
+#include "defs.hpp"
 #include "util.hpp"
 
 // Helper function to convert enum back to string using existing enum maps
@@ -38,7 +40,7 @@ Config::Config(
   const std::optional<std::string>& hamiltonian_file_Hsys_,
   const std::optional<std::string>& hamiltonian_file_Hc_,
   // Control parameters (optional indexed data)
-  const std::optional<std::map<int, ControlSegmentConfig>>& indexed_control_segments_,
+  const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed_control_segments_,
   const std::optional<bool>& control_enforceBC_,
   const std::optional<std::map<int, ControlInitializationConfig>>& indexed_control_init_,
   const std::optional<std::map<int, std::vector<double>>>& indexed_control_bounds_,
@@ -529,40 +531,47 @@ void Config::convertPiPulses(const std::optional<std::vector<PiPulseConfig>>& pu
   }
 }
 
-void Config::convertControlSegments(const std::optional<std::map<int, ControlSegmentConfig>>& indexed) {
-  if (indexed.has_value()) {
-    for (const auto& [osc_idx, seg_config] : *indexed) {
-      if (static_cast<size_t>(osc_idx) < oscillator_optimization.size()) {
-        ControlSegment segment;
-        segment.type = seg_config.control_type;
+void Config::convertControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& segments) {
+  ControlSegment default_segment = {ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}};
 
-        // Create appropriate params variant based on type
-        if (seg_config.control_type == ControlType::BSPLINE ||
-            seg_config.control_type == ControlType::BSPLINE0) {
-          SplineParams params;
-          params.nspline = seg_config.num_basis_functions.value_or(10);
-          params.tstart = seg_config.tstart.value_or(0.0);
-          params.tstop = seg_config.tstop.value_or(ntime * dt);
-          segment.params = params;
-        } else if (seg_config.control_type == ControlType::BSPLINEAMP) {
-          SplineAmpParams params;
-          params.nspline = seg_config.num_basis_functions.value_or(10);
-          params.tstart = seg_config.tstart.value_or(0.0);
-          params.tstop = seg_config.tstop.value_or(ntime * dt);
-          params.scaling = seg_config.scaling.value_or(1.0);
-          segment.params = params;
-        } else if (seg_config.control_type == ControlType::STEP) {
-          StepParams params;
-          params.step_amp1 = seg_config.amplitude_1.value_or(0.0);
-          params.step_amp2 = seg_config.amplitude_2.value_or(0.0);
-          params.tramp = 0.0;
-          params.tstart = seg_config.tstart.value_or(0.0);
-          params.tstop = seg_config.tstop.value_or(ntime * dt);
-          segment.params = params;
-        }
+  for (size_t i = 0; i < oscillator_optimization.size(); i++) {
+    if (!segments.has_value() || segments->find(static_cast<int>(i)) == segments->end()) {
+      oscillator_optimization[i].control_segments = {default_segment};
+      continue;
+    }
+    for (const auto& seg_config : segments->at(static_cast<int>(i))) {
+      const auto& params = seg_config.parameters;
 
-        oscillator_optimization[osc_idx].control_segments.push_back(segment);
+      // Create appropriate params variant based on type
+      ControlSegment segment;
+      segment.type = seg_config.control_type;
+
+      if (seg_config.control_type == ControlType::BSPLINE ||
+          seg_config.control_type == ControlType::BSPLINE0) {
+        SplineParams spline_params;
+        spline_params.nspline = static_cast<size_t>(params[0]);
+        spline_params.tstart = params.size() > 1 ? params[1] : 0.0;
+        spline_params.tstop = params.size() > 2 ? params[2] : ntime * dt;
+        segment.params = spline_params;
+      } else if (seg_config.control_type == ControlType::BSPLINEAMP) {
+        SplineAmpParams spline_amp_params;
+        spline_amp_params.nspline = static_cast<size_t>(params[0]);
+        spline_amp_params.scaling = params.size() > 1 ? params[1] : 1.0; // Default scaling
+        spline_amp_params.tstart = params.size() > 2 ? params[2] : 0.0;
+        spline_amp_params.tstop = params.size() > 3 ? params[3] : ntime * dt;
+        segment.params = spline_amp_params;
+      } else if (seg_config.control_type == ControlType::STEP) {
+        StepParams step_params;
+        step_params.step_amp1 = params.size() > 0 ? params[0] : 0.0; // Default amplitude_1
+        step_params.step_amp2 = params.size() > 1 ? params[1] : 0.0; // Default amplitude_2
+        step_params.tramp = params.size() > 2 ? params[2] : 0.0;     // Default tramp
+        step_params.tstart = params.size() > 3 ? params[3] : 0.0;
+        step_params.tstop = params.size() > 4 ? params[4] : ntime * dt;
+        segment.params = step_params;
       }
+
+      default_segment = segment;
+      oscillator_optimization[i].control_segments.push_back(segment);
     }
   }
 }

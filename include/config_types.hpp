@@ -34,13 +34,8 @@ struct PiPulseConfig {
 };
 
 struct ControlSegmentConfig {
-  ControlType control_type;             ///< Type of control segment
-  std::optional<size_t> num_basis_functions; ///< Number of basis functions
-  std::optional<double> tstart;         ///< Start time (optional)
-  std::optional<double> tstop;          ///< Stop time (optional)
-  std::optional<double> scaling;        ///< Scaling factor (for spline_amplitude)
-  std::optional<double> amplitude_1;    ///< Amplitude (for step)
-  std::optional<double> amplitude_2;    ///< Stop time (for step)
+  ControlType control_type;        ///< Type of control segment
+  std::vector<double> parameters;  ///< Parameters for control segment
 };
 
 struct ControlInitializationConfig {
