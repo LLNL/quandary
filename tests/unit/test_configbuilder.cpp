@@ -629,3 +629,23 @@ TEST_F(ConfigBuilderTest, ControlBounds) {
   EXPECT_EQ(osc0.control_bounds[1], 2.0);
   EXPECT_EQ(osc0.control_bounds[2], 2.0); // Use last bound for extra segments
 }
+
+TEST_F(ConfigBuilderTest, CarrierFrequencies) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
+    carrier_frequency0 = 1.0, 2.0
+  )");
+
+  Config config = builder.build();
+
+  EXPECT_EQ(config.getOscillators().size(), 1);
+
+  const auto& osc0 = config.getOscillator(0);
+  EXPECT_EQ(osc0.carrier_frequencies.size(), 2);
+  EXPECT_EQ(osc0.carrier_frequencies[0], 1.0);
+  EXPECT_EQ(osc0.carrier_frequencies[1], 2.0);
+}
