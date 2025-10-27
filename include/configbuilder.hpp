@@ -318,5 +318,5 @@ private:
   std::vector<ControlSegmentConfig> convertFromString<std::vector<ControlSegmentConfig>>(const std::string& str);
 
   template<>
-  ControlInitializationConfig convertFromString<ControlInitializationConfig>(const std::string& str);
+  std::vector<ControlInitializationConfig> convertFromString<std::vector<ControlInitializationConfig>>(const std::string& str);
 };
