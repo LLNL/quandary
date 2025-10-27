@@ -97,7 +97,7 @@ private:
 
   // Indexed settings storage (per-oscillator)
   std::optional<std::map<int, std::vector<ControlSegmentConfig>>> indexed_control_segments;      ///< control_segments0, control_segments1, etc.
-  std::optional<std::map<int, ControlInitializationConfig>> indexed_control_init;   ///< control_initialization0, control_initialization1, etc.
+  std::optional<std::map<int, std::vector<ControlInitializationConfig>>> indexed_control_init;   ///< control_initialization0, control_initialization1, etc.
   std::optional<std::map<int, std::vector<double>>> indexed_control_bounds;         ///< control_bounds0, control_bounds1, etc.
   std::optional<std::map<int, std::vector<double>>> indexed_carrier_frequencies;    ///< carrier_frequency0, carrier_frequency1, etc.
   std::optional<std::map<int, std::vector<OutputType>>> indexed_output;             ///< output0, output1, etc.

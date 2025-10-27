@@ -1,7 +1,10 @@
+#include <cstdio>
 #include <fstream>
+#include <vector>
 
 #include "configbuilder.hpp"
 #include "config.hpp"
+#include "config_types.hpp"
 #include "defs.hpp"
 #include "util.hpp"
 
@@ -280,6 +283,10 @@ bool isValidControlType(const std::string& str) {
   return CONTROL_TYPE_MAP.find(toLower(str)) != CONTROL_TYPE_MAP.end();
 }
 
+bool isValidControlInitializationType(const std::string& str) {
+  return CONTROL_INITIALIZATION_TYPE_MAP.find(toLower(str)) != CONTROL_INITIALIZATION_TYPE_MAP.end();
+}
+
 } // namespace
 
 std::vector<std::string> ConfigBuilder::split(const std::string& str, char delimiter) {
@@ -493,26 +500,40 @@ std::vector<ControlSegmentConfig> ConfigBuilder::convertFromString<std::vector<C
 }
 
 template<>
-ControlInitializationConfig ConfigBuilder::convertFromString<ControlInitializationConfig>(const std::string& str) {
-  auto parts = split(str);
-  if (parts.empty()) {
-    logErrorToRank0(mpi_rank, "ERROR: Empty control_initialization specification");
-    exit(1);
-  }
+std::vector<ControlInitializationConfig> ConfigBuilder::convertFromString<std::vector<ControlInitializationConfig>>(const std::string& str) {
+  const auto parts = split(str);
 
-  ControlInitializationConfig config;
-  config.init_type = convertFromString<ControlInitializationType>(parts[0]);
+  std::vector<ControlInitializationConfig> initializations;
+  size_t i = 0;
 
-  if (parts.size() > 1) {
-    if (config.init_type == ControlInitializationType::FILE) {
-      config.filename = parts[1];
-    } else {
-      config.amplitude = convertFromString<double>(parts[1]);
-      if (parts.size() > 2) {
-        config.phase = convertFromString<double>(parts[2]);
-      }
+  while (i < parts.size()) {
+    if (!isValidControlInitializationType(parts[i])) {
+      exitWithError(mpi_rank, "ERROR: Expected control initialization type, got: " + parts[i]);
     }
+
+    ControlInitializationConfig initialization;
+    initialization.init_type = convertFromString<ControlInitializationType>(parts[i++]);
+
+    // Validate minimum parameter count
+    if (parts.size() <= 1) {
+      exitWithError(mpi_rank, "ERROR: Expected control_initialization to have a type and at least one parameter.");
+    }
+
+    switch (initialization.init_type) {
+      case ControlInitializationType::FILE:
+        initialization.filename = parts[i];
+        return initializations;
+      case ControlInitializationType::CONSTANT:
+      case ControlInitializationType::RANDOM:
+        initialization.amplitude = convertFromString<double>(parts[i++]);
+        if (i < parts.size() && !isValidControlInitializationType(parts[i])) {
+          initialization.phase = convertFromString<double>(parts[i++]);
+        }
+        break;
+    }
+
+    initializations.push_back(initialization);
   }
 
-  return config;
+  return initializations;
 }

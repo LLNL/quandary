@@ -43,7 +43,7 @@ Config::Config(
   // Control parameters (optional indexed data)
   const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed_control_segments_,
   const std::optional<bool>& control_enforceBC_,
-  const std::optional<std::map<int, ControlInitializationConfig>>& indexed_control_init_,
+  const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& indexed_control_init_,
   const std::optional<std::map<int, std::vector<double>>>& indexed_control_bounds_,
   const std::optional<std::map<int, std::vector<double>>>& indexed_carrier_frequencies_,
   // Optimization parameters
@@ -256,6 +256,11 @@ namespace {
     }, initial_condition);
   }
 
+  std::string print(const ControlSegmentInitialization& control_initialization) {
+    return std::visit([](const auto& opt) {
+        return opt.toString();
+    }, control_initialization);
+  }
 } //namespace
 
 void Config::printConfig() const {
@@ -318,11 +323,7 @@ void Config::printConfig() const {
   for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].control_initializations.empty()) {
       const auto& init = oscillator_optimization[i].control_initializations[0];
-      std::cout << "control_initialization" << i
-                << " = " << enumToString(init.type, CONTROL_INITIALIZATION_TYPE_MAP)
-                << ", " << init.amplitude;
-      if (init.phase != 0.0) std::cout << ", " << init.phase;
-      std::cout << "\n";
+      std::cout << "control_initialization" << i << " = " << print(init) << "\n";
     }
     if (!oscillator_optimization[i].control_bounds.empty()) {
       std::cout << "control_bounds" << i << " = " << printVector(oscillator_optimization[i].control_bounds) << "\n";
@@ -583,16 +584,33 @@ void Config::convertControlSegments(const std::optional<std::map<int, std::vecto
   }
 }
 
-void Config::convertControlInitializations(const std::optional<std::map<int, ControlInitializationConfig>>& indexed) {
-  if (indexed.has_value()) {
-    for (const auto& [osc_idx, init_config] : *indexed) {
-      if (static_cast<size_t>(osc_idx) < oscillator_optimization.size()) {
-        ControlSegmentInitialization init;
-        init.type = init_config.init_type;
-        init.amplitude = init_config.amplitude.value_or(0.0);
-        init.phase = init_config.phase.value_or(0.0);
-        oscillator_optimization[osc_idx].control_initializations.push_back(init);
+void Config::convertControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& init_configs) {
+  ControlSegmentInitialization default_init = ControlSegmentInitializationConstant{0.0, 0.0};
+
+  for (size_t i = 0; i < oscillator_optimization.size(); i++) {
+    if (!init_configs.has_value() || init_configs->find(static_cast<int>(i)) == init_configs->end()) {
+      oscillator_optimization[i].control_initializations = {default_init};
+      continue;
+    }
+    for (const auto& init_config : init_configs->at(static_cast<int>(i))) {
+      ControlSegmentInitialization init;
+
+      switch (init_config.init_type) {
+        case ControlInitializationType::FILE:
+          init = ControlSegmentInitializationFile{init_config.filename.value()};
+          break;
+        case ControlInitializationType::CONSTANT:
+          assert(init_config.amplitude.has_value()); // should be validated in ConfigBuilder
+          init = ControlSegmentInitializationConstant{init_config.amplitude.value(), init_config.phase.value_or(0.0)};
+          break;
+        case ControlInitializationType::RANDOM:
+          assert(init_config.amplitude.has_value()); // should be validated in ConfigBuilder
+          init = ControlSegmentInitializationRandom{init_config.amplitude.value(), init_config.phase.value_or(0.0)};
+          break;
       }
+
+      default_init = init;
+      oscillator_optimization[i].control_initializations.push_back(init);
     }
   }
 }

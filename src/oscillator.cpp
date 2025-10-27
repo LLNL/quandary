@@ -103,8 +103,9 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
 
     // Check config option for 'constant' or 'random' initialization
     // Note, the config amplitude is multiplied by 2pi here!!
-    double initval = controlinitialization.amplitude*2.0*M_PI;
-    if (controlinitialization.type == ControlInitializationType::CONSTANT) {
+    if (std::holds_alternative<ControlSegmentInitializationConstant>(controlinitialization)) {
+      const auto& controlinitialization_constant = std::get<ControlSegmentInitializationConstant>(controlinitialization);
+      double initval = controlinitialization_constant.amplitude*2.0*M_PI;
       // If STEP: scale to [0,1]
       if (basisfunctions[seg]->getType() == ControlType::STEP){
         initval = std::max(0.0, initval);  
@@ -116,10 +117,12 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
         }
         // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
         if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
-          params[params.size()-1] = controlinitialization.phase;
+          params[params.size()-1] = controlinitialization_constant.phase;
         }
       }
-    } else if (controlinitialization.type == ControlInitializationType::RANDOM) {
+    } else if (std::holds_alternative<ControlSegmentInitializationRandom>(controlinitialization)) {
+      const auto& controlinitialization_random = std::get<ControlSegmentInitializationRandom>(controlinitialization);
+      double initval = controlinitialization_random.amplitude*2.0*M_PI;
 
       // Uniform distribution [0,1)
       std::uniform_real_distribution<double> unit_dist(0.0, 1.0);
@@ -141,7 +144,7 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
         }
         // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
         if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
-          params[params.size()-1] = controlinitialization.phase;
+          params[params.size()-1] = controlinitialization_random.phase;
         }
       }
     } else {

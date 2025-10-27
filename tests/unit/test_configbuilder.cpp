@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 #include <sstream>
 #include <mpi.h>
+#include "config.hpp"
 #include "configbuilder.hpp"
 
 class ConfigBuilderTest : public ::testing::Test {
@@ -498,4 +499,107 @@ TEST_F(ConfigBuilderTest, ControlSegments_Defaults) {
   EXPECT_EQ(params2.nspline, 150);
   EXPECT_DOUBLE_EQ(params2.tstart, 0.0);
   EXPECT_DOUBLE_EQ(params2.tstop, 1.0);
+}
+
+TEST_F(ConfigBuilderTest, ControlInitialization_Defaults) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2, 2, 2
+    transfreq = 4.1, 4.1, 4.1
+    rotfreq = 0.0, 0.0, 0.0
+    control_initialization1 = random, 2.0
+  )");
+
+  Config config = builder.build();
+
+  EXPECT_EQ(config.getOscillators().size(), 3);
+
+  // Check first oscillator has default settings
+  const auto& osc0 = config.getOscillator(0);
+  EXPECT_EQ(osc0.control_initializations.size(), 1);
+  EXPECT_TRUE(std::holds_alternative<ControlSegmentInitializationConstant>(osc0.control_initializations[0]));
+  auto params0 = std::get<ControlSegmentInitializationConstant>(osc0.control_initializations[0]);
+  EXPECT_DOUBLE_EQ(params0.amplitude, 0.0);
+  EXPECT_DOUBLE_EQ(params0.phase, 0.0);
+
+  // Check second oscillator has given settings
+  const auto& osc1 = config.getOscillator(1);
+  EXPECT_EQ(osc1.control_initializations.size(), 1);
+  EXPECT_TRUE(std::holds_alternative<ControlSegmentInitializationRandom>(osc1.control_initializations[0]));
+  auto params1 = std::get<ControlSegmentInitializationRandom>(osc1.control_initializations[0]);
+  EXPECT_DOUBLE_EQ(params1.amplitude, 2.0);
+  EXPECT_DOUBLE_EQ(params1.phase, 0.0);
+
+  // Check third oscillator defaults to the second's settings
+  const auto& osc2 = config.getOscillator(2);
+  EXPECT_EQ(osc2.control_initializations.size(), 1);
+  EXPECT_TRUE(std::holds_alternative<ControlSegmentInitializationRandom>(osc2.control_initializations[0]));
+  auto params2 = std::get<ControlSegmentInitializationRandom>(osc2.control_initializations[0]);
+  EXPECT_DOUBLE_EQ(params2.amplitude, 2.0);
+  EXPECT_DOUBLE_EQ(params2.phase, 0.0);
+}
+
+TEST_F(ConfigBuilderTest, ControlInitialization) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2, 2, 2, 2, 2
+    transfreq = 4.1, 4.1, 4.1, 4.1, 4.1
+    rotfreq = 0.0, 0.0, 0.0, 0.0, 0.0
+    control_initialization0 = constant, 1.0, 1.1
+    control_initialization1 = constant, 2.0
+    control_initialization2 = random, 3.0, 3.1
+    control_initialization3 = random, 4.0
+    control_initialization4 = random, 5.0, 5.1, constant, 6.0, 6.1
+  )");
+
+  Config config = builder.build();
+
+  // Verify control segments were parsed correctly
+  EXPECT_EQ(config.getOscillators().size(), 5);
+
+  // Check first oscillator
+  const auto& osc0 = config.getOscillator(0);
+  EXPECT_EQ(osc0.control_initializations.size(), 1);
+  EXPECT_TRUE(std::holds_alternative<ControlSegmentInitializationConstant>(osc0.control_initializations[0]));
+  auto params0 = std::get<ControlSegmentInitializationConstant>(osc0.control_initializations[0]);
+  EXPECT_DOUBLE_EQ(params0.amplitude, 1.0);
+  EXPECT_DOUBLE_EQ(params0.phase, 1.1);
+
+  // Check second oscillator
+  const auto& osc1 = config.getOscillator(1);
+  EXPECT_EQ(osc1.control_initializations.size(), 1);
+  EXPECT_TRUE(std::holds_alternative<ControlSegmentInitializationConstant>(osc1.control_initializations[0]));
+  auto params1 = std::get<ControlSegmentInitializationConstant>(osc1.control_initializations[0]);
+  EXPECT_DOUBLE_EQ(params1.amplitude, 2.0);
+  EXPECT_DOUBLE_EQ(params1.phase, 0.0);
+
+  // Check third oscillator
+  const auto& osc2 = config.getOscillator(2);
+  EXPECT_EQ(osc2.control_initializations.size(), 1);
+  EXPECT_TRUE(std::holds_alternative<ControlSegmentInitializationRandom>(osc2.control_initializations[0]));
+  auto params2 = std::get<ControlSegmentInitializationRandom>(osc2.control_initializations[0]);
+  EXPECT_DOUBLE_EQ(params2.amplitude, 3.0);
+  EXPECT_DOUBLE_EQ(params2.phase, 3.1);
+
+  // Check fourth oscillator
+  const auto& osc3 = config.getOscillator(3);
+  EXPECT_EQ(osc3.control_initializations.size(), 1);
+  EXPECT_TRUE(std::holds_alternative<ControlSegmentInitializationRandom>(osc3.control_initializations[0]));
+  auto params3 = std::get<ControlSegmentInitializationRandom>(osc3.control_initializations[0]);
+  EXPECT_DOUBLE_EQ(params3.amplitude, 4.0);
+  EXPECT_DOUBLE_EQ(params3.phase, 0.0);
+
+  // Check fifth oscillator with two segments
+  const auto& osc4 = config.getOscillator(4);
+  EXPECT_EQ(osc4.control_initializations.size(), 2);
+  EXPECT_TRUE(std::holds_alternative<ControlSegmentInitializationRandom>(osc4.control_initializations[0]));
+  auto params4_0 = std::get<ControlSegmentInitializationRandom>(osc4.control_initializations[0]);
+  EXPECT_DOUBLE_EQ(params4_0.amplitude, 5.0);
+  EXPECT_DOUBLE_EQ(params4_0.phase, 5.1);
+  EXPECT_TRUE(std::holds_alternative<ControlSegmentInitializationConstant>(osc4.control_initializations[1]));
+  auto params4_1 = std::get<ControlSegmentInitializationConstant>(osc4.control_initializations[1]);
+  EXPECT_DOUBLE_EQ(params4_1.amplitude, 6.0);
+  EXPECT_DOUBLE_EQ(params4_1.phase, 6.1);
 }

@@ -171,15 +171,39 @@ struct ControlSegment {
   ControlParams params; ///< Parameters for control pulse for segment
 };
 
-/**
- * @brief Structure for defining a control segment's initialization
- */
-struct ControlSegmentInitialization {
-  ControlInitializationType type; ///< Type of control initialization
-  double amplitude; ///< Initial control pulse amplitude
-  double phase; ///< Initial control pulse phase
+struct ControlSegmentInitializationFile {
+  std::string filename; ///< Filename to read control segment initialization from
+
+  std::string toString() const {
+    return "file, " + filename;
+  }
 };
 
+struct ControlSegmentInitializationConstant {
+  double amplitude; ///< Initial control pulse amplitude
+  double phase; ///< Initial control pulse phase
+
+  std::string toString() const {
+    return "constant, " + std::to_string(amplitude) + ", " + std::to_string(phase);
+  }
+};
+
+struct ControlSegmentInitializationRandom {
+  double amplitude; ///< Initial control pulse amplitude
+  double phase; ///< Initial control pulse phase
+
+  std::string toString() const {
+    return "random, " + std::to_string(amplitude) + ", " + std::to_string(phase);
+  }
+};
+
+using ControlSegmentInitialization = std::variant<
+  ControlSegmentInitializationFile,
+  ControlSegmentInitializationConstant,
+  ControlSegmentInitializationRandom
+>;
+
+// TODO remove carrier_frequencies? the others are per segment?
 /**
  * @brief Per-oscillator optimization configuration settings.
  *
@@ -187,7 +211,7 @@ struct ControlSegmentInitialization {
  */
 struct OscillatorOptimization {
   std::vector<ControlSegment> control_segments;                    ///< Control segments for this oscillator
-  std::vector<ControlSegmentInitialization> control_initializations; ///< Control initializations for this oscillator
+  std::vector<ControlSegmentInitialization> control_initializations; ///< Control initializations for this oscillator for each segment
   std::vector<double> control_bounds;                              ///< Control bounds for this oscillator for each segment
   std::vector<double> carrier_frequencies;                         ///< Carrier frequencies for this oscillator
 };
@@ -277,7 +301,7 @@ class Config {
       // Control parameters (using optional indexed data)
       const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed_control_segments_,
       const std::optional<bool>& control_enforceBC_,
-      const std::optional<std::map<int, ControlInitializationConfig>>& indexed_control_init_,
+      const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& indexed_control_init_,
       const std::optional<std::map<int, std::vector<double>>>& indexed_control_bounds_,
       const std::optional<std::map<int, std::vector<double>>>& indexed_carrier_frequencies_,
       // Optimization parameters
@@ -381,7 +405,7 @@ private:
     void convertInitialCondition(const std::optional<InitialConditionConfig>& config);
     void convertOptimTarget(const std::optional<OptimTargetConfig>& config);
     void convertControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed);
-    void convertControlInitializations(const std::optional<std::map<int, ControlInitializationConfig>>& indexed);
+    void convertControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& indexed);
     void convertPiPulses(const std::optional<std::vector<PiPulseConfig>>& pulses);
     void convertIndexedOutput(const std::optional<std::map<int, std::vector<OutputType>>>& indexed);
     void convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed);
