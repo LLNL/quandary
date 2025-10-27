@@ -159,7 +159,7 @@ Config::Config(
   control_initialization_file = std::nullopt; // Not used in current design
 
   // For now, set some basic defaults to prevent compilation errors
-  control_enforceBC = control_enforceBC_.value_or(false);
+  control_enforceBC = control_enforceBC_.value_or(true);
   optim_regul = optim_regul_.value_or(1e-4);
   optim_regul_tik0 = optim_regul_tik0_.value_or(false);
   datadir = datadir_.value_or("./data_out");
