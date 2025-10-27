@@ -302,11 +302,14 @@ void Config::printConfig() const {
       // Add segment-specific parameters
       if (std::holds_alternative<SplineParams>(seg.params)) {
         auto params = std::get<SplineParams>(seg.params);
-        std::cout << ", " << params.nspline;
+        std::cout << ", " << params.nspline << ", " << params.tstart << ", " << params.tstop;
       } else if (std::holds_alternative<SplineAmpParams>(seg.params)) {
         auto params = std::get<SplineAmpParams>(seg.params);
-        std::cout << ", " << params.nspline;
-        if (params.scaling != 1.0) std::cout << ", " << params.scaling;
+        std::cout << ", " << params.nspline << ", " << params.scaling << ", " << params.tstart << ", " << params.tstop;
+      } else if (std::holds_alternative<StepParams>(seg.params)) {
+        auto params = std::get<StepParams>(seg.params);
+        std::cout << ", " << params.step_amp1 << ", " << params.step_amp2 << ", " << params.tramp << ", "
+          << params.tstart << ", " << params.tstop;
       }
       std::cout << "\n";
     }
