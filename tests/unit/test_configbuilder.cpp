@@ -466,6 +466,7 @@ TEST_F(ConfigBuilderTest, ControlSegments_Defaults) {
     transfreq = 4.1, 4.8
     rotfreq = 0.0, 0.0
     control_segments1 = spline0, 150, 0.0, 1.0
+    control_bounds1 = 2.0
   )");
 
   Config config = builder.build();
@@ -486,6 +487,8 @@ TEST_F(ConfigBuilderTest, ControlSegments_Defaults) {
   const auto& osc1 = config.getOscillator(1);
   EXPECT_EQ(osc1.control_segments.size(), 1);
   EXPECT_EQ(osc1.control_segments[0].type, ControlType::BSPLINE0);
+  EXPECT_EQ(osc1.control_bounds.size(), 1);
+  EXPECT_DOUBLE_EQ(osc1.control_bounds[0], 2.0);
   SplineParams params1 = std::get<SplineParams>(osc1.control_segments[0].params);
   EXPECT_EQ(params1.nspline, 150);
   EXPECT_DOUBLE_EQ(params1.tstart, 0.0);
@@ -602,4 +605,27 @@ TEST_F(ConfigBuilderTest, ControlInitialization) {
   auto params4_1 = std::get<ControlSegmentInitializationConstant>(osc4.control_initializations[1]);
   EXPECT_DOUBLE_EQ(params4_1.amplitude, 6.0);
   EXPECT_DOUBLE_EQ(params4_1.phase, 6.1);
+}
+
+TEST_F(ConfigBuilderTest, ControlBounds) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
+    control_segments0 = spline, 10, 0.0, 1.0, step, 0.1, 0.2, 0.3, 0.4, 0.5, spline0, 20, 1.0, 2.0
+    control_bounds0 = 1.0, 2.0
+  )");
+
+  Config config = builder.build();
+
+  EXPECT_EQ(config.getOscillators().size(), 1);
+
+  // Check control bounds for the three segments
+  const auto& osc0 = config.getOscillator(0);
+  EXPECT_EQ(osc0.control_bounds.size(), 3);
+  EXPECT_EQ(osc0.control_bounds[0], 1.0);
+  EXPECT_EQ(osc0.control_bounds[1], 2.0);
+  EXPECT_EQ(osc0.control_bounds[2], 2.0); // Use last bound for extra segments
 }

@@ -624,7 +624,9 @@ void Config::convertIndexedControlBounds(const std::optional<std::map<int, std::
   if (indexed.has_value()) {
     for (const auto& [osc_idx, bounds] : *indexed) {
       if (static_cast<size_t>(osc_idx) < oscillator_optimization.size()) {
+        size_t num_segments = oscillator_optimization[osc_idx].control_segments.size();
         oscillator_optimization[osc_idx].control_bounds = bounds;
+        copyLast(oscillator_optimization[osc_idx].control_bounds, num_segments);
       }
     }
   }
