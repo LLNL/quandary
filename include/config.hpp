@@ -209,7 +209,7 @@ class Config {
     // General options
     std::vector<size_t> nlevels;  ///< Number of levels per subsystem
     std::vector<size_t> nessential;  ///< Number of essential levels per subsystem (Default: same as nlevels)
-    size_t ntime;  ///< Number of time steps used for time-integration // TODO should this be size_t?
+    size_t ntime;  ///< Number of time steps used for time-integration
     double dt;  ///< Time step size (ns). Determines final time: T=ntime*dt
     std::vector<double> transfreq;  ///< Fundamental transition frequencies for each oscillator (GHz)
     std::vector<double> selfkerr;  ///< Self-kerr frequencies for each oscillator (GHz)
