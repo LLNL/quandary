@@ -216,7 +216,7 @@ class Config {
     std::vector<double> crosskerr;  ///< Cross-kerr coupling frequencies for each oscillator coupling (GHz)
     std::vector<double> Jkl;  ///< Dipole-dipole coupling frequencies for each oscillator coupling (GHz)
     std::vector<double> rotfreq;  ///< Rotational wave approximation frequencies for each subsystem (GHz)
-    LindbladType collapse_type = LindbladType::NONE;  ///< Switch between Schroedinger and Lindblad solver
+    LindbladType collapse_type;  ///< Switch between Schroedinger and Lindblad solver
     std::vector<double> decay_time;  ///< Time of decay collapse operation (T1) per oscillator (for Lindblad solver)
     std::vector<double> dephase_time;  ///< Time of dephase collapse operation (T2) per oscillator (for Lindblad solver)
     size_t n_initial_conditions;  ///< Number of initial conditions
@@ -226,7 +226,7 @@ class Config {
     std::optional<std::string> hamiltonian_file_Hc;  ///< File to read the control Hamiltonian from
 
     // Optimization options
-    bool control_enforceBC = false;  ///< Decide whether control pulses should start and end at zero
+    bool control_enforceBC;  ///< Decide whether control pulses should start and end at zero
     std::optional<std::string> control_initialization_file;  ///< File to read the control initializations from (optional)
     std::vector<OscillatorOptimization> oscillator_optimization;  ///< Optimization configuration for each oscillator
     OptimTargetSettings target;  ///< Grouped optimization target configuration
