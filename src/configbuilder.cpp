@@ -160,24 +160,6 @@ Config ConfigBuilder::build() {
   );
 }
 
-// void Config::setNEssential(const std::string& nessential_str) {
-//   /* Get the number of essential levels per oscillator.
-//    * Default: same as number of levels */
-//    // TODO must be called after nlevels is set.
-//   nessential = nlevels;
-
-//   std::vector<int> read_nessential = convertFromString<std::vector<int>>(nessential_str);
-//   /* Overwrite if config option is given */
-//   if (read_nessential[0] > -1) {
-//     for (size_t iosc = 0; iosc<nlevels.size(); iosc++){
-//       if (iosc < read_nessential.size()) nessential[iosc] = read_nessential[iosc];
-//       else                               nessential[iosc] = read_nessential[read_nessential.size()-1];
-//       if (nessential[iosc] > nlevels[iosc]) nessential[iosc] = nlevels[iosc];
-//     }
-//   }
-// }
-
-
 // void Config::setRandSeed(int rand_seed_) {
 //   rand_seed = rand_seed_;
 //   if (rand_seed_ < 0){

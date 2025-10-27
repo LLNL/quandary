@@ -97,6 +97,10 @@ Config::Config(
   nlevels = nlevels_.value();
 
   nessential = nessential_.value_or(nlevels); // Default: same as nlevels
+  if (nessential_.has_value() && nessential.size() != nlevels.size()) {
+    copyLast(nessential, nlevels.size());
+  }
+
   ntime = ntime_.value_or(1000);
   dt = dt_.value_or(0.1);
 
