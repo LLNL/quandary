@@ -283,7 +283,6 @@ void Config::printConfig() const {
   std::cout << "dephase_time = " << printVector(dephase_time) << "\n";
   std::cout << "initialcondition = " << print(initial_condition) << "\n";
 
-  std::cout << "\n";
   for (size_t i = 0; i < apply_pipulse.size(); ++i) {
     for (const auto& segment : apply_pipulse[i]) {
       std::cout << "apply_pipulse = " << i
@@ -300,6 +299,7 @@ void Config::printConfig() const {
   }
 
   // Optimization Parameters
+  std::cout << "\n// Optimization Parameters\n";
   for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].control_segments.empty()) {
       const auto& seg = oscillator_optimization[i].control_segments[0];
@@ -326,9 +326,13 @@ void Config::printConfig() const {
       const auto& init = oscillator_optimization[i].control_initializations[0];
       std::cout << "control_initialization" << i << " = " << print(init) << "\n";
     }
+  }
+  for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].control_bounds.empty()) {
       std::cout << "control_bounds" << i << " = " << printVector(oscillator_optimization[i].control_bounds) << "\n";
     }
+  }
+  for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].carrier_frequencies.empty()) {
       std::cout << "carrier_frequency" << i << " = " << printVector(oscillator_optimization[i].carrier_frequencies) << "\n";
     }
@@ -364,6 +368,8 @@ void Config::printConfig() const {
   std::cout << "optim_penalty_variation = " << penalty.penalty_variation << "\n";
   std::cout << "optim_regul_tik0 = " << (optim_regul_tik0 ? "true" : "false") << "\n";
 
+  // Output and runtypes
+  std::cout << "\n// Output and runtypes\n";
   std::cout << "datadir = " << datadir << "\n";
 
   for (size_t i = 0; i < output.size(); ++i) {
