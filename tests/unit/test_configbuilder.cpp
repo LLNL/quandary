@@ -71,7 +71,7 @@ TEST_F(ConfigBuilderTest, ParseIndexedSettings) {
     transfreq = 4.1, 4.8
     rotfreq = 0.0, 0.0
     control_segments0 = spline, 150
-    control_segments1 = step, 10
+    control_segments1 = step, 1, 2, 3
     output0 = population
     output1 = population
   )");
