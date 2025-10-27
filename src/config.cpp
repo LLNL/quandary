@@ -95,17 +95,14 @@ Config::Config(
     exitWithError(mpi_rank, "ERROR: nlevels cannot be empty");
   }
   nlevels = nlevels_.value();
+  size_t num_osc = nlevels.size();
 
-  nessential = nessential_.value_or(nlevels); // Default: same as nlevels
-  if (nessential_.has_value() && nessential.size() != nlevels.size()) {
-    copyLast(nessential, nlevels.size());
-  }
+  nessential = nessential_.value_or(nlevels);
+  copyLast(nessential, num_osc);
 
   ntime = ntime_.value_or(1000);
   dt = dt_.value_or(0.1);
 
-  // Physics parameters
-  size_t num_osc = nlevels.size();
   size_t num_pairs_osc = (num_osc - 1) * num_osc / 2;
 
   if (!transfreq_.has_value()) {

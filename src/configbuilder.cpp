@@ -218,37 +218,6 @@ Config ConfigBuilder::build() {
 //   }
 // }
 
-// void Config::setControlSegments(const std::string& value) {
-//   // if not set tstart should be 0.0 and tstop should be nt * dt
-//   switch (controlsegments.type) {
-//     case ControlType::STEP: {
-//       if (controlsegments.size() <= idstr+2){
-//         printf("ERROR: Wrong setting for control segments: Step Amplitudes or tramp not found.\n");
-//         exit(1);
-//       }
-//       break;
-//     }
-//     case ControlType::BSPLINE: {
-//       if (controlsegments.size() <= idstr){
-//         printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
-//         exit(1);
-//       }
-//     }
-// }
-
-// void Config::setControlInitialization(const std::string& value) {
-//     // phase should be zero if not set
-//     // default should be constant and either 1 (if Control is Step) or 0 (else)
-//     // Set a default if initialization string is not given for this segment
-//     if (controlinitializations.size() < idini+2) {
-//       controlinitializations.push_back("constant");
-//       if (basisfunctions[seg]->getType() == ControlType::STEP)
-//         controlinitializations.push_back("1.0");
-//       else
-//         controlinitializations.push_back("0.0");
-//     }
-// }
-
 namespace {
 
 std::string trimWhitespace(std::string s) {
