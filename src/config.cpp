@@ -327,9 +327,8 @@ void Config::printConfig() const {
     }
   }
 
-  std::cout << "runtype = " << enumToString(runtype, RUN_TYPE_MAP) << "\n";
   std::cout << "optim_target = " << toString(target) << "\n";
-
+  std::cout << "gate_rot_freq = " << printVector(gate_rot_freq) << "\n";
   std::cout << "optim_objective = " << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\n";
   std::cout << "optim_weights = " << printVector(optim_weights) << "\n";
   std::cout << "optim_atol = " << tolerance.atol << "\n";
