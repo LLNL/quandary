@@ -136,8 +136,8 @@ Config::Config(
 
   convertPiPulses(apply_pipulse_);
 
-  hamiltonian_file_Hsys = hamiltonian_file_Hsys_.value_or("");
-  hamiltonian_file_Hc = hamiltonian_file_Hc_.value_or("");
+  hamiltonian_file_Hsys = hamiltonian_file_Hsys_;
+  hamiltonian_file_Hc = hamiltonian_file_Hc_;
 
   // Control and optimization parameters
   oscillator_optimization.resize(num_osc);
