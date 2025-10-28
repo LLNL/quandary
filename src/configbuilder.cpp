@@ -352,17 +352,18 @@ OptimTargetConfig ConfigBuilder::convertFromString<OptimTargetConfig>(const std:
 
   switch (config.target_type) {
     case TargetType::GATE:
+      if (parts.size() < 2) {
+        exitWithError(mpi_rank, "Target type 'gate' requires a gate name.");
+      }
       config.gate_type = convertFromString<GateType>(parts[1]);
       if (config.gate_type == GateType::FILE) {
         if (parts.size() < 3) {
           exitWithError(mpi_rank, "ERROR: Gate type 'file' requires a filename.");
         }
-        // Case: "optim_target = gate, file, /path/to/gate.dat"
         config.gate_file = parts[2];
       }
       break;
     case TargetType::PURE:
-      // Case: "optim_target = pure, 0, 1"
       for (size_t i = 1; i < parts.size(); ++i) {
         config.levels.push_back(convertFromString<int>(parts[i]));
       }
