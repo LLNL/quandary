@@ -82,7 +82,6 @@ int main(int argc,char **argv)
   MPI_Bcast(&rand_seed, 1, MPI_INT, 0, MPI_COMM_WORLD); // Broadcast from rank 0 to all.
   std::mt19937 rand_engine{}; // Use Mersenne Twister for cross-platform reproducibility
   rand_engine.seed(rand_seed);
-  export_param(mpirank_world, log, "rand_seed", rand_seed);
 
   /* --- Get some options from the config file --- */
   const std::vector<size_t> nlevels = config.getNLevels();

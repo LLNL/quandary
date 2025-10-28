@@ -253,25 +253,6 @@ void copyLast(std::vector<Tval>& fillme, int tosize){
 };
 
 /**
- * @brief Template function to export parameter values to the log stream.
- *
- * This function logs parameter key-value pairs to the provided log stream,
- * but only from MPI rank 0 to avoid duplicate output in parallel runs.
- *
- * @tparam T Type of the parameter value.
- * @param mpi_rank MPI rank of the current process.
- * @param log Reference to the log stream.
- * @param key Parameter name.
- * @param value Parameter value to be logged.
- */
-template <typename T>
-void export_param(int mpi_rank, std::stringstream& log, std::string key, T value) {
-  if (mpi_rank == 0) {
-    log << key << " = " << value << std::endl;
-  }
-};
-
-/**
  * @brief Prints error message to rank 0 cerr stream.
  *
  * @param mpi_rank MPI rank of the current process.
