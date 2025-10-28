@@ -668,7 +668,7 @@ void Config::setNumInitialConditions() {
            std::holds_alternative<BasisInitialCondition>(initial_condition) ) {
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
     n_initial_conditions = 1;
-    for (size_t oscilID = 1; oscilID<nlevels.size(); oscilID++){
+    for (size_t oscilID = 0; oscilID<nlevels.size(); oscilID++){
       if (oscilID < nessential.size()) n_initial_conditions *= nessential[oscilID];
     }
     if (std::holds_alternative<BasisInitialCondition>(initial_condition)  ) {
