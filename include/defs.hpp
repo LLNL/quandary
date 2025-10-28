@@ -81,7 +81,7 @@ enum class TargetType {
 const std::map<std::string, TargetType> TARGET_TYPE_MAP = {
     {"gate", TargetType::GATE},
     {"pure", TargetType::PURE},
-    {"fromfile", TargetType::FROMFILE}
+    {"file", TargetType::FROMFILE}
 };
 
 /**

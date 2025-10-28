@@ -339,17 +339,7 @@ void Config::printConfig() const {
   }
 
   std::cout << "runtype = " << enumToString(runtype, RUN_TYPE_MAP) << "\n";
-  std::cout << "optim_target = " << enumToString(target.type, TARGET_TYPE_MAP);
-  if (target.type == TargetType::GATE) {
-    if (!target.gate_file.empty()) {
-      std::cout << ", file, " << target.gate_file;
-    } else {
-      std::cout << ", " << enumToString(target.gate_type, GATE_TYPE_MAP);
-    }
-  } else if (target.type == TargetType::FROMFILE) {
-    std::cout << ", " << target.file;
-  }
-  std::cout << "\n";
+  std::cout << "optim_target = " << toString(target) << "\n";
 
   std::cout << "optim_objective = " << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\n";
   if (!optim_weights.empty()) {
@@ -490,20 +480,31 @@ void Config::convertInitialCondition(const std::optional<InitialConditionConfig>
 
 void Config::convertOptimTarget(const std::optional<OptimTargetConfig>& config) {
   if (config.has_value()) {
-    target.type = config->target_type;
-    target.gate_type = config->gate_type.value_or(GateType::NONE);
-    target.file = config->filename.value_or("");
-    target.gate_file = config->gate_file.value_or("");
-
-    for (auto level : config->levels) {
-      target.purestate_levels.push_back(static_cast<size_t>(level));
+    switch (config->target_type) {
+      case TargetType::GATE: {
+        GateOptimTarget gate_target;
+        gate_target.gate_type = config->gate_type.value_or(GateType::NONE);
+        gate_target.gate_file = config->gate_file.value_or("");
+        target = gate_target;
+        break;
+      }
+      case TargetType::PURE: {
+        PureOptimTarget pure_target;
+        for (auto level : config->levels) {
+          pure_target.purestate_levels.push_back(static_cast<size_t>(level));
+        }
+        target = pure_target;
+        break;
+      }
+      case TargetType::FROMFILE: {
+        FileOptimTarget file_target;
+        file_target.file = config->filename.value_or("");
+        target = file_target;
+        break;
+      }
     }
   } else {
-    target.type = TargetType::PURE;
-    target.gate_type = GateType::NONE;
-    target.file = "";
-    target.gate_file = "";
-    target.purestate_levels.clear();
+    target = PureOptimTarget{};
   }
 }
 

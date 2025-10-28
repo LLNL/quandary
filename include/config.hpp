@@ -116,18 +116,46 @@ struct OptimPenalty {
   double penalty_variation = 0.01; ///< Amplitude variation penalty coefficient
 };
 
-/**
- * @brief Grouped optimization target configuration settings.
- *
- * Groups all optimization target configuration into a single struct.
- */
-struct OptimTargetSettings {
-  TargetType type = TargetType::PURE;           ///< Target type (gate, pure, file)
-  std::string file;                             ///< Target file (for file targets)
+struct GateOptimTarget {
   GateType gate_type = GateType::NONE;          ///< Gate type (for gate targets)
   std::string gate_file;                        ///< Gate file (for gate from file)
-  std::vector<size_t> purestate_levels;         ///< Pure state levels (for pure targets)
+
+  std::string toString() const {
+    if (gate_type == GateType::FILE) {
+      return "gate, file, " + gate_file;
+    } else {
+      auto it = std::find_if(GATE_TYPE_MAP.begin(), GATE_TYPE_MAP.end(),
+                             [this](const auto& pair) { return pair.second == gate_type; });
+      return "gate, " + (it != GATE_TYPE_MAP.end() ? it->first : "unknown");
+    }
+  }
 };
+
+struct PureOptimTarget {
+  std::vector<size_t> purestate_levels;         ///< Pure state levels (for pure targets)
+
+  std::string toString() const {
+    std::string out = "pure";
+    for (size_t level : purestate_levels) {
+      out += ", " + std::to_string(level);
+    }
+    return out;
+  }
+};
+
+struct FileOptimTarget {
+  std::string file;                             ///< Target file (for file targets)
+
+  std::string toString() const {
+    return "file, " + file;
+  }
+};
+
+using OptimTargetSettings = std::variant<GateOptimTarget, PureOptimTarget, FileOptimTarget>;
+
+inline std::string toString(const OptimTargetSettings& target) {
+  return std::visit([](const auto& t) { return t.toString(); }, target);
+}
 
 /**
  * @brief Structure for storing pi-pulse parameters for one segment.
@@ -371,11 +399,23 @@ class Config {
     const std::vector<double>& getCarrierFrequencies(size_t i_osc) const { return oscillator_optimization[i_osc].carrier_frequencies; }
     double getCarrierFrequency(size_t i_osc, size_t i_seg) const { return oscillator_optimization[i_osc].carrier_frequencies[i_seg]; }
     const OptimTargetSettings& getOptimTarget() const { return target; }
-    TargetType getOptimTargetType() const { return target.type; }
-    const std::string& getOptimTargetFile() const { return target.file; }
-    GateType getOptimTargetGateType() const { return target.gate_type; }
-    const std::string& getOptimTargetGateFile() const { return target.gate_file; }
-    const std::vector<size_t>& getOptimTargetPurestateLevels() const { return target.purestate_levels; }
+    TargetType getOptimTargetType() const {
+      if (std::holds_alternative<GateOptimTarget>(target)) return TargetType::GATE;
+      if (std::holds_alternative<PureOptimTarget>(target)) return TargetType::PURE;
+      return TargetType::FROMFILE;
+    }
+    const std::string& getOptimTargetFile() const {
+      return std::get<FileOptimTarget>(target).file;
+    }
+    GateType getOptimTargetGateType() const {
+      return std::get<GateOptimTarget>(target).gate_type;
+    }
+    const std::string& getOptimTargetGateFile() const {
+      return std::get<GateOptimTarget>(target).gate_file;
+    }
+    const std::vector<size_t>& getOptimTargetPurestateLevels() const {
+      return std::get<PureOptimTarget>(target).purestate_levels;
+    }
     const std::vector<double>& getGateRotFreq() const { return gate_rot_freq; }
     ObjectiveType getOptimObjective() const { return optim_objective; }
     const std::vector<double>& getOptimWeights() const { return optim_weights; }

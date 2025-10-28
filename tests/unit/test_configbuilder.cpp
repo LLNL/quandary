@@ -649,3 +649,99 @@ TEST_F(ConfigBuilderTest, CarrierFrequencies) {
   EXPECT_EQ(osc0.carrier_frequencies[0], 1.0);
   EXPECT_EQ(osc0.carrier_frequencies[1], 2.0);
 }
+
+TEST_F(ConfigBuilderTest, OptimTarget_GateType) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
+    optim_target = gate, cnot
+  )");
+
+  Config config = builder.build();
+
+  EXPECT_EQ(config.getOptimTargetType(), TargetType::GATE);
+  EXPECT_EQ(config.getOptimTargetGateType(), GateType::CNOT);
+}
+
+TEST_F(ConfigBuilderTest, OptimTarget_GateFromFile) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
+    optim_target = gate, file, /path/to/gate.dat
+  )");
+
+  Config config = builder.build();
+
+  EXPECT_EQ(config.getOptimTargetType(), TargetType::GATE);
+  EXPECT_EQ(config.getOptimTargetGateType(), GateType::FILE);
+  EXPECT_EQ(config.getOptimTargetGateFile(), "/path/to/gate.dat");
+}
+
+TEST_F(ConfigBuilderTest, OptimTarget_PureState) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 3
+    transfreq = 4.1
+    rotfreq = 0.0
+    optim_target = pure, 0, 1, 2
+  )");
+
+  Config config = builder.build();
+
+  EXPECT_EQ(config.getOptimTargetType(), TargetType::PURE);
+
+  const auto& levels = config.getOptimTargetPurestateLevels();
+  EXPECT_EQ(levels.size(), 3);
+  EXPECT_EQ(levels[0], 0);
+  EXPECT_EQ(levels[1], 1);
+  EXPECT_EQ(levels[2], 2);
+}
+
+TEST_F(ConfigBuilderTest, OptimTarget_FromFile) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
+    optim_target = file, /path/to/target.dat
+  )");
+
+  Config config = builder.build();
+
+  EXPECT_EQ(config.getOptimTargetType(), TargetType::FROMFILE);
+  EXPECT_EQ(config.getOptimTargetFile(), "/path/to/target.dat");
+
+  const auto& target = config.getOptimTarget();
+  EXPECT_TRUE(std::holds_alternative<FileOptimTarget>(target));
+
+  const auto& file_target = std::get<FileOptimTarget>(target);
+  EXPECT_EQ(file_target.file, "/path/to/target.dat");
+}
+
+TEST_F(ConfigBuilderTest, OptimTarget_DefaultPure) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
+  )");
+
+  Config config = builder.build();
+
+  EXPECT_EQ(config.getOptimTargetType(), TargetType::PURE);
+
+  const auto& target = config.getOptimTarget();
+  EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
+
+  const auto& pure_target = std::get<PureOptimTarget>(target);
+  EXPECT_TRUE(pure_target.purestate_levels.empty());
+}

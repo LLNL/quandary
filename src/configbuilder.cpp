@@ -351,31 +351,35 @@ template<>
 OptimTargetConfig ConfigBuilder::convertFromString<OptimTargetConfig>(const std::string& str) {
   auto parts = split(str);
   if (parts.empty()) {
-    logErrorToRank0(mpi_rank, "ERROR: Empty optim_target specification");
-    exit(1);
+    exitWithError(mpi_rank, "ERROR: optim_target must have at least a target type specified.");
   }
 
   OptimTargetConfig config;
   config.target_type = convertFromString<TargetType>(parts[0]);
 
-  if (parts.size() > 1) {
-    if (config.target_type == TargetType::GATE) {
-      if (parts.size() >= 3 && parts[1] == "file") {
+  switch (config.target_type) {
+    case TargetType::GATE:
+      config.gate_type = convertFromString<GateType>(parts[1]);
+      if (config.gate_type == GateType::FILE) {
+        if (parts.size() < 3) {
+          exitWithError(mpi_rank, "ERROR: Gate type 'file' requires a filename.");
+        }
         // Case: "optim_target = gate, file, /path/to/gate.dat"
         config.gate_file = parts[2];
-      } else {
-        // Case: "optim_target = gate, cnot"
-        config.gate_type = convertFromString<GateType>(parts[1]);
       }
-    } else if (config.target_type == TargetType::FROMFILE) {
-      // Case: "optim_target = file, /path/to/target.dat"
-      config.filename = parts[1];
-    } else if (config.target_type == TargetType::PURE) {
+      break;
+    case TargetType::PURE:
       // Case: "optim_target = pure, 0, 1"
       for (size_t i = 1; i < parts.size(); ++i) {
         config.levels.push_back(convertFromString<int>(parts[i]));
       }
-    }
+      break;
+    case TargetType::FROMFILE:
+      if (parts.size() < 2) {
+        exitWithError(mpi_rank, "ERROR: Gate type 'file' requires a filename.");
+      }
+      config.filename = parts[1];
+      break;
   }
 
   return config;
