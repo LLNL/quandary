@@ -131,10 +131,8 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
 
   /* Store the initial guess if read from file */
-  std::vector<std::string> controlinit_str;
   auto control_initialization_file = config.getControlInitializationFile();
   if (control_initialization_file.has_value()) {
-    assert(controlinit_str.size() >=2);
     for (int i=0; i<ndesign; i++) initguess_fromfile.push_back(0.0);
     if (mpirank_world == 0) read_vector(control_initialization_file.value().c_str(), initguess_fromfile.data(), ndesign, quietmode);
     MPI_Bcast(initguess_fromfile.data(), ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);

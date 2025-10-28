@@ -279,7 +279,6 @@ class Config {
 
     // Optimization options
     bool control_enforceBC;  ///< Decide whether control pulses should start and end at zero
-    std::optional<std::string> control_initialization_file;  ///< File to read the control initializations from (optional)
     std::vector<OscillatorOptimization> oscillator_optimization;  ///< Optimization configuration for each oscillator
     OptimTargetSettings target;  ///< Grouped optimization target configuration
     std::vector<double> gate_rot_freq;  ///< Frequency of rotation of the target gate, for each oscillator (GHz)
@@ -390,7 +389,14 @@ class Config {
     const std::vector<ControlSegment>& getControlSegments(size_t i_osc) const { return oscillator_optimization[i_osc].control_segments; }
     bool getControlEnforceBC() const { return control_enforceBC; }
     const std::vector<ControlSegmentInitialization>& getControlInitializations(size_t i_osc) const { return oscillator_optimization[i_osc].control_initializations; }
-    const std::optional<std::string>& getControlInitializationFile() const { return control_initialization_file; }
+
+    const std::optional<std::string> getControlInitializationFile() const {
+      if (!std::holds_alternative<ControlSegmentInitializationFile>(oscillator_optimization[0].control_initializations[0])) {
+        return std::nullopt;
+      }
+      return std::get<ControlSegmentInitializationFile>(oscillator_optimization[0].control_initializations[0]).filename;
+    }
+
     const std::vector<double>& getControlBounds(size_t i_osc) const { return oscillator_optimization[i_osc].control_bounds; }
     double getControlBound(size_t i_osc, size_t i_seg) const { return oscillator_optimization[i_osc].control_bounds[i_seg]; }
     const std::vector<double>& getCarrierFrequencies(size_t i_osc) const { return oscillator_optimization[i_osc].carrier_frequencies; }

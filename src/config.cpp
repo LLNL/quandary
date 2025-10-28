@@ -155,8 +155,6 @@ Config::Config(
 
   setOptimWeights(optim_weights_);
 
-  control_initialization_file = std::nullopt; // Not used in current design
-
   tolerance = OptimTolerance{
     optim_atol_.value_or(1e-8),
     optim_rtol_.value_or(1e-4),
