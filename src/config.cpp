@@ -484,6 +484,7 @@ void Config::convertOptimTarget(const std::optional<OptimTargetConfig>& config) 
         logOutputToRank0(mpi_rank, "# Warning: You want to prepare a pure state, but didn't specify which one."
           " Taking default: ground-state |0...0> \n");
         pure_target.purestate_levels = std::vector<size_t>(nlevels.size(), 0);
+        return;
       }
       for (auto level : config->levels) {
         pure_target.purestate_levels.push_back(static_cast<size_t>(level));

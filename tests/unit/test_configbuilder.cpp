@@ -687,7 +687,7 @@ TEST_F(ConfigBuilderTest, OptimTarget_PureState) {
   ConfigBuilder builder(MPI_COMM_WORLD, log, true);
 
   builder.loadFromString(R"(
-    nlevels = 3
+    nlevels = 3, 3, 3
     transfreq = 4.1
     rotfreq = 0.0
     optim_target = pure, 0, 1, 2
