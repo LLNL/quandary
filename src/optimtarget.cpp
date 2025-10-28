@@ -156,31 +156,29 @@ OptimTarget::OptimTarget(const Config& config, MasterEq* mastereq, double total_
 
   /* Get target type */  
   purestateID = -1;
-  target_type = config.getOptimTargetType();
-  target_filename = config.getOptimTargetFile();
+  target_filename = "";
 
-  switch (target_type) {
-    case TargetType::GATE: {
-      const std::vector<double>& gate_rot_freq = config.getGateRotFreq(); 
-      GateType target_gate = config.getOptimTargetGateType();
-      const std::string& target_gate_file = config.getOptimTargetGateFile();
+  const auto& target = config.getOptimTarget();
 
-      /* Initialize the targetgate */
-      targetgate = initTargetGate(target_gate, target_gate_file, mastereq->nlevels, mastereq->nessential, total_time, lindbladtype, gate_rot_freq, quietmode);
-      break;
+  if (std::holds_alternative<GateOptimTarget>(target)) {
+    target_type = TargetType::GATE;
+    const auto& gate_target = std::get<GateOptimTarget>(target);
+    const std::vector<double>& gate_rot_freq = config.getGateRotFreq();
+
+    /* Initialize the targetgate */
+    targetgate = initTargetGate(gate_target.gate_type, gate_target.gate_file, mastereq->nlevels, mastereq->nessential, total_time, lindbladtype, gate_rot_freq, quietmode);
+  } else if (std::holds_alternative<PureOptimTarget>(target)) {
+    target_type = TargetType::PURE;
+    purestateID = 0;
+    const auto& pure_target = std::get<PureOptimTarget>(target);
+    const std::vector<size_t>& purestate_levels = pure_target.purestate_levels;
+    for (size_t i=0; i < mastereq->getNOscillators(); i++) {
+      purestateID += purestate_levels[i] * mastereq->getOscillator(i)->dim_postOsc;
     }
-    case TargetType::PURE: {
-      target_type = TargetType::PURE;
-      purestateID = 0;
-      const std::vector<size_t>& purestate_levels = config.getOptimTargetPurestateLevels();
-      for (size_t i=0; i < mastereq->getNOscillators(); i++) {
-        purestateID += purestate_levels[i] * mastereq->getOscillator(i)->dim_postOsc;
-      }
-      break;
-    }
-    case TargetType::FROMFILE: {
-      break;
-    }
+  } else if (std::holds_alternative<FileOptimTarget>(target)) {
+    target_type = TargetType::FROMFILE;
+    const auto& file_target = std::get<FileOptimTarget>(target);
+    target_filename = file_target.file;
   }
 
   objective_type = config.getOptimObjective();

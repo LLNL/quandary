@@ -51,7 +51,7 @@ struct EnsembleInitialCondition : public OscillatorIDsInitialCondition {
 
 struct DiagonalInitialCondition : public OscillatorIDsInitialCondition {
   std::string toString() const {
-    return OscillatorIDsInitialCondition::toString("ensemble");
+    return OscillatorIDsInitialCondition::toString("diagonal");
   }
 };
 
@@ -402,23 +402,6 @@ class Config {
     const std::vector<double>& getCarrierFrequencies(size_t i_osc) const { return oscillator_optimization[i_osc].carrier_frequencies; }
     double getCarrierFrequency(size_t i_osc, size_t i_seg) const { return oscillator_optimization[i_osc].carrier_frequencies[i_seg]; }
     const OptimTargetSettings& getOptimTarget() const { return target; }
-    TargetType getOptimTargetType() const {
-      if (std::holds_alternative<GateOptimTarget>(target)) return TargetType::GATE;
-      if (std::holds_alternative<PureOptimTarget>(target)) return TargetType::PURE;
-      return TargetType::FROMFILE;
-    }
-    const std::string& getOptimTargetFile() const {
-      return std::get<FileOptimTarget>(target).file;
-    }
-    GateType getOptimTargetGateType() const {
-      return std::get<GateOptimTarget>(target).gate_type;
-    }
-    const std::string& getOptimTargetGateFile() const {
-      return std::get<GateOptimTarget>(target).gate_file;
-    }
-    const std::vector<size_t>& getOptimTargetPurestateLevels() const {
-      return std::get<PureOptimTarget>(target).purestate_levels;
-    }
     const std::vector<double>& getGateRotFreq() const { return gate_rot_freq; }
     ObjectiveType getOptimObjective() const { return optim_objective; }
     const std::vector<double>& getOptimWeights() const { return optim_weights; }

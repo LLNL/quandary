@@ -113,8 +113,10 @@ TEST_F(ConfigBuilderTest, ParseStructSettings) {
 
   Config config = builder.build();
 
-  EXPECT_EQ(config.getOptimTargetType(), TargetType::GATE);
-  EXPECT_EQ(config.getOptimTargetGateType(), GateType::CNOT);
+  const auto& target = config.getOptimTarget();
+  EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
+  const auto& gate_target = std::get<GateOptimTarget>(target);
+  EXPECT_EQ(gate_target.gate_type, GateType::CNOT);
 
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
@@ -662,8 +664,10 @@ TEST_F(ConfigBuilderTest, OptimTarget_GateType) {
 
   Config config = builder.build();
 
-  EXPECT_EQ(config.getOptimTargetType(), TargetType::GATE);
-  EXPECT_EQ(config.getOptimTargetGateType(), GateType::CNOT);
+  const auto& target = config.getOptimTarget();
+  EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
+  const auto& gate_target = std::get<GateOptimTarget>(target);
+  EXPECT_EQ(gate_target.gate_type, GateType::CNOT);
 }
 
 TEST_F(ConfigBuilderTest, OptimTarget_GateFromFile) {
@@ -678,9 +682,11 @@ TEST_F(ConfigBuilderTest, OptimTarget_GateFromFile) {
 
   Config config = builder.build();
 
-  EXPECT_EQ(config.getOptimTargetType(), TargetType::GATE);
-  EXPECT_EQ(config.getOptimTargetGateType(), GateType::FILE);
-  EXPECT_EQ(config.getOptimTargetGateFile(), "/path/to/gate.dat");
+  const auto& target = config.getOptimTarget();
+  EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
+  const auto& gate_target = std::get<GateOptimTarget>(target);
+  EXPECT_EQ(gate_target.gate_type, GateType::FILE);
+  EXPECT_EQ(gate_target.gate_file, "/path/to/gate.dat");
 }
 
 TEST_F(ConfigBuilderTest, OptimTarget_PureState) {
@@ -695,9 +701,10 @@ TEST_F(ConfigBuilderTest, OptimTarget_PureState) {
 
   Config config = builder.build();
 
-  EXPECT_EQ(config.getOptimTargetType(), TargetType::PURE);
-
-  const auto& levels = config.getOptimTargetPurestateLevels();
+  const auto& target = config.getOptimTarget();
+  EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
+  const auto& pure_target = std::get<PureOptimTarget>(target);
+  const auto& levels = pure_target.purestate_levels;
   EXPECT_EQ(levels.size(), 3);
   EXPECT_EQ(levels[0], 0);
   EXPECT_EQ(levels[1], 1);
@@ -716,12 +723,8 @@ TEST_F(ConfigBuilderTest, OptimTarget_FromFile) {
 
   Config config = builder.build();
 
-  EXPECT_EQ(config.getOptimTargetType(), TargetType::FROMFILE);
-  EXPECT_EQ(config.getOptimTargetFile(), "/path/to/target.dat");
-
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<FileOptimTarget>(target));
-
   const auto& file_target = std::get<FileOptimTarget>(target);
   EXPECT_EQ(file_target.file, "/path/to/target.dat");
 }
@@ -736,8 +739,6 @@ TEST_F(ConfigBuilderTest, OptimTarget_DefaultPure) {
   )");
 
   Config config = builder.build();
-
-  EXPECT_EQ(config.getOptimTargetType(), TargetType::PURE);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
