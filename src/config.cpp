@@ -23,7 +23,7 @@ Config::Config(
   MPI_Comm comm_,
   std::stringstream& log_,
   bool quietmode_,
-  // All parameters as optionals
+  // General settings
   const std::optional<std::vector<size_t>>& nlevels_,
   const std::optional<std::vector<size_t>>& nessential_,
   const std::optional<size_t>& ntime_,
@@ -81,29 +81,25 @@ Config::Config(
 {
   MPI_Comm_rank(comm, &mpi_rank);
 
-  // First validate user-provided settings
-  if (ntime_.has_value() && ntime_.value() <= 0) {
-    exitWithError(mpi_rank, "ERROR: User-specified ntime must be positive, got " + std::to_string(ntime_.value()));
-  }
-
-  if (dt_.has_value() && dt_.value() <= 0) {
-    exitWithError(mpi_rank, "ERROR: User-specified dt must be positive, got " + std::to_string(dt_.value()));
-  }
-
-  // Apply defaults for basic settings
   if (!nlevels_.has_value()) {
     exitWithError(mpi_rank, "ERROR: nlevels cannot be empty");
   }
   nlevels = nlevels_.value();
   size_t num_osc = nlevels.size();
+  size_t num_pairs_osc = (num_osc - 1) * num_osc / 2;
 
   nessential = nessential_.value_or(nlevels);
   copyLast(nessential, num_osc);
 
+  if (ntime_.has_value() && ntime_.value() <= 0) {
+    exitWithError(mpi_rank, "ERROR: User-specified ntime must be positive, got " + std::to_string(ntime_.value()));
+  }
   ntime = ntime_.value_or(1000);
-  dt = dt_.value_or(0.1);
 
-  size_t num_pairs_osc = (num_osc - 1) * num_osc / 2;
+  if (dt_.has_value() && dt_.value() <= 0) {
+    exitWithError(mpi_rank, "ERROR: User-specified dt must be positive, got " + std::to_string(dt_.value()));
+  }
+  dt = dt_.value_or(0.1);
 
   if (!transfreq_.has_value()) {
     exitWithError(mpi_rank, "ERROR: transfreq cannot be empty");
@@ -137,21 +133,20 @@ Config::Config(
   convertInitialCondition(initialcondition_);
   setNumInitialConditions();
 
+  convertPiPulses(apply_pipulse_);
+
   hamiltonian_file_Hsys = hamiltonian_file_Hsys_.value_or("");
   hamiltonian_file_Hc = hamiltonian_file_Hc_.value_or("");
 
-  convertOptimTarget(optim_target_);
-  convertPiPulses(apply_pipulse_);
+  // Control and optimization parameters
+  oscillator_optimization.resize(num_osc);
 
-  // Initialize oscillators vector if needed
-  if (oscillator_optimization.size() != nlevels.size()) {
-    oscillator_optimization.resize(nlevels.size());
-  }
   convertControlSegments(indexed_control_segments_);
+  control_enforceBC = control_enforceBC_.value_or(true);
   convertControlInitializations(indexed_control_init_);
   convertIndexedControlBounds(indexed_control_bounds_);
   convertIndexedCarrierFreqs(indexed_carrier_frequencies_);
-  convertIndexedOutput(indexed_output_);
+  convertOptimTarget(optim_target_);
 
   gate_rot_freq = gate_rot_freq_.value_or(std::vector<double>{0.0});
   copyLast(gate_rot_freq, num_osc);
@@ -161,17 +156,6 @@ Config::Config(
   setOptimWeights(optim_weights_);
 
   control_initialization_file = std::nullopt; // Not used in current design
-
-  control_enforceBC = control_enforceBC_.value_or(true);
-  datadir = datadir_.value_or("./data_out");
-  output_frequency = output_frequency_.value_or(1);
-  optim_monitor_frequency = optim_monitor_frequency_.value_or(10);
-  runtype = runtype_.value_or(RunType::SIMULATION);
-  usematfree = usematfree_.value_or(false);
-  linearsolver_type = linearsolver_type_.value_or(LinearSolverType::GMRES);
-  linearsolver_maxiter = linearsolver_maxiter_.value_or(10);
-  timestepper_type = timestepper_type_.value_or(TimeStepperType::IMR);
-  rand_seed = rand_seed_.value_or(1234);
 
   tolerance = OptimTolerance{
     optim_atol_.value_or(1e-8),
@@ -192,6 +176,18 @@ Config::Config(
   };
 
   optim_regul_tik0 = optim_regul_tik0_.value_or(false);
+
+  // Output parameters
+  convertIndexedOutput(indexed_output_);
+  datadir = datadir_.value_or("./data_out");
+  output_frequency = output_frequency_.value_or(1);
+  optim_monitor_frequency = optim_monitor_frequency_.value_or(10);
+  runtype = runtype_.value_or(RunType::SIMULATION);
+  usematfree = usematfree_.value_or(false);
+  linearsolver_type = linearsolver_type_.value_or(LinearSolverType::GMRES);
+  linearsolver_maxiter = linearsolver_maxiter_.value_or(10);
+  timestepper_type = timestepper_type_.value_or(TimeStepperType::IMR);
+  rand_seed = rand_seed_.value_or(1234);
 
   // Run final validation and normalization
   finalize();
