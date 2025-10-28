@@ -157,7 +157,9 @@ Config::Config(
   copyLast(gate_rot_freq, num_osc);
 
   optim_objective = optim_objective_.value_or(ObjectiveType::JFROBENIUS);
-  optim_weights = optim_weights_.value_or(std::vector<double>{});
+
+  setOptimWeights(optim_weights_);
+
   control_initialization_file = std::nullopt; // Not used in current design
 
   // For now, set some basic defaults to prevent compilation errors
@@ -343,9 +345,7 @@ void Config::printConfig() const {
   std::cout << "optim_target = " << toString(target) << "\n";
 
   std::cout << "optim_objective = " << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\n";
-  if (!optim_weights.empty()) {
-    std::cout << "optim_weights = " << printVector(optim_weights) << "\n";
-  }
+  std::cout << "optim_weights = " << printVector(optim_weights) << "\n";
   std::cout << "optim_atol = " << tolerance.atol << "\n";
   std::cout << "optim_rtol = " << tolerance.rtol << "\n";
   std::cout << "optim_ftol = " << tolerance.ftol << "\n";
@@ -680,4 +680,14 @@ void Config::setNumInitialConditions() {
   if (!quietmode) {
     logOutputToRank0(mpi_rank, "Number of initial conditions: " + std::to_string(n_initial_conditions) + "\n");
   }
+}
+
+void Config::setOptimWeights(const std::optional<std::vector<double>>& optim_weights_) {
+  // Set optimization weights, default to uniform weights summing to one
+  optim_weights = optim_weights_.value_or(std::vector<double>{1.0});
+  copyLast(optim_weights, n_initial_conditions);
+  // Scale the weights such that they sum up to one: beta_i <- beta_i / (\sum_i beta_i)
+  double scaleweights = 0.0;
+  for (size_t i = 0; i < n_initial_conditions; i++) scaleweights += optim_weights[i];
+  for (size_t i = 0; i < n_initial_conditions; i++) optim_weights[i] = optim_weights[i] / scaleweights;
 }

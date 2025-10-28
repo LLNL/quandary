@@ -745,3 +745,23 @@ TEST_F(ConfigBuilderTest, OptimTarget_DefaultPure) {
   const auto& pure_target = std::get<PureOptimTarget>(target);
   EXPECT_TRUE(pure_target.purestate_levels.empty());
 }
+
+TEST_F(ConfigBuilderTest, OptimWeights) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2, 2
+    transfreq = 4.1, 4.1
+    rotfreq = 0.0, 0.0
+    optim_weights = 2.0, 1.0
+  )");
+
+  Config config = builder.build();
+
+  const auto& weights = config.getOptimWeights();
+  EXPECT_EQ(weights.size(), 4);
+  EXPECT_DOUBLE_EQ(weights[0], 0.4);
+  EXPECT_DOUBLE_EQ(weights[1], 0.2);
+  EXPECT_DOUBLE_EQ(weights[2], 0.2);
+  EXPECT_DOUBLE_EQ(weights[3], 0.2);
+}

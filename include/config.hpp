@@ -452,6 +452,7 @@ private:
     void convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed);
 
     void setNumInitialConditions();
+    void setOptimWeights(const std::optional<std::vector<double>>& optim_weights_);
 
     // Helper for indexed map conversion
     template<typename T>
