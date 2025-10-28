@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstddef>
 #include <iostream>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -185,7 +186,12 @@ Config::Config(
   linearsolver_type = linearsolver_type_.value_or(LinearSolverType::GMRES);
   linearsolver_maxiter = linearsolver_maxiter_.value_or(10);
   timestepper_type = timestepper_type_.value_or(TimeStepperType::IMR);
-  rand_seed = rand_seed_.value_or(1234);
+
+  rand_seed = rand_seed_.value_or(-1);
+  std::random_device rd;
+  if (rand_seed < 0){
+    rand_seed = rd();  // random non-reproducable seed
+  }
 
   // Run final validation and normalization
   finalize();
