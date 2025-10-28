@@ -304,12 +304,11 @@ class Config {
     int rand_seed;  ///< Fixed seed for the random number generator for reproducibility
 
   public:
-    // Constructor takes all validated parameters (to be called by ConfigBuilder)
     Config(
       MPI_Comm comm_,
       std::stringstream& log_,
       bool quietmode_,
-      // All parameters as optionals (except MPI/logging)
+      // General parameters
       const std::optional<std::vector<size_t>>& nlevels_,
       const std::optional<std::vector<size_t>>& nessential_,
       const std::optional<size_t>& ntime_,
@@ -326,13 +325,12 @@ class Config {
       const std::optional<std::vector<PiPulseConfig>>& apply_pipulse_,
       const std::optional<std::string>& hamiltonian_file_Hsys_,
       const std::optional<std::string>& hamiltonian_file_Hc_,
-      // Control parameters (using optional indexed data)
+      // Control and optimization parameters
       const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed_control_segments_,
       const std::optional<bool>& control_enforceBC_,
       const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& indexed_control_init_,
       const std::optional<std::map<int, std::vector<double>>>& indexed_control_bounds_,
       const std::optional<std::map<int, std::vector<double>>>& indexed_carrier_frequencies_,
-      // Optimization parameters
       const std::optional<OptimTargetConfig>& optim_target_,
       const std::optional<std::vector<double>>& gate_rot_freq_,
       const std::optional<ObjectiveType>& optim_objective_,
