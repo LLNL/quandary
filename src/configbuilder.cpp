@@ -161,14 +161,6 @@ Config ConfigBuilder::build() {
   );
 }
 
-// void Config::setRandSeed(int rand_seed_) {
-//   rand_seed = rand_seed_;
-//   if (rand_seed_ < 0){
-//     std::random_device rd;
-//     rand_seed = rd();  // random non-reproducable seed
-//   }
-// }
-
 // void Config::setOptimTarget(const std::string& value) {
 //   std::vector<std::string> target_str = Config::split(value);
 

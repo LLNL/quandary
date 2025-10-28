@@ -186,12 +186,7 @@ Config::Config(
   linearsolver_type = linearsolver_type_.value_or(LinearSolverType::GMRES);
   linearsolver_maxiter = linearsolver_maxiter_.value_or(10);
   timestepper_type = timestepper_type_.value_or(TimeStepperType::IMR);
-
-  rand_seed = rand_seed_.value_or(-1);
-  std::random_device rd;
-  if (rand_seed < 0){
-    rand_seed = rd();  // random non-reproducable seed
-  }
+  setRandSeed(rand_seed_);
 
   // Run final validation and normalization
   finalize();
@@ -681,4 +676,12 @@ void Config::setOptimWeights(const std::optional<std::vector<double>>& optim_wei
   double scaleweights = 0.0;
   for (size_t i = 0; i < n_initial_conditions; i++) scaleweights += optim_weights[i];
   for (size_t i = 0; i < n_initial_conditions; i++) optim_weights[i] = optim_weights[i] / scaleweights;
+}
+
+void Config::setRandSeed(std::optional<int> rand_seed_) {
+  rand_seed = rand_seed_.value_or(-1);
+  if (rand_seed_ < 0){
+    std::random_device rd;
+    rand_seed = rd();  // random non-reproducable seed
+  }
 }

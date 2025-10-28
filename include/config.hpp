@@ -456,6 +456,7 @@ private:
 
     void setNumInitialConditions();
     void setOptimWeights(const std::optional<std::vector<double>>& optim_weights_);
+    void setRandSeed(std::optional<int> rand_seed_);
 
     // Helper for indexed map conversion
     template<typename T>
