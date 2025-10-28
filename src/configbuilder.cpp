@@ -161,56 +161,6 @@ Config ConfigBuilder::build() {
   );
 }
 
-// void Config::setOptimTarget(const std::string& value) {
-//   std::vector<std::string> target_str = Config::split(value);
-
-//   if (target_str.empty()) {
-//     logErrorToRank0(mpi_rank, "No optimization target specified.");
-//     exit(1);
-//   }
-
-//   optim_target_type = convertFromString<TargetType>(target_str[0]);
-
-//   if (optim_target_type == TargetType::FROMFILE) {
-//     if (target_str.size() < 2) {
-//       logErrorToRank0(mpi_rank, "Target type 'file' requires a filename.");
-//       exit(1);
-//     }
-//     optim_target_file = target_str[1];
-//   } else if (optim_target_type == TargetType::GATE) {
-//     if (target_str.size() < 2) {
-//       logErrorToRank0(mpi_rank, "Target type 'gate' requires a gate name.");
-//       exit(1);
-//     }
-//     optim_target_gate_type = convertFromString<GateType>(target_str[1]);
-
-//     if (optim_target_gate_type == GateType::FILE) {
-//       if (target_str.size() < 3) {
-//         logErrorToRank0(mpi_rank, "Gate type 'file' requires a filename.");
-//         exit(1);
-//       }
-//       optim_target_gate_file = target_str[2];
-//     }
-//   } else if (optim_target_type == TargetType::PURE) {
-//     if (target_str.size() < 2) {
-//       logOutputToRank0(mpi_rank, "# Warning: You want to prepare a pure state, but didn't specify which one. Taking default: ground-state |0...0> \n");
-//       optim_target_purestate_levels = std::vector<size_t>(nlevels.size(), 0);
-//     } else {
-//       for (size_t i = 1; i < target_str.size(); i++) {
-//         optim_target_purestate_levels.push_back(convertFromString<size_t>(target_str[i]));
-//       }
-//       optim_target_purestate_levels.resize(nlevels.size(), nlevels.back());
-//       for (size_t i = 0; i < nlevels.size(); i++) {
-//         if (optim_target_purestate_levels[i] >= nlevels[i]) {
-//           logErrorToRank0(mpi_rank, "ERROR in config setting. The requested pure state target |" + std::to_string(optim_target_purestate_levels[i]) +
-//             "> exceeds the number of modeled levels for that oscillator (" + std::to_string(nlevels[i]) + ").\n");
-//           exit(1);
-//         }
-//       }
-//     }
-//   }
-// }
-
 namespace {
 
 std::string trimWhitespace(std::string s) {
