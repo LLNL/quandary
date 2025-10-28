@@ -283,7 +283,7 @@ class Config {
     std::vector<OscillatorOptimization> oscillator_optimization;  ///< Optimization configuration for each oscillator
     OptimTargetSettings target;  ///< Grouped optimization target configuration
     std::vector<double> gate_rot_freq;  ///< Frequency of rotation of the target gate, for each oscillator (GHz)
-    ObjectiveType optim_objective = ObjectiveType::JFROBENIUS;  ///< Objective function measure // TODO not used?
+    ObjectiveType optim_objective;  ///< Objective function measure
     std::vector<double> optim_weights;  ///< Weights for summing up the objective function
     OptimTolerance tolerance;  ///< Grouped optimization stopping criteria and iteration limits
     double optim_regul;  ///< Coefficient of Tikhonov regularization for the design variables

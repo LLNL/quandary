@@ -153,8 +153,9 @@ Config::Config(
   convertIndexedCarrierFreqs(indexed_carrier_frequencies_);
   convertIndexedOutput(indexed_output_);
 
-  // Apply remaining optimization defaults
-  gate_rot_freq = gate_rot_freq_.value_or(std::vector<double>{});
+  gate_rot_freq = gate_rot_freq_.value_or(std::vector<double>{0.0});
+  copyLast(gate_rot_freq, num_osc);
+
   optim_objective = optim_objective_.value_or(ObjectiveType::JFROBENIUS);
   optim_weights = optim_weights_.value_or(std::vector<double>{});
   control_initialization_file = std::nullopt; // Not used in current design
