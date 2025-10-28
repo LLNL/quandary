@@ -224,15 +224,6 @@ void Config::finalize() {
         " cannot exceed nlevels[" + std::to_string(i) + "] = " + std::to_string(nlevels[i]));
     }
   }
-
-  // Basic sanity checks
-  if (ntime <= 0) {
-    exitWithError(mpi_rank, "ntime must be positive, got " + std::to_string(ntime));
-  }
-
-  if (dt <= 0) {
-    exitWithError(mpi_rank, "dt must be positive, got " + std::to_string(dt));
-  }
 }
 
 Config Config::fromCfg(std::string filename, std::stringstream* log, bool quietmode) {
