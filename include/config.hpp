@@ -255,7 +255,7 @@ class Config {
     MPI_Comm comm; ///< MPI communicator for parallel operations.
     int mpi_rank; ///< MPI rank of the current process.
 
-    std::stringstream* log; ///< Pointer to log stream for output messages.
+    std::stringstream& log; ///< Reference to log stream for output messages.
     bool quietmode; ///< Flag to control verbose output.
 
     // General options

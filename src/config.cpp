@@ -77,7 +77,7 @@ Config::Config(
   const std::optional<int>& rand_seed_
 ) :
   comm(comm_),
-  log(&log_),
+  log(log_),
   quietmode(quietmode_)
 {
   MPI_Comm_rank(comm, &mpi_rank);
@@ -255,120 +255,120 @@ namespace {
 
 void Config::printConfig() const {
   std::string delim = ", ";
-  std::cout << "# Configuration settings\n";
-  std::cout << "# =============================================\n\n";
+  log << "# Configuration settings\n";
+  log << "# =============================================\n\n";
 
-  std::cout << "nlevels = " << printVector(nlevels) << "\n";
-  std::cout << "nessential = " << printVector(nessential) << "\n";
-  std::cout << "ntime = " << ntime << "\n";
-  std::cout << "dt = " << dt << "\n";
-  std::cout << "transfreq = " << printVector(transfreq) << "\n";
-  std::cout << "selfkerr = " << printVector(selfkerr) << "\n";
-  std::cout << "crosskerr = " << printVector(crosskerr) << "\n";
-  std::cout << "Jkl = " << printVector(Jkl) << "\n";
-  std::cout << "rotfreq = " << printVector(rotfreq) << "\n";
-  std::cout << "collapse_type = " << enumToString(collapse_type, LINDBLAD_TYPE_MAP) << "\n";
-  std::cout << "decay_time = " << printVector(decay_time) << "\n";
-  std::cout << "dephase_time = " << printVector(dephase_time) << "\n";
-  std::cout << "initialcondition = " << print(initial_condition) << "\n";
+  log << "nlevels = " << printVector(nlevels) << "\n";
+  log << "nessential = " << printVector(nessential) << "\n";
+  log << "ntime = " << ntime << "\n";
+  log << "dt = " << dt << "\n";
+  log << "transfreq = " << printVector(transfreq) << "\n";
+  log << "selfkerr = " << printVector(selfkerr) << "\n";
+  log << "crosskerr = " << printVector(crosskerr) << "\n";
+  log << "Jkl = " << printVector(Jkl) << "\n";
+  log << "rotfreq = " << printVector(rotfreq) << "\n";
+  log << "collapse_type = " << enumToString(collapse_type, LINDBLAD_TYPE_MAP) << "\n";
+  log << "decay_time = " << printVector(decay_time) << "\n";
+  log << "dephase_time = " << printVector(dephase_time) << "\n";
+  log << "initialcondition = " << print(initial_condition) << "\n";
 
   for (size_t i = 0; i < apply_pipulse.size(); ++i) {
     for (const auto& segment : apply_pipulse[i]) {
-      std::cout << "apply_pipulse = " << i
-                << ", " << segment.tstart
-                << ", " << segment.tstop
-                << ", " << segment.amp << "\n";
+      log << "apply_pipulse = " << i
+          << ", " << segment.tstart
+          << ", " << segment.tstop
+          << ", " << segment.amp << "\n";
     }
   }
   if (hamiltonian_file_Hsys.has_value()) {
-    std::cout << "hamiltonian_file_Hsys = " << hamiltonian_file_Hsys.value() << "\n";
+    log << "hamiltonian_file_Hsys = " << hamiltonian_file_Hsys.value() << "\n";
   }
   if (hamiltonian_file_Hc.has_value()) {
-    std::cout << "hamiltonian_file_Hc = " << hamiltonian_file_Hc.value() << "\n";
+    log << "hamiltonian_file_Hc = " << hamiltonian_file_Hc.value() << "\n";
   }
 
   // Optimization Parameters
-  std::cout << "\n// Optimization Parameters\n";
+  log << "\n// Optimization Parameters\n";
   for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].control_segments.empty()) {
       const auto& seg = oscillator_optimization[i].control_segments[0];
-      std::cout << "control_segments" << i << " = "
-                << enumToString(seg.type, CONTROL_TYPE_MAP);
+      log << "control_segments" << i << " = "
+          << enumToString(seg.type, CONTROL_TYPE_MAP);
       // Add segment-specific parameters
       if (std::holds_alternative<SplineParams>(seg.params)) {
         auto params = std::get<SplineParams>(seg.params);
-        std::cout << ", " << params.nspline << ", " << params.tstart << ", " << params.tstop;
+        log << ", " << params.nspline << ", " << params.tstart << ", " << params.tstop;
       } else if (std::holds_alternative<SplineAmpParams>(seg.params)) {
         auto params = std::get<SplineAmpParams>(seg.params);
-        std::cout << ", " << params.nspline << ", " << params.scaling << ", " << params.tstart << ", " << params.tstop;
+        log << ", " << params.nspline << ", " << params.scaling << ", " << params.tstart << ", " << params.tstop;
       } else if (std::holds_alternative<StepParams>(seg.params)) {
         auto params = std::get<StepParams>(seg.params);
-        std::cout << ", " << params.step_amp1 << ", " << params.step_amp2 << ", " << params.tramp << ", "
+        log << ", " << params.step_amp1 << ", " << params.step_amp2 << ", " << params.tramp << ", "
           << params.tstart << ", " << params.tstop;
       }
-      std::cout << "\n";
+      log << "\n";
     }
   }
-  std::cout << "control_enforceBC = " << (control_enforceBC ? "true" : "false") << "\n";
+  log << "control_enforceBC = " << (control_enforceBC ? "true" : "false") << "\n";
   for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].control_initializations.empty()) {
       const auto& init = oscillator_optimization[i].control_initializations[0];
-      std::cout << "control_initialization" << i << " = " << print(init) << "\n";
+      log << "control_initialization" << i << " = " << print(init) << "\n";
     }
   }
   for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].control_bounds.empty()) {
-      std::cout << "control_bounds" << i << " = " << printVector(oscillator_optimization[i].control_bounds) << "\n";
+      log << "control_bounds" << i << " = " << printVector(oscillator_optimization[i].control_bounds) << "\n";
     }
   }
   for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].carrier_frequencies.empty()) {
-      std::cout << "carrier_frequency" << i << " = " << printVector(oscillator_optimization[i].carrier_frequencies) << "\n";
+      log << "carrier_frequency" << i << " = " << printVector(oscillator_optimization[i].carrier_frequencies) << "\n";
     }
   }
 
-  std::cout << "optim_target = " << toString(target) << "\n";
-  std::cout << "gate_rot_freq = " << printVector(gate_rot_freq) << "\n";
-  std::cout << "optim_objective = " << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\n";
-  std::cout << "optim_weights = " << printVector(optim_weights) << "\n";
-  std::cout << "optim_atol = " << tolerance.atol << "\n";
-  std::cout << "optim_rtol = " << tolerance.rtol << "\n";
-  std::cout << "optim_ftol = " << tolerance.ftol << "\n";
-  std::cout << "optim_inftol = " << tolerance.inftol << "\n";
-  std::cout << "optim_maxiter = " << tolerance.maxiter << "\n";
-  std::cout << "optim_regul = " << optim_regul << "\n";
-  std::cout << "optim_penalty = " << penalty.penalty << "\n";
-  std::cout << "optim_penalty_param = " << penalty.penalty_param << "\n";
-  std::cout << "optim_penalty_dpdm = " << penalty.penalty_dpdm << "\n";
-  std::cout << "optim_penalty_energy = " << penalty.penalty_energy << "\n";
-  std::cout << "optim_penalty_variation = " << penalty.penalty_variation << "\n";
-  std::cout << "optim_regul_tik0 = " << (optim_regul_tik0 ? "true" : "false") << "\n";
+  log << "optim_target = " << toString(target) << "\n";
+  log << "gate_rot_freq = " << printVector(gate_rot_freq) << "\n";
+  log << "optim_objective = " << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\n";
+  log << "optim_weights = " << printVector(optim_weights) << "\n";
+  log << "optim_atol = " << tolerance.atol << "\n";
+  log << "optim_rtol = " << tolerance.rtol << "\n";
+  log << "optim_ftol = " << tolerance.ftol << "\n";
+  log << "optim_inftol = " << tolerance.inftol << "\n";
+  log << "optim_maxiter = " << tolerance.maxiter << "\n";
+  log << "optim_regul = " << optim_regul << "\n";
+  log << "optim_penalty = " << penalty.penalty << "\n";
+  log << "optim_penalty_param = " << penalty.penalty_param << "\n";
+  log << "optim_penalty_dpdm = " << penalty.penalty_dpdm << "\n";
+  log << "optim_penalty_energy = " << penalty.penalty_energy << "\n";
+  log << "optim_penalty_variation = " << penalty.penalty_variation << "\n";
+  log << "optim_regul_tik0 = " << (optim_regul_tik0 ? "true" : "false") << "\n";
 
   // Output and runtypes
-  std::cout << "\n// Output and runtypes\n";
-  std::cout << "datadir = " << datadir << "\n";
+  log << "\n// Output and runtypes\n";
+  log << "datadir = " << datadir << "\n";
 
   for (size_t i = 0; i < output.size(); ++i) {
     if (!output[i].empty()) {
-      std::cout << "output" << i << " = ";
+      log << "output" << i << " = ";
       for (size_t j = 0; j < output[i].size(); ++j) {
-        std::cout << enumToString(output[i][j], OUTPUT_TYPE_MAP);
-        if (j < output[i].size() - 1) std::cout << ", ";
+        log << enumToString(output[i][j], OUTPUT_TYPE_MAP);
+        if (j < output[i].size() - 1) log << ", ";
       }
-      std::cout << "\n";
+      log << "\n";
     }
   }
 
-  std::cout << "output_frequency = " << output_frequency << "\n";
-  std::cout << "optim_monitor_frequency = " << optim_monitor_frequency << "\n";
-  std::cout << "runtype = " << enumToString(runtype, RUN_TYPE_MAP) << "\n";
-  std::cout << "usematfree = " << (usematfree ? "true" : "false") << "\n";
-  std::cout << "linearsolver_type = " << enumToString(linearsolver_type, LINEAR_SOLVER_TYPE_MAP) << "\n";
-  std::cout << "linearsolver_maxiter = " << linearsolver_maxiter << "\n";
-  std::cout << "timestepper = " << enumToString(timestepper_type, TIME_STEPPER_TYPE_MAP) << "\n";
-  std::cout << "rand_seed = " << rand_seed << "\n";
+  log << "output_frequency = " << output_frequency << "\n";
+  log << "optim_monitor_frequency = " << optim_monitor_frequency << "\n";
+  log << "runtype = " << enumToString(runtype, RUN_TYPE_MAP) << "\n";
+  log << "usematfree = " << (usematfree ? "true" : "false") << "\n";
+  log << "linearsolver_type = " << enumToString(linearsolver_type, LINEAR_SOLVER_TYPE_MAP) << "\n";
+  log << "linearsolver_maxiter = " << linearsolver_maxiter << "\n";
+  log << "timestepper = " << enumToString(timestepper_type, TIME_STEPPER_TYPE_MAP) << "\n";
+  log << "rand_seed = " << rand_seed << "\n";
 
-  std::cout << "# =============================================\n\n";
+  log << "# =============================================\n\n";
 }
 
 // Template helper implementation
