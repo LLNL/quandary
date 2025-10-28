@@ -145,7 +145,8 @@ Config ConfigBuilder::build() {
     optim_penalty_dpdm,
     optim_penalty_energy,
     optim_penalty_variation,
-    optim_regul_tik0,
+    // Use deprecated form if optim_regul_tik0 not set
+    optim_regul_tik0.has_value() ? optim_regul_tik0 : optim_regul_interpolate,
     // Output parameters
     datadir,
     indexed_output,

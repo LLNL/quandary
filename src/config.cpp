@@ -162,10 +162,7 @@ Config::Config(
 
   control_initialization_file = std::nullopt; // Not used in current design
 
-  // For now, set some basic defaults to prevent compilation errors
   control_enforceBC = control_enforceBC_.value_or(true);
-  optim_regul = optim_regul_.value_or(1e-4);
-  optim_regul_tik0 = optim_regul_tik0_.value_or(false);
   datadir = datadir_.value_or("./data_out");
   output_frequency = output_frequency_.value_or(1);
   optim_monitor_frequency = optim_monitor_frequency_.value_or(10);
@@ -176,7 +173,6 @@ Config::Config(
   timestepper_type = timestepper_type_.value_or(TimeStepperType::IMR);
   rand_seed = rand_seed_.value_or(1234);
 
-  // Build tolerance and penalty structs
   tolerance = OptimTolerance{
     optim_atol_.value_or(1e-8),
     optim_rtol_.value_or(1e-4),
@@ -185,6 +181,8 @@ Config::Config(
     optim_maxiter_.value_or(200)
   };
 
+  optim_regul = optim_regul_.value_or(1e-4);
+
   penalty = OptimPenalty{
     optim_penalty_.value_or(0.0),
     optim_penalty_param_.value_or(0.5),
@@ -192,6 +190,8 @@ Config::Config(
     optim_penalty_energy_.value_or(0.0),
     optim_penalty_variation_.value_or(0.01)
   };
+
+  optim_regul_tik0 = optim_regul_tik0_.value_or(false);
 
   // Run final validation and normalization
   finalize();

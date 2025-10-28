@@ -96,11 +96,11 @@ using InitialCondition = std::variant<
  * Groups all optimization stopping criteria and iteration limits.
  */
 struct OptimTolerance {
-  double atol = 1e-8;      ///< Absolute gradient tolerance
-  double rtol = 1e-4;      ///< Relative gradient tolerance
-  double ftol = 1e-8;      ///< Final time cost tolerance
-  double inftol = 1e-5;    ///< Infidelity tolerance
-  size_t maxiter = 200;       ///< Maximum iterations
+  double atol;      ///< Absolute gradient tolerance
+  double rtol;      ///< Relative gradient tolerance
+  double ftol;      ///< Final time cost tolerance
+  double inftol;    ///< Infidelity tolerance
+  size_t maxiter;   ///< Maximum iterations
 };
 
 /**
@@ -109,11 +109,11 @@ struct OptimTolerance {
  * Groups all penalty terms used for control pulse regularization.
  */
 struct OptimPenalty {
-  double penalty = 0.0;           ///< First integral penalty coefficient
-  double penalty_param = 0.5;     ///< Gaussian variance parameter
-  double penalty_dpdm = 0.0;      ///< Second derivative penalty coefficient
-  double penalty_energy = 0.0;    ///< Energy penalty coefficient
-  double penalty_variation = 0.01; ///< Amplitude variation penalty coefficient
+  double penalty;           ///< First integral penalty coefficient
+  double penalty_param;     ///< Gaussian variance parameter
+  double penalty_dpdm;      ///< Second derivative penalty coefficient
+  double penalty_energy;    ///< Energy penalty coefficient
+  double penalty_variation; ///< Amplitude variation penalty coefficient
 };
 
 struct GateOptimTarget {
@@ -289,7 +289,6 @@ class Config {
     double optim_regul;  ///< Coefficient of Tikhonov regularization for the design variables
     OptimPenalty penalty;  ///< Grouped optimization penalty coefficients
     bool optim_regul_tik0;  ///< Switch to use Tikhonov regularization with ||x - x_0||^2 instead of ||x||^2
-    // bool optim_regul_interpolate = false;  ///< TODO deprecated version
 
     // Output and runtypes
     std::string datadir;  ///< Directory for output files
