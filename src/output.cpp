@@ -54,7 +54,7 @@ Output::Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, in
   /* Check the output strings for each oscillator to determine which files should be written */
   output = config.getOutput();
   for (int i=0; i<noscillators; i++) { // iterates over oscillators
-    for (auto output_type : output[i]) { // iterates over output stings for this oscillator
+    for (auto output_type : output[i]) { // iterates over output types for this oscillator
       switch (output_type) {
         case OutputType::EXPECTED_ENERGY: writeExpectedEnergy[i] = true;
         case OutputType::EXPECTED_ENERGY_COMPOSITE: writeExpectedEnergy_comp = true;

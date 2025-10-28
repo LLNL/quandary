@@ -176,8 +176,8 @@ Config::Config(
   optim_regul_tik0 = optim_regul_tik0_.value_or(false);
 
   // Output parameters
-  convertIndexedOutput(indexed_output_);
   datadir = datadir_.value_or("./data_out");
+  convertIndexedOutput(indexed_output_);
   output_frequency = output_frequency_.value_or(1);
   optim_monitor_frequency = optim_monitor_frequency_.value_or(10);
   runtype = runtype_.value_or(RunType::SIMULATION);
