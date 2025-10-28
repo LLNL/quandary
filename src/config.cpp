@@ -466,46 +466,46 @@ void Config::convertInitialCondition(const std::optional<InitialConditionConfig>
 }
 
 void Config::convertOptimTarget(const std::optional<OptimTargetConfig>& config) {
-  if (config.has_value()) {
-    switch (config->target_type) {
-      case TargetType::GATE: {
-        GateOptimTarget gate_target;
-        gate_target.gate_type = config->gate_type.value_or(GateType::NONE);
-        gate_target.gate_file = config->gate_file.value_or("");
-        target = gate_target;
-        break;
-      }
-      case TargetType::PURE: {
-        PureOptimTarget pure_target;
-        if (config->levels.empty()) {
-          logOutputToRank0(mpi_rank, "# Warning: You want to prepare a pure state, but didn't specify which one."
-            " Taking default: ground-state |0...0> \n");
-          pure_target.purestate_levels = std::vector<size_t>(nlevels.size(), 0);
-        }
-        for (auto level : config->levels) {
-          pure_target.purestate_levels.push_back(static_cast<size_t>(level));
-        }
-        pure_target.purestate_levels.resize(nlevels.size(), nlevels.back());
-        for (size_t i = 0; i < nlevels.size(); i++) {
-          if (pure_target.purestate_levels[i] >= nlevels[i]) {
-            exitWithError(mpi_rank, "ERROR in config setting. The requested pure state target |" +
-              std::to_string(pure_target.purestate_levels[i]) +
-              "> exceeds the number of modeled levels for that oscillator (" +
-              std::to_string(nlevels[i]) + ").\n");
-          }
-        }
-        target = pure_target;
-        break;
-      }
-      case TargetType::FROMFILE: {
-        FileOptimTarget file_target;
-        file_target.file = config->filename.value_or("");
-        target = file_target;
-        break;
-      }
-    }
-  } else {
+  if (!config.has_value()) {
     target = PureOptimTarget{};
+    return;
+  }
+  switch (config->target_type) {
+    case TargetType::GATE: {
+      GateOptimTarget gate_target;
+      gate_target.gate_type = config->gate_type.value_or(GateType::NONE);
+      gate_target.gate_file = config->gate_file.value_or("");
+      target = gate_target;
+      break;
+    }
+    case TargetType::PURE: {
+      PureOptimTarget pure_target;
+      if (config->levels.empty()) {
+        logOutputToRank0(mpi_rank, "# Warning: You want to prepare a pure state, but didn't specify which one."
+          " Taking default: ground-state |0...0> \n");
+        pure_target.purestate_levels = std::vector<size_t>(nlevels.size(), 0);
+      }
+      for (auto level : config->levels) {
+        pure_target.purestate_levels.push_back(static_cast<size_t>(level));
+      }
+      pure_target.purestate_levels.resize(nlevels.size(), nlevels.back());
+      for (size_t i = 0; i < nlevels.size(); i++) {
+        if (pure_target.purestate_levels[i] >= nlevels[i]) {
+          exitWithError(mpi_rank, "ERROR in config setting. The requested pure state target |" +
+            std::to_string(pure_target.purestate_levels[i]) +
+            "> exceeds the number of modeled levels for that oscillator (" +
+            std::to_string(nlevels[i]) + ").\n");
+        }
+      }
+      target = pure_target;
+      break;
+    }
+    case TargetType::FROMFILE: {
+      FileOptimTarget file_target;
+      file_target.file = config->filename.value_or("");
+      target = file_target;
+      break;
+    }
   }
 }
 
