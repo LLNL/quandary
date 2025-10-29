@@ -684,7 +684,7 @@ void Config::setNumInitialConditions() {
     if (std::holds_alternative<BasisInitialCondition>(initial_condition)  ) {
       // if Schroedinger solver: ninit = N, do nothing.
       // else Lindblad solver: ninit = N^2
-      if (collapse_type == LindbladType::NONE) n_initial_conditions = (int) pow(n_initial_conditions,2.0);
+      if (collapse_type != LindbladType::NONE) n_initial_conditions = (int) pow(n_initial_conditions,2.0);
     }
   }
   if (!quietmode) {
