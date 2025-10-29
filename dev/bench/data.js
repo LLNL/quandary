@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1761160908249,
+  "lastUpdate": 1761770369745,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1803,6 +1803,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4263.4,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Tara Drwenski",
+            "username": "tdrwenski",
+            "email": "tdrwenski@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "d9d958802a4a9eb6975336202ddc17c34d435b38",
+          "message": "Merge pull request #86 from LLNL/set-gradient-tolerance\n\nAdd configuration option to set gradient tolerance.",
+          "timestamp": "2025-10-29T20:12:58Z",
+          "url": "https://github.com/LLNL/quandary/commit/d9d958802a4a9eb6975336202ddc17c34d435b38"
+        },
+        "date": 1761770368733,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7572061731480062,
+            "range": "0.24356127146155146",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 87.71,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 5.321204585954547,
+            "range": "0.15846197219784336",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4265.1,
             "unit": "MB"
           }
         ]
