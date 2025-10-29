@@ -195,11 +195,6 @@ Config::Config(
 Config::~Config(){}
 
 void Config::finalize() {
-  // Basic domain requirements
-  if (nlevels.empty()) {
-    exitWithError(mpi_rank, "ERROR: nlevels cannot be empty");
-  }
-
   // Hamiltonian file + matrix-free compatibility check
   if ((hamiltonian_file_Hsys.has_value() || hamiltonian_file_Hc.has_value()) && usematfree) {
     if (!quietmode) {
