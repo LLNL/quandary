@@ -467,7 +467,12 @@ InitialCondition Config::convertInitialCondition(const InitialConditionConfig& c
 // Conversion helper implementations
 void Config::convertInitialCondition(const std::optional<InitialConditionConfig>& config) {
   if (!config.has_value()) {
-    initial_condition = BasisInitialCondition{}; // Default
+    // Default: BasisInitialCondition with all oscillators
+    std::vector<size_t> all_oscillators;
+    for (size_t i = 0; i < nlevels.size(); i++) {
+      all_oscillators.push_back(i);
+    }
+    initial_condition = BasisInitialCondition{all_oscillators};
     return;
   }
 
@@ -674,17 +679,29 @@ void Config::setNumInitialConditions() {
     }
     n_initial_conditions +=1;
   }
-  else if (std::holds_alternative<DiagonalInitialCondition>(initial_condition) ||
-           std::holds_alternative<BasisInitialCondition>(initial_condition) ) {
+  else if (std::holds_alternative<DiagonalInitialCondition>(initial_condition)) {
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
+    const auto& diag_init = std::get<DiagonalInitialCondition>(initial_condition);
+    const auto& osc_IDs = diag_init.osc_IDs;
+
     n_initial_conditions = 1;
-    for (size_t oscilID = 0; oscilID<nlevels.size(); oscilID++){
+    for (size_t oscilID : osc_IDs) {
       if (oscilID < nessential.size()) n_initial_conditions *= nessential[oscilID];
     }
-    if (std::holds_alternative<BasisInitialCondition>(initial_condition)  ) {
-      // if Schroedinger solver: ninit = N, do nothing.
-      // else Lindblad solver: ninit = N^2
-      if (collapse_type != LindbladType::NONE) n_initial_conditions = (int) pow(n_initial_conditions,2.0);
+  }
+  else if (std::holds_alternative<BasisInitialCondition>(initial_condition)) {
+    /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
+    const auto& basis_init = std::get<BasisInitialCondition>(initial_condition);
+    const auto& osc_IDs = basis_init.osc_IDs;
+
+    n_initial_conditions = 1;
+    for (size_t oscilID : osc_IDs) {
+      if (oscilID < nessential.size()) n_initial_conditions *= nessential[oscilID];
+    }
+    // if Schroedinger solver: ninit = N, do nothing.
+    // else Lindblad solver: ninit = N^2
+    if (collapse_type != LindbladType::NONE) {
+      n_initial_conditions = (int) pow(n_initial_conditions, 2.0);
     }
   }
   if (!quietmode) {

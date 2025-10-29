@@ -322,8 +322,8 @@ TEST_F(ConfigBuilderTest, InitialCondition_Basis_Lindblad) {
   EXPECT_TRUE(std::holds_alternative<BasisInitialCondition>(initcond));
   const auto& basis_init = std::get<BasisInitialCondition>(initcond);
   EXPECT_EQ(basis_init.osc_IDs, std::vector<size_t>({1}));
-  // For Lindblad solver, n_initial_conditions = nessential[1] = 2
-  EXPECT_EQ(config.getNInitialConditions(), 2);
+  // For Lindblad solver, n_initial_conditions = nessential[1]^2 = 2^2 = 4
+  EXPECT_EQ(config.getNInitialConditions(), 4);
 }
 
 TEST_F(ConfigBuilderTest, ParsePiPulseSettings_Structure) {
