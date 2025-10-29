@@ -99,7 +99,7 @@ std::vector<std::vector<OutputType>> ConfigBuilder::convertIndexedToOutputVector
 }
 
 Config ConfigBuilder::build() {
-  // ConfigBuilder now just passes parsed data to Config
+  // ConfigBuilder passes parsed data to Config
   // Config handles validation, defaults, and conversions
 
   return Config(
@@ -123,7 +123,7 @@ Config ConfigBuilder::build() {
     apply_pipulse,
     hamiltonian_file_Hsys,
     hamiltonian_file_Hc,
-    // Indexed control parameters (pass optionals directly)
+    // Indexed control parameters
     indexed_control_segments,
     control_enforceBC,
     indexed_control_init,
@@ -234,7 +234,6 @@ bool ConfigBuilder::handleIndexedSetting(const std::string& key, const std::stri
   std::string base_key = key.substr(0, index_pos);
   int index = std::stoi(key.substr(index_pos));
 
-  // Use the unified indexed setters pattern
   if (indexed_setters.count(base_key)) {
     try {
       indexed_setters[base_key](index, value);
