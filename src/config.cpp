@@ -716,7 +716,7 @@ void Config::setOptimWeights(const std::optional<std::vector<double>>& optim_wei
 
 void Config::setRandSeed(std::optional<int> rand_seed_) {
   rand_seed = rand_seed_.value_or(-1);
-  if (rand_seed_ < 0){
+  if (rand_seed < 0){
     std::random_device rd;
     rand_seed = rd();  // random non-reproducable seed
   }
