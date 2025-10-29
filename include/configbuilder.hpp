@@ -168,9 +168,6 @@ private:
     else if constexpr (is_vector_v<T>) {
       return parseVector<T>(str);
     }
-    else if constexpr (std::is_enum_v<T>) {
-      return parseEnum<T>(str);
-    }
     else {
       static_assert(false, "Unsupported type for convertFromString");
     }
@@ -187,11 +184,6 @@ private:
     }
     return vec;
   }
-
-  // Enum types
-  template<typename EnumType>
-  EnumType parseEnum(const std::string& str);
-
 
   // Enum converter specializations
   template<>
