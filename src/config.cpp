@@ -401,6 +401,16 @@ InitialCondition Config::convertInitialCondition(const InitialConditionConfig& c
     }
   }
 
+  // If no params are given for BASIS, ENSEMBLE, or DIAGONAL, default to all oscillators
+  auto init_cond_IDs = config.params;
+  if (init_cond_IDs.empty() && (config.type == InitialConditionType::BASIS ||
+      config.type == InitialConditionType::ENSEMBLE ||
+      config.type == InitialConditionType::DIAGONAL)) {
+      for (size_t i = 0; i < nlevels.size(); i++) {
+        init_cond_IDs.push_back(i);
+      }
+  }
+
   switch (config.type) {
     case InitialConditionType::FROMFILE:
       if (!config.filename.has_value()) {
@@ -424,24 +434,24 @@ InitialCondition Config::convertInitialCondition(const InitialConditionConfig& c
     case InitialConditionType::BASIS:
       if (collapse_type == LindbladType::NONE) {
         // DIAGONAL and BASIS initial conditions in the Schroedinger case are the same. Overwrite it to DIAGONAL
-        return DiagonalInitialCondition{params};
+        return DiagonalInitialCondition{init_cond_IDs};
       }
-      return BasisInitialCondition{params};
+      return BasisInitialCondition{init_cond_IDs};
 
     case InitialConditionType::ENSEMBLE:
-      if (params.back() >= nlevels.size()) {
+      if (init_cond_IDs.back() >= nlevels.size()) {
         exitWithError(mpi_rank, "ERROR: Last element in initialcondition params exceeds number of oscillators");
       }
 
-      for (size_t i = 1; i < params.size()-1; i++){
-        if (params[i]+1 != params[i+1]) {
+      for (size_t i = 1; i < init_cond_IDs.size()-1; i++){
+        if (init_cond_IDs[i]+1 != init_cond_IDs[i+1]) {
           exitWithError(mpi_rank, "ERROR: List of oscillators for ensemble initialization should be consecutive!\n");
         }
       }
-      return EnsembleInitialCondition{params};
+      return EnsembleInitialCondition{init_cond_IDs};
 
     case InitialConditionType::DIAGONAL:
-      return DiagonalInitialCondition{params};
+      return DiagonalInitialCondition{init_cond_IDs};
 
     case InitialConditionType::THREESTATES:
       return ThreeStatesInitialCondition{};
