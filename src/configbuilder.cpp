@@ -420,6 +420,7 @@ std::vector<ControlInitializationConfig> ConfigBuilder::convertFromString<std::v
     switch (initialization.init_type) {
       case ControlInitializationType::FILE:
         initialization.filename = parts[i];
+        initializations.push_back(initialization);
         return initializations;
       case ControlInitializationType::CONSTANT:
       case ControlInitializationType::RANDOM:

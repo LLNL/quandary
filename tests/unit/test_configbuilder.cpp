@@ -609,6 +609,26 @@ TEST_F(ConfigBuilderTest, ControlInitialization) {
   EXPECT_DOUBLE_EQ(params4_1.phase, 6.1);
 }
 
+TEST_F(ConfigBuilderTest, ControlInitialization_File) {
+  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+
+  builder.loadFromString(R"(
+    nlevels = 2
+    transfreq = 4.1
+    rotfreq = 0.0
+    control_initialization0 = file, params.dat
+  )");
+
+  Config config = builder.build();
+
+  EXPECT_EQ(config.getOscillators().size(), 1);
+  const auto& osc0 = config.getOscillator(0);
+  EXPECT_EQ(osc0.control_initializations.size(), 1);
+  EXPECT_TRUE(std::holds_alternative<ControlSegmentInitializationFile>(osc0.control_initializations[0]));
+  auto params0 = std::get<ControlSegmentInitializationFile>(osc0.control_initializations[0]);
+  EXPECT_EQ(params0.filename, "params.dat");
+}
+
 TEST_F(ConfigBuilderTest, ControlBounds) {
   ConfigBuilder builder(MPI_COMM_WORLD, log, true);
 
