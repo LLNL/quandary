@@ -2,11 +2,12 @@ cmake_minimum_required(VERSION 3.23)
 
 project(
     Quandary
-    VERSION 4.3
+    VERSION 4.4
     LANGUAGES CXX C
 )
 set(PROJECT_VERSION_SUFFIX "-dev")
 set(FULL_VERSION "${PROJECT_VERSION}${PROJECT_VERSION_SUFFIX}")
+set(QUANDARY_GIT_SHA "")
 
 option(BUILD_QUANDARY "Build Quandary targets" ON)
 
@@ -42,6 +43,20 @@ if (NOT BLT_LOADED)
 
   message(STATUS "BLT Source Directory: ${BLT_SOURCE_DIR}")
   include(${BLT_SOURCE_DIR}/SetupBLT.cmake)
+endif()
+
+# Get git information using BLT macros
+find_package(Git QUIET)
+if(Git_FOUND)
+  blt_is_git_repo(OUTPUT_STATE is_git_repo)
+
+  if(${is_git_repo})
+    blt_git_hashcode(HASHCODE git_sha RETURN_CODE rc)
+    if(NOT ${rc} EQUAL 0)
+      set(git_sha "unknown")
+    endif()
+    set(QUANDARY_GIT_SHA ${git_sha})
+  endif()
 endif()
 
 # Configure version header
