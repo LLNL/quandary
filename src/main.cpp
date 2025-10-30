@@ -28,6 +28,7 @@
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
+#define HESSIAN_COMPUTATION 0
 #define EPS 1e-5          // Epsilon for Finite Differences
 
 int main(int argc,char **argv)
@@ -655,6 +656,46 @@ int main(int argc,char **argv)
 
   printf("\nMax. Finite Difference error: %1.14e\n\n", max_err);
   
+#endif
+
+
+#if HESSIAN_COMPUTATION
+    /* Hessian computation */
+    int sizex = 0;
+    VecGetSize(xinit, &sizex);
+    // for (int i=0; i<sizex; i++) {
+    for (int i=1085; i<sizex; i++) {
+      printf("Hessian for index %d\n", i);
+
+      Vec ei, Hei;
+      // Create unit vector ei
+      VecCreateSeq(PETSC_COMM_SELF, sizex, &ei);
+      VecSetFromOptions(ei);
+      VecZeroEntries(ei);
+      VecSetValue(ei, i, 1.0, INSERT_VALUES);
+      VecAssemblyBegin(ei);
+      VecAssemblyEnd(ei);
+
+      VecCreateSeq(PETSC_COMM_SELF, sizex, &Hei);
+      VecSetUp(Hei);
+      VecZeroEntries(Hei);
+
+      optimctx->evalHessVec(xinit, ei, Hei);
+
+      // Output Hessian column to file 
+      if (mpirank_world == 0) {
+        snprintf(filename, 254, "%s/hessian_col_%04d.dat", output->datadir.c_str(), i);
+        FILE* hessfile = fopen(filename, "w");
+        double hessval;
+        for (int j=0; j<sizex; j++) {
+          VecGetValues(Hei, 1, &j, &hessval);
+          fprintf(hessfile, "%1.14e\n", hessval);
+        }
+        fclose(hessfile);
+      }
+      VecDestroy(&ei);
+      VecDestroy(&Hei);
+    }
 #endif
 
 
