@@ -95,12 +95,12 @@ Config::Config(
   if (ntime_.has_value() && ntime_.value() <= 0) {
     exitWithError(mpi_rank, "ERROR: User-specified ntime must be positive, got " + std::to_string(ntime_.value()));
   }
-  ntime = ntime_.value_or(1000);
+  if (ntime_.has_value()) ntime = ntime_.value();
 
   if (dt_.has_value() && dt_.value() <= 0) {
     exitWithError(mpi_rank, "ERROR: User-specified dt must be positive, got " + std::to_string(dt_.value()));
   }
-  dt = dt_.value_or(0.1);
+  if (dt_.has_value()) dt = dt_.value();
 
   if (!transfreq_.has_value()) {
     exitWithError(mpi_rank, "ERROR: transfreq cannot be empty");
@@ -123,7 +123,7 @@ Config::Config(
   rotfreq = rotfreq_.value();
   copyLast(rotfreq, num_osc);
 
-  collapse_type = collapse_type_.value_or(LindbladType::NONE);
+  if (collapse_type_.has_value()) collapse_type = collapse_type_.value();
 
   decay_time = decay_time_.value_or(std::vector<double>(num_osc, 0.0));
   copyLast(decay_time, num_osc);
@@ -143,49 +143,47 @@ Config::Config(
   oscillator_optimization.resize(num_osc);
 
   convertControlSegments(indexed_control_segments_);
-  control_enforceBC = control_enforceBC_.value_or(true);
+  if (control_enforceBC_.has_value()) control_enforceBC = control_enforceBC_.value();
   convertControlInitializations(indexed_control_init_);
   convertIndexedControlBounds(indexed_control_bounds_);
   convertIndexedCarrierFreqs(indexed_carrier_frequencies_);
   convertOptimTarget(optim_target_);
 
-  gate_rot_freq = gate_rot_freq_.value_or(std::vector<double>{0.0});
+  if (gate_rot_freq_.has_value()) gate_rot_freq = gate_rot_freq_.value();
   copyLast(gate_rot_freq, num_osc);
 
-  optim_objective = optim_objective_.value_or(ObjectiveType::JFROBENIUS);
+  if (optim_objective_.has_value()) optim_objective = optim_objective_.value();
 
   setOptimWeights(optim_weights_);
 
-  tolerance = OptimTolerance{
-    optim_atol_.value_or(1e-8),
-    optim_rtol_.value_or(1e-4),
-    optim_ftol_.value_or(1e-8),
-    optim_inftol_.value_or(1e-5),
-    optim_maxiter_.value_or(200)
-  };
+  tolerance = OptimTolerance{};
+  if (optim_atol_.has_value()) tolerance.atol = optim_atol_.value();
+  if (optim_rtol_.has_value()) tolerance.rtol = optim_rtol_.value();
+  if (optim_ftol_.has_value()) tolerance.ftol = optim_ftol_.value();
+  if (optim_inftol_.has_value()) tolerance.inftol = optim_inftol_.value();
+  if (optim_maxiter_.has_value()) tolerance.maxiter = optim_maxiter_.value();
 
-  optim_regul = optim_regul_.value_or(1e-4);
+  if (optim_regul_.has_value()) optim_regul = optim_regul_.value();
 
-  penalty = OptimPenalty{
-    optim_penalty_.value_or(0.0),
-    optim_penalty_param_.value_or(0.5),
-    optim_penalty_dpdm_.value_or(0.0),
-    optim_penalty_energy_.value_or(0.0),
-    optim_penalty_variation_.value_or(0.01)
-  };
+  penalty = OptimPenalty{};
+  if (optim_penalty_.has_value()) penalty.penalty = optim_penalty_.value();
+  if (optim_penalty_param_.has_value()) penalty.penalty_param = optim_penalty_param_.value();
+  if (optim_penalty_dpdm_.has_value()) penalty.penalty_dpdm = optim_penalty_dpdm_.value();
+  if (optim_penalty_energy_.has_value()) penalty.penalty_energy = optim_penalty_energy_.value();
+  if (optim_penalty_variation_.has_value()) penalty.penalty_variation = optim_penalty_variation_.value();
 
-  optim_regul_tik0 = optim_regul_tik0_.value_or(false);
+  if (optim_regul_tik0_.has_value()) optim_regul_tik0 = optim_regul_tik0_.value();
 
   // Output parameters
-  datadir = datadir_.value_or("./data_out");
+  if (datadir_.has_value()) datadir = datadir_.value();
   convertIndexedOutput(indexed_output_);
-  output_frequency = output_frequency_.value_or(1);
-  optim_monitor_frequency = optim_monitor_frequency_.value_or(10);
-  runtype = runtype_.value_or(RunType::SIMULATION);
-  usematfree = usematfree_.value_or(false);
-  linearsolver_type = linearsolver_type_.value_or(LinearSolverType::GMRES);
-  linearsolver_maxiter = linearsolver_maxiter_.value_or(10);
-  timestepper_type = timestepper_type_.value_or(TimeStepperType::IMR);
+  if (output_frequency_.has_value()) output_frequency = output_frequency_.value();
+  if (optim_monitor_frequency_.has_value()) optim_monitor_frequency = optim_monitor_frequency_.value();
+  if (runtype_.has_value()) runtype = runtype_.value();
+  if (usematfree_.has_value()) usematfree = usematfree_.value();
+  if (linearsolver_type_.has_value()) linearsolver_type = linearsolver_type_.value();
+  if (linearsolver_maxiter_.has_value()) linearsolver_maxiter = linearsolver_maxiter_.value();
+  if (timestepper_type_.has_value()) timestepper_type = timestepper_type_.value();
   setRandSeed(rand_seed_);
 
   // Run final validation and normalization

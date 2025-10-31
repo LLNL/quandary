@@ -96,11 +96,11 @@ using InitialCondition = std::variant<
  * Groups all optimization stopping criteria and iteration limits.
  */
 struct OptimTolerance {
-  double atol;      ///< Absolute gradient tolerance
-  double rtol;      ///< Relative gradient tolerance
-  double ftol;      ///< Final time cost tolerance
-  double inftol;    ///< Infidelity tolerance
-  size_t maxiter;   ///< Maximum iterations
+  double atol = 1e-8;      ///< Absolute gradient tolerance
+  double rtol = 1e-4;      ///< Relative gradient tolerance
+  double ftol = 1e-8;      ///< Final time cost tolerance
+  double inftol = 1e-5;    ///< Infidelity tolerance
+  size_t maxiter = 200;   ///< Maximum iterations
 };
 
 /**
@@ -109,11 +109,11 @@ struct OptimTolerance {
  * Groups all penalty terms used for control pulse regularization.
  */
 struct OptimPenalty {
-  double penalty;           ///< First integral penalty coefficient
-  double penalty_param;     ///< Gaussian variance parameter
-  double penalty_dpdm;      ///< Second derivative penalty coefficient
-  double penalty_energy;    ///< Energy penalty coefficient
-  double penalty_variation; ///< Amplitude variation penalty coefficient
+  double penalty = 0.0;           ///< First integral penalty coefficient
+  double penalty_param = 0.5;     ///< Gaussian variance parameter
+  double penalty_dpdm = 0.0;      ///< Second derivative penalty coefficient
+  double penalty_energy = 0.0;    ///< Energy penalty coefficient
+  double penalty_variation = 0.01; ///< Amplitude variation penalty coefficient
 };
 
 struct GateOptimTarget {
@@ -261,14 +261,14 @@ class Config {
     // General options
     std::vector<size_t> nlevels;  ///< Number of levels per subsystem
     std::vector<size_t> nessential;  ///< Number of essential levels per subsystem (Default: same as nlevels)
-    size_t ntime;  ///< Number of time steps used for time-integration
-    double dt;  ///< Time step size (ns). Determines final time: T=ntime*dt
+    size_t ntime = 1000;  ///< Number of time steps used for time-integration
+    double dt = 0.1;  ///< Time step size (ns). Determines final time: T=ntime*dt
     std::vector<double> transfreq;  ///< Fundamental transition frequencies for each oscillator (GHz)
     std::vector<double> selfkerr;  ///< Self-kerr frequencies for each oscillator (GHz)
     std::vector<double> crosskerr;  ///< Cross-kerr coupling frequencies for each oscillator coupling (GHz)
     std::vector<double> Jkl;  ///< Dipole-dipole coupling frequencies for each oscillator coupling (GHz)
     std::vector<double> rotfreq;  ///< Rotational wave approximation frequencies for each subsystem (GHz)
-    LindbladType collapse_type;  ///< Switch between Schroedinger and Lindblad solver
+    LindbladType collapse_type = LindbladType::NONE;  ///< Switch between Schroedinger and Lindblad solver
     std::vector<double> decay_time;  ///< Time of decay collapse operation (T1) per oscillator (for Lindblad solver)
     std::vector<double> dephase_time;  ///< Time of dephase collapse operation (T2) per oscillator (for Lindblad solver)
     size_t n_initial_conditions;  ///< Number of initial conditions
@@ -278,27 +278,27 @@ class Config {
     std::optional<std::string> hamiltonian_file_Hc;  ///< File to read the control Hamiltonian from
 
     // Optimization options
-    bool control_enforceBC;  ///< Decide whether control pulses should start and end at zero
+    bool control_enforceBC = true;  ///< Decide whether control pulses should start and end at zero
     std::vector<OscillatorOptimization> oscillator_optimization;  ///< Optimization configuration for each oscillator
     OptimTargetSettings target;  ///< Grouped optimization target configuration
-    std::vector<double> gate_rot_freq;  ///< Frequency of rotation of the target gate, for each oscillator (GHz)
-    ObjectiveType optim_objective;  ///< Objective function measure
+    std::vector<double> gate_rot_freq = std::vector<double>{0.0};  ///< Frequency of rotation of the target gate, for each oscillator (GHz)
+    ObjectiveType optim_objective = ObjectiveType::JFROBENIUS;  ///< Objective function measure
     std::vector<double> optim_weights;  ///< Weights for summing up the objective function
     OptimTolerance tolerance;  ///< Grouped optimization stopping criteria and iteration limits
-    double optim_regul;  ///< Coefficient of Tikhonov regularization for the design variables
+    double optim_regul = 1e-4;  ///< Coefficient of Tikhonov regularization for the design variables
     OptimPenalty penalty;  ///< Grouped optimization penalty coefficients
-    bool optim_regul_tik0;  ///< Switch to use Tikhonov regularization with ||x - x_0||^2 instead of ||x||^2
+    bool optim_regul_tik0 = false;  ///< Switch to use Tikhonov regularization with ||x - x_0||^2 instead of ||x||^2
 
     // Output and runtypes
-    std::string datadir;  ///< Directory for output files
+    std::string datadir = "./data_out";  ///< Directory for output files
     std::vector<std::vector<OutputType>> output;  ///< Specify the desired output for each oscillator
-    size_t output_frequency;  ///< Output frequency in the time domain: write output every <num> time-step
-    size_t optim_monitor_frequency;  ///< Frequency of writing output during optimization iterations
-    RunType runtype;  ///< Runtype options: simulation, gradient, or optimization
-    bool usematfree;  ///< Use matrix free solver, instead of sparse matrix implementation
-    LinearSolverType linearsolver_type;  ///< Solver type for solving the linear system at each time step
-    size_t linearsolver_maxiter;  ///< Set maximum number of iterations for the linear solver
-    TimeStepperType timestepper_type;  ///< The time-stepping algorithm
+    size_t output_frequency = 1;  ///< Output frequency in the time domain: write output every <num> time-step
+    size_t optim_monitor_frequency = 10;  ///< Frequency of writing output during optimization iterations
+    RunType runtype = RunType::SIMULATION;  ///< Runtype options: simulation, gradient, or optimization
+    bool usematfree = false;  ///< Use matrix free solver, instead of sparse matrix implementation
+    LinearSolverType linearsolver_type = LinearSolverType::GMRES;  ///< Solver type for solving the linear system at each time step
+    size_t linearsolver_maxiter = 10;  ///< Set maximum number of iterations for the linear solver
+    TimeStepperType timestepper_type = TimeStepperType::IMR;  ///< The time-stepping algorithm
     int rand_seed;  ///< Fixed seed for the random number generator for reproducibility
 
   public:
