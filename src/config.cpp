@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "config_types.hpp"
-#include "configbuilder.hpp"
+#include "cfgparser.hpp"
 #include "defs.hpp"
 #include "util.hpp"
 

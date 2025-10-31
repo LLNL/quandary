@@ -3,7 +3,7 @@
 #include <sstream>
 #include <mpi.h>
 #include "config.hpp"
-#include "configbuilder.hpp"
+#include "cfgparser.hpp"
 
 class CfgParserTest : public ::testing::Test {
 protected:

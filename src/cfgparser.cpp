@@ -2,7 +2,7 @@
 #include <fstream>
 #include <vector>
 
-#include "configbuilder.hpp"
+#include "cfgparser.hpp"
 #include "config.hpp"
 #include "config_types.hpp"
 #include "defs.hpp"
