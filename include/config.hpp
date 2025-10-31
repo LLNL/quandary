@@ -425,6 +425,7 @@ class Config {
 
 private:
     void finalize();
+    void validate() const;
 
     // Conversion helper methods
     InitialCondition convertInitialCondition(const InitialConditionConfig& config);

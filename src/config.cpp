@@ -92,14 +92,8 @@ Config::Config(
   nessential = nessential_.value_or(nlevels);
   copyLast(nessential, num_osc);
 
-  if (ntime_.has_value() && ntime_.value() <= 0) {
-    exitWithError(mpi_rank, "ERROR: User-specified ntime must be positive, got " + std::to_string(ntime_.value()));
-  }
   if (ntime_.has_value()) ntime = ntime_.value();
 
-  if (dt_.has_value() && dt_.value() <= 0) {
-    exitWithError(mpi_rank, "ERROR: User-specified dt must be positive, got " + std::to_string(dt_.value()));
-  }
   if (dt_.has_value()) dt = dt_.value();
 
   if (!transfreq_.has_value()) {
@@ -186,11 +180,13 @@ Config::Config(
   if (timestepper_type_.has_value()) timestepper_type = timestepper_type_.value();
   setRandSeed(rand_seed_);
 
-  // Run final validation and normalization
+  // Finalize interdependent settings, then validate
   finalize();
+  validate();
 }
 
 Config::~Config(){}
+
 
 void Config::finalize() {
   // Hamiltonian file + matrix-free compatibility check
@@ -199,6 +195,16 @@ void Config::finalize() {
       logOutputToRank0(mpi_rank, "# Warning: Matrix-free solver cannot be used when Hamiltonian is read from file. Switching to sparse-matrix version.\n");
     }
     usematfree = false;
+  }
+}
+
+void Config::validate() const {
+  if (ntime <= 0) {
+    exitWithError(mpi_rank, "ERROR: ntime must be positive, got " + std::to_string(ntime));
+  }
+
+  if (dt <= 0) {
+    exitWithError(mpi_rank, "ERROR: dt must be positive, got " + std::to_string(dt));
   }
 
   // Validate essential levels don't exceed total levels
