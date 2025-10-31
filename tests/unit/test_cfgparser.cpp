@@ -32,7 +32,7 @@ TEST_F(CfgParserTest, ParseBasicSettings) {
     collapse_type = none
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   EXPECT_EQ(config.getNTime(), 500);
   EXPECT_DOUBLE_EQ(config.getDt(), 0.05);
@@ -49,7 +49,7 @@ TEST_F(CfgParserTest, ParseVectorSettings) {
     rotfreq = 0.0, 0.0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   auto nlevels = config.getNLevels();
   EXPECT_EQ(nlevels.size(), 2);
@@ -77,7 +77,7 @@ TEST_F(CfgParserTest, ParseIndexedSettings) {
     output1 = population
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   // Verify control segments were parsed correctly
   EXPECT_EQ(config.getOscillators().size(), 2); // 2 oscillators
@@ -111,7 +111,7 @@ TEST_F(CfgParserTest, ParseStructSettings) {
     initialcondition = diagonal, 0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -134,7 +134,7 @@ TEST_F(CfgParserTest, ApplyDefaults) {
     rotfreq = 0.0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   // Check defaults were applied
   EXPECT_EQ(config.getNTime(), 1000); // Default ntime
@@ -152,7 +152,7 @@ TEST_F(CfgParserTest, InitialCondition_FromFile) {
     initialcondition = file, test.dat
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<FromFileInitialCondition>(initcond));
   EXPECT_EQ(std::get<FromFileInitialCondition>(initcond).filename, "test.dat");
@@ -169,7 +169,7 @@ TEST_F(CfgParserTest, InitialCondition_Pure) {
     initialcondition = pure, 1, 0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PureInitialCondition>(initcond));
   const auto& pure_init = std::get<PureInitialCondition>(initcond);
@@ -187,7 +187,7 @@ TEST_F(CfgParserTest, InitialCondition_Performance) {
     initialcondition = performance
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PerformanceInitialCondition>(initcond));
   EXPECT_EQ(config.getNInitialConditions(), 1);
@@ -204,7 +204,7 @@ TEST_F(CfgParserTest, InitialCondition_Ensemble) {
     initialcondition = ensemble, 0, 1
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<EnsembleInitialCondition>(initcond));
   const auto& ensemble_init = std::get<EnsembleInitialCondition>(initcond);
@@ -221,7 +221,7 @@ TEST_F(CfgParserTest, InitialCondition_ThreeStates) {
     collapse_type = decay
     initialcondition = 3states
   )");
-  Config config = parser.build();
+  Config config = parser.parse();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<ThreeStatesInitialCondition>(initcond));
   EXPECT_EQ(config.getNInitialConditions(), 3);
@@ -238,7 +238,7 @@ TEST_F(CfgParserTest, InitialCondition_NPlusOne_SingleOscillator) {
     initialcondition = nplus1
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
   // For nlevels = [3], system dimension N = 3, so n_initial_conditions = N + 1 = 4
@@ -256,7 +256,7 @@ TEST_F(CfgParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
     initialcondition = nplus1
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
   // For nlevels = [2, 3], system dimension N = 2 * 3 = 6, so n_initial_conditions = N + 1 = 7
@@ -275,7 +275,7 @@ TEST_F(CfgParserTest, InitialCondition_Diagonal_Schrodinger) {
     initialcondition = diagonal, 1
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
   const auto& diagonal_init = std::get<DiagonalInitialCondition>(initcond);
@@ -296,7 +296,7 @@ TEST_F(CfgParserTest, InitialCondition_Basis_Schrodinger) {
     initialcondition = basis, 1
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
   // For Schrodinger solver, BASIS is converted to DIAGONAL, so n_initial_conditions = nessential[1] = 2
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
@@ -317,7 +317,7 @@ TEST_F(CfgParserTest, InitialCondition_Basis_Lindblad) {
     initialcondition = basis, 1
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<BasisInitialCondition>(initcond));
   const auto& basis_init = std::get<BasisInitialCondition>(initcond);
@@ -337,7 +337,7 @@ TEST_F(CfgParserTest, ParsePiPulseSettings_Structure) {
     apply_pipulse = 0, 0.5, 1.0, 0.8
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   const auto& pulses = config.getApplyPiPulses();
   EXPECT_EQ(pulses.size(), 2);
@@ -365,7 +365,7 @@ TEST_F(CfgParserTest, ControlSegments_Spline0) {
     control_segments0 = spline0, 150, 0.0, 1.0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   EXPECT_EQ(config.getOscillators().size(), 1);
 
@@ -390,7 +390,7 @@ TEST_F(CfgParserTest, ControlSegments_Spline) {
     control_segments1 = spline, 20, 0.0, 1.0, spline, 30, 1.0, 2.0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   EXPECT_EQ(config.getOscillators().size(), 2);
 
@@ -432,7 +432,7 @@ TEST_F(CfgParserTest, ControlSegments_Step) {
     control_segments1 = step, 0.1, 0.2, 0.3
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   EXPECT_EQ(config.getOscillators().size(), 2);
 
@@ -471,7 +471,7 @@ TEST_F(CfgParserTest, ControlSegments_Defaults) {
     control_bounds1 = 2.0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   // Verify control segments were parsed correctly
   EXPECT_EQ(config.getOscillators().size(), 3); // 2 oscillators
@@ -516,7 +516,7 @@ TEST_F(CfgParserTest, ControlInitialization_Defaults) {
     control_initialization1 = random, 2.0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   EXPECT_EQ(config.getOscillators().size(), 3);
 
@@ -559,7 +559,7 @@ TEST_F(CfgParserTest, ControlInitialization) {
     control_initialization4 = random, 5.0, 5.1, constant, 6.0, 6.1
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   // Verify control segments were parsed correctly
   EXPECT_EQ(config.getOscillators().size(), 5);
@@ -619,7 +619,7 @@ TEST_F(CfgParserTest, ControlInitialization_File) {
     control_initialization0 = file, params.dat
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   EXPECT_EQ(config.getOscillators().size(), 1);
   const auto& osc0 = config.getOscillator(0);
@@ -640,7 +640,7 @@ TEST_F(CfgParserTest, ControlBounds) {
     control_bounds0 = 1.0, 2.0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   EXPECT_EQ(config.getOscillators().size(), 1);
 
@@ -662,7 +662,7 @@ TEST_F(CfgParserTest, CarrierFrequencies) {
     carrier_frequency0 = 1.0, 2.0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   EXPECT_EQ(config.getOscillators().size(), 1);
 
@@ -682,7 +682,7 @@ TEST_F(CfgParserTest, OptimTarget_GateType) {
     optim_target = gate, cnot
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -700,7 +700,7 @@ TEST_F(CfgParserTest, OptimTarget_GateFromFile) {
     optim_target = gate, file, /path/to/gate.dat
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -719,7 +719,7 @@ TEST_F(CfgParserTest, OptimTarget_PureState) {
     optim_target = pure, 0, 1, 2
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
@@ -741,7 +741,7 @@ TEST_F(CfgParserTest, OptimTarget_FromFile) {
     optim_target = file, /path/to/target.dat
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<FileOptimTarget>(target));
@@ -758,7 +758,7 @@ TEST_F(CfgParserTest, OptimTarget_DefaultPure) {
     rotfreq = 0.0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
@@ -777,7 +777,7 @@ TEST_F(CfgParserTest, OptimWeights) {
     optim_weights = 2.0, 1.0
   )");
 
-  Config config = parser.build();
+  Config config = parser.parse();
 
   const auto& weights = config.getOptimWeights();
   EXPECT_EQ(weights.size(), 4);

@@ -219,7 +219,7 @@ void Config::finalize() {
 Config Config::fromCfg(std::string filename, std::stringstream* log, bool quietmode) {
   CfgParser parser(MPI_COMM_WORLD, *log, quietmode);
   parser.loadFromFile(filename);
-  return parser.build();
+  return parser.parse();
 }
 
 namespace {

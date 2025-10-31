@@ -106,7 +106,7 @@ public:
   CfgParser(MPI_Comm comm, std::stringstream& logstream, bool quietmode = false);
   void loadFromFile(const std::string& filename);
   void loadFromString(const std::string& config_content);
-  Config build();
+  Config parse();
 
 private:
   std::vector<std::string> split(const std::string& str, char delimiter = ',');

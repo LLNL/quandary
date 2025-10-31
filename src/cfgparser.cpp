@@ -98,7 +98,7 @@ std::vector<std::vector<OutputType>> CfgParser::convertIndexedToOutputVector(
   return result;
 }
 
-Config CfgParser::build() {
+Config CfgParser::parse() {
   return Config(
     comm,
     *log,
