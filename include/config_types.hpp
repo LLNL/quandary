@@ -6,10 +6,10 @@
 #include <vector>
 
 /**
- * @brief Common configuration structures shared between ConfigBuilder and Config
+ * @brief Common configuration structures shared between CfgParser and Config
  *
  * These structs represent parsed configuration data in an intermediate form,
- * used by ConfigBuilder for parsing and by Config for initialization.
+ * used by CfgParser for parsing and by Config for initialization.
  */
 
 struct InitialConditionConfig {

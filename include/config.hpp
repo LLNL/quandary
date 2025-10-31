@@ -247,7 +247,7 @@ struct OscillatorOptimization {
  * @brief Final validated configuration class.
  *
  * Contains only validated, typed configuration parameters. All fields are required
- * and have been validated by ConfigBuilder. This class is immutable after construction.
+ * and have been validated by CfgParser. This class is immutable after construction.
  */
 class Config {
   private:

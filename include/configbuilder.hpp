@@ -25,12 +25,12 @@ namespace {
 } // namespace
 
 /**
- * @brief Configuration builder that converts raw config to validated Config
+ * @brief Configuration parser that converts raw config to validated Config
  *
  * Handles the logic for applying defaults, parsing mixed-type strings,
  * and validating configuration parameters.
  */
-class ConfigBuilder {
+class CfgParser {
 private:
   std::unordered_map<std::string, std::function<void(const std::string&)>> setters; ///< Setters from config string
   std::unordered_map<std::string, std::function<void(int, const std::string&)>> indexed_setters; ///< Setters for indexed config strings
@@ -103,7 +103,7 @@ private:
   std::optional<std::map<int, std::vector<OutputType>>> indexed_output;             ///< output0, output1, etc.
 
 public:
-  ConfigBuilder(MPI_Comm comm, std::stringstream& logstream, bool quietmode = false);
+  CfgParser(MPI_Comm comm, std::stringstream& logstream, bool quietmode = false);
   void loadFromFile(const std::string& filename);
   void loadFromString(const std::string& config_content);
   Config build();

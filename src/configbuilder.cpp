@@ -8,7 +8,7 @@
 #include "defs.hpp"
 #include "util.hpp"
 
-ConfigBuilder::ConfigBuilder(MPI_Comm comm, std::stringstream& logstream, bool quietmode) {
+CfgParser::CfgParser(MPI_Comm comm, std::stringstream& logstream, bool quietmode) {
   // Initialize MPI and logging members
   this->comm = comm;
   this->log = &logstream;
@@ -74,7 +74,7 @@ ConfigBuilder::ConfigBuilder(MPI_Comm comm, std::stringstream& logstream, bool q
   registerConfig("rand_seed", rand_seed);
 }
 
-std::vector<std::vector<double>> ConfigBuilder::convertIndexedToVectorVector(
+std::vector<std::vector<double>> CfgParser::convertIndexedToVectorVector(
     const std::map<int, std::vector<double>>& indexed_map,
     size_t num_oscillators) {
   std::vector<std::vector<double>> result(num_oscillators);
@@ -86,7 +86,7 @@ std::vector<std::vector<double>> ConfigBuilder::convertIndexedToVectorVector(
   return result;
 }
 
-std::vector<std::vector<OutputType>> ConfigBuilder::convertIndexedToOutputVector(
+std::vector<std::vector<OutputType>> CfgParser::convertIndexedToOutputVector(
     const std::map<int, std::vector<OutputType>>& indexed_map,
     size_t num_oscillators) {
   std::vector<std::vector<OutputType>> result(num_oscillators);
@@ -98,10 +98,7 @@ std::vector<std::vector<OutputType>> ConfigBuilder::convertIndexedToOutputVector
   return result;
 }
 
-Config ConfigBuilder::build() {
-  // ConfigBuilder passes parsed data to Config
-  // Config handles validation, defaults, and conversions
-
+Config CfgParser::build() {
   return Config(
     comm,
     *log,
@@ -183,7 +180,7 @@ bool isValidControlInitializationType(const std::string& str) {
 
 } // namespace
 
-std::vector<std::string> ConfigBuilder::split(const std::string& str, char delimiter) {
+std::vector<std::string> CfgParser::split(const std::string& str, char delimiter) {
   std::vector<std::string> result;
   std::stringstream ss(str);
   std::string item;
@@ -195,7 +192,7 @@ std::vector<std::string> ConfigBuilder::split(const std::string& str, char delim
   return result;
 }
 
-void ConfigBuilder::applyConfigLine(const std::string& line) {
+void CfgParser::applyConfigLine(const std::string& line) {
   std::string trimmedLine = trimWhitespace(line);
   if (!trimmedLine.empty() && !isComment(trimmedLine)) {
     int pos = trimmedLine.find('=');
@@ -219,7 +216,7 @@ void ConfigBuilder::applyConfigLine(const std::string& line) {
   }
 }
 
-bool ConfigBuilder::handleIndexedSetting(const std::string& key, const std::string& value) {
+bool CfgParser::handleIndexedSetting(const std::string& key, const std::string& value) {
   // Check if key ends with a digit (indexed setting)
   if (key.empty() || !std::isdigit(key.back())) {
     return false;
@@ -246,7 +243,7 @@ bool ConfigBuilder::handleIndexedSetting(const std::string& key, const std::stri
   return false;
 }
 
-void ConfigBuilder::loadFromFile(const std::string& filename) {
+void CfgParser::loadFromFile(const std::string& filename) {
   std::ifstream file(filename);
   if (!file.is_open()) {
     logErrorToRank0(mpi_rank, "Unable to read the file " + filename);
@@ -257,14 +254,14 @@ void ConfigBuilder::loadFromFile(const std::string& filename) {
   file.close();
 }
 
-void ConfigBuilder::loadFromString(const std::string& config_content) {
+void CfgParser::loadFromString(const std::string& config_content) {
   std::istringstream stream(config_content);
   loadFromStream(stream);
 }
 
 // Struct converter implementations
 template<>
-InitialConditionConfig ConfigBuilder::convertFromString<InitialConditionConfig>(const std::string& str) {
+InitialConditionConfig CfgParser::convertFromString<InitialConditionConfig>(const std::string& str) {
   auto parts = split(str);
   if (parts.empty()) {
     logErrorToRank0(mpi_rank, "ERROR: Empty initialcondition specification");
@@ -290,7 +287,7 @@ InitialConditionConfig ConfigBuilder::convertFromString<InitialConditionConfig>(
 }
 
 template<>
-OptimTargetConfig ConfigBuilder::convertFromString<OptimTargetConfig>(const std::string& str) {
+OptimTargetConfig CfgParser::convertFromString<OptimTargetConfig>(const std::string& str) {
   auto parts = split(str);
   if (parts.empty()) {
     exitWithError(mpi_rank, "ERROR: optim_target must have at least a target type specified.");
@@ -329,7 +326,7 @@ OptimTargetConfig ConfigBuilder::convertFromString<OptimTargetConfig>(const std:
 }
 
 template<>
-std::vector<PiPulseConfig> ConfigBuilder::convertFromString<std::vector<PiPulseConfig>>(const std::string& str) {
+std::vector<PiPulseConfig> CfgParser::convertFromString<std::vector<PiPulseConfig>>(const std::string& str) {
   auto parts = split(str);
   if (parts.size() % 4 != 0) {
     exitWithError(mpi_rank, "ERROR: PiPulse vector requires multiples of 4 parameters: oscil_id, tstart, tstop, amp");
@@ -349,7 +346,7 @@ std::vector<PiPulseConfig> ConfigBuilder::convertFromString<std::vector<PiPulseC
 }
 
 template<>
-std::vector<ControlSegmentConfig> ConfigBuilder::convertFromString<std::vector<ControlSegmentConfig>>(const std::string& str) {
+std::vector<ControlSegmentConfig> CfgParser::convertFromString<std::vector<ControlSegmentConfig>>(const std::string& str) {
   const auto parts = split(str);
 
   std::vector<ControlSegmentConfig> segments;
@@ -398,7 +395,7 @@ std::vector<ControlSegmentConfig> ConfigBuilder::convertFromString<std::vector<C
 }
 
 template<>
-std::vector<ControlInitializationConfig> ConfigBuilder::convertFromString<std::vector<ControlInitializationConfig>>(const std::string& str) {
+std::vector<ControlInitializationConfig> CfgParser::convertFromString<std::vector<ControlInitializationConfig>>(const std::string& str) {
   const auto parts = split(str);
 
   std::vector<ControlInitializationConfig> initializations;

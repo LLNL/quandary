@@ -217,9 +217,9 @@ void Config::finalize() {
 }
 
 Config Config::fromCfg(std::string filename, std::stringstream* log, bool quietmode) {
-  ConfigBuilder builder(MPI_COMM_WORLD, *log, quietmode);
-  builder.loadFromFile(filename);
-  return builder.build();
+  CfgParser parser(MPI_COMM_WORLD, *log, quietmode);
+  parser.loadFromFile(filename);
+  return parser.build();
 }
 
 namespace {
@@ -569,14 +569,14 @@ void Config::convertControlSegments(const std::optional<std::map<int, std::vecto
       if (seg_config.control_type == ControlType::BSPLINE ||
           seg_config.control_type == ControlType::BSPLINE0) {
         SplineParams spline_params;
-        assert(params.size() >= 1); // nspline is required, should be validated in ConfigBuilder
+        assert(params.size() >= 1); // nspline is required, should be validated in CfgParser
         spline_params.nspline = static_cast<size_t>(params[0]);
         spline_params.tstart = params.size() > 1 ? params[1] : 0.0;
         spline_params.tstop = params.size() > 2 ? params[2] : ntime * dt;
         segment.params = spline_params;
       } else if (seg_config.control_type == ControlType::BSPLINEAMP) {
         SplineAmpParams spline_amp_params;
-        assert(params.size() >= 2); // nspline and scaling are required, should be validated in ConfigBuilder
+        assert(params.size() >= 2); // nspline and scaling are required, should be validated in CfgParser
         spline_amp_params.nspline = static_cast<size_t>(params[0]);
         spline_amp_params.scaling = static_cast<double>(params[1]);
         spline_amp_params.tstart = params.size() > 2 ? params[2] : 0.0;
@@ -584,7 +584,7 @@ void Config::convertControlSegments(const std::optional<std::map<int, std::vecto
         segment.params = spline_amp_params;
       } else if (seg_config.control_type == ControlType::STEP) {
         StepParams step_params;
-        assert(params.size() >= 3); // step_amp1, step_amp2, tramp are required, should be validated in ConfigBuilder
+        assert(params.size() >= 3); // step_amp1, step_amp2, tramp are required, should be validated in CfgParser
         step_params.step_amp1 = static_cast<double>(params[0]);
         step_params.step_amp2 = static_cast<double>(params[1]);
         step_params.tramp = static_cast<double>(params[2]);
@@ -615,11 +615,11 @@ void Config::convertControlInitializations(const std::optional<std::map<int, std
           init = ControlSegmentInitializationFile{init_config.filename.value()};
           break;
         case ControlInitializationType::CONSTANT:
-          assert(init_config.amplitude.has_value()); // should be validated in ConfigBuilder
+          assert(init_config.amplitude.has_value()); // should be validated in CfgParser
           init = ControlSegmentInitializationConstant{init_config.amplitude.value(), init_config.phase.value_or(0.0)};
           break;
         case ControlInitializationType::RANDOM:
-          assert(init_config.amplitude.has_value()); // should be validated in ConfigBuilder
+          assert(init_config.amplitude.has_value()); // should be validated in CfgParser
           init = ControlSegmentInitializationRandom{init_config.amplitude.value(), init_config.phase.value_or(0.0)};
           break;
       }

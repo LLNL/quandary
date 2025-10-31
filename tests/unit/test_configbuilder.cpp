@@ -5,7 +5,7 @@
 #include "config.hpp"
 #include "configbuilder.hpp"
 
-class ConfigBuilderTest : public ::testing::Test {
+class CfgParserTest : public ::testing::Test {
 protected:
   void SetUp() override {
     // Initialize MPI if not already done (for tests)
@@ -19,11 +19,11 @@ protected:
   std::stringstream log;
 };
 
-TEST_F(ConfigBuilderTest, ParseBasicSettings) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ParseBasicSettings) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
   // Test basic setting parsing
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
@@ -32,24 +32,24 @@ TEST_F(ConfigBuilderTest, ParseBasicSettings) {
     collapse_type = none
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   EXPECT_EQ(config.getNTime(), 500);
   EXPECT_DOUBLE_EQ(config.getDt(), 0.05);
   EXPECT_EQ(config.getCollapseType(), LindbladType::NONE);
 }
 
-TEST_F(ConfigBuilderTest, ParseVectorSettings) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ParseVectorSettings) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
   // Test vector parsing
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2, 3
     transfreq = 4.1, 4.8, 5.2
     rotfreq = 0.0, 0.0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   auto nlevels = config.getNLevels();
   EXPECT_EQ(nlevels.size(), 2);
@@ -63,11 +63,11 @@ TEST_F(ConfigBuilderTest, ParseVectorSettings) {
   EXPECT_DOUBLE_EQ(transfreq[2], 5.2);
 }
 
-TEST_F(ConfigBuilderTest, ParseIndexedSettings) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ParseIndexedSettings) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
   // Test indexed setting parsing
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2, 2
     transfreq = 4.1, 4.8
     rotfreq = 0.0, 0.0
@@ -77,7 +77,7 @@ TEST_F(ConfigBuilderTest, ParseIndexedSettings) {
     output1 = population
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   // Verify control segments were parsed correctly
   EXPECT_EQ(config.getOscillators().size(), 2); // 2 oscillators
@@ -99,11 +99,11 @@ TEST_F(ConfigBuilderTest, ParseIndexedSettings) {
   EXPECT_EQ(output[1][0], OutputType::POPULATION);
 }
 
-TEST_F(ConfigBuilderTest, ParseStructSettings) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ParseStructSettings) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
   // Test struct parsing (multi-parameter settings)
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
@@ -111,7 +111,7 @@ TEST_F(ConfigBuilderTest, ParseStructSettings) {
     initialcondition = diagonal, 0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -124,17 +124,17 @@ TEST_F(ConfigBuilderTest, ParseStructSettings) {
   EXPECT_EQ(diag_init.osc_IDs, std::vector<size_t>{0});
 }
 
-TEST_F(ConfigBuilderTest, ApplyDefaults) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ApplyDefaults) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
   // Provide minimal config, test that defaults are applied
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   // Check defaults were applied
   EXPECT_EQ(config.getNTime(), 1000); // Default ntime
@@ -142,34 +142,34 @@ TEST_F(ConfigBuilderTest, ApplyDefaults) {
   EXPECT_EQ(config.getCollapseType(), LindbladType::NONE); // Default
 }
 
-TEST_F(ConfigBuilderTest, InitialCondition_FromFile) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, InitialCondition_FromFile) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
     initialcondition = file, test.dat
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<FromFileInitialCondition>(initcond));
   EXPECT_EQ(std::get<FromFileInitialCondition>(initcond).filename, "test.dat");
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
-TEST_F(ConfigBuilderTest, InitialCondition_Pure) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, InitialCondition_Pure) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 3, 2
     transfreq = 4.1, 4.8
     rotfreq = 0.0, 0.0
     initialcondition = pure, 1, 0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PureInitialCondition>(initcond));
   const auto& pure_init = std::get<PureInitialCondition>(initcond);
@@ -177,26 +177,26 @@ TEST_F(ConfigBuilderTest, InitialCondition_Pure) {
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
-TEST_F(ConfigBuilderTest, InitialCondition_Performance) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, InitialCondition_Performance) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
     initialcondition = performance
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PerformanceInitialCondition>(initcond));
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
-TEST_F(ConfigBuilderTest, InitialCondition_Ensemble) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, InitialCondition_Ensemble) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 3, 2
     transfreq = 4.1, 4.8
     rotfreq = 0.0, 0.0
@@ -204,7 +204,7 @@ TEST_F(ConfigBuilderTest, InitialCondition_Ensemble) {
     initialcondition = ensemble, 0, 1
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<EnsembleInitialCondition>(initcond));
   const auto& ensemble_init = std::get<EnsembleInitialCondition>(initcond);
@@ -212,25 +212,25 @@ TEST_F(ConfigBuilderTest, InitialCondition_Ensemble) {
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
-TEST_F(ConfigBuilderTest, InitialCondition_ThreeStates) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
-  builder.loadFromString(R"(
+TEST_F(CfgParserTest, InitialCondition_ThreeStates) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
+  parser.loadFromString(R"(
     nlevels = 3
     transfreq = 4.1
     rotfreq = 0.0
     collapse_type = decay
     initialcondition = 3states
   )");
-  Config config = builder.build();
+  Config config = parser.build();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<ThreeStatesInitialCondition>(initcond));
   EXPECT_EQ(config.getNInitialConditions(), 3);
 }
 
-TEST_F(ConfigBuilderTest, InitialCondition_NPlusOne_SingleOscillator) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, InitialCondition_NPlusOne_SingleOscillator) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 3
     transfreq = 4.1
     rotfreq = 0.0
@@ -238,17 +238,17 @@ TEST_F(ConfigBuilderTest, InitialCondition_NPlusOne_SingleOscillator) {
     initialcondition = nplus1
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
   // For nlevels = [3], system dimension N = 3, so n_initial_conditions = N + 1 = 4
   EXPECT_EQ(config.getNInitialConditions(), 4);
 }
 
-TEST_F(ConfigBuilderTest, InitialCondition_NPlusOne_MultipleOscillators) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2, 3
     transfreq = 4.1, 4.8
     rotfreq = 0.0, 0.0
@@ -256,17 +256,17 @@ TEST_F(ConfigBuilderTest, InitialCondition_NPlusOne_MultipleOscillators) {
     initialcondition = nplus1
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
   // For nlevels = [2, 3], system dimension N = 2 * 3 = 6, so n_initial_conditions = N + 1 = 7
   EXPECT_EQ(config.getNInitialConditions(), 7);
 }
 
-TEST_F(ConfigBuilderTest, InitialCondition_Diagonal_Schrodinger) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, InitialCondition_Diagonal_Schrodinger) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 3, 2
     nessential = 3, 2
     transfreq = 4.1, 4.8
@@ -275,7 +275,7 @@ TEST_F(ConfigBuilderTest, InitialCondition_Diagonal_Schrodinger) {
     initialcondition = diagonal, 1
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
   const auto& diagonal_init = std::get<DiagonalInitialCondition>(initcond);
@@ -284,10 +284,10 @@ TEST_F(ConfigBuilderTest, InitialCondition_Diagonal_Schrodinger) {
   EXPECT_EQ(config.getNInitialConditions(), 2);
 }
 
-TEST_F(ConfigBuilderTest, InitialCondition_Basis_Schrodinger) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, InitialCondition_Basis_Schrodinger) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 3, 2
     nessential = 3, 2
     transfreq = 4.1, 4.8
@@ -296,7 +296,7 @@ TEST_F(ConfigBuilderTest, InitialCondition_Basis_Schrodinger) {
     initialcondition = basis, 1
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
   // For Schrodinger solver, BASIS is converted to DIAGONAL, so n_initial_conditions = nessential[1] = 2
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
@@ -305,10 +305,10 @@ TEST_F(ConfigBuilderTest, InitialCondition_Basis_Schrodinger) {
   EXPECT_EQ(config.getNInitialConditions(), 2);
 }
 
-TEST_F(ConfigBuilderTest, InitialCondition_Basis_Lindblad) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, InitialCondition_Basis_Lindblad) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 3, 2
     nessential = 3, 2
     transfreq = 4.1, 4.8
@@ -317,7 +317,7 @@ TEST_F(ConfigBuilderTest, InitialCondition_Basis_Lindblad) {
     initialcondition = basis, 1
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<BasisInitialCondition>(initcond));
   const auto& basis_init = std::get<BasisInitialCondition>(initcond);
@@ -326,18 +326,18 @@ TEST_F(ConfigBuilderTest, InitialCondition_Basis_Lindblad) {
   EXPECT_EQ(config.getNInitialConditions(), 4);
 }
 
-TEST_F(ConfigBuilderTest, ParsePiPulseSettings_Structure) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ParsePiPulseSettings_Structure) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
   // Test basic pi-pulse data structure initialization
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2, 2
     transfreq = 4.1
     rotfreq = 0.0
     apply_pipulse = 0, 0.5, 1.0, 0.8
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   const auto& pulses = config.getApplyPiPulses();
   EXPECT_EQ(pulses.size(), 2);
@@ -354,18 +354,18 @@ TEST_F(ConfigBuilderTest, ParsePiPulseSettings_Structure) {
   EXPECT_DOUBLE_EQ(pulses[1][0].amp, 0.0);
 }
 
-TEST_F(ConfigBuilderTest, ControlSegments_Spline0) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ControlSegments_Spline0) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
   // Test control segment parsing
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
     control_segments0 = spline0, 150, 0.0, 1.0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   EXPECT_EQ(config.getOscillators().size(), 1);
 
@@ -378,11 +378,11 @@ TEST_F(ConfigBuilderTest, ControlSegments_Spline0) {
   EXPECT_DOUBLE_EQ(params0.tstop, 1.0);
 }
 
-TEST_F(ConfigBuilderTest, ControlSegments_Spline) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ControlSegments_Spline) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
   // Test control segment parsing
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2, 2
     transfreq = 4.1, 4.1
     rotfreq = 0.0, 0.0
@@ -390,7 +390,7 @@ TEST_F(ConfigBuilderTest, ControlSegments_Spline) {
     control_segments1 = spline, 20, 0.0, 1.0, spline, 30, 1.0, 2.0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   EXPECT_EQ(config.getOscillators().size(), 2);
 
@@ -420,11 +420,11 @@ TEST_F(ConfigBuilderTest, ControlSegments_Spline) {
   EXPECT_DOUBLE_EQ(params2.tstop, 2.0);
 }
 
-TEST_F(ConfigBuilderTest, ControlSegments_Step) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ControlSegments_Step) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
   // Test control segment parsing
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2,2
     transfreq = 4.1,4.1
     rotfreq = 0.0,0.0
@@ -432,7 +432,7 @@ TEST_F(ConfigBuilderTest, ControlSegments_Step) {
     control_segments1 = step, 0.1, 0.2, 0.3
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   EXPECT_EQ(config.getOscillators().size(), 2);
 
@@ -459,11 +459,11 @@ TEST_F(ConfigBuilderTest, ControlSegments_Step) {
   EXPECT_DOUBLE_EQ(params1.tstop, config.getNTime() * config.getDt()); // default stop time
 }
 
-TEST_F(ConfigBuilderTest, ControlSegments_Defaults) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ControlSegments_Defaults) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
   // Test control segment parsing
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2, 2, 2
     transfreq = 4.1, 4.8
     rotfreq = 0.0, 0.0
@@ -471,7 +471,7 @@ TEST_F(ConfigBuilderTest, ControlSegments_Defaults) {
     control_bounds1 = 2.0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   // Verify control segments were parsed correctly
   EXPECT_EQ(config.getOscillators().size(), 3); // 2 oscillators
@@ -506,17 +506,17 @@ TEST_F(ConfigBuilderTest, ControlSegments_Defaults) {
   EXPECT_DOUBLE_EQ(params2.tstop, 1.0);
 }
 
-TEST_F(ConfigBuilderTest, ControlInitialization_Defaults) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ControlInitialization_Defaults) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2, 2, 2
     transfreq = 4.1, 4.1, 4.1
     rotfreq = 0.0, 0.0, 0.0
     control_initialization1 = random, 2.0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   EXPECT_EQ(config.getOscillators().size(), 3);
 
@@ -545,10 +545,10 @@ TEST_F(ConfigBuilderTest, ControlInitialization_Defaults) {
   EXPECT_DOUBLE_EQ(params2.phase, 0.0);
 }
 
-TEST_F(ConfigBuilderTest, ControlInitialization) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ControlInitialization) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2, 2, 2, 2, 2
     transfreq = 4.1, 4.1, 4.1, 4.1, 4.1
     rotfreq = 0.0, 0.0, 0.0, 0.0, 0.0
@@ -559,7 +559,7 @@ TEST_F(ConfigBuilderTest, ControlInitialization) {
     control_initialization4 = random, 5.0, 5.1, constant, 6.0, 6.1
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   // Verify control segments were parsed correctly
   EXPECT_EQ(config.getOscillators().size(), 5);
@@ -609,17 +609,17 @@ TEST_F(ConfigBuilderTest, ControlInitialization) {
   EXPECT_DOUBLE_EQ(params4_1.phase, 6.1);
 }
 
-TEST_F(ConfigBuilderTest, ControlInitialization_File) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ControlInitialization_File) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
     control_initialization0 = file, params.dat
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   EXPECT_EQ(config.getOscillators().size(), 1);
   const auto& osc0 = config.getOscillator(0);
@@ -629,10 +629,10 @@ TEST_F(ConfigBuilderTest, ControlInitialization_File) {
   EXPECT_EQ(params0.filename, "params.dat");
 }
 
-TEST_F(ConfigBuilderTest, ControlBounds) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, ControlBounds) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
@@ -640,7 +640,7 @@ TEST_F(ConfigBuilderTest, ControlBounds) {
     control_bounds0 = 1.0, 2.0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   EXPECT_EQ(config.getOscillators().size(), 1);
 
@@ -652,17 +652,17 @@ TEST_F(ConfigBuilderTest, ControlBounds) {
   EXPECT_EQ(osc0.control_bounds[2], 2.0); // Use last bound for extra segments
 }
 
-TEST_F(ConfigBuilderTest, CarrierFrequencies) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, CarrierFrequencies) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
     carrier_frequency0 = 1.0, 2.0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   EXPECT_EQ(config.getOscillators().size(), 1);
 
@@ -672,17 +672,17 @@ TEST_F(ConfigBuilderTest, CarrierFrequencies) {
   EXPECT_EQ(osc0.carrier_frequencies[1], 2.0);
 }
 
-TEST_F(ConfigBuilderTest, OptimTarget_GateType) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, OptimTarget_GateType) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
     optim_target = gate, cnot
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -690,17 +690,17 @@ TEST_F(ConfigBuilderTest, OptimTarget_GateType) {
   EXPECT_EQ(gate_target.gate_type, GateType::CNOT);
 }
 
-TEST_F(ConfigBuilderTest, OptimTarget_GateFromFile) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, OptimTarget_GateFromFile) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
     optim_target = gate, file, /path/to/gate.dat
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -709,17 +709,17 @@ TEST_F(ConfigBuilderTest, OptimTarget_GateFromFile) {
   EXPECT_EQ(gate_target.gate_file, "/path/to/gate.dat");
 }
 
-TEST_F(ConfigBuilderTest, OptimTarget_PureState) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, OptimTarget_PureState) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 3, 3, 3
     transfreq = 4.1
     rotfreq = 0.0
     optim_target = pure, 0, 1, 2
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
@@ -731,17 +731,17 @@ TEST_F(ConfigBuilderTest, OptimTarget_PureState) {
   EXPECT_EQ(levels[2], 2);
 }
 
-TEST_F(ConfigBuilderTest, OptimTarget_FromFile) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, OptimTarget_FromFile) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
     optim_target = file, /path/to/target.dat
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<FileOptimTarget>(target));
@@ -749,16 +749,16 @@ TEST_F(ConfigBuilderTest, OptimTarget_FromFile) {
   EXPECT_EQ(file_target.file, "/path/to/target.dat");
 }
 
-TEST_F(ConfigBuilderTest, OptimTarget_DefaultPure) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, OptimTarget_DefaultPure) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
@@ -767,17 +767,17 @@ TEST_F(ConfigBuilderTest, OptimTarget_DefaultPure) {
   EXPECT_TRUE(pure_target.purestate_levels.empty());
 }
 
-TEST_F(ConfigBuilderTest, OptimWeights) {
-  ConfigBuilder builder(MPI_COMM_WORLD, log, true);
+TEST_F(CfgParserTest, OptimWeights) {
+  CfgParser parser(MPI_COMM_WORLD, log, true);
 
-  builder.loadFromString(R"(
+  parser.loadFromString(R"(
     nlevels = 2, 2
     transfreq = 4.1, 4.1
     rotfreq = 0.0, 0.0
     optim_weights = 2.0, 1.0
   )");
 
-  Config config = builder.build();
+  Config config = parser.build();
 
   const auto& weights = config.getOptimWeights();
   EXPECT_EQ(weights.size(), 4);
