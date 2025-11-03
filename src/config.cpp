@@ -24,57 +24,7 @@ Config::Config(
   MPI_Comm comm_,
   std::stringstream& log_,
   bool quietmode_,
-  // General settings
-  const std::optional<std::vector<size_t>>& nlevels_,
-  const std::optional<std::vector<size_t>>& nessential_,
-  const std::optional<size_t>& ntime_,
-  const std::optional<double>& dt_,
-  const std::optional<std::vector<double>>& transfreq_,
-  const std::optional<std::vector<double>>& selfkerr_,
-  const std::optional<std::vector<double>>& crosskerr_,
-  const std::optional<std::vector<double>>& Jkl_,
-  const std::optional<std::vector<double>>& rotfreq_,
-  const std::optional<LindbladType>& collapse_type_,
-  const std::optional<std::vector<double>>& decay_time_,
-  const std::optional<std::vector<double>>& dephase_time_,
-  const std::optional<InitialConditionConfig>& initialcondition_,
-  const std::optional<std::vector<PiPulseConfig>>& apply_pipulse_,
-  const std::optional<std::string>& hamiltonian_file_Hsys_,
-  const std::optional<std::string>& hamiltonian_file_Hc_,
-  // Control parameters (optional indexed data)
-  const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed_control_segments_,
-  const std::optional<bool>& control_enforceBC_,
-  const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& indexed_control_init_,
-  const std::optional<std::map<int, std::vector<double>>>& indexed_control_bounds_,
-  const std::optional<std::map<int, std::vector<double>>>& indexed_carrier_frequencies_,
-  // Optimization parameters
-  const std::optional<OptimTargetConfig>& optim_target_,
-  const std::optional<std::vector<double>>& gate_rot_freq_,
-  const std::optional<ObjectiveType>& optim_objective_,
-  const std::optional<std::vector<double>>& optim_weights_,
-  const std::optional<double>& optim_atol_,
-  const std::optional<double>& optim_rtol_,
-  const std::optional<double>& optim_ftol_,
-  const std::optional<double>& optim_inftol_,
-  const std::optional<size_t>& optim_maxiter_,
-  const std::optional<double>& optim_regul_,
-  const std::optional<double>& optim_penalty_,
-  const std::optional<double>& optim_penalty_param_,
-  const std::optional<double>& optim_penalty_dpdm_,
-  const std::optional<double>& optim_penalty_energy_,
-  const std::optional<double>& optim_penalty_variation_,
-  const std::optional<bool>& optim_regul_tik0_,
-  // Output parameters
-  const std::optional<std::string>& datadir_,
-  const std::optional<std::map<int, std::vector<OutputType>>>& indexed_output_,
-  const std::optional<size_t>& output_frequency_,
-  const std::optional<size_t>& optim_monitor_frequency_,
-  const std::optional<RunType>& runtype_,
-  const std::optional<bool>& usematfree_,
-  const std::optional<LinearSolverType>& linearsolver_type_,
-  const std::optional<size_t>& linearsolver_maxiter_,
-  const std::optional<TimeStepperType>& timestepper_type_,
-  const std::optional<int>& rand_seed_
+  const ConfigSettings& settings
 ) :
   comm(comm_),
   log(log_),
@@ -82,103 +32,103 @@ Config::Config(
 {
   MPI_Comm_rank(comm, &mpi_rank);
 
-  if (!nlevels_.has_value()) {
+  if (!settings.nlevels.has_value()) {
     exitWithError(mpi_rank, "ERROR: nlevels cannot be empty");
   }
-  nlevels = nlevels_.value();
+  nlevels = settings.nlevels.value();
   size_t num_osc = nlevels.size();
   size_t num_pairs_osc = (num_osc - 1) * num_osc / 2;
 
-  nessential = nessential_.value_or(nlevels);
+  nessential = settings.nessential.value_or(nlevels);
   copyLast(nessential, num_osc);
 
-  if (ntime_.has_value()) ntime = ntime_.value();
+  if (settings.ntime.has_value()) ntime = settings.ntime.value();
 
-  if (dt_.has_value()) dt = dt_.value();
+  if (settings.dt.has_value()) dt = settings.dt.value();
 
-  if (!transfreq_.has_value()) {
+  if (!settings.transfreq.has_value()) {
     exitWithError(mpi_rank, "ERROR: transfreq cannot be empty");
   }
-  transfreq = transfreq_.value();
+  transfreq = settings.transfreq.value();
   copyLast(transfreq, num_osc);
 
-  selfkerr = selfkerr_.value_or(std::vector<double>(num_osc, 0.0));
+  selfkerr = settings.selfkerr.value_or(std::vector<double>(num_osc, 0.0));
   copyLast(selfkerr, num_osc);
 
-  crosskerr = crosskerr_.value_or(std::vector<double>(num_pairs_osc, 0.0));
+  crosskerr = settings.crosskerr.value_or(std::vector<double>(num_pairs_osc, 0.0));
   copyLast(crosskerr, num_pairs_osc);
 
-  Jkl = Jkl_.value_or(std::vector<double>(num_pairs_osc, 0.0));
+  Jkl = settings.Jkl.value_or(std::vector<double>(num_pairs_osc, 0.0));
   copyLast(Jkl, num_pairs_osc);
 
-  if (!rotfreq_.has_value()) {
+  if (!settings.rotfreq.has_value()) {
     exitWithError(mpi_rank, "ERROR: rotfreq cannot be empty");
   }
-  rotfreq = rotfreq_.value();
+  rotfreq = settings.rotfreq.value();
   copyLast(rotfreq, num_osc);
 
-  if (collapse_type_.has_value()) collapse_type = collapse_type_.value();
+  if (settings.collapse_type.has_value()) collapse_type = settings.collapse_type.value();
 
-  decay_time = decay_time_.value_or(std::vector<double>(num_osc, 0.0));
+  decay_time = settings.decay_time.value_or(std::vector<double>(num_osc, 0.0));
   copyLast(decay_time, num_osc);
 
-  dephase_time = dephase_time_.value_or(std::vector<double>(num_osc, 0.0));
+  dephase_time = settings.dephase_time.value_or(std::vector<double>(num_osc, 0.0));
   copyLast(dephase_time, num_osc);
 
-  convertInitialCondition(initialcondition_);
+  convertInitialCondition(settings.initialcondition);
   setNumInitialConditions();
 
-  convertPiPulses(apply_pipulse_);
+  convertPiPulses(settings.apply_pipulse);
 
-  hamiltonian_file_Hsys = hamiltonian_file_Hsys_;
-  hamiltonian_file_Hc = hamiltonian_file_Hc_;
+  hamiltonian_file_Hsys = settings.hamiltonian_file_Hsys;
+  hamiltonian_file_Hc = settings.hamiltonian_file_Hc;
 
   // Control and optimization parameters
   oscillator_optimization.resize(num_osc);
 
-  convertControlSegments(indexed_control_segments_);
-  if (control_enforceBC_.has_value()) control_enforceBC = control_enforceBC_.value();
-  convertControlInitializations(indexed_control_init_);
-  convertIndexedControlBounds(indexed_control_bounds_);
-  convertIndexedCarrierFreqs(indexed_carrier_frequencies_);
-  convertOptimTarget(optim_target_);
+  convertControlSegments(settings.indexed_control_segments);
+  if (settings.control_enforceBC.has_value()) control_enforceBC = settings.control_enforceBC.value();
+  convertControlInitializations(settings.indexed_control_init);
+  convertIndexedControlBounds(settings.indexed_control_bounds);
+  convertIndexedCarrierFreqs(settings.indexed_carrier_frequencies);
+  convertOptimTarget(settings.optim_target);
 
-  if (gate_rot_freq_.has_value()) gate_rot_freq = gate_rot_freq_.value();
+  if (settings.gate_rot_freq.has_value()) gate_rot_freq = settings.gate_rot_freq.value();
   copyLast(gate_rot_freq, num_osc);
 
-  if (optim_objective_.has_value()) optim_objective = optim_objective_.value();
+  if (settings.optim_objective.has_value()) optim_objective = settings.optim_objective.value();
 
-  setOptimWeights(optim_weights_);
+  setOptimWeights(settings.optim_weights);
 
   tolerance = OptimTolerance{};
-  if (optim_atol_.has_value()) tolerance.atol = optim_atol_.value();
-  if (optim_rtol_.has_value()) tolerance.rtol = optim_rtol_.value();
-  if (optim_ftol_.has_value()) tolerance.ftol = optim_ftol_.value();
-  if (optim_inftol_.has_value()) tolerance.inftol = optim_inftol_.value();
-  if (optim_maxiter_.has_value()) tolerance.maxiter = optim_maxiter_.value();
+  if (settings.optim_atol.has_value()) tolerance.atol = settings.optim_atol.value();
+  if (settings.optim_rtol.has_value()) tolerance.rtol = settings.optim_rtol.value();
+  if (settings.optim_ftol.has_value()) tolerance.ftol = settings.optim_ftol.value();
+  if (settings.optim_inftol.has_value()) tolerance.inftol = settings.optim_inftol.value();
+  if (settings.optim_maxiter.has_value()) tolerance.maxiter = settings.optim_maxiter.value();
 
-  if (optim_regul_.has_value()) optim_regul = optim_regul_.value();
+  if (settings.optim_regul.has_value()) optim_regul = settings.optim_regul.value();
 
   penalty = OptimPenalty{};
-  if (optim_penalty_.has_value()) penalty.penalty = optim_penalty_.value();
-  if (optim_penalty_param_.has_value()) penalty.penalty_param = optim_penalty_param_.value();
-  if (optim_penalty_dpdm_.has_value()) penalty.penalty_dpdm = optim_penalty_dpdm_.value();
-  if (optim_penalty_energy_.has_value()) penalty.penalty_energy = optim_penalty_energy_.value();
-  if (optim_penalty_variation_.has_value()) penalty.penalty_variation = optim_penalty_variation_.value();
+  if (settings.optim_penalty.has_value()) penalty.penalty = settings.optim_penalty.value();
+  if (settings.optim_penalty_param.has_value()) penalty.penalty_param = settings.optim_penalty_param.value();
+  if (settings.optim_penalty_dpdm.has_value()) penalty.penalty_dpdm = settings.optim_penalty_dpdm.value();
+  if (settings.optim_penalty_energy.has_value()) penalty.penalty_energy = settings.optim_penalty_energy.value();
+  if (settings.optim_penalty_variation.has_value()) penalty.penalty_variation = settings.optim_penalty_variation.value();
 
-  if (optim_regul_tik0_.has_value()) optim_regul_tik0 = optim_regul_tik0_.value();
+  if (settings.optim_regul_tik0.has_value()) optim_regul_tik0 = settings.optim_regul_tik0.value();
 
   // Output parameters
-  if (datadir_.has_value()) datadir = datadir_.value();
-  convertIndexedOutput(indexed_output_);
-  if (output_frequency_.has_value()) output_frequency = output_frequency_.value();
-  if (optim_monitor_frequency_.has_value()) optim_monitor_frequency = optim_monitor_frequency_.value();
-  if (runtype_.has_value()) runtype = runtype_.value();
-  if (usematfree_.has_value()) usematfree = usematfree_.value();
-  if (linearsolver_type_.has_value()) linearsolver_type = linearsolver_type_.value();
-  if (linearsolver_maxiter_.has_value()) linearsolver_maxiter = linearsolver_maxiter_.value();
-  if (timestepper_type_.has_value()) timestepper_type = timestepper_type_.value();
-  setRandSeed(rand_seed_);
+  if (settings.datadir.has_value()) datadir = settings.datadir.value();
+  convertIndexedOutput(settings.indexed_output);
+  if (settings.output_frequency.has_value()) output_frequency = settings.output_frequency.value();
+  if (settings.optim_monitor_frequency.has_value()) optim_monitor_frequency = settings.optim_monitor_frequency.value();
+  if (settings.runtype.has_value()) runtype = settings.runtype.value();
+  if (settings.usematfree.has_value()) usematfree = settings.usematfree.value();
+  if (settings.linearsolver_type.has_value()) linearsolver_type = settings.linearsolver_type.value();
+  if (settings.linearsolver_maxiter.has_value()) linearsolver_maxiter = settings.linearsolver_maxiter.value();
+  if (settings.timestepper_type.has_value()) timestepper_type = settings.timestepper_type.value();
+  setRandSeed(settings.rand_seed);
 
   // Finalize interdependent settings, then validate
   finalize();

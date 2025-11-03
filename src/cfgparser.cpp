@@ -17,61 +17,61 @@ CfgParser::CfgParser(MPI_Comm comm, std::stringstream& logstream, bool quietmode
 
   // Register config parameter setters
   // General options
-  registerConfig("nlevels", nlevels);
-  registerConfig("nessential", nessential);
-  registerConfig("ntime", ntime);
-  registerConfig("dt", dt);
-  registerConfig("transfreq", transfreq);
-  registerConfig("selfkerr", selfkerr);
-  registerConfig("crosskerr", crosskerr);
-  registerConfig("Jkl", Jkl);
-  registerConfig("rotfreq", rotfreq);
-  registerConfig("collapse_type", collapse_type);
-  registerConfig("decay_time", decay_time);
-  registerConfig("dephase_time", dephase_time);
-  registerConfig("initialcondition", initialcondition);
-  registerConfig("apply_pipulse", apply_pipulse);
-  registerConfig("hamiltonian_file_Hsys", hamiltonian_file_Hsys);
-  registerConfig("hamiltonian_file_Hc", hamiltonian_file_Hc);
+  registerConfig("nlevels", settings.nlevels);
+  registerConfig("nessential", settings.nessential);
+  registerConfig("ntime", settings.ntime);
+  registerConfig("dt", settings.dt);
+  registerConfig("transfreq", settings.transfreq);
+  registerConfig("selfkerr", settings.selfkerr);
+  registerConfig("crosskerr", settings.crosskerr);
+  registerConfig("Jkl", settings.Jkl);
+  registerConfig("rotfreq", settings.rotfreq);
+  registerConfig("collapse_type", settings.collapse_type);
+  registerConfig("decay_time", settings.decay_time);
+  registerConfig("dephase_time", settings.dephase_time);
+  registerConfig("initialcondition", settings.initialcondition);
+  registerConfig("apply_pipulse", settings.apply_pipulse);
+  registerConfig("hamiltonian_file_Hsys", settings.hamiltonian_file_Hsys);
+  registerConfig("hamiltonian_file_Hc", settings.hamiltonian_file_Hc);
 
   // Optimization options
-  registerConfig("control_enforceBC", control_enforceBC);
-  registerConfig("optim_target", optim_target);
-  registerConfig("gate_rot_freq", gate_rot_freq);
-  registerConfig("optim_objective", optim_objective);
-  registerConfig("optim_weights", optim_weights);
+  registerConfig("control_enforceBC", settings.control_enforceBC);
+  registerConfig("optim_target", settings.optim_target);
+  registerConfig("gate_rot_freq", settings.gate_rot_freq);
+  registerConfig("optim_objective", settings.optim_objective);
+  registerConfig("optim_weights", settings.optim_weights);
 
   // Indexed settings (per-oscillator)
-  registerIndexedConfig("control_segments", indexed_control_segments);
-  registerIndexedConfig("control_initialization", indexed_control_init);
-  registerIndexedConfig("control_bounds", indexed_control_bounds);
-  registerIndexedConfig("carrier_frequency", indexed_carrier_frequencies);
-  registerIndexedConfig("output", indexed_output);
-  registerConfig("optim_atol", optim_atol);
-  registerConfig("optim_rtol", optim_rtol);
-  registerConfig("optim_ftol", optim_ftol);
-  registerConfig("optim_inftol", optim_inftol);
-  registerConfig("optim_maxiter", optim_maxiter);
-  registerConfig("optim_regul", optim_regul);
-  registerConfig("optim_penalty", optim_penalty);
-  registerConfig("optim_penalty_param", optim_penalty_param);
-  registerConfig("optim_penalty_dpdm", optim_penalty_dpdm);
-  registerConfig("optim_penalty_energy", optim_penalty_energy);
-  registerConfig("optim_penalty_variation", optim_penalty_variation);
-  registerConfig("optim_regul_tik0", optim_regul_tik0);
+  registerIndexedConfig("control_segments", settings.indexed_control_segments);
+  registerIndexedConfig("control_initialization", settings.indexed_control_init);
+  registerIndexedConfig("control_bounds", settings.indexed_control_bounds);
+  registerIndexedConfig("carrier_frequency", settings.indexed_carrier_frequencies);
+  registerIndexedConfig("output", settings.indexed_output);
+  registerConfig("optim_atol", settings.optim_atol);
+  registerConfig("optim_rtol", settings.optim_rtol);
+  registerConfig("optim_ftol", settings.optim_ftol);
+  registerConfig("optim_inftol", settings.optim_inftol);
+  registerConfig("optim_maxiter", settings.optim_maxiter);
+  registerConfig("optim_regul", settings.optim_regul);
+  registerConfig("optim_penalty", settings.optim_penalty);
+  registerConfig("optim_penalty_param", settings.optim_penalty_param);
+  registerConfig("optim_penalty_dpdm", settings.optim_penalty_dpdm);
+  registerConfig("optim_penalty_energy", settings.optim_penalty_energy);
+  registerConfig("optim_penalty_variation", settings.optim_penalty_variation);
+  registerConfig("optim_regul_tik0", settings.optim_regul_tik0);
   registerConfig("optim_regul_interpolate", optim_regul_interpolate);
 
   // Output and runtypes
-  registerConfig("datadir", datadir);
-  registerConfig("output", output);
-  registerConfig("output_frequency", output_frequency);
-  registerConfig("optim_monitor_frequency", optim_monitor_frequency);
-  registerConfig("runtype", runtype);
-  registerConfig("usematfree", usematfree);
-  registerConfig("linearsolver_type", linearsolver_type);
-  registerConfig("linearsolver_maxiter", linearsolver_maxiter);
-  registerConfig("timestepper", timestepper);
-  registerConfig("rand_seed", rand_seed);
+  registerConfig("datadir", settings.datadir);
+  // Note: "output" is handled as indexed config in the indexed settings section above
+  registerConfig("output_frequency", settings.output_frequency);
+  registerConfig("optim_monitor_frequency", settings.optim_monitor_frequency);
+  registerConfig("runtype", settings.runtype);
+  registerConfig("usematfree", settings.usematfree);
+  registerConfig("linearsolver_type", settings.linearsolver_type);
+  registerConfig("linearsolver_maxiter", settings.linearsolver_maxiter);
+  registerConfig("timestepper", settings.timestepper_type);
+  registerConfig("rand_seed", settings.rand_seed);
 }
 
 std::vector<std::vector<double>> CfgParser::convertIndexedToVectorVector(
@@ -99,63 +99,15 @@ std::vector<std::vector<OutputType>> CfgParser::convertIndexedToOutputVector(
 }
 
 Config CfgParser::parse() {
-  return Config(
-    comm,
-    *log,
-    quietmode,
-    // General options
-    nlevels,
-    nessential,
-    ntime,
-    dt,
-    transfreq,
-    selfkerr,
-    crosskerr,
-    Jkl,
-    rotfreq,
-    collapse_type,
-    decay_time,
-    dephase_time,
-    initialcondition,
-    apply_pipulse,
-    hamiltonian_file_Hsys,
-    hamiltonian_file_Hc,
-    // Indexed control parameters
-    indexed_control_segments,
-    control_enforceBC,
-    indexed_control_init,
-    indexed_control_bounds,
-    indexed_carrier_frequencies,
-    // Optimization parameters
-    optim_target,
-    gate_rot_freq,
-    optim_objective,
-    optim_weights,
-    optim_atol,
-    optim_rtol,
-    optim_ftol,
-    optim_inftol,
-    optim_maxiter,
-    optim_regul,
-    optim_penalty,
-    optim_penalty_param,
-    optim_penalty_dpdm,
-    optim_penalty_energy,
-    optim_penalty_variation,
-    // Use deprecated form if optim_regul_tik0 not set
-    optim_regul_tik0.has_value() ? optim_regul_tik0 : optim_regul_interpolate,
-    // Output parameters
-    datadir,
-    indexed_output,
-    output_frequency,
-    optim_monitor_frequency,
-    runtype,
-    usematfree,
-    linearsolver_type,
-    linearsolver_maxiter,
-    timestepper,
-    rand_seed
-  );
+  // Handle deprecated optim_regul_tik0 logic
+  if (settings.optim_regul_tik0.has_value()) {
+    // Use the explicitly set optim_regul_tik0 value
+  } else if (optim_regul_interpolate.has_value()) {
+    // Fall back to deprecated optim_regul_interpolate
+    settings.optim_regul_tik0 = optim_regul_interpolate;
+  }
+
+  return Config(comm, *log, quietmode, settings);
 }
 
 namespace {

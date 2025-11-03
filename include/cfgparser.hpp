@@ -41,66 +41,9 @@ private:
   std::stringstream* log; ///< Pointer to log stream for output messages.
   bool quietmode; ///< Flag to control verbose output.
 
-  // General options
-  std::optional<std::vector<size_t>> nlevels;  ///< Number of levels per subsystem
-  std::optional<std::vector<size_t>> nessential;  ///< Number of essential levels per subsystem
-  std::optional<size_t> ntime;  ///< Number of time steps used for time-integration
-  std::optional<double> dt;  ///< Time step size (ns). Determines final time: T=ntime*dt
-  std::optional<std::vector<double>> transfreq;  ///< Fundamental transition frequencies for each oscillator (GHz)
-  std::optional<std::vector<double>> selfkerr;  ///< Self-kerr frequencies for each oscillator (GHz)
-  std::optional<std::vector<double>> crosskerr;  ///< Cross-kerr coupling frequencies for each oscillator coupling (GHz)
-  std::optional<std::vector<double>> Jkl;  ///< Dipole-dipole coupling frequencies for each oscillator coupling (GHz)
-  std::optional<std::vector<double>> rotfreq;  ///< Rotational wave approximation frequencies for each subsystem (GHz)
-  std::optional<LindbladType> collapse_type;  ///< Switch between Schroedinger and Lindblad solver
-  std::optional<std::vector<double>> decay_time;  ///< Time of decay collapse operation (T1) per oscillator (for Lindblad solver)
-  std::optional<std::vector<double>> dephase_time;  ///< Time of dephase collapse operation (T2) per oscillator (for Lindblad solver)
-  std::optional<InitialConditionConfig> initialcondition;  ///< Initial condition specification
-  std::optional<std::vector<PiPulseConfig>> apply_pipulse;  ///< Apply a pi-pulse to oscillator with specified parameters
-  std::optional<std::string> hamiltonian_file_Hsys;  ///< File to read the system Hamiltonian from
-  std::optional<std::string> hamiltonian_file_Hc;  ///< File to read the control Hamiltonian from
-
-  // Optimization options
-  std::optional<std::vector<ControlSegmentConfig>> control_segments;  ///< Define the control segments for each oscillator (consolidated from control_segments0, control_segments1, etc.)
-  std::optional<bool> control_enforceBC;  ///< Decide whether control pulses should start and end at zero
-  std::optional<std::vector<ControlInitializationConfig>> control_initializations;  ///< Set the initial control pulse parameters for each oscillator (consolidated from control_initialization0, etc.)
-  std::optional<std::vector<std::vector<double>>> control_bounds;  ///< Maximum amplitude bound for the control pulses for each oscillator segment (GHz) (consolidated from control_bounds0, etc.)
-  std::optional<std::vector<std::vector<double>>> carrier_frequencies;  ///< Carrier wave frequencies for each oscillator (GHz) (consolidated from carrier_frequency0, etc.)
-  std::optional<OptimTargetConfig> optim_target;  ///< Optimization target configuration
-  std::optional<std::vector<double>> gate_rot_freq;  ///< Frequency of rotation of the target gate, for each oscillator (GHz)
-  std::optional<ObjectiveType> optim_objective;  ///< Objective function measure
-  std::optional<std::vector<double>> optim_weights;  ///< Weights for summing up the objective function
-  std::optional<double> optim_atol;  ///< Optimization stopping tolerance based on gradient norm (absolute)
-  std::optional<double> optim_rtol;  ///< Optimization stopping tolerance based on gradient norm (relative)
-  std::optional<double> optim_ftol;  ///< Optimization stopping criterion based on the final time cost (absolute)
-  std::optional<double> optim_inftol;  ///< Optimization stopping criterion based on the infidelity (absolute)
-  std::optional<size_t> optim_maxiter;  ///< Maximum number of optimization iterations
-  std::optional<double> optim_regul;  ///< Coefficient of Tikhonov regularization for the design variables
-  std::optional<double> optim_penalty;  ///< Coefficient for adding first integral penalty term
-  std::optional<double> optim_penalty_param;  ///< Integral penalty parameter inside the weight (gaussian variance a)
-  std::optional<double> optim_penalty_dpdm;  ///< Coefficient for penalizing the integral of the second derivative of state populations
-  std::optional<double> optim_penalty_energy;  ///< Coefficient for penalizing the control pulse energy integral
-  std::optional<double> optim_penalty_variation;  ///< Coefficient for penalizing variations in control amplitudes
-  std::optional<bool> optim_regul_tik0;  ///< Switch to use Tikhonov regularization with ||x - x_0||^2 instead of ||x||^2
+  // Configuration settings storage
+  ConfigSettings settings;  ///< All configuration settings in one place
   std::optional<bool> optim_regul_interpolate;  ///< Deprecated version of optim_regul_tik0
-
-  // Output and runtypes
-  std::optional<std::string> datadir;  ///< Directory for output files
-  std::optional<std::vector<std::vector<OutputType>>> output;  ///< Specify the desired output for each oscillator
-  std::optional<int> output_frequency;  ///< Output frequency in the time domain: write output every <num> time-step
-  std::optional<int> optim_monitor_frequency;  ///< Frequency of writing output during optimization iterations
-  std::optional<RunType> runtype;  ///< Runtype options: simulation, gradient, or optimization
-  std::optional<bool> usematfree;  ///< Use matrix free solver, instead of sparse matrix implementation
-  std::optional<LinearSolverType> linearsolver_type;  ///< Solver type for solving the linear system at each time step
-  std::optional<size_t> linearsolver_maxiter;  ///< Set maximum number of iterations for the linear solver
-  std::optional<TimeStepperType> timestepper;  ///< The time-stepping algorithm
-  std::optional<int> rand_seed;  ///< Fixed seed for the random number generator for reproducibility
-
-  // Indexed settings storage (per-oscillator)
-  std::optional<std::map<int, std::vector<ControlSegmentConfig>>> indexed_control_segments;      ///< control_segments0, control_segments1, etc.
-  std::optional<std::map<int, std::vector<ControlInitializationConfig>>> indexed_control_init;   ///< control_initialization0, control_initialization1, etc.
-  std::optional<std::map<int, std::vector<double>>> indexed_control_bounds;         ///< control_bounds0, control_bounds1, etc.
-  std::optional<std::map<int, std::vector<double>>> indexed_carrier_frequencies;    ///< carrier_frequency0, carrier_frequency1, etc.
-  std::optional<std::map<int, std::vector<OutputType>>> indexed_output;             ///< output0, output1, etc.
 
 public:
   CfgParser(MPI_Comm comm, std::stringstream& logstream, bool quietmode = false);
