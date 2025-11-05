@@ -11,7 +11,7 @@ blt_add_library(
     SOURCES ${SRC_FILES}
     HEADERS ${HEADER_FILES}
     INCLUDES ${INC_DIR} ${CMAKE_BINARY_DIR}/include
-    DEPENDS_ON blt::mpi
+    DEPENDS_ON blt::mpi tomlplusplus::tomlplusplus
 )
 
 blt_add_executable(

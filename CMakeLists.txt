@@ -52,6 +52,9 @@ configure_file(
     @ONLY
 )
 
+# Add tomlplusplus
+add_subdirectory(third_party/tomlplusplus)
+
 if(BUILD_QUANDARY)
   add_subdirectory(src)
   add_subdirectory(tests/unit)
