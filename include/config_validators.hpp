@@ -10,6 +10,22 @@
 
 namespace validators {
 
+// Helper to get readable type names for error messages
+template<typename T>
+std::string get_type_name() {
+  if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t> || std::is_same_v<T, size_t>) {
+    return "integer";
+  } else if constexpr (std::is_same_v<T, double> || std::is_same_v<T, float>) {
+    return "number";
+  } else if constexpr (std::is_same_v<T, std::string>) {
+    return "string";
+  } else if constexpr (std::is_same_v<T, bool>) {
+    return "boolean";
+  } else {
+    return "unknown type";
+  }
+}
+
 // Custom exception for validation errors
 class ValidationError : public std::runtime_error {
 public:
@@ -72,13 +88,20 @@ private:
 
 public:
   T get() {
-    auto val = config_[key_].template value<T>();
-
-    if (!val && required_) {
-      throw ValidationError(key_, "field is required");
+    // Check if key exists first
+    if (!config_.contains(key_)) {
+      if (required_) {
+        throw ValidationError(key_, "field is required");
+      } else {
+        throw ValidationError(key_, "field not found");
+      }
     }
+
+    // Key exists, try to extract value
+    auto val = config_[key_].template value<T>();
     if (!val) {
-      throw ValidationError(key_, "field not found or wrong type");
+      // Key exists but wrong type - give helpful error
+      throw ValidationError(key_, "wrong type (expected " + get_type_name<T>() + ")");
     }
 
     return validate_value(*val);
@@ -134,13 +157,19 @@ public:
   }
 
   std::vector<T> get() {
-    auto* arr = config_[key_].as_array();
-
-    if (!arr && required_) {
-      throw ValidationError(key_, "field is required");
+    // Check if key exists first
+    if (!config_.contains(key_)) {
+      if (required_) {
+        throw ValidationError(key_, "field is required");
+      } else {
+        throw ValidationError(key_, "field not found");
+      }
     }
+
+    // Key exists, check if it's an array
+    auto* arr = config_[key_].as_array();
     if (!arr) {
-      throw ValidationError(key_, "must be an array");
+      throw ValidationError(key_, "wrong type (expected array)");
     }
 
     if (min_length_ && arr->size() < *min_length_) {
