@@ -10,6 +10,7 @@
 #include "cfgparser.hpp"
 #include "defs.hpp"
 #include "util.hpp"
+#include "config_validators.hpp"
 
 // Helper function to convert enum back to string using existing enum maps
 template<typename EnumType>
@@ -100,6 +101,86 @@ OptimTargetSettings parseOptimTarget(
 }
 
 } // namespace
+
+Config::Config(
+  int mpi_rank_,
+  std::stringstream& log_,
+  bool quietmode_,
+  const toml::table& table
+) :
+  mpi_rank(mpi_rank_),
+  log(log_),
+  quietmode(quietmode_) {
+
+  if(!table.contains("system")) {
+    exitWithError(mpi_rank, "ERROR: [system] section required in TOML config");
+  }
+  auto system = *table["system"].as_table();
+
+  try {
+    // Parse system settings
+    nlevels = validators::vector_field<size_t>(system, "nlevels")
+      .required()
+      .min_length(1)
+      .positive()
+      .get();
+
+    size_t num_osc = nlevels.size();
+    size_t num_pairs_osc = (num_osc - 1) * num_osc / 2;
+
+    nessential = validators::vector_field<size_t>(system, "nessential")
+      .min_length(1)
+      .positive()
+      .get_or(nlevels);
+    copyLast(nessential, num_osc);
+
+    ntime = validators::field<size_t>(system, "ntime")
+      .positive()
+      .get_or(ntime);
+
+    dt = validators::field<double>(system, "dt")
+      .positive()
+      .min(0.0)
+      .get_or(dt);
+
+    transfreq = validators::vector_field<double>(system, "transfreq")
+      .required()
+      .min_length(1)
+      .get();
+    copyLast(transfreq, num_osc);
+
+    selfkerr = validators::vector_field<double>(system, "selfkerr")
+      .min_length(1)
+      .get_or(std::vector<double>(num_osc, 0.0));
+    copyLast(selfkerr, num_osc);
+
+    crosskerr = validators::vector_field<double>(system, "crosskerr")
+      .min_length(1)
+      .get_or(std::vector<double>(num_pairs_osc, 0.0));
+    copyLast(crosskerr, num_pairs_osc);
+
+    Jkl = validators::vector_field<double>(system, "Jkl")
+      .min_length(1)
+      .get_or(std::vector<double>(num_pairs_osc, 0.0));
+    copyLast(Jkl, num_pairs_osc);
+
+    rotfreq = validators::vector_field<double>(system, "rotfreq")
+      .required()
+      .min_length(1)
+      .get();
+    copyLast(rotfreq, num_osc);
+
+    // Parse optimization settings
+
+
+  } catch (const validators::ValidationError& e) {
+    exitWithError(mpi_rank, "ERROR: " + std::string(e.what()));
+  }
+
+  // Finalize and validate
+  finalize();
+  validate();
+}
 
 Config::Config(
   int mpi_rank_,
@@ -254,6 +335,11 @@ void Config::validate() const {
         " cannot exceed nlevels[" + std::to_string(i) + "] = " + std::to_string(nlevels[i]));
     }
   }
+}
+
+Config Config::fromToml(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode) {
+  toml::table config = toml::parse_file(filename);
+  return Config(mpi_rank, *log, quietmode, config);
 }
 
 Config Config::fromCfg(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode) {

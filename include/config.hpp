@@ -1,6 +1,8 @@
 #include "defs.hpp"
 #include "config_types.hpp"
 
+#include <toml++/toml.hpp>
+
 #include <cstddef>
 #include <vector>
 #include <string>
@@ -252,7 +254,6 @@ struct OscillatorOptimization {
 class Config {
   private:
     // MPI and logging (still needed for runtime operations)
-    MPI_Comm comm; ///< MPI communicator for parallel operations.
     int mpi_rank; ///< MPI rank of the current process.
 
     std::stringstream& log; ///< Reference to log stream for output messages.
@@ -306,11 +307,19 @@ class Config {
       int mpi_rank_,
       std::stringstream& log_,
       bool quietmode_,
+      const toml::table& table
+    );
+
+    Config(
+      int mpi_rank_,
+      std::stringstream& log_,
+      bool quietmode_,
       const ConfigSettings& settings
     );
 
     ~Config();
 
+    static Config fromToml(int mpi_rank, const std::string& toml_filename, std::stringstream* log, bool quietmode = false);
     static Config fromCfg(int mpi_rank, const std::string& cfg_filename, std::stringstream* log, bool quietmode = false);
 
     void printConfig() const;
