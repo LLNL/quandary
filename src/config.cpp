@@ -176,7 +176,7 @@ void Config::validate() const {
   }
 }
 
-Config Config::fromCfg(std::string filename, std::stringstream* log, bool quietmode) {
+Config Config::fromCfg(const std::string& filename, std::stringstream* log, bool quietmode) {
   CfgParser parser(MPI_COMM_WORLD, *log, quietmode);
   ConfigSettings settings = parser.parseFile(filename);
   return Config(MPI_COMM_WORLD, *log, quietmode, settings);

@@ -311,7 +311,7 @@ class Config {
 
     ~Config();
 
-    static Config fromCfg(std::string filename, std::stringstream* log, bool quietmode = false);
+    static Config fromCfg(const std::string& cfg_filename, std::stringstream* log, bool quietmode = false);
 
     void printConfig() const;
 
