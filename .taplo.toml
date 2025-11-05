@@ -1,0 +1,3 @@
+[schema]
+path = "./config-schema.json"
+enabled = true
