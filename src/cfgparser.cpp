@@ -98,18 +98,6 @@ std::vector<std::vector<OutputType>> CfgParser::convertIndexedToOutputVector(
   return result;
 }
 
-Config CfgParser::parse() {
-  // Handle deprecated optim_regul_tik0 logic
-  if (settings.optim_regul_tik0.has_value()) {
-    // Use the explicitly set optim_regul_tik0 value
-  } else if (optim_regul_interpolate.has_value()) {
-    // Fall back to deprecated optim_regul_interpolate
-    settings.optim_regul_tik0 = optim_regul_interpolate;
-  }
-
-  return Config(comm, *log, quietmode, settings);
-}
-
 namespace {
 
 std::string trimWhitespace(std::string s) {
@@ -195,7 +183,7 @@ bool CfgParser::handleIndexedSetting(const std::string& key, const std::string& 
   return false;
 }
 
-void CfgParser::loadFromFile(const std::string& filename) {
+ConfigSettings CfgParser::parseFile(const std::string& filename) {
   std::ifstream file(filename);
   if (!file.is_open()) {
     logErrorToRank0(mpi_rank, "Unable to read the file " + filename);
@@ -204,11 +192,13 @@ void CfgParser::loadFromFile(const std::string& filename) {
 
   loadFromStream(file);
   file.close();
+  return settings;
 }
 
-void CfgParser::loadFromString(const std::string& config_content) {
+ConfigSettings CfgParser::parseString(const std::string& config_content) {
   std::istringstream stream(config_content);
   loadFromStream(stream);
+  return settings;
 }
 
 // Struct converter implementations

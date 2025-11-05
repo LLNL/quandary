@@ -93,6 +93,7 @@ struct ConfigSettings {
   std::optional<double> optim_penalty_energy;
   std::optional<double> optim_penalty_variation;
   std::optional<bool> optim_regul_tik0;
+  std::optional<bool> optim_regul_interpolate; // deprecated
 
   // Output parameters
   std::optional<std::string> datadir;

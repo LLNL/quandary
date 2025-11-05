@@ -116,7 +116,13 @@ Config::Config(
   if (settings.optim_penalty_energy.has_value()) penalty.penalty_energy = settings.optim_penalty_energy.value();
   if (settings.optim_penalty_variation.has_value()) penalty.penalty_variation = settings.optim_penalty_variation.value();
 
-  if (settings.optim_regul_tik0.has_value()) optim_regul_tik0 = settings.optim_regul_tik0.value();
+  if (settings.optim_regul_tik0.has_value()) {
+    optim_regul_tik0 = settings.optim_regul_tik0.value();
+  } else if (settings.optim_regul_interpolate.has_value()) {
+    // Handle deprecated optim_regul_interpolate logic
+    optim_regul_tik0 = settings.optim_regul_interpolate.value();
+    logOutputToRank0(mpi_rank, "# Warning: 'optim_regul_interpolate' is deprecated. Please use 'optim_regul_tik0' instead.\n");
+  }
 
   // Output parameters
   if (settings.datadir.has_value()) datadir = settings.datadir.value();
@@ -172,8 +178,8 @@ void Config::validate() const {
 
 Config Config::fromCfg(std::string filename, std::stringstream* log, bool quietmode) {
   CfgParser parser(MPI_COMM_WORLD, *log, quietmode);
-  parser.loadFromFile(filename);
-  return parser.parse();
+  ConfigSettings settings = parser.parseFile(filename);
+  return Config(MPI_COMM_WORLD, *log, quietmode, settings);
 }
 
 namespace {
