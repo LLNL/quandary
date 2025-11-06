@@ -100,6 +100,22 @@ OptimTargetSettings parseOptimTarget(
   return PureOptimTarget{};
 }
 
+// Helper to extract optional vectors directly from TOML
+template<typename T>
+std::optional<std::vector<T>> get_optional_vector(const toml::node_view<toml::node>& node) {
+  auto* arr = node.as_array();
+  if (!arr) return std::nullopt;
+
+  std::vector<T> result;
+  for (size_t i = 0; i < arr->size(); ++i) {
+    auto val = arr->at(i).template value<T>();
+    if (!val) return std::nullopt;  // Type mismatch in array element
+    result.push_back(*val);
+  }
+
+  return result;
+}
+
 } // namespace
 
 Config::Config(
@@ -187,7 +203,7 @@ Config::Config(
         .get();
       std::optional<std::string> gate_type_str = (*target_table)["gate_type"].value<std::string>();
       std::optional<std::string> gate_file = (*target_table)["gate_file"].value<std::string>();
-      std::optional<std::vector<size_t>> levels = validators::vector_field<size_t>(*target_table, "levels").get();
+      std::optional<std::vector<size_t>> levels = get_optional_vector<size_t>((*target_table)["levels"]);
       std::optional<std::string> filename = (*target_table)["filename"].value<std::string>();
       OptimTargetConfig optim_target_config = {type_str, gate_type_str, filename, gate_file, levels};
 
