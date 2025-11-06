@@ -681,3 +681,8 @@ std::string toLower(std::string str) {
   std::transform(str.begin(), str.end(), str.begin(), ::tolower);
   return str;
 }
+
+bool hasSuffix(const std::string& str, const std::string& suffix) {
+  return str.size() >= suffix.size() &&
+    str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}

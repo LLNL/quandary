@@ -295,3 +295,12 @@ void logOutputToRank0(int mpi_rank, std::stringstream& stream, const std::string
  * @return std::string Lowercase string
  */
 std::string toLower(std::string str);
+
+/**
+ * @brief Checks if string ends with specified suffix.
+ *
+ * @param str Input string to check.
+ * @param suffix Suffix to look for.
+ * @return bool True if string ends with suffix, false otherwise.
+ */
+bool hasSuffix(const std::string& str, const std::string& suffix);

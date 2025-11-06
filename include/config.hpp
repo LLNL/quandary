@@ -319,6 +319,7 @@ class Config {
 
     ~Config();
 
+    static Config fromFile(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode = false);
     static Config fromToml(int mpi_rank, const std::string& toml_filename, std::stringstream* log, bool quietmode = false);
     static Config fromCfg(int mpi_rank, const std::string& cfg_filename, std::stringstream* log, bool quietmode = false);
 

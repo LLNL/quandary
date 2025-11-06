@@ -358,6 +358,16 @@ void Config::validate() const {
   }
 }
 
+Config Config::fromFile(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode) {
+  if (hasSuffix(filename, ".toml")) {
+    return Config::fromToml(mpi_rank, filename, log, quietmode);
+  } else {
+    logOutputToRank0(mpi_rank, "# Warning: Config file does not have .toml extension. "
+      "The deprecated .cfg format will be removed in future versions.\n");
+    return Config::fromCfg(mpi_rank, filename, log, quietmode);
+  }
+}
+
 Config Config::fromToml(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode) {
   toml::table config = toml::parse_file(filename);
   return Config(mpi_rank, *log, quietmode, config);

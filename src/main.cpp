@@ -74,13 +74,9 @@ int main(int argc,char **argv)
   }
   std::stringstream log;
   std::string config_file = argv[1];
-  Config config_from_toml = Config::fromToml(mpirank_world, config_file, &log, quietmode);
-  std::cout << "\nFrom print:" << std::endl;
-  config_from_toml.printConfig();
-  std::cout << log.str() << std::endl;
-  exit(1);
-  Config config = Config::fromCfg(mpirank_world, config_file, &log, quietmode);
+  Config config = Config::fromFile(mpirank_world, config_file, &log, quietmode);
   config.printConfig();
+  std::cout << log.str() << std::endl; // TODO remove, for debugging
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
   int rand_seed = config.getRandSeed();
