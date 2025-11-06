@@ -192,6 +192,9 @@ Config::Config(
     copyLast(rotfreq, num_osc);
 
     // Parse optimization settings
+    control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
+      .get_or(control_enforceBC);
+
     if (optimization.contains("optim_target")) {
       auto target_table = optimization["optim_target"].as_table();
       if (!target_table) {
