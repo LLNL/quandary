@@ -280,7 +280,7 @@ class Config {
     // Optimization options
     bool control_enforceBC = true;  ///< Decide whether control pulses should start and end at zero
     std::vector<OscillatorOptimization> oscillator_optimization;  ///< Optimization configuration for each oscillator
-    OptimTargetSettings target;  ///< Grouped optimization target configuration
+    OptimTargetSettings optim_target;  ///< Grouped optimization target configuration
     std::vector<double> gate_rot_freq = std::vector<double>{0.0};  ///< Frequency of rotation of the target gate, for each oscillator (GHz)
     ObjectiveType optim_objective = ObjectiveType::JFROBENIUS;  ///< Objective function measure
     std::vector<double> optim_weights;  ///< Weights for summing up the objective function
@@ -352,7 +352,7 @@ class Config {
     double getControlBound(size_t i_osc, size_t i_seg) const { return oscillator_optimization[i_osc].control_bounds[i_seg]; }
     const std::vector<double>& getCarrierFrequencies(size_t i_osc) const { return oscillator_optimization[i_osc].carrier_frequencies; }
     double getCarrierFrequency(size_t i_osc, size_t i_seg) const { return oscillator_optimization[i_osc].carrier_frequencies[i_seg]; }
-    const OptimTargetSettings& getOptimTarget() const { return target; }
+    const OptimTargetSettings& getOptimTarget() const { return optim_target; }
     const std::vector<double>& getGateRotFreq() const { return gate_rot_freq; }
     ObjectiveType getOptimObjective() const { return optim_objective; }
     const std::vector<double>& getOptimWeights() const { return optim_weights; }

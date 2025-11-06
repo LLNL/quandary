@@ -236,24 +236,29 @@ OptimTargetConfig CfgParser::convertFromString<OptimTargetConfig>(const std::str
   }
 
   OptimTargetConfig config;
-  config.target_type = convertFromString<TargetType>(parts[0]);
+  auto target_type = convertFromString<TargetType>(parts[0]);
+  config.target_type = parts[0];
 
-  switch (config.target_type) {
-    case TargetType::GATE:
+  switch (target_type) {
+    case TargetType::GATE: {
       if (parts.size() < 2) {
         exitWithError(mpi_rank, "Target type 'gate' requires a gate name.");
       }
-      config.gate_type = convertFromString<GateType>(parts[1]);
-      if (config.gate_type == GateType::FILE) {
+      auto gate_type = convertFromString<GateType>(parts[1]);
+      config.gate_type = parts[1];
+
+      if (gate_type == GateType::FILE) {
         if (parts.size() < 3) {
           exitWithError(mpi_rank, "ERROR: Gate type 'file' requires a filename.");
         }
         config.gate_file = parts[2];
       }
       break;
+    }
     case TargetType::PURE:
+      config.levels = std::vector<size_t>{};
       for (size_t i = 1; i < parts.size(); ++i) {
-        config.levels.push_back(convertFromString<int>(parts[i]));
+        config.levels->push_back(convertFromString<int>(parts[i]));
       }
       break;
     case TargetType::FROMFILE:

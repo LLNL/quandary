@@ -20,6 +20,87 @@ std::string enumToString(EnumType value, const std::map<std::string, EnumType>& 
   return "unknown";
 }
 
+namespace {
+
+GateType parseGateType(const std::optional<std::string>& gate_type_str) {
+  if (!gate_type_str.has_value()) {
+    return GateType::NONE;
+  }
+
+  auto it = GATE_TYPE_MAP.find(gate_type_str.value());
+  if (it != GATE_TYPE_MAP.end()) {
+    return it->second;
+  } else {
+    return GateType::NONE;
+  }
+}
+
+OptimTargetSettings parseOptimTarget(
+  const std::optional<OptimTargetConfig>& opt_config,
+  const std::vector<size_t>& nlevels,
+  int mpi_rank
+) {
+  if (!opt_config.has_value()) {
+    return PureOptimTarget{};
+  }
+
+  const OptimTargetConfig& config = opt_config.value();
+
+  // Convert target type string to enum
+  auto type_it = TARGET_TYPE_MAP.find(config.target_type);
+  if (type_it == TARGET_TYPE_MAP.end()) {
+    exitWithError(mpi_rank, "ERROR: Unknown optimization target type: " + config.target_type);
+  }
+
+  switch (type_it->second) {
+    case TargetType::GATE: {
+      GateOptimTarget gate_target;
+      gate_target.gate_type = parseGateType(config.gate_type);
+      gate_target.gate_file = config.gate_file.value_or("");
+      return gate_target;
+    }
+
+    case TargetType::PURE: {
+      PureOptimTarget pure_target;
+
+      if (!config.levels.has_value() || config.levels->empty()) {
+        logOutputToRank0(mpi_rank, "# Warning: You want to prepare a pure state, but didn't specify which one."
+          " Taking default: ground-state |0...0> \n");
+        pure_target.purestate_levels = std::vector<size_t>(nlevels.size(), 0);
+        return pure_target;
+      }
+
+      // Copy levels and validate
+      for (auto level : config.levels.value()) {
+        pure_target.purestate_levels.push_back(static_cast<size_t>(level));
+      }
+      pure_target.purestate_levels.resize(nlevels.size(), nlevels.back());
+
+      for (size_t i = 0; i < nlevels.size(); i++) {
+        if (pure_target.purestate_levels[i] >= nlevels[i]) {
+          exitWithError(mpi_rank, "ERROR in config setting. The requested pure state target |" +
+            std::to_string(pure_target.purestate_levels[i]) +
+            "> exceeds the number of modeled levels for that oscillator (" +
+            std::to_string(nlevels[i]) + ").\n");
+        }
+      }
+
+      return pure_target;
+    }
+
+    case TargetType::FROMFILE: {
+      FileOptimTarget file_target;
+      file_target.file = config.filename.value_or("");
+      return file_target;
+    }
+  }
+
+  // Should never reach here, but satisfy compiler
+  return PureOptimTarget{};
+}
+
+} // namespace
+
 Config::Config(
   MPI_Comm comm_,
   std::stringstream& log_,
@@ -91,7 +172,7 @@ Config::Config(
   convertControlInitializations(settings.indexed_control_init);
   convertIndexedControlBounds(settings.indexed_control_bounds);
   convertIndexedCarrierFreqs(settings.indexed_carrier_frequencies);
-  convertOptimTarget(settings.optim_target);
+  optim_target = parseOptimTarget(settings.optim_target, nlevels, mpi_rank);
 
   if (settings.gate_rot_freq.has_value()) gate_rot_freq = settings.gate_rot_freq.value();
   copyLast(gate_rot_freq, num_osc);
@@ -282,7 +363,7 @@ void Config::printConfig() const {
     }
   }
 
-  log << "optim_target = " << toString(target) << "\n";
+  log << "optim_target = " << toString(optim_target) << "\n";
   log << "gate_rot_freq = " << printVector(gate_rot_freq) << "\n";
   log << "optim_objective = " << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\n";
   log << "optim_weights = " << printVector(optim_weights) << "\n";
@@ -432,51 +513,6 @@ void Config::convertInitialCondition(const std::optional<InitialConditionConfig>
   }
 
   initial_condition = convertInitialCondition(config.value());
-}
-
-void Config::convertOptimTarget(const std::optional<OptimTargetConfig>& config) {
-  if (!config.has_value()) {
-    target = PureOptimTarget{};
-    return;
-  }
-  switch (config->target_type) {
-    case TargetType::GATE: {
-      GateOptimTarget gate_target;
-      gate_target.gate_type = config->gate_type.value_or(GateType::NONE);
-      gate_target.gate_file = config->gate_file.value_or("");
-      target = gate_target;
-      break;
-    }
-    case TargetType::PURE: {
-      PureOptimTarget pure_target;
-      if (config->levels.empty()) {
-        logOutputToRank0(mpi_rank, "# Warning: You want to prepare a pure state, but didn't specify which one."
-          " Taking default: ground-state |0...0> \n");
-        pure_target.purestate_levels = std::vector<size_t>(nlevels.size(), 0);
-        return;
-      }
-      for (auto level : config->levels) {
-        pure_target.purestate_levels.push_back(static_cast<size_t>(level));
-      }
-      pure_target.purestate_levels.resize(nlevels.size(), nlevels.back());
-      for (size_t i = 0; i < nlevels.size(); i++) {
-        if (pure_target.purestate_levels[i] >= nlevels[i]) {
-          exitWithError(mpi_rank, "ERROR in config setting. The requested pure state target |" +
-            std::to_string(pure_target.purestate_levels[i]) +
-            "> exceeds the number of modeled levels for that oscillator (" +
-            std::to_string(nlevels[i]) + ").\n");
-        }
-      }
-      target = pure_target;
-      break;
-    }
-    case TargetType::FROMFILE: {
-      FileOptimTarget file_target;
-      file_target.file = config->filename.value_or("");
-      target = file_target;
-      break;
-    }
-  }
 }
 
 void Config::convertPiPulses(const std::optional<std::vector<PiPulseConfig>>& pulses) {

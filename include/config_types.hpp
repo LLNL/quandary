@@ -20,11 +20,11 @@ struct InitialConditionConfig {
 };
 
 struct OptimTargetConfig {
-  TargetType target_type;               ///< Target type (gate, pure, file)
-  std::optional<GateType> gate_type;    ///< Gate type (for "gate, cnot")
+  std::string target_type;               ///< Target type (gate, pure, file)
+  std::optional<std::string> gate_type;    ///< Gate type (for "gate, cnot")
   std::optional<std::string> filename;  ///< Filename (for "file, path.dat")
   std::optional<std::string> gate_file; ///< Gate filename (for "gate, file, path.dat")
-  std::vector<size_t> levels;           ///< Pure state levels (for "pure, 0, 1")
+  std::optional<std::vector<size_t>> levels;           ///< Pure state levels (for "pure, 0, 1")
 };
 
 struct PiPulseConfig {
