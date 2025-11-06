@@ -70,6 +70,22 @@ public:
   }
 
 private:
+  std::optional<T> extract_value() {
+    // If key doesn't exist, return nullopt
+    if (!config_.contains(key_)) {
+      return std::nullopt;
+    }
+
+    // Key exists, try to extract value with type checking
+    auto val = config_[key_].template value<T>();
+    if (!val) {
+      // Key exists but wrong type - always an error
+      throw ValidationError(key_, "wrong type (expected " + get_type_name<T>() + ")");
+    }
+
+    return val;
+  }
+
   T validate_value(T result) {
     if (min_ && result < *min_) {
       std::ostringstream oss;
@@ -88,30 +104,23 @@ private:
 
 public:
   T get() {
-    // Check if key exists first
-    if (!config_.contains(key_)) {
-      if (required_) {
-        throw ValidationError(key_, "field is required");
-      } else {
-        throw ValidationError(key_, "field not found");
-      }
-    }
+    auto val = extract_value();
 
-    // Key exists, try to extract value
-    auto val = config_[key_].template value<T>();
+    if (!val && required_) {
+      throw ValidationError(key_, "field is required");
+    }
     if (!val) {
-      // Key exists but wrong type - give helpful error
-      throw ValidationError(key_, "wrong type (expected " + get_type_name<T>() + ")");
+      throw ValidationError(key_, "field not found");
     }
 
     return validate_value(*val);
   }
 
   T get_or(T default_value) {
-    auto val = config_[key_].template value<T>();
-    if (!val) return default_value;
+    auto val = extract_value();
+    if (!val) return default_value;  // Key doesn't exist - use default
 
-    return validate_value(*val);
+    return validate_value(*val);  // Key exists - validate it (will throw on wrong type)
   }
 };
 
@@ -156,44 +165,50 @@ public:
     return *this;
   }
 
-  std::vector<T> get() {
-    // Check if key exists first
+private:
+  std::optional<std::vector<T>> extract_vector() {
+    // If key doesn't exist, return nullopt
     if (!config_.contains(key_)) {
-      if (required_) {
-        throw ValidationError(key_, "field is required");
-      } else {
-        throw ValidationError(key_, "field not found");
-      }
+      return std::nullopt;
     }
 
     // Key exists, check if it's an array
     auto* arr = config_[key_].as_array();
     if (!arr) {
+      // Key exists but wrong type - always an error
       throw ValidationError(key_, "wrong type (expected array)");
     }
 
-    if (min_length_ && arr->size() < *min_length_) {
-      std::ostringstream oss;
-      oss << "must have at least " << *min_length_ << " elements, got " << arr->size();
-      throw ValidationError(key_, oss.str());
-    }
-
-    if (max_length_ && arr->size() > *max_length_) {
-      std::ostringstream oss;
-      oss << "must have at most " << *max_length_ << " elements, got " << arr->size();
-      throw ValidationError(key_, oss.str());
-    }
-
+    // Extract and validate array elements
     std::vector<T> result;
     for (size_t i = 0; i < arr->size(); ++i) {
       auto val = arr->at(i).template value<T>();
       if (!val) {
         std::ostringstream oss;
-        oss << "element [" << i << "] has wrong type";
+        oss << "element [" << i << "] wrong type (expected " << get_type_name<T>() << ")";
         throw ValidationError(key_, oss.str());
       }
+      result.push_back(*val);
+    }
 
-      T element = *val;
+    return result;
+  }
+
+  std::vector<T> validate_vector(std::vector<T> result) {
+    if (min_length_ && result.size() < *min_length_) {
+      std::ostringstream oss;
+      oss << "must have at least " << *min_length_ << " elements, got " << result.size();
+      throw ValidationError(key_, oss.str());
+    }
+
+    if (max_length_ && result.size() > *max_length_) {
+      std::ostringstream oss;
+      oss << "must have at most " << *max_length_ << " elements, got " << result.size();
+      throw ValidationError(key_, oss.str());
+    }
+
+    for (size_t i = 0; i < result.size(); ++i) {
+      T& element = result[i];
 
       if (positive_ && element <= T{0}) {
         std::ostringstream oss;
@@ -206,20 +221,30 @@ public:
         oss << "element [" << i << "] must be >= " << *min_value_ << ", got " << element;
         throw ValidationError(key_, oss.str());
       }
-
-
-      result.push_back(element);
     }
 
     return result;
   }
 
-  std::vector<T> get_or(const std::vector<T>& default_value) {
-    auto* arr = config_[key_].as_array();
-    if (!arr) return default_value;
+public:
+  std::vector<T> get() {
+    auto val = extract_vector();
 
-    // Apply same validation logic as get()
-    return get();
+    if (!val && required_) {
+      throw ValidationError(key_, "field is required");
+    }
+    if (!val) {
+      throw ValidationError(key_, "field not found");
+    }
+
+    return validate_vector(*val);
+  }
+
+  std::vector<T> get_or(const std::vector<T>& default_value) {
+    auto val = extract_vector();
+    if (!val) return default_value;  // Key doesn't exist - use default
+
+    return validate_vector(*val);  // Key exists - validate it (will throw on wrong type)
   }
 };
 
