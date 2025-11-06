@@ -135,41 +135,10 @@
             }
           ]
         },
-        "optim_maxiter": {
-          "type": "integer",
-          "description": "Maximum optimization iterations",
-          "minimum": 1,
-          "default": 100
-        },
-        "optim_objective": {
-          "type": "string",
-          "description": "Objective function type",
-          "enum": ["jfrobenius", "jtrace", "jmeasure"],
-          "default": "jtrace"
-        },
-        "optim_regul": {
-          "type": "number",
-          "description": "Tikhonov regularization parameter",
-          "minimum": 0,
-          "default": 0.0
-        },
-        "optim_atol": {
-          "type": "number",
-          "description": "Absolute tolerance for optimization",
-          "minimum": 0,
-          "default": 1e-8
-        },
-        "optim_rtol": {
-          "type": "number",
-          "description": "Relative tolerance for optimization",
-          "minimum": 0,
-          "default": 1e-8
-        },
-        "optim_ftol": {
-          "type": "number",
-          "description": "Function tolerance for optimization",
-          "minimum": 0,
-          "default": 1e-8
+        "control_enforce_BC": {
+          "type": "boolean",
+          "description": "Enforce boundary conditions on control pulses",
+          "default": true
         }
       },
       "additionalProperties": false
