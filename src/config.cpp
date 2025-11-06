@@ -117,6 +117,11 @@ Config::Config(
   }
   auto system = *table["system"].as_table();
 
+  if(!table.contains("optimization")) {
+    exitWithError(mpi_rank, "ERROR: [optimization] section required in TOML config");
+  }
+  auto optimization = *table["optimization"].as_table();
+
   try {
     // Parse system settings
     nlevels = validators::vector_field<size_t>(system, "nlevels")
@@ -171,7 +176,23 @@ Config::Config(
     copyLast(rotfreq, num_osc);
 
     // Parse optimization settings
+    if (optimization.contains("optim_target")) {
+      auto target_table = optimization["optim_target"].as_table();
+      if (!target_table) {
+        throw validators::ValidationError("optimization.optim_target", "must be a table (object)");
+      }
 
+      std::string type_str = validators::field<std::string>(*target_table, "target_type")
+        .required()
+        .get();
+      std::optional<std::string> gate_type_str = (*target_table)["gate_type"].value<std::string>();
+      std::optional<std::string> gate_file = (*target_table)["gate_file"].value<std::string>();
+      std::optional<std::vector<size_t>> levels = validators::vector_field<size_t>(*target_table, "levels").get();
+      std::optional<std::string> filename = (*target_table)["filename"].value<std::string>();
+      OptimTargetConfig optim_target_config = {type_str, gate_type_str, filename, gate_file, levels};
+
+      optim_target = parseOptimTarget(optim_target_config, nlevels, mpi_rank);
+    }
 
   } catch (const validators::ValidationError& e) {
     exitWithError(mpi_rank, "ERROR: " + std::string(e.what()));
