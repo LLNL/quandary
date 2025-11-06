@@ -14,13 +14,15 @@ protected:
     if (!initialized) {
       MPI_Init(nullptr, nullptr);
     }
+    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
   }
 
   std::stringstream log;
+  int mpi_rank = 0;
 };
 
 TEST_F(CfgParserTest, ParseBasicSettings) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
@@ -30,7 +32,7 @@ TEST_F(CfgParserTest, ParseBasicSettings) {
     collapse_type = none
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   EXPECT_EQ(config.getNTime(), 500);
   EXPECT_DOUBLE_EQ(config.getDt(), 0.05);
@@ -38,14 +40,14 @@ TEST_F(CfgParserTest, ParseBasicSettings) {
 }
 
 TEST_F(CfgParserTest, ParseVectorSettings) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2, 3
     transfreq = 4.1, 4.8, 5.2
     rotfreq = 0.0, 0.0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   auto nlevels = config.getNLevels();
   EXPECT_EQ(nlevels.size(), 2);
@@ -60,7 +62,7 @@ TEST_F(CfgParserTest, ParseVectorSettings) {
 }
 
 TEST_F(CfgParserTest, ParseIndexedSettings) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2, 2
     transfreq = 4.1, 4.8
@@ -71,7 +73,7 @@ TEST_F(CfgParserTest, ParseIndexedSettings) {
     output1 = population
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   // Verify control segments were parsed correctly
   EXPECT_EQ(config.getOscillators().size(), 2); // 2 oscillators
@@ -94,7 +96,7 @@ TEST_F(CfgParserTest, ParseIndexedSettings) {
 }
 
 TEST_F(CfgParserTest, ParseStructSettings) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
@@ -103,7 +105,7 @@ TEST_F(CfgParserTest, ParseStructSettings) {
     initialcondition = diagonal, 0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -117,14 +119,14 @@ TEST_F(CfgParserTest, ParseStructSettings) {
 }
 
 TEST_F(CfgParserTest, ApplyDefaults) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   // Check defaults were applied
   EXPECT_EQ(config.getNTime(), 1000); // Default ntime
@@ -133,7 +135,7 @@ TEST_F(CfgParserTest, ApplyDefaults) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_FromFile) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
@@ -141,7 +143,7 @@ TEST_F(CfgParserTest, InitialCondition_FromFile) {
     initialcondition = file, test.dat
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<FromFileInitialCondition>(initcond));
   EXPECT_EQ(std::get<FromFileInitialCondition>(initcond).filename, "test.dat");
@@ -149,7 +151,7 @@ TEST_F(CfgParserTest, InitialCondition_FromFile) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_Pure) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 3, 2
     transfreq = 4.1, 4.8
@@ -157,7 +159,7 @@ TEST_F(CfgParserTest, InitialCondition_Pure) {
     initialcondition = pure, 1, 0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PureInitialCondition>(initcond));
   const auto& pure_init = std::get<PureInitialCondition>(initcond);
@@ -166,7 +168,7 @@ TEST_F(CfgParserTest, InitialCondition_Pure) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_Performance) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
@@ -174,14 +176,14 @@ TEST_F(CfgParserTest, InitialCondition_Performance) {
     initialcondition = performance
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PerformanceInitialCondition>(initcond));
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
 TEST_F(CfgParserTest, InitialCondition_Ensemble) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 3, 2
     transfreq = 4.1, 4.8
@@ -190,7 +192,7 @@ TEST_F(CfgParserTest, InitialCondition_Ensemble) {
     initialcondition = ensemble, 0, 1
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<EnsembleInitialCondition>(initcond));
   const auto& ensemble_init = std::get<EnsembleInitialCondition>(initcond);
@@ -199,7 +201,7 @@ TEST_F(CfgParserTest, InitialCondition_Ensemble) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_ThreeStates) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 3
     transfreq = 4.1
@@ -208,14 +210,14 @@ TEST_F(CfgParserTest, InitialCondition_ThreeStates) {
     initialcondition = 3states
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<ThreeStatesInitialCondition>(initcond));
   EXPECT_EQ(config.getNInitialConditions(), 3);
 }
 
 TEST_F(CfgParserTest, InitialCondition_NPlusOne_SingleOscillator) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 3
     transfreq = 4.1
@@ -224,7 +226,7 @@ TEST_F(CfgParserTest, InitialCondition_NPlusOne_SingleOscillator) {
     initialcondition = nplus1
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
   // For nlevels = [3], system dimension N = 3, so n_initial_conditions = N + 1 = 4
@@ -232,7 +234,7 @@ TEST_F(CfgParserTest, InitialCondition_NPlusOne_SingleOscillator) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2, 3
     transfreq = 4.1, 4.8
@@ -241,7 +243,7 @@ TEST_F(CfgParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
     initialcondition = nplus1
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
   // For nlevels = [2, 3], system dimension N = 2 * 3 = 6, so n_initial_conditions = N + 1 = 7
@@ -249,7 +251,7 @@ TEST_F(CfgParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_Diagonal_Schrodinger) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 3, 2
     nessential = 3, 2
@@ -259,7 +261,7 @@ TEST_F(CfgParserTest, InitialCondition_Diagonal_Schrodinger) {
     initialcondition = diagonal, 1
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
   const auto& diagonal_init = std::get<DiagonalInitialCondition>(initcond);
@@ -269,7 +271,7 @@ TEST_F(CfgParserTest, InitialCondition_Diagonal_Schrodinger) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_Basis_Schrodinger) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 3, 2
     nessential = 3, 2
@@ -279,7 +281,7 @@ TEST_F(CfgParserTest, InitialCondition_Basis_Schrodinger) {
     initialcondition = basis, 1
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
   // For Schrodinger solver, BASIS is converted to DIAGONAL, so n_initial_conditions = nessential[1] = 2
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
@@ -289,7 +291,7 @@ TEST_F(CfgParserTest, InitialCondition_Basis_Schrodinger) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_Basis_Lindblad) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 3, 2
     nessential = 3, 2
@@ -299,7 +301,7 @@ TEST_F(CfgParserTest, InitialCondition_Basis_Lindblad) {
     initialcondition = basis, 1
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<BasisInitialCondition>(initcond));
   const auto& basis_init = std::get<BasisInitialCondition>(initcond);
@@ -309,7 +311,7 @@ TEST_F(CfgParserTest, InitialCondition_Basis_Lindblad) {
 }
 
 TEST_F(CfgParserTest, ParsePiPulseSettings_Structure) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2, 2
     transfreq = 4.1
@@ -317,7 +319,7 @@ TEST_F(CfgParserTest, ParsePiPulseSettings_Structure) {
     apply_pipulse = 0, 0.5, 1.0, 0.8
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   const auto& pulses = config.getApplyPiPulses();
   EXPECT_EQ(pulses.size(), 2);
@@ -335,7 +337,7 @@ TEST_F(CfgParserTest, ParsePiPulseSettings_Structure) {
 }
 
 TEST_F(CfgParserTest, ControlSegments_Spline0) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
@@ -343,7 +345,7 @@ TEST_F(CfgParserTest, ControlSegments_Spline0) {
     control_segments0 = spline0, 150, 0.0, 1.0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   EXPECT_EQ(config.getOscillators().size(), 1);
 
@@ -357,7 +359,7 @@ TEST_F(CfgParserTest, ControlSegments_Spline0) {
 }
 
 TEST_F(CfgParserTest, ControlSegments_Spline) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2, 2
     transfreq = 4.1, 4.1
@@ -366,7 +368,7 @@ TEST_F(CfgParserTest, ControlSegments_Spline) {
     control_segments1 = spline, 20, 0.0, 1.0, spline, 30, 1.0, 2.0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   EXPECT_EQ(config.getOscillators().size(), 2);
 
@@ -397,7 +399,7 @@ TEST_F(CfgParserTest, ControlSegments_Spline) {
 }
 
 TEST_F(CfgParserTest, ControlSegments_Step) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2,2
     transfreq = 4.1,4.1
@@ -406,7 +408,7 @@ TEST_F(CfgParserTest, ControlSegments_Step) {
     control_segments1 = step, 0.1, 0.2, 0.3
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   EXPECT_EQ(config.getOscillators().size(), 2);
 
@@ -434,7 +436,7 @@ TEST_F(CfgParserTest, ControlSegments_Step) {
 }
 
 TEST_F(CfgParserTest, ControlSegments_Defaults) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2, 2, 2
     transfreq = 4.1, 4.8
@@ -443,7 +445,7 @@ TEST_F(CfgParserTest, ControlSegments_Defaults) {
     control_bounds1 = 2.0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   // Verify control segments were parsed correctly
   EXPECT_EQ(config.getOscillators().size(), 3); // 2 oscillators
@@ -479,7 +481,7 @@ TEST_F(CfgParserTest, ControlSegments_Defaults) {
 }
 
 TEST_F(CfgParserTest, ControlInitialization_Defaults) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2, 2, 2
     transfreq = 4.1, 4.1, 4.1
@@ -487,7 +489,7 @@ TEST_F(CfgParserTest, ControlInitialization_Defaults) {
     control_initialization1 = random, 2.0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   EXPECT_EQ(config.getOscillators().size(), 3);
 
@@ -517,7 +519,7 @@ TEST_F(CfgParserTest, ControlInitialization_Defaults) {
 }
 
 TEST_F(CfgParserTest, ControlInitialization) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2, 2, 2, 2, 2
     transfreq = 4.1, 4.1, 4.1, 4.1, 4.1
@@ -529,7 +531,7 @@ TEST_F(CfgParserTest, ControlInitialization) {
     control_initialization4 = random, 5.0, 5.1, constant, 6.0, 6.1
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   // Verify control segments were parsed correctly
   EXPECT_EQ(config.getOscillators().size(), 5);
@@ -580,7 +582,7 @@ TEST_F(CfgParserTest, ControlInitialization) {
 }
 
 TEST_F(CfgParserTest, ControlInitialization_File) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
@@ -588,7 +590,7 @@ TEST_F(CfgParserTest, ControlInitialization_File) {
     control_initialization0 = file, params.dat
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   EXPECT_EQ(config.getOscillators().size(), 1);
   const auto& osc0 = config.getOscillator(0);
@@ -599,7 +601,7 @@ TEST_F(CfgParserTest, ControlInitialization_File) {
 }
 
 TEST_F(CfgParserTest, ControlBounds) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
@@ -608,7 +610,7 @@ TEST_F(CfgParserTest, ControlBounds) {
     control_bounds0 = 1.0, 2.0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   EXPECT_EQ(config.getOscillators().size(), 1);
 
@@ -621,7 +623,7 @@ TEST_F(CfgParserTest, ControlBounds) {
 }
 
 TEST_F(CfgParserTest, CarrierFrequencies) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
@@ -629,7 +631,7 @@ TEST_F(CfgParserTest, CarrierFrequencies) {
     carrier_frequency0 = 1.0, 2.0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   EXPECT_EQ(config.getOscillators().size(), 1);
 
@@ -640,7 +642,7 @@ TEST_F(CfgParserTest, CarrierFrequencies) {
 }
 
 TEST_F(CfgParserTest, OptimTarget_GateType) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
@@ -648,7 +650,7 @@ TEST_F(CfgParserTest, OptimTarget_GateType) {
     optim_target = gate, cnot
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -657,7 +659,7 @@ TEST_F(CfgParserTest, OptimTarget_GateType) {
 }
 
 TEST_F(CfgParserTest, OptimTarget_GateFromFile) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
 
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
@@ -666,7 +668,7 @@ TEST_F(CfgParserTest, OptimTarget_GateFromFile) {
     optim_target = gate, file, /path/to/gate.dat
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -676,7 +678,7 @@ TEST_F(CfgParserTest, OptimTarget_GateFromFile) {
 }
 
 TEST_F(CfgParserTest, OptimTarget_PureState) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 3, 3, 3
     transfreq = 4.1
@@ -684,7 +686,7 @@ TEST_F(CfgParserTest, OptimTarget_PureState) {
     optim_target = pure, 0, 1, 2
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
@@ -697,7 +699,7 @@ TEST_F(CfgParserTest, OptimTarget_PureState) {
 }
 
 TEST_F(CfgParserTest, OptimTarget_FromFile) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
@@ -705,7 +707,7 @@ TEST_F(CfgParserTest, OptimTarget_FromFile) {
     optim_target = file, /path/to/target.dat
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<FileOptimTarget>(target));
@@ -714,14 +716,14 @@ TEST_F(CfgParserTest, OptimTarget_FromFile) {
 }
 
 TEST_F(CfgParserTest, OptimTarget_DefaultPure) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2
     transfreq = 4.1
     rotfreq = 0.0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
@@ -731,7 +733,7 @@ TEST_F(CfgParserTest, OptimTarget_DefaultPure) {
 }
 
 TEST_F(CfgParserTest, OptimWeights) {
-  CfgParser parser(MPI_COMM_WORLD, log, true);
+  CfgParser parser(mpi_rank, log, true);
   ConfigSettings settings = parser.parseString(R"(
     nlevels = 2, 2
     transfreq = 4.1, 4.1
@@ -739,7 +741,7 @@ TEST_F(CfgParserTest, OptimWeights) {
     optim_weights = 2.0, 1.0
   )");
 
-  Config config(MPI_COMM_WORLD, log, true, settings);
+  Config config(mpi_rank, log, true, settings);
 
   const auto& weights = config.getOptimWeights();
   EXPECT_EQ(weights.size(), 4);

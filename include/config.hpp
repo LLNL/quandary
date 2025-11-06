@@ -303,7 +303,7 @@ class Config {
 
   public:
     Config(
-      MPI_Comm comm_,
+      int mpi_rank_,
       std::stringstream& log_,
       bool quietmode_,
       const ConfigSettings& settings
@@ -311,7 +311,7 @@ class Config {
 
     ~Config();
 
-    static Config fromCfg(const std::string& cfg_filename, std::stringstream* log, bool quietmode = false);
+    static Config fromCfg(int mpi_rank, const std::string& cfg_filename, std::stringstream* log, bool quietmode = false);
 
     void printConfig() const;
 

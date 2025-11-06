@@ -74,7 +74,7 @@ int main(int argc,char **argv)
   }
   std::stringstream log;
   std::string config_file = argv[1];
-  Config config = Config::fromCfg(config_file, &log, quietmode);
+  Config config = Config::fromCfg(mpirank_world, config_file, &log, quietmode);
   config.printConfig();
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */

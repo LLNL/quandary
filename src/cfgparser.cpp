@@ -8,12 +8,10 @@
 #include "defs.hpp"
 #include "util.hpp"
 
-CfgParser::CfgParser(MPI_Comm comm, std::stringstream& logstream, bool quietmode) {
-  // Initialize MPI and logging members
-  this->comm = comm;
-  this->log = &logstream;
-  this->quietmode = quietmode;
-  MPI_Comm_rank(comm, &mpi_rank);
+CfgParser::CfgParser(int mpi_rank, std::stringstream& logstream, bool quietmode) :
+  mpi_rank(mpi_rank),
+  log(&logstream),
+  quietmode(quietmode) {
 
   // Register config parameter setters
   // General options

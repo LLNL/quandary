@@ -102,16 +102,15 @@ OptimTargetSettings parseOptimTarget(
 } // namespace
 
 Config::Config(
-  MPI_Comm comm_,
+  int mpi_rank_,
   std::stringstream& log_,
   bool quietmode_,
   const ConfigSettings& settings
 ) :
-  comm(comm_),
+  mpi_rank(mpi_rank_),
   log(log_),
   quietmode(quietmode_)
 {
-  MPI_Comm_rank(comm, &mpi_rank);
 
   if (!settings.nlevels.has_value()) {
     exitWithError(mpi_rank, "ERROR: nlevels cannot be empty");
@@ -257,10 +256,10 @@ void Config::validate() const {
   }
 }
 
-Config Config::fromCfg(const std::string& filename, std::stringstream* log, bool quietmode) {
-  CfgParser parser(MPI_COMM_WORLD, *log, quietmode);
+Config Config::fromCfg(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode) {
+  CfgParser parser(mpi_rank, *log, quietmode);
   ConfigSettings settings = parser.parseFile(filename);
-  return Config(MPI_COMM_WORLD, *log, quietmode, settings);
+  return Config(mpi_rank, *log, quietmode, settings);
 }
 
 namespace {

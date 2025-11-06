@@ -6,7 +6,6 @@
 
 #include <petsc.h>
 
-#include "config.hpp"
 #include "config_types.hpp"
 #include "defs.hpp"
 #include "util.hpp"
@@ -36,7 +35,6 @@ private:
   std::unordered_map<std::string, std::function<void(int, const std::string&)>> indexed_setters; ///< Setters for indexed config strings
 
   // MPI and logging
-  MPI_Comm comm; ///< MPI communicator for parallel operations.
   int mpi_rank; ///< MPI rank of the current process.
   std::stringstream* log; ///< Pointer to log stream for output messages.
   bool quietmode; ///< Flag to control verbose output.
@@ -46,7 +44,7 @@ private:
   std::optional<bool> optim_regul_interpolate;  ///< Deprecated version of optim_regul_tik0
 
 public:
-  CfgParser(MPI_Comm comm, std::stringstream& logstream, bool quietmode = false);
+  CfgParser(int mpi_rank, std::stringstream& logstream, bool quietmode = false);
   ConfigSettings parseFile(const std::string& filename);
   ConfigSettings parseString(const std::string& config_content);
 
