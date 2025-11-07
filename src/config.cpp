@@ -128,18 +128,13 @@ Config::Config(
   log(log_),
   quietmode(quietmode_) {
 
-  if(!table.contains("system")) {
-    exitWithError(mpi_rank, "ERROR: [system] section required in TOML config");
-  }
-  auto system = *table["system"].as_table();
-
-  if(!table.contains("optimization")) {
-    exitWithError(mpi_rank, "ERROR: [optimization] section required in TOML config");
-  }
-  auto optimization = *table["optimization"].as_table();
-
   try {
     // Parse system settings
+    if(!table.contains("system")) {
+      exitWithError(mpi_rank, "ERROR: [system] section required in TOML config");
+    }
+    auto system = *table["system"].as_table();
+
     nlevels = validators::vector_field<size_t>(system, "nlevels")
       .required()
       .min_length(1)
@@ -161,7 +156,6 @@ Config::Config(
 
     dt = validators::field<double>(system, "dt")
       .positive()
-      .min(0.0)
       .get_or(dt);
 
     transfreq = validators::vector_field<double>(system, "transfreq")
@@ -191,27 +185,132 @@ Config::Config(
       .get();
     copyLast(rotfreq, num_osc);
 
-    // Parse optimization settings
-    control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
-      .get_or(control_enforceBC);
+    std::string collapse_type_str = validators::field<std::string>(system, "collapse_type")
+      .get_or("none");
+    collapse_type = parseEnum(collapse_type_str, LINDBLAD_TYPE_MAP)
+      .value_or(LindbladType::NONE);
 
-    if (optimization.contains("optim_target")) {
-      auto target_table = optimization["optim_target"].as_table();
-      if (!target_table) {
-        throw validators::ValidationError("optimization.optim_target", "must be a table (object)");
+    // TODO: decay_time
+    // TODO: dephase_time
+    // TODO: initialcondition
+    // TODO: apply_pipulse
+
+    hamiltonian_file_Hsys = system["hamiltonian_file_Hsys"].value<std::string>();
+    hamiltonian_file_Hc = system["hamiltonian_file_Hc"].value<std::string>();
+
+    // Parse optimization settings
+    if(table.contains("optimization")) {
+      auto optimization = *table["optimization"].as_table();
+
+      // TODO: control_segments
+      control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
+        .get_or(control_enforceBC);
+
+      // TODO: control_initialization
+      // TODO: control_bounds
+      // TODO: carrier_frequency
+
+      // optim_target
+      if (optimization.contains("optim_target")) {
+        auto target_table = *optimization["optim_target"].as_table();
+        std::string type_str = validators::field<std::string>(target_table, "target_type").required().get();
+        std::optional<std::string> gate_type_str = target_table["gate_type"].value<std::string>();
+        std::optional<std::string> gate_file = target_table["gate_file"].value<std::string>();
+        std::optional<std::vector<size_t>> levels = get_optional_vector<size_t>(target_table["levels"]);
+        std::optional<std::string> filename = target_table["filename"].value<std::string>();
+        OptimTargetConfig optim_target_config = {type_str, gate_type_str, filename, gate_file, levels};
+        optim_target = parseOptimTarget(optim_target_config, nlevels, mpi_rank);
       }
 
-      std::string type_str = validators::field<std::string>(*target_table, "target_type")
-        .required()
-        .get();
-      std::optional<std::string> gate_type_str = (*target_table)["gate_type"].value<std::string>();
-      std::optional<std::string> gate_file = (*target_table)["gate_file"].value<std::string>();
-      std::optional<std::vector<size_t>> levels = get_optional_vector<size_t>((*target_table)["levels"]);
-      std::optional<std::string> filename = (*target_table)["filename"].value<std::string>();
-      OptimTargetConfig optim_target_config = {type_str, gate_type_str, filename, gate_file, levels};
+      std::string optim_objective_str = validators::field<std::string>(optimization, "optim_objective")
+        .get_or("");
+      optim_objective = parseEnum(optim_objective_str, OBJECTIVE_TYPE_MAP)
+        .value_or(ObjectiveType::JFROBENIUS);
 
-      optim_target = parseOptimTarget(optim_target_config, nlevels, mpi_rank);
+      // TODO: optim_weights
+
+      tolerance.atol = validators::field<double>(optimization, "optim_atol")
+        .positive()
+        .get_or(tolerance.atol);
+      tolerance.rtol = validators::field<double>(optimization, "optim_rtol")
+        .positive()
+        .get_or(tolerance.rtol);
+      tolerance.ftol = validators::field<double>(optimization, "optim_ftol")
+        .positive()
+        .get_or(tolerance.ftol);
+      tolerance.inftol = validators::field<double>(optimization, "optim_inftol")
+        .positive()
+        .get_or(tolerance.inftol);
+      tolerance.maxiter = validators::field<size_t>(optimization, "optim_maxiter")
+        .positive()
+        .get_or(tolerance.maxiter);
+      optim_regul = validators::field<double>(optimization, "optim_regul")
+        .greater_than_equal(0.0)
+        .get_or(optim_regul);
+
+      penalty.penalty = validators::field<double>(optimization, "optim_penalty")
+        .greater_than_equal(0.0)
+        .get_or(penalty.penalty);
+      penalty.penalty_param = validators::field<double>(optimization, "optim_penalty_param")
+        .greater_than(0.0)
+        .get_or(penalty.penalty_param);
+      penalty.penalty_dpdm = validators::field<double>(optimization, "optim_penalty_dpdm")
+        .greater_than_equal(0.0)
+        .get_or(penalty.penalty_dpdm);
+      penalty.penalty_energy = validators::field<double>(optimization, "optim_penalty_energy")
+        .greater_than_equal(0.0)
+        .get_or(penalty.penalty_energy);
+      penalty.penalty_variation = validators::field<double>(optimization, "optim_penalty_variation")
+        .greater_than_equal(0.0)
+        .get_or(penalty.penalty_variation);
+
+      if (!optimization.contains("optim_regul_tik0") && optimization.contains("optim_regul_interpolate")) {
+        // Handle deprecated optim_regul_interpolate logic
+        optim_regul_tik0 = validators::field<bool>(optimization, "optim_regul_interpolate").get();
+        logOutputToRank0(mpi_rank, "# Warning: 'optim_regul_interpolate' is deprecated. Please use 'optim_regul_tik0' instead.\n");
+      }
+      optim_regul_tik0 = validators::field<bool>(optimization, "optim_regul_tik0")
+        .get_or(optim_regul_tik0);
     }
+
+    // Parse output settings
+    if(table.contains("output")) {
+      auto output = *table["output"].as_table();
+
+      datadir = validators::field<std::string>(output, "datadir")
+        .get_or(datadir);
+      output_frequency = validators::field<size_t>(output, "output_frequency")
+        .positive()
+        .get_or(output_frequency);
+      optim_monitor_frequency = validators::field<size_t>(output, "optim_monitor_frequency")
+        .positive()
+        .get_or(optim_monitor_frequency);
+
+      std::string runtype_str = validators::field<std::string>(output, "runtype")
+        .get_or("");
+      runtype = parseEnum(runtype_str, RUN_TYPE_MAP)
+        .value_or(RunType::SIMULATION);
+
+      usematfree = validators::field<bool>(output, "usematfree")
+        .get_or(usematfree);
+
+      std::string linearsolver_type_str = validators::field<std::string>(output, "linearsolver_type")
+        .get_or("");
+      linearsolver_type = parseEnum(linearsolver_type_str, LINEAR_SOLVER_TYPE_MAP)
+        .value_or(LinearSolverType::GMRES);
+
+      linearsolver_maxiter = validators::field<size_t>(output, "linearsolver_maxiter")
+        .positive()
+        .get_or(linearsolver_maxiter);
+
+      std::string timestepper_type_str = validators::field<std::string>(output, "timestepper")
+        .get_or("");
+      timestepper_type = parseEnum(timestepper_type_str, TIME_STEPPER_TYPE_MAP)
+        .value_or(TimeStepperType::IMR);
+
+      rand_seed = validators::field<int>(output, "rand_seed")
+        .get_or(-1);
+      }
 
   } catch (const validators::ValidationError& e) {
     exitWithError(mpi_rank, "ERROR: " + std::string(e.what()));

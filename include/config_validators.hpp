@@ -8,6 +8,7 @@
 #include <sstream>
 #include <stdexcept>
 
+// TODO make naming camel case
 namespace validators {
 
 // Helper to get readable type names for error messages
@@ -41,7 +42,8 @@ private:
   std::string key_;
   std::optional<T> value_;
   bool required_ = false;
-  std::optional<T> min_;
+  std::optional<T> greaterThan_;
+  std::optional<T> greaterThanEqual_;
   std::vector<std::function<bool(const T&)>> predicates_;
   std::vector<std::string> error_messages_;
 
@@ -54,13 +56,19 @@ public:
     return *this;
   }
 
-  Validator& min(T min_val) {
-    min_ = min_val;
+  Validator& greater_than(T greaterThan) {
+    greaterThan_ = greaterThan;
+    return *this;
+  }
+
+  Validator& greater_than_equal(T greaterThanEqual) {
+    greaterThanEqual_ = greaterThanEqual;
     return *this;
   }
 
   Validator& positive() {
-    return min(T{1});
+    greater_than(T{0});
+    return *this;
   }
 
   Validator& custom(std::function<bool(const T&)> predicate, const std::string& error_msg) {
@@ -87,9 +95,15 @@ private:
   }
 
   T validate_value(T result) {
-    if (min_ && result < *min_) {
+    if (greaterThan_ && result <= *greaterThan_) {
       std::ostringstream oss;
-      oss << "must be >= " << *min_ << ", got " << result;
+      oss << "must be > " << *greaterThan_ << ", got " << result;
+      throw ValidationError(key_, oss.str());
+    }
+
+    if (greaterThanEqual_ && result < *greaterThanEqual_) {
+      std::ostringstream oss;
+      oss << "must be >= " << *greaterThanEqual_ << ", got " << result;
       throw ValidationError(key_, oss.str());
     }
 

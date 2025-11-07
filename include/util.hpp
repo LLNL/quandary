@@ -1,5 +1,6 @@
 #include <petscmat.h>
 #include <iostream>
+#include <map>
 #include <vector>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
@@ -304,3 +305,14 @@ std::string toLower(std::string str);
  * @return bool True if string ends with suffix, false otherwise.
  */
 bool hasSuffix(const std::string& str, const std::string& suffix);
+
+
+template<typename T>
+std::optional<T> parseEnum(const std::string& str, const std::map<std::string, T>& enum_map) {
+  auto it = enum_map.find(toLower(str));
+  if (it != enum_map.end()) {
+    return it->second;
+  } else {
+    return std::nullopt;
+  }
+}
