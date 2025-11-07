@@ -510,7 +510,10 @@ int main(int argc,char **argv)
       optimctx->output->writeGradient(grad);
 
       // TEST HESSIAN FUNCTION
-      // optimctx->evalHessian(xinit, optimctx->Hessian);
+
+      //PetscInt ncut = 25;    // Number of dominant eigenvalues/vectors to compute
+      //PetscInt nextra = 10;  // Oversampling
+      // optimctx->evalHessian(xinit, ncut, nextra, optimctx->Hessian);
     } else {
       g->zero();
       double tol = 0.0;

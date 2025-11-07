@@ -250,22 +250,42 @@ class OptimProblem {
   void evalHessVec(const Vec x, const Vec v, Vec Hv);
 
   /**
-   * @brief Evaluate the Hessian matrix at point x.
+   * @brief Computes a low-rank approximation of the Hessian using randomized range finding.
    * 
-   * Consider to switch to gradient projection only. 
+   * @param[in] x Point of Hessian evaluation
+   * @param[in] ncut Number of random samples for subspace approximation
+   * @param[in] nextra Number of oversampling vectors
+   * @param[out] U_out Matrix to store dominant Hessian eigenvectors. Will be allocated in here, needs to be destroyed afterwards
+   * @param[out] lambda_out Vector to store dominant Hessian eigenvalues. Will be allocated in here, needs to be destroyed afterwards.
+   */
+  void HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt nextra, Mat U_out, Vec lambda_out);
+
+
+  /**
+   * @brief Evaluate a row-rank Hessian matrix at point x.
+   * 
+   * Performs Randomized RangeSpaceFinder to compute a low-rank approximation of the Hessian
+   * -> Hessian \approx U * Lambda * U^T
    * 
    * @param[in] x Point of evaluation
+   * @param[in] ncut Number of random samples for subspace approximation
+   * @param[in] nextra Number of oversampling vectors
    * @param[out] H Hessian matrix
    */
-  void evalHessian(const Vec x, Mat H);
+  void evalHessian(const Vec x, PetscInt ncut, PetscInt nextra, Mat H);
 
-  //  /* @brief Projects the gradient onto the dominant subspace of the Hessian.
-  //  * @param[in] grad Input gradient vector 
-  //  * @param[out] grad_proj Output projected gradient vector
-  //  * @param[in] ncut Number of random samples for subspace approximation
-  //  * @param[in] nextra Number of oversampling vectors
-  // void ProjectGradient(const Vec x, const Vec grad, Vec grad_proj, PetscInt ncut, PetscInt nextra);
-
+  /** 
+  * @brief Projects the gradient onto the dominant subspace of the Hessian.
+  * 
+  * Uses Randomized RangeSpaceFinder to compute a low-rank approximation of the Hessian and projects the gradient onto this subspace:
+  *  ->   grad_proj = U*Lambda^{-1}*U^T * grad
+  * 
+  * @param[in] grad Input gradient vector 
+  * @param[out] grad_proj Output projected gradient vector
+  * @param[in] ncut Number of random samples for subspace approximation
+  * @param[in] nextra Number of oversampling vectors
+  */
+  void ProjectGradient(const Vec x, const Vec grad, Vec grad_proj, PetscInt ncut, PetscInt nextra);
 
   /**
    * @brief Runs the optimization solver.
