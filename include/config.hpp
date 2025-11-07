@@ -321,7 +321,9 @@ class Config {
 
     static Config fromFile(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode = false);
     static Config fromToml(int mpi_rank, const std::string& toml_filename, std::stringstream* log, bool quietmode = false);
+    static Config fromTomlString(int mpi_rank, const std::string& toml_content, std::stringstream* log, bool quietmode = false);
     static Config fromCfg(int mpi_rank, const std::string& cfg_filename, std::stringstream* log, bool quietmode = false);
+    static Config fromCfgString(int mpi_rank, const std::string& cfg_content, std::stringstream* log, bool quietmode = false);
 
     void printConfig() const;
 

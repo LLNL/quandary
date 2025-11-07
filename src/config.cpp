@@ -491,9 +491,20 @@ Config Config::fromToml(int mpi_rank, const std::string& filename, std::stringst
   return Config(mpi_rank, *log, quietmode, config);
 }
 
+Config Config::fromTomlString(int mpi_rank, const std::string& toml_content, std::stringstream* log, bool quietmode) {
+  toml::table config = toml::parse(toml_content);
+  return Config(mpi_rank, *log, quietmode, config);
+}
+
 Config Config::fromCfg(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode) {
   CfgParser parser(mpi_rank, *log, quietmode);
   ConfigSettings settings = parser.parseFile(filename);
+  return Config(mpi_rank, *log, quietmode, settings);
+}
+
+Config Config::fromCfgString(int mpi_rank, const std::string& cfg_content, std::stringstream* log, bool quietmode) {
+  CfgParser parser(mpi_rank, *log, quietmode);
+  ConfigSettings settings = parser.parseString(cfg_content);
   return Config(mpi_rank, *log, quietmode, settings);
 }
 

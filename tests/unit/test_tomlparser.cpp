@@ -1,10 +1,9 @@
-#include <cstdio>
 #include <gtest/gtest.h>
 #include <sstream>
 #include <mpi.h>
 #include "config.hpp"
 
-class CfgParserTest : public ::testing::Test {
+class TomlParserTest : public ::testing::Test {
 protected:
   void SetUp() override {
     // Initialize MPI if not already done (for tests)
@@ -20,14 +19,15 @@ protected:
   int mpi_rank = 0;
 };
 
-TEST_F(CfgParserTest, ParseBasicSettings) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, ParseBasicSettings) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     ntime = 500
     dt = 0.05
-    collapse_type = none
+    collapse_type = "none"
   )", &log, true);
 
   EXPECT_EQ(config.getNTime(), 500);
@@ -35,11 +35,12 @@ TEST_F(CfgParserTest, ParseBasicSettings) {
   EXPECT_EQ(config.getCollapseType(), LindbladType::NONE);
 }
 
-TEST_F(CfgParserTest, ParseVectorSettings) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2, 3
-    transfreq = 4.1, 4.8, 5.2
-    rotfreq = 0.0, 0.0
+TEST_F(TomlParserTest, ParseVectorSettings) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2, 3]
+    transfreq = [4.1, 4.8, 5.2]
+    rotfreq = [0.0, 0.0]
   )", &log, true);
 
   auto nlevels = config.getNLevels();
@@ -54,11 +55,12 @@ TEST_F(CfgParserTest, ParseVectorSettings) {
   EXPECT_DOUBLE_EQ(transfreq[2], 5.2);
 }
 
-TEST_F(CfgParserTest, ParseIndexedSettings) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
+TEST_F(TomlParserTest, ParseIndexedSettings) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2, 2]
+    transfreq = [4.1, 4.8]
+    rotfreq = [0.0, 0.0]
     control_segments0 = spline, 150
     control_segments1 = step, 1, 2, 3
     output0 = population
@@ -85,11 +87,12 @@ TEST_F(CfgParserTest, ParseIndexedSettings) {
   EXPECT_EQ(output[1][0], OutputType::POPULATION);
 }
 
-TEST_F(CfgParserTest, ParseStructSettings) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, ParseStructSettings) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     optim_target = gate, cnot
     initialcondition = diagonal, 0
   )", &log, true);
@@ -105,11 +108,12 @@ TEST_F(CfgParserTest, ParseStructSettings) {
   EXPECT_EQ(diag_init.osc_IDs, std::vector<size_t>{0});
 }
 
-TEST_F(CfgParserTest, ApplyDefaults) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, ApplyDefaults) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
   )", &log, true);
 
   // Check defaults were applied
@@ -118,11 +122,12 @@ TEST_F(CfgParserTest, ApplyDefaults) {
   EXPECT_EQ(config.getCollapseType(), LindbladType::NONE); // Default
 }
 
-TEST_F(CfgParserTest, InitialCondition_FromFile) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, InitialCondition_FromFile) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     initialcondition = file, test.dat
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
@@ -131,11 +136,12 @@ TEST_F(CfgParserTest, InitialCondition_FromFile) {
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
-TEST_F(CfgParserTest, InitialCondition_Pure) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 3, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
+TEST_F(TomlParserTest, InitialCondition_Pure) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [3, 2]
+    transfreq = [4.1, 4.8]
+    rotfreq = [0.0, 0.0]
     initialcondition = pure, 1, 0
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
@@ -145,11 +151,12 @@ TEST_F(CfgParserTest, InitialCondition_Pure) {
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
-TEST_F(CfgParserTest, InitialCondition_Performance) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, InitialCondition_Performance) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     initialcondition = performance
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
@@ -157,11 +164,12 @@ TEST_F(CfgParserTest, InitialCondition_Performance) {
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
-TEST_F(CfgParserTest, InitialCondition_Ensemble) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 3, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
+TEST_F(TomlParserTest, InitialCondition_Ensemble) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [3, 2]
+    transfreq = [4.1, 4.8]
+    rotfreq = [0.0, 0.0]
     collapse_type = decay
     initialcondition = ensemble, 0, 1
   )", &log, true);
@@ -172,11 +180,12 @@ TEST_F(CfgParserTest, InitialCondition_Ensemble) {
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
-TEST_F(CfgParserTest, InitialCondition_ThreeStates) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 3
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, InitialCondition_ThreeStates) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [3]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     collapse_type = decay
     initialcondition = 3states
   )", &log, true);
@@ -185,11 +194,12 @@ TEST_F(CfgParserTest, InitialCondition_ThreeStates) {
   EXPECT_EQ(config.getNInitialConditions(), 3);
 }
 
-TEST_F(CfgParserTest, InitialCondition_NPlusOne_SingleOscillator) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 3
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, InitialCondition_NPlusOne_SingleOscillator) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [3]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     collapse_type = decay
     initialcondition = nplus1
   )", &log, true);
@@ -199,11 +209,12 @@ TEST_F(CfgParserTest, InitialCondition_NPlusOne_SingleOscillator) {
   EXPECT_EQ(config.getNInitialConditions(), 4);
 }
 
-TEST_F(CfgParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2, 3
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
+TEST_F(TomlParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2, 3]
+    transfreq = [4.1, 4.8]
+    rotfreq = [0.0, 0.0]
     collapse_type = decay
     initialcondition = nplus1
   )", &log, true);
@@ -213,12 +224,13 @@ TEST_F(CfgParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
   EXPECT_EQ(config.getNInitialConditions(), 7);
 }
 
-TEST_F(CfgParserTest, InitialCondition_Diagonal_Schrodinger) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 3, 2
-    nessential = 3, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
+TEST_F(TomlParserTest, InitialCondition_Diagonal_Schrodinger) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [3, 2]
+    nessential = [3, 2]
+    transfreq = [4.1, 4.8]
+    rotfreq = [0.0, 0.0]
     collapse_type = none
     initialcondition = diagonal, 1
   )", &log, true);
@@ -230,12 +242,13 @@ TEST_F(CfgParserTest, InitialCondition_Diagonal_Schrodinger) {
   EXPECT_EQ(config.getNInitialConditions(), 2);
 }
 
-TEST_F(CfgParserTest, InitialCondition_Basis_Schrodinger) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 3, 2
-    nessential = 3, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
+TEST_F(TomlParserTest, InitialCondition_Basis_Schrodinger) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [3, 2]
+    nessential = [3, 2]
+    transfreq = [4.1, 4.8]
+    rotfreq = [0.0, 0.0]
     collapse_type = none
     initialcondition = basis, 1
   )", &log, true);
@@ -247,12 +260,13 @@ TEST_F(CfgParserTest, InitialCondition_Basis_Schrodinger) {
   EXPECT_EQ(config.getNInitialConditions(), 2);
 }
 
-TEST_F(CfgParserTest, InitialCondition_Basis_Lindblad) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 3, 2
-    nessential = 3, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
+TEST_F(TomlParserTest, InitialCondition_Basis_Lindblad) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [3, 2]
+    nessential = [3, 2]
+    transfreq = [4.1, 4.8]
+    rotfreq = [0.0, 0.0]
     collapse_type = decay
     initialcondition = basis, 1
   )", &log, true);
@@ -264,11 +278,12 @@ TEST_F(CfgParserTest, InitialCondition_Basis_Lindblad) {
   EXPECT_EQ(config.getNInitialConditions(), 4);
 }
 
-TEST_F(CfgParserTest, ParsePiPulseSettings_Structure) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2, 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, ParsePiPulseSettings_Structure) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2, 2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     apply_pipulse = 0, 0.5, 1.0, 0.8
   )", &log, true);
 
@@ -287,11 +302,12 @@ TEST_F(CfgParserTest, ParsePiPulseSettings_Structure) {
   EXPECT_DOUBLE_EQ(pulses[1][0].amp, 0.0);
 }
 
-TEST_F(CfgParserTest, ControlSegments_Spline0) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, ControlSegments_Spline0) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     control_segments0 = spline0, 150, 0.0, 1.0
   )", &log, true);
 
@@ -306,11 +322,12 @@ TEST_F(CfgParserTest, ControlSegments_Spline0) {
   EXPECT_DOUBLE_EQ(params0.tstop, 1.0);
 }
 
-TEST_F(CfgParserTest, ControlSegments_Spline) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2, 2
-    transfreq = 4.1, 4.1
-    rotfreq = 0.0, 0.0
+TEST_F(TomlParserTest, ControlSegments_Spline) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2, 2]
+    transfreq = [4.1, 4.1]
+    rotfreq = [0.0, 0.0]
     control_segments0 = spline, 10
     control_segments1 = spline, 20, 0.0, 1.0, spline, 30, 1.0, 2.0
   )", &log, true);
@@ -343,11 +360,12 @@ TEST_F(CfgParserTest, ControlSegments_Spline) {
   EXPECT_DOUBLE_EQ(params2.tstop, 2.0);
 }
 
-TEST_F(CfgParserTest, ControlSegments_Step) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2,2
-    transfreq = 4.1,4.1
-    rotfreq = 0.0,0.0
+TEST_F(TomlParserTest, ControlSegments_Step) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2,2]
+    transfreq = [4.1,4.1]
+    rotfreq = [0.0,0.0]
     control_segments0 = step, 0.1, 0.2, 0.3, 0.4, 0.5
     control_segments1 = step, 0.1, 0.2, 0.3
   )", &log, true);
@@ -377,11 +395,12 @@ TEST_F(CfgParserTest, ControlSegments_Step) {
   EXPECT_DOUBLE_EQ(params1.tstop, config.getNTime() * config.getDt()); // default stop time
 }
 
-TEST_F(CfgParserTest, ControlSegments_Defaults) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2, 2, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
+TEST_F(TomlParserTest, ControlSegments_Defaults) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2, 2, 2]
+    transfreq = [4.1, 4.8]
+    rotfreq = [0.0, 0.0]
     control_segments1 = spline0, 150, 0.0, 1.0
     control_bounds1 = 2.0
   )", &log, true);
@@ -419,11 +438,12 @@ TEST_F(CfgParserTest, ControlSegments_Defaults) {
   EXPECT_DOUBLE_EQ(params2.tstop, 1.0);
 }
 
-TEST_F(CfgParserTest, ControlInitialization_Defaults) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2, 2, 2
-    transfreq = 4.1, 4.1, 4.1
-    rotfreq = 0.0, 0.0, 0.0
+TEST_F(TomlParserTest, ControlInitialization_Defaults) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2, 2, 2]
+    transfreq = [4.1, 4.1, 4.1]
+    rotfreq = [0.0, 0.0, 0.0]
     control_initialization1 = random, 2.0
   )", &log, true);
 
@@ -454,11 +474,12 @@ TEST_F(CfgParserTest, ControlInitialization_Defaults) {
   EXPECT_DOUBLE_EQ(params2.phase, 0.0);
 }
 
-TEST_F(CfgParserTest, ControlInitialization) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2, 2, 2, 2, 2
-    transfreq = 4.1, 4.1, 4.1, 4.1, 4.1
-    rotfreq = 0.0, 0.0, 0.0, 0.0, 0.0
+TEST_F(TomlParserTest, ControlInitialization) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2, 2, 2, 2, 2]
+    transfreq = [4.1, 4.1, 4.1, 4.1, 4.1]
+    rotfreq = [0.0, 0.0, 0.0, 0.0, 0.0]
     control_initialization0 = constant, 1.0, 1.1
     control_initialization1 = constant, 2.0
     control_initialization2 = random, 3.0, 3.1
@@ -514,11 +535,12 @@ TEST_F(CfgParserTest, ControlInitialization) {
   EXPECT_DOUBLE_EQ(params4_1.phase, 6.1);
 }
 
-TEST_F(CfgParserTest, ControlInitialization_File) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, ControlInitialization_File) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     control_initialization0 = file, params.dat
   )", &log, true);
 
@@ -530,11 +552,12 @@ TEST_F(CfgParserTest, ControlInitialization_File) {
   EXPECT_EQ(params0.filename, "params.dat");
 }
 
-TEST_F(CfgParserTest, ControlBounds) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, ControlBounds) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     control_segments0 = spline, 10, 0.0, 1.0, step, 0.1, 0.2, 0.3, 0.4, 0.5, spline0, 20, 1.0, 2.0
     control_bounds0 = 1.0, 2.0
   )", &log, true);
@@ -549,11 +572,12 @@ TEST_F(CfgParserTest, ControlBounds) {
   EXPECT_EQ(osc0.control_bounds[2], 2.0); // Use last bound for extra segments
 }
 
-TEST_F(CfgParserTest, CarrierFrequencies) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, CarrierFrequencies) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     carrier_frequency0 = 1.0, 2.0
   )", &log, true);
 
@@ -565,11 +589,12 @@ TEST_F(CfgParserTest, CarrierFrequencies) {
   EXPECT_EQ(osc0.carrier_frequencies[1], 2.0);
 }
 
-TEST_F(CfgParserTest, OptimTarget_GateType) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, OptimTarget_GateType) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     optim_target = gate, cnot
   )", &log, true);
 
@@ -579,11 +604,12 @@ TEST_F(CfgParserTest, OptimTarget_GateType) {
   EXPECT_EQ(gate_target.gate_type, GateType::CNOT);
 }
 
-TEST_F(CfgParserTest, OptimTarget_GateFromFile) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, OptimTarget_GateFromFile) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     optim_target = gate, file, /path/to/gate.dat
   )", &log, true);
 
@@ -594,11 +620,12 @@ TEST_F(CfgParserTest, OptimTarget_GateFromFile) {
   EXPECT_EQ(gate_target.gate_file, "/path/to/gate.dat");
 }
 
-TEST_F(CfgParserTest, OptimTarget_PureState) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 3, 3, 3
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, OptimTarget_PureState) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [3, 3, 3]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     optim_target = pure, 0, 1, 2
   )", &log, true);
 
@@ -612,11 +639,12 @@ TEST_F(CfgParserTest, OptimTarget_PureState) {
   EXPECT_EQ(levels[2], 2);
 }
 
-TEST_F(CfgParserTest, OptimTarget_FromFile) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, OptimTarget_FromFile) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
     optim_target = file, /path/to/target.dat
   )", &log, true);
 
@@ -626,11 +654,12 @@ TEST_F(CfgParserTest, OptimTarget_FromFile) {
   EXPECT_EQ(file_target.file, "/path/to/target.dat");
 }
 
-TEST_F(CfgParserTest, OptimTarget_DefaultPure) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
+TEST_F(TomlParserTest, OptimTarget_DefaultPure) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
   )", &log, true);
 
   const auto& target = config.getOptimTarget();
@@ -640,12 +669,13 @@ TEST_F(CfgParserTest, OptimTarget_DefaultPure) {
   EXPECT_TRUE(pure_target.purestate_levels.empty());
 }
 
-TEST_F(CfgParserTest, OptimWeights) {
-  Config config = Config::fromCfgString(mpi_rank, R"(
-    nlevels = 2, 2
-    transfreq = 4.1, 4.1
-    rotfreq = 0.0, 0.0
-    optim_weights = 2.0, 1.0
+TEST_F(TomlParserTest, OptimWeights) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2, 2]
+    transfreq = [4.1, 4.1]
+    rotfreq = [0.0, 0.0]
+    optim_weights = [2.0, 1.0]
   )", &log, true);
 
   const auto& weights = config.getOptimWeights();
