@@ -17,33 +17,19 @@
 struct FromFileInitialCondition {
   std::string filename; ///< File to read initial condition from
 
-  std::string toString() const {
-    return "file, " + filename;
-  }
+  std::string toString() const;
 };
 
 struct PureInitialCondition {
-  std::vector<size_t> level_indices; ///< Quantum level for each oscillator
+  std::vector<size_t> levels; ///< Quantum level for each oscillator
 
-  std::string toString() const {
-    std::string out = "pure";
-    for (size_t idx : level_indices) {
-      out += ", " + std::to_string(idx);
-    }
-    return out;
-  }
+  std::string toString() const;
 };
 
 struct OscillatorIDsInitialCondition {
   std::vector<size_t> osc_IDs; ///< Oscillator IDs
 
-    std::string toString(std::string name) const {
-    std::string out = name;
-    for (size_t idx : osc_IDs) {
-      out += ", " + std::to_string(idx);
-    }
-    return out;
-  }
+  std::string toString(std::string name) const;
 };
 struct EnsembleInitialCondition : public OscillatorIDsInitialCondition {
   std::string toString() const {
@@ -65,19 +51,19 @@ struct BasisInitialCondition : public OscillatorIDsInitialCondition {
 
 struct ThreeStatesInitialCondition {
   std::string toString() const {
-    return "3states";
+    return "type = \"3states\"";
   }
 };
 
 struct NPlusOneInitialCondition {
   std::string toString() const {
-    return "nplus1";
+    return "type = \"nplus1\"";
   }
 };
 
 struct PerformanceInitialCondition {
   std::string toString() const {
-    return "performance";
+    return "type = \"performance\"";
   }
 };
 

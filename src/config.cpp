@@ -18,9 +18,9 @@
 template<typename EnumType>
 std::string enumToString(EnumType value, const std::map<std::string, EnumType>& type_map) {
   for (const auto& [str, enum_val] : type_map) {
-    if (enum_val == value) return str;
+    if (enum_val == value) return "\"" + str + "\"";
   }
-  return "unknown";
+  return "\"unknown\"";
 }
 
 namespace {
@@ -530,13 +530,14 @@ Config Config::fromCfgString(int mpi_rank, const std::string& cfg_content, std::
 namespace {
   template<typename T>
   std::string printVector(std::vector<T> vec) {
-    std::string out = "";
+    std::string out = "[";
     for (size_t i = 0; i < vec.size(); ++i) {
       out += std::to_string(vec[i]);
       if (i < vec.size() - 1) {
         out += ", ";
       }
     }
+    out += "]";
     return out;
   }
 
@@ -553,11 +554,30 @@ namespace {
   }
 } //namespace
 
+std::string FromFileInitialCondition::toString() const {
+  return "{type = \"file\", filename = \"" + filename + "}";
+}
+
+std::string PureInitialCondition::toString() const {
+  std::string out = "{type = \"pure\", levels = ";
+  out += printVector(levels);
+  out += "}";
+  return out;
+}
+
+std::string OscillatorIDsInitialCondition::toString(std::string name) const {
+  std::string out = "{type = \"" + name + "\", osc_IDs = ";
+  out += printVector(osc_IDs);
+  out += "}";
+  return out;
+}
+
 void Config::printConfig() const {
   std::string delim = ", ";
   log << "# Configuration settings\n";
   log << "# =============================================\n\n";
 
+  log << "[system]\n";
   log << "nlevels = " << printVector(nlevels) << "\n";
   log << "nessential = " << printVector(nessential) << "\n";
   log << "ntime = " << ntime << "\n";
@@ -570,7 +590,7 @@ void Config::printConfig() const {
   log << "collapse_type = " << enumToString(collapse_type, LINDBLAD_TYPE_MAP) << "\n";
   log << "decay_time = " << printVector(decay_time) << "\n";
   log << "dephase_time = " << printVector(dephase_time) << "\n";
-  log << "initialcondition = " << print(initial_condition) << "\n";
+  log << "initial_condition = " << print(initial_condition) << "\n";
 
   for (size_t i = 0; i < apply_pipulse.size(); ++i) {
     for (const auto& segment : apply_pipulse[i]) {
