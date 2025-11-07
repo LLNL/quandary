@@ -61,12 +61,12 @@ int main(int argc,char **argv)
       printf("  quandary <config_file> [--quiet]\n");
       printf("  quandary --version\n");
       printf("\nOPTIONS:\n");
-      printf("  <config_file>    Configuration file (.cfg) specifying system parameters\n");
+      printf("  <config_file>    Configuration file: .toml (preferred) or .cfg (deprecated) specifying system parameters\n");
       printf("  --quiet          Reduce output verbosity\n");
       printf("  --version        Show version information\n");
       printf("\nEXAMPLES:\n");
-      printf("  quandary config.cfg\n");
-      printf("  mpirun -np 4 quandary config.cfg --quiet\n");
+      printf("  quandary config.toml\n");
+      printf("  mpirun -np 4 quandary config.toml --quiet\n");
       printf("\n");
     }
     MPI_Finalize();
