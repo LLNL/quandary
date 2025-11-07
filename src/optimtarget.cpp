@@ -46,7 +46,7 @@ OptimTarget::OptimTarget(const Config& config, MasterEq* mastereq, double total_
   /* Prepare initial state rho_t0 if PURE or FROMFILE or ENSEMBLE initialization. Otherwise they are set within prepareInitialState during evalF. */
   if (std::holds_alternative<PureInitialCondition>(initcond)) {
     const auto& pure_init = std::get<PureInitialCondition>(initcond);
-    const auto& level_indices = pure_init.level_indices;
+    const auto& level_indices = pure_init.levels;
     // Find the id within the global composite system 
     PetscInt diag_id = 0;
     for (size_t k=0; k < level_indices.size(); k++) {

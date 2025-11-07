@@ -141,7 +141,7 @@ TEST_F(CfgParserTest, InitialCondition_Pure) {
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PureInitialCondition>(initcond));
   const auto& pure_init = std::get<PureInitialCondition>(initcond);
-  EXPECT_EQ(pure_init.level_indices, std::vector<size_t>({1,0}));
+  EXPECT_EQ(pure_init.levels, std::vector<size_t>({1,0}));
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
