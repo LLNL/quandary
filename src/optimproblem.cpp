@@ -1137,12 +1137,10 @@ void OptimProblem::evalHessian(const Vec x, PetscInt ncut, PetscInt nextra, Mat 
   HessianRandRangeFinder(x, ncut, nextra, U, lambda);
 
   /* Assemble H = U lambda U^T */
-  // Compute U_scaled = U * diag(lambda)
   Mat U_scaled;
-  MatDuplicate(U, MAT_COPY_VALUES, &U_scaled);
-  MatDiagonalScale(U_scaled, NULL, lambda);  // Right scaling 
-  // Compute H = U_scaled * U^T
-  MatMatTransposeMult(U_scaled, U, MAT_REUSE_MATRIX, PETSC_DEFAULT, &H);
+  MatDuplicate(U, MAT_COPY_VALUES, &U_scaled);  // U_scaled = U
+  MatDiagonalScale(U_scaled, NULL, lambda);  // Right scaling U_scaled = U * diag(lambda)
+  MatMatTransposeMult(U_scaled, U, MAT_REUSE_MATRIX, PETSC_DEFAULT, &H); // H= U_scaled * U^T
 
   MatDestroy(&U);
   VecDestroy(&lambda);
@@ -1157,26 +1155,24 @@ void OptimProblem::ProjectGradient(const Vec x, const Vec grad, Vec grad_proj, P
 
   /* Gradient projection: grad_proj = U*Lambda^{-1}*U^T * grad */
   
-  // Utg = U^T * grad
-  Vec Utg;
-  VecCreateSeq(PETSC_COMM_SELF, ncut, &Utg);
-  MatMultTranspose(U, grad, Utg);
-  
-  // Scale Utg = Lambda^{-1} * Utg 
-  PetscScalar *Utg_ptr;
-  PetscScalar *lambda_ptr;
-  VecGetArrayWrite(Utg, &Utg_ptr);
-  VecGetArrayWrite(lambda, &lambda_ptr);
+  Vec tmp;
+  VecDuplicate(lambda, &tmp);
+  MatMultTranspose(U, grad, tmp); // grad_proj = U^T * grad
+  // Scale rows by Lambda^{-1}
+  PetscScalar *tmp_ptr;
+  const PetscScalar *lambda_ptr;
+  VecGetArrayWrite(grad_proj, &tmp_ptr);
+  VecGetArrayRead(lambda, &lambda_ptr);
   for (int i = 0; i < ncut; i++) {
-    Utg_ptr[i] = 1.0 / lambda_ptr[i] * Utg_ptr[i];
+    tmp_ptr[i] = 1.0 / lambda_ptr[i] * tmp_ptr[i];
   }
-  VecRestoreArrayWrite(Utg, &Utg_ptr);
-  VecRestoreArrayWrite(lambda, &lambda_ptr);
+  VecRestoreArrayWrite(grad_proj, &tmp_ptr);
+  VecRestoreArrayRead(lambda, &lambda_ptr);
   
-  // Project graident: grad_proj = U * Utg
-  MatMult(U, Utg, grad_proj);
+  // Project graident: grad_proj = U * tmp
+  MatMult(U, tmp, grad_proj);
   
   MatDestroy(&U);
   VecDestroy(&lambda);
-  VecDestroy(&Utg);
+  VecDestroy(&tmp);
 }
