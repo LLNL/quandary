@@ -258,7 +258,7 @@ class OptimProblem {
    * @param[out] U_out Matrix to store dominant Hessian eigenvectors. Will be allocated in here, needs to be destroyed afterwards
    * @param[out] lambda_out Vector to store dominant Hessian eigenvalues. Will be allocated in here, needs to be destroyed afterwards.
    */
-  void HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt nextra, Mat U_out, Vec lambda_out);
+  void HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt nextra, Mat* U_out, Vec* lambda_out);
 
 
   /**

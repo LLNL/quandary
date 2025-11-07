@@ -173,20 +173,25 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   TaoSetGradient(tao, NULL, TaoEvalGradient,(void *)this);
   TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient, (void*) this);
   bool use_hessian = config.GetBoolParam("optim_use_hessian", false, false);
-  if (use_hessian) {
-    if (mpirank_world == 0 && !quietmode) std::cout << "Using Hessian in TAO NLS solver." << std::endl;
 
+  if (use_hessian) {
     // Create Hessian matrix
     MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, NULL, &Hessian);
     MatSetFromOptions(Hessian);
 
     // TaoSetType(tao, TAONLS);     // Newton line search, unconstrained. TODO: Check Bounds!
-    TaoSetType(tao, TAOBNLS);     // Bounded Newton with line search, unconstrained.
+    TaoSetType(tao, TAOBNLS);     // Bounded Newton with line search
     TaoSetHessian(tao, Hessian, Hessian, TaoEvalHessian, (void*) this);
 
+    // // TaoSetType(tao,TAOBQNLS);   // Bounded LBFGS with line search  
+    // TaoLMVMSetH0(tao, NULL);  // Remove initial Hessian approximation
+    // // Set the limited memory size to 0
+    // TaoSetFromOptions(tao);  // Allow command-line override
+    // TaoLMVMSetHistorySize(tao, lmvm_hist);
   } else {
     TaoSetType(tao,TAOBQNLS);   // Bounded LBFGS with line search  
   }
+
   TaoSetMaximumIterations(tao, maxiter);
   TaoSetTolerances(tao, gatol, PETSC_DEFAULT, grtol);
   TaoMonitorSet(tao, TaoMonitor, (void*)this, NULL);
@@ -774,6 +779,8 @@ PetscErrorCode TaoEvalHessian(Tao /* tao */, Vec x, Mat H, Mat /* Hpre */, void*
 
   PetscInt ncut = 25;    // Number of dominant eigenvalues/vectors to compute
   PetscInt nextra = 10;  // Oversampling
+  // PetscInt ncut = 2; 
+  // PetscInt nextra = 1; 
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   ctx->evalHessian(x, ncut, nextra, H);
@@ -964,8 +971,7 @@ void myObjective::update(const ROL::Vector<double> &x, ROL::UpdateType type, int
   }
 }
 
-
-void OptimProblem::HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt nextra, Mat U_out, Vec lambda_out){
+void OptimProblem::HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt nextra, Mat* U_out, Vec* lambda_out){
   // Sample a random matrix Omega
   // Apply Hessian-vector product on each column of Q -> Y = H * Omega
   // Find basis with economy SVD and take top-k left singular vectors
@@ -1100,16 +1106,16 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt n
   }
   
   /* Project and store U_out = Q * V */
-  MatMatMult(Q, U, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &U_out); 
+  MatMatMult(Q, U, MAT_INITIAL_MATRIX, PETSC_DEFAULT, U_out); 
 
   /* Store lambda*/
-  MatCreateVecs(U_out, &lambda_out, NULL);
+  MatCreateVecs(*U_out, lambda_out, NULL);
   PetscScalar *lambda_ptr;
-  VecGetArrayWrite(lambda_out, &lambda_ptr);
+  VecGetArrayWrite(*lambda_out, &lambda_ptr);
   for (int i = 0; i < ncut; i++) {
     lambda_ptr[i] = lambda[i];
   }
-  VecRestoreArrayWrite(lambda_out, &lambda_ptr);
+  VecRestoreArrayWrite(*lambda_out, &lambda_ptr);
 
   // Cleanup
   PetscFree(lambda);
@@ -1132,9 +1138,9 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt n
 void OptimProblem::evalHessian(const Vec x, PetscInt ncut, PetscInt nextra, Mat H){
 
   // Get U, Lambda s.t. H \approx U * Lambda * U^T
-  Mat U=NULL;
-  Vec lambda=NULL;
-  HessianRandRangeFinder(x, ncut, nextra, U, lambda);
+  Mat U;
+  Vec lambda;
+  HessianRandRangeFinder(x, ncut, nextra, &U, &lambda);
 
   /* Assemble H = U lambda U^T */
   Mat U_scaled;
@@ -1149,9 +1155,9 @@ void OptimProblem::evalHessian(const Vec x, PetscInt ncut, PetscInt nextra, Mat 
 void OptimProblem::ProjectGradient(const Vec x, const Vec grad, Vec grad_proj, PetscInt ncut, PetscInt nextra){
 
   // Get U, Lambda s.t. H \approx U * Lambda * U^T
-  Mat U=NULL;
-  Vec lambda=NULL;
-  HessianRandRangeFinder(x, ncut, nextra, U, lambda);
+  Mat U;
+  Vec lambda;
+  HessianRandRangeFinder(x, ncut, nextra, &U, &lambda);
 
   /* Gradient projection: grad_proj = U*Lambda^{-1}*U^T * grad */
   
