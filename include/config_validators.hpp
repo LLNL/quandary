@@ -117,6 +117,7 @@ private:
   }
 
 public:
+// TODO value and value_or is more like optionals
   T get() {
     auto val = extract_value();
 

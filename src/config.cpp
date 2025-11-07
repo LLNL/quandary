@@ -2,8 +2,10 @@
 #include <cassert>
 #include <cstddef>
 #include <iostream>
+#include <optional>
 #include <random>
 #include <string>
+#include <toml++/impl/forward_declarations.hpp>
 #include <vector>
 
 #include "config_types.hpp"
@@ -190,9 +192,26 @@ Config::Config(
     collapse_type = parseEnum(collapse_type_str, LINDBLAD_TYPE_MAP)
       .value_or(LindbladType::NONE);
 
-    // TODO: decay_time
-    // TODO: dephase_time
-    // TODO: initialcondition
+    decay_time = validators::vector_field<double>(system, "decay_time")
+      .get_or(std::vector<double>(num_osc, 0.0));
+    copyLast(decay_time, num_osc);
+
+    dephase_time = validators::vector_field<double>(system, "dephase_time")
+      .get_or(std::vector<double>(num_osc, 0.0));
+    copyLast(dephase_time, num_osc);
+
+    std::optional<InitialConditionConfig> init_cond_config = std::nullopt;
+    if (system.contains("initial_condition")) {
+      auto init_cond_table = *system["initial_condition"].as_table();
+      std::string type_str = validators::field<std::string>(init_cond_table, "type").required().get();
+      std::optional<std::vector<size_t>> levels = get_optional_vector<size_t>(init_cond_table["levels"]);
+      std::optional<std::vector<size_t>> osc_IDs = get_optional_vector<size_t>(init_cond_table["osc_IDs"]);
+      std::optional<std::string> filename = init_cond_table["filename"].value<std::string>();
+      init_cond_config = {type_str, osc_IDs, levels, filename};
+    }
+    initial_condition = parseInitialCondition(init_cond_config);
+    setNumInitialConditions();
+
     // TODO: apply_pipulse
 
     hamiltonian_file_Hsys = system["hamiltonian_file_Hsys"].value<std::string>();
@@ -375,7 +394,7 @@ Config::Config(
   dephase_time = settings.dephase_time.value_or(std::vector<double>(num_osc, 0.0));
   copyLast(dephase_time, num_osc);
 
-  convertInitialCondition(settings.initialcondition);
+  initial_condition = parseInitialCondition(settings.initialcondition);
   setNumInitialConditions();
 
   convertPiPulses(settings.apply_pipulse);
@@ -668,14 +687,19 @@ std::vector<std::vector<T>> Config::convertIndexedToVectorVector(const std::opti
   return result;
 }
 
-InitialCondition Config::convertInitialCondition(const InitialConditionConfig& config) {
-  const auto& params = config.params;
+InitialCondition Config::parseInitialCondition(const InitialConditionConfig& config) const {
+  auto opt_type = parseEnum(config.type, INITCOND_TYPE_MAP);
+
+  if (!opt_type.has_value()) {
+    exitWithError(mpi_rank, "ERROR: initial condition type is required.");
+  }
+  InitialConditionType type = opt_type.value();
 
     /* Sanity check for Schrodinger solver initial conditions */
   if (collapse_type == LindbladType::NONE){
-    if (config.type == InitialConditionType::ENSEMBLE ||
-        config.type == InitialConditionType::THREESTATES ||
-        config.type == InitialConditionType::NPLUSONE ){
+    if (type == InitialConditionType::ENSEMBLE ||
+        type == InitialConditionType::THREESTATES ||
+        type == InitialConditionType::NPLUSONE ){
           exitWithError(mpi_rank, "\n\n ERROR for initial condition setting: \n When running Schroedingers solver"
             " (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'."
             " Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
@@ -683,34 +707,37 @@ InitialCondition Config::convertInitialCondition(const InitialConditionConfig& c
   }
 
   // If no params are given for BASIS, ENSEMBLE, or DIAGONAL, default to all oscillators
-  auto init_cond_IDs = config.params;
-  if (init_cond_IDs.empty() && (config.type == InitialConditionType::BASIS ||
-      config.type == InitialConditionType::ENSEMBLE ||
-      config.type == InitialConditionType::DIAGONAL)) {
-      for (size_t i = 0; i < nlevels.size(); i++) {
-        init_cond_IDs.push_back(i);
-      }
+  auto init_cond_IDs = config.osc_IDs.value_or(std::vector<size_t>{});
+  if (!config.osc_IDs.has_value() && (type == InitialConditionType::BASIS ||
+      type == InitialConditionType::ENSEMBLE ||
+      type == InitialConditionType::DIAGONAL)) {
+    for (size_t i = 0; i < nlevels.size(); i++) {
+      init_cond_IDs.push_back(i);
+    }
   }
 
-  switch (config.type) {
+  switch (type) {
     case InitialConditionType::FROMFILE:
       if (!config.filename.has_value()) {
         exitWithError(mpi_rank, "ERROR: initialcondition of type FROMFILE must have a filename");
       }
       return FromFileInitialCondition{config.filename.value()};
     case InitialConditionType::PURE:
-      if (params.size() != nlevels.size()) {
-        exitWithError(mpi_rank, "ERROR: initialcondition of type PURE must have exactly " +
-          std::to_string(nlevels.size()) + " parameters, got " + std::to_string(params.size()));
+      if (!config.levels.has_value()) {
+        exitWithError(mpi_rank, "ERROR: initialcondition of type PURE must have 'levels'");
       }
-      for (size_t k=0; k < params.size(); k++) {
-        if (params[k] >= nlevels[k]){
+      if (config.levels.value().size() != nlevels.size()) {
+        exitWithError(mpi_rank, "ERROR: initialcondition of type PURE must have exactly " +
+          std::to_string(nlevels.size()) + " parameters, got " + std::to_string(config.levels.value().size()));
+      }
+      for (size_t k=0; k < config.levels.value().size(); k++) {
+        if (config.levels.value()[k] >= nlevels[k]){
           exitWithError(mpi_rank, "ERROR in config setting. The requested pure state initialization "
-            + std::to_string(params[k]) + " exceeds the number of allowed levels for that oscillator ("
+            + std::to_string(config.levels.value()[k]) + " exceeds the number of allowed levels for that oscillator ("
             + std::to_string(nlevels[k]) + ").\n");
         }
       }
-      return PureInitialCondition{params};
+      return PureInitialCondition{config.levels.value()};
 
     case InitialConditionType::BASIS:
       if (collapse_type == LindbladType::NONE) {
@@ -746,18 +773,17 @@ InitialCondition Config::convertInitialCondition(const InitialConditionConfig& c
 }
 
 // Conversion helper implementations
-void Config::convertInitialCondition(const std::optional<InitialConditionConfig>& config) {
+InitialCondition Config::parseInitialCondition(const std::optional<InitialConditionConfig>& config) const {
   if (!config.has_value()) {
     // Default: BasisInitialCondition with all oscillators
     std::vector<size_t> all_oscillators;
     for (size_t i = 0; i < nlevels.size(); i++) {
       all_oscillators.push_back(i);
     }
-    initial_condition = BasisInitialCondition{all_oscillators};
-    return;
+    return BasisInitialCondition{all_oscillators};
   }
 
-  initial_condition = convertInitialCondition(config.value());
+  return parseInitialCondition(config.value());
 }
 
 void Config::convertPiPulses(const std::optional<std::vector<PiPulseConfig>>& pulses) {

@@ -391,8 +391,9 @@ private:
     void validate() const;
 
     // Conversion helper methods
-    InitialCondition convertInitialCondition(const InitialConditionConfig& config);
-    void convertInitialCondition(const std::optional<InitialConditionConfig>& config);
+    InitialCondition parseInitialCondition(const InitialConditionConfig& config) const;
+    InitialCondition parseInitialCondition(const std::optional<InitialConditionConfig>& config) const;
+
     void convertOptimTarget(const std::optional<OptimTargetConfig>& config);
     void convertControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed);
     void convertControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& indexed);

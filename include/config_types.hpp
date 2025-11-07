@@ -14,8 +14,9 @@
  */
 
 struct InitialConditionConfig {
-  InitialConditionType type;  ///< Type of initial condition
-  std::vector<size_t> params;    ///< Additional parameters
+  std::string type;  ///< Type of initial condition
+  std::optional<std::vector<size_t>> osc_IDs;  ///< Oscillator IDs
+  std::optional<std::vector<size_t>> levels;  ///< Levels for each oscillator
   std::optional<std::string> filename;  ///< Filename (if type is FILE)
 };
 

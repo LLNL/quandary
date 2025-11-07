@@ -94,7 +94,7 @@ TEST_F(TomlParserTest, ParseStructSettings) {
     transfreq = [4.1]
     rotfreq = [0.0]
     optim_target = gate, cnot
-    initialcondition = diagonal, 0
+    initial_condition = diagonal, 0
   )", &log, true);
 
   const auto& target = config.getOptimTarget();
@@ -128,7 +128,7 @@ TEST_F(TomlParserTest, InitialCondition_FromFile) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    initialcondition = file, test.dat
+    initial_condition = {type = "file", filename = "test.dat"}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<FromFileInitialCondition>(initcond));
@@ -142,7 +142,7 @@ TEST_F(TomlParserTest, InitialCondition_Pure) {
     nlevels = [3, 2]
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
-    initialcondition = pure, 1, 0
+    initial_condition = {type = "pure", levels = [1, 0]}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PureInitialCondition>(initcond));
@@ -157,7 +157,7 @@ TEST_F(TomlParserTest, InitialCondition_Performance) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    initialcondition = performance
+    initial_condition = {type = "performance"}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PerformanceInitialCondition>(initcond));
@@ -170,8 +170,8 @@ TEST_F(TomlParserTest, InitialCondition_Ensemble) {
     nlevels = [3, 2]
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
-    collapse_type = decay
-    initialcondition = ensemble, 0, 1
+    collapse_type = "decay"
+    initial_condition = {type = "ensemble", osc_IDs = [0, 1]}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<EnsembleInitialCondition>(initcond));
@@ -186,8 +186,8 @@ TEST_F(TomlParserTest, InitialCondition_ThreeStates) {
     nlevels = [3]
     transfreq = [4.1]
     rotfreq = [0.0]
-    collapse_type = decay
-    initialcondition = 3states
+    collapse_type = "decay"
+    initial_condition = {type = "3states"}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<ThreeStatesInitialCondition>(initcond));
@@ -200,8 +200,8 @@ TEST_F(TomlParserTest, InitialCondition_NPlusOne_SingleOscillator) {
     nlevels = [3]
     transfreq = [4.1]
     rotfreq = [0.0]
-    collapse_type = decay
-    initialcondition = nplus1
+    collapse_type = "decay"
+    initial_condition = {type = "nplus1"}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
@@ -215,8 +215,8 @@ TEST_F(TomlParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
     nlevels = [2, 3]
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
-    collapse_type = decay
-    initialcondition = nplus1
+    collapse_type = "decay"
+    initial_condition = {type = "nplus1"}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
@@ -231,8 +231,8 @@ TEST_F(TomlParserTest, InitialCondition_Diagonal_Schrodinger) {
     nessential = [3, 2]
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
-    collapse_type = none
-    initialcondition = diagonal, 1
+    collapse_type = "none"
+    initial_condition = {type = "diagonal", osc_IDs = [1]}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
@@ -249,8 +249,8 @@ TEST_F(TomlParserTest, InitialCondition_Basis_Schrodinger) {
     nessential = [3, 2]
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
-    collapse_type = none
-    initialcondition = basis, 1
+    collapse_type = "none"
+    initial_condition = {type = "basis", osc_IDs = [1]}
   )", &log, true);
   // For Schrodinger solver, BASIS is converted to DIAGONAL, so n_initial_conditions = nessential[1] = 2
   const auto& initcond = config.getInitialCondition();
@@ -267,8 +267,8 @@ TEST_F(TomlParserTest, InitialCondition_Basis_Lindblad) {
     nessential = [3, 2]
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
-    collapse_type = decay
-    initialcondition = basis, 1
+    collapse_type = "decay"
+    initial_condition = {type = "basis", osc_IDs = [1]}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<BasisInitialCondition>(initcond));

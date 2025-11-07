@@ -209,17 +209,25 @@ InitialConditionConfig CfgParser::convertFromString<InitialConditionConfig>(cons
   }
 
   InitialConditionConfig config;
-  config.type = convertFromString<InitialConditionType>(parts[0]);
+  auto type = convertFromString<InitialConditionType>(parts[0]);
+  config.type = parts[0];
 
-  if (config.type == InitialConditionType::FROMFILE) {
+  if (type == InitialConditionType::FROMFILE) {
     if (parts.size() < 2) {
       logErrorToRank0(mpi_rank, "ERROR: initialcondition of type FROMFILE must have a filename");
     }
     config.filename = parts[1];
-  } else {
-    // Parse remaining parameters as integers
+  } else if (type == InitialConditionType::PURE) {
+    config.levels = std::vector<size_t>();
     for (size_t i = 1; i < parts.size(); ++i) {
-      config.params.push_back(convertFromString<int>(parts[i]));
+      config.levels.value().push_back(convertFromString<int>(parts[i]));
+    }
+  } else if (type == InitialConditionType::ENSEMBLE ||
+      type == InitialConditionType::DIAGONAL ||
+      type == InitialConditionType::BASIS) {
+    config.osc_IDs = std::vector<size_t>();
+    for (size_t i = 1; i < parts.size(); ++i) {
+      config.osc_IDs.value().push_back(convertFromString<int>(parts[i]));
     }
   }
 
