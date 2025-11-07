@@ -284,7 +284,12 @@ TEST_F(TomlParserTest, ParsePiPulseSettings_Structure) {
     nlevels = [2, 2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    apply_pipulse = 0, 0.5, 1.0, 0.8
+
+    [[system.apply_pipulse]]
+    oscID = 0
+    tstart = 0.5
+    tstop = 1.0
+    amp = 0.8
   )", &log, true);
 
   const auto& pulses = config.getApplyPiPulses();
@@ -300,6 +305,46 @@ TEST_F(TomlParserTest, ParsePiPulseSettings_Structure) {
   EXPECT_DOUBLE_EQ(pulses[1][0].tstart, 0.5);
   EXPECT_DOUBLE_EQ(pulses[1][0].tstop, 1.0);
   EXPECT_DOUBLE_EQ(pulses[1][0].amp, 0.0);
+}
+
+TEST_F(TomlParserTest, ParsePiPulseSettings_Multiple) {
+  Config config = Config::fromTomlString(mpi_rank, R"(
+    [system]
+    nlevels = [2, 2]
+    transfreq = [4.1]
+    rotfreq = [0.0]
+
+    [[system.apply_pipulse]]
+    oscID = 0
+    tstart = 0.5
+    tstop = 1.0
+    amp = 0.8
+
+    [[system.apply_pipulse]]
+    oscID = 1
+    tstart = 0
+    tstop = 0.5
+    amp = 0.2
+  )", &log, true);
+
+  const auto& pulses = config.getApplyPiPulses();
+  EXPECT_EQ(pulses.size(), 2);
+
+  EXPECT_EQ(pulses[0].size(), 2);
+  EXPECT_DOUBLE_EQ(pulses[0][0].tstart, 0.5);
+  EXPECT_DOUBLE_EQ(pulses[0][0].tstop, 1.0);
+  EXPECT_DOUBLE_EQ(pulses[0][0].amp, 0.8);
+  EXPECT_DOUBLE_EQ(pulses[0][1].tstart, 0.);
+  EXPECT_DOUBLE_EQ(pulses[0][1].tstop, 0.5);
+  EXPECT_DOUBLE_EQ(pulses[0][1].amp, 0.0);
+
+  EXPECT_EQ(pulses[1].size(), 2);
+  EXPECT_DOUBLE_EQ(pulses[1][0].tstart, 0.5);
+  EXPECT_DOUBLE_EQ(pulses[1][0].tstop, 1.0);
+  EXPECT_DOUBLE_EQ(pulses[1][0].amp, 0.0);
+  EXPECT_DOUBLE_EQ(pulses[1][1].tstart, 0.);
+  EXPECT_DOUBLE_EQ(pulses[1][1].tstop, 0.5);
+  EXPECT_DOUBLE_EQ(pulses[1][1].amp, 0.2);
 }
 
 TEST_F(TomlParserTest, ControlSegments_Spline0) {

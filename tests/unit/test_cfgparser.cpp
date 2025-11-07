@@ -287,6 +287,34 @@ TEST_F(CfgParserTest, ParsePiPulseSettings_Structure) {
   EXPECT_DOUBLE_EQ(pulses[1][0].amp, 0.0);
 }
 
+TEST_F(CfgParserTest, ParsePiPulseSettings_Multiple) {
+  Config config = Config::fromCfgString(mpi_rank, R"(
+    nlevels = 2, 2
+    transfreq = 4.1
+    rotfreq = 0.0
+    apply_pipulse = 0, 0.5, 1.0, 0.8, 1, 0, 0.5, 0.2
+  )", &log, true);
+
+  const auto& pulses = config.getApplyPiPulses();
+  EXPECT_EQ(pulses.size(), 2);
+
+  EXPECT_EQ(pulses[0].size(), 2);
+  EXPECT_DOUBLE_EQ(pulses[0][0].tstart, 0.5);
+  EXPECT_DOUBLE_EQ(pulses[0][0].tstop, 1.0);
+  EXPECT_DOUBLE_EQ(pulses[0][0].amp, 0.8);
+  EXPECT_DOUBLE_EQ(pulses[0][1].tstart, 0.);
+  EXPECT_DOUBLE_EQ(pulses[0][1].tstop, 0.5);
+  EXPECT_DOUBLE_EQ(pulses[0][1].amp, 0.0);
+
+  EXPECT_EQ(pulses[1].size(), 2);
+  EXPECT_DOUBLE_EQ(pulses[1][0].tstart, 0.5);
+  EXPECT_DOUBLE_EQ(pulses[1][0].tstop, 1.0);
+  EXPECT_DOUBLE_EQ(pulses[1][0].amp, 0.0);
+  EXPECT_DOUBLE_EQ(pulses[1][1].tstart, 0.);
+  EXPECT_DOUBLE_EQ(pulses[1][1].tstop, 0.5);
+  EXPECT_DOUBLE_EQ(pulses[1][1].amp, 0.2);
+}
+
 TEST_F(CfgParserTest, ControlSegments_Spline0) {
   Config config = Config::fromCfgString(mpi_rank, R"(
     nlevels = 2
