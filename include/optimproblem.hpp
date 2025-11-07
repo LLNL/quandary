@@ -9,6 +9,8 @@
 #include <iostream>
 #include <algorithm>
 #include "optimtarget.hpp"
+#include <slepcsvd.h>
+#include <slepceps.h>
 #pragma once
 
 /* if Petsc version < 3.17: Change interface for Tao Optimizer */
@@ -102,6 +104,7 @@ class OptimProblem {
     Vec xlower, xupper; ///< Lower and upper bounds for optimization variables
     Vec xprev; ///< Design vector at previous iteration
     Vec xinit; ///< Initial design vector
+    Mat Hessian; ///< Hessian matrix for second-order derivative information
 
   /**
    * @brief Constructor for optimization problem.
@@ -247,6 +250,24 @@ class OptimProblem {
   void evalHessVec(const Vec x, const Vec v, Vec Hv);
 
   /**
+   * @brief Evaluate the Hessian matrix at point x.
+   * 
+   * Consider to switch to gradient projection only. 
+   * 
+   * @param[in] x Point of evaluation
+   * @param[out] H Hessian matrix
+   */
+  void evalHessian(const Vec x, Mat H);
+
+  //  /* @brief Projects the gradient onto the dominant subspace of the Hessian.
+  //  * @param[in] grad Input gradient vector 
+  //  * @param[out] grad_proj Output projected gradient vector
+  //  * @param[in] ncut Number of random samples for subspace approximation
+  //  * @param[in] nextra Number of oversampling vectors
+  // void ProjectGradient(const Vec x, const Vec grad, Vec grad_proj, PetscInt ncut, PetscInt nextra);
+
+
+  /**
    * @brief Runs the optimization solver.
    *
    * @param xinit Initial guess for design variables
@@ -318,6 +339,18 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
  */
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);
 
+
+/** 
+ * @brief PETSc TAO interface routine for Hessian evaluation.
+ * 
+ * @param tao TAO solver object
+ * @param x Design vector
+ * @param H Hessian matrix
+ * @param Hpre Preconditioner matrix (?)
+ * @param ptr Pointer to user context (OptimProblem instance)
+ * @return PetscErrorCode Error code
+ */
+PetscErrorCode TaoEvalHessian(Tao tao, Vec x, Mat H, Mat Hpre, void*ptr);
 
 
 /*** ROL Optimization interface ***/

@@ -169,17 +169,29 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
  
   /* Create Petsc's optimization solver */
   TaoCreate(PETSC_COMM_WORLD, &tao);
-  /* Set optimization type and parameters */
-  TaoSetType(tao,TAOBQNLS);         // Optim type: taoblmvm vs BQNLS ??
+  TaoSetObjective(tao, TaoEvalObjective, (void *)this);
+  TaoSetGradient(tao, NULL, TaoEvalGradient,(void *)this);
+  TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient, (void*) this);
+  bool use_hessian = config.GetBoolParam("optim_use_hessian", false, false);
+  if (use_hessian) {
+    if (mpirank_world == 0 && !quietmode) std::cout << "Using Hessian in TAO NLS solver." << std::endl;
+
+    // Create Hessian matrix
+    MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, NULL, &Hessian);
+    MatSetFromOptions(Hessian);
+
+    // TaoSetType(tao, TAONLS);     // Newton line search, unconstrained. TODO: Check Bounds!
+    TaoSetType(tao, TAOBNLS);     // Bounded Newton with line search, unconstrained.
+    TaoSetHessian(tao, Hessian, Hessian, TaoEvalHessian, (void*) this);
+
+  } else {
+    TaoSetType(tao,TAOBQNLS);   // Bounded LBFGS with line search  
+  }
   TaoSetMaximumIterations(tao, maxiter);
   TaoSetTolerances(tao, gatol, PETSC_DEFAULT, grtol);
   TaoMonitorSet(tao, TaoMonitor, (void*)this, NULL);
   TaoSetVariableBounds(tao, xlower, xupper);
   TaoSetFromOptions(tao);
-  /* Set user-defined objective and gradient evaluation routines */
-  TaoSetObjective(tao, TaoEvalObjective, (void *)this);
-  TaoSetGradient(tao, NULL, TaoEvalGradient,(void *)this);
-  TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient, (void*) this);
 
   /* Allocate auxiliary vector */
   mygrad = new double[ndesign];
@@ -199,6 +211,7 @@ OptimProblem::~OptimProblem() {
   delete optim_target;
   VecDestroy(&rho_t0);
   VecDestroy(&rho_t0_bar);
+  MatDestroy(&Hessian);
 
   // VecDestroy(&xlower);
   // VecDestroy(&xupper);
@@ -757,6 +770,12 @@ PetscErrorCode TaoEvalObjective(Tao /*tao*/, Vec x, PetscReal *f, void*ptr){
   return 0;
 }
 
+PetscErrorCode TaoEvalHessian(Tao /* tao */, Vec x, Mat H, Mat /* Hpre */, void*ptr){
+
+  OptimProblem* ctx = (OptimProblem*) ptr;
+  ctx->evalHessian(x, H);
+  return 0;
+}
 
 PetscErrorCode TaoEvalGradient(Tao /*tao*/, Vec x, Vec G, void*ptr){
 
@@ -941,3 +960,213 @@ void myObjective::update(const ROL::Vector<double> &x, ROL::UpdateType type, int
   }
 }
 
+
+/* Gradient projection onto dominant subspace */
+// void OptimProblem::ProjectGradient(const Vec x, const Vec grad, Vec grad_proj, PetscInt ncut, PetscInt nextra) {
+void OptimProblem::evalHessian(const Vec x, Mat H) {
+  // Sample a random matrix Omega
+  // Apply Hessian-vector product on each column of Q -> Y = H * Omega
+  // Find basis with economy SVD and take top-k left singular vectors
+  //   -> U,S,V = SVD(Y), Q = U[:,1:k]
+  // Solve B * (Q' * Omega) = (Q' * Y) for B: least squares problem 
+  //   -> B = lstsq( (Q.T*Omega).T, (W.T*Y).T ).T
+  // Eigenvalue decomposition of B -> B = V Lambda V'
+  // Project: U = Q * V
+  //  -> Hessian \approx U * Lambda * U'
+  //  -> grad_proj = U * Lambda^{-1} * U' * grad
+
+
+  PetscInt ncut = 25; // number of random samples. TODO: READ FROM CONFIG
+  PetscInt nextra = 10;   // Oversampling
+  PetscInt nover = ncut + nextra;
+
+  PetscInt n;
+  VecGetSize(x, &n);
+
+
+  Mat Omega, Y, Q;
+  SVD svd;
+  PetscInt nconv;
+  Mat QtOmega, QtY, B, U;
+  EPS eps;
+  PetscScalar *lambda;
+  PetscRandom rctx;
+  
+  /* Sample random matrix Omega (n x ncut+nextra) */
+  MatCreateDense(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, n, nover, NULL, &Omega);
+  PetscRandomCreate(PETSC_COMM_WORLD, &rctx);
+  PetscRandomSetFromOptions(rctx);
+  PetscRandomSetSeed(rctx, 42);
+  PetscRandomSeed(rctx);
+  MatSetRandom(Omega, rctx);
+  MatSetUp(Omega);
+  MatAssemblyBegin(Omega, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(Omega, MAT_FINAL_ASSEMBLY);
+
+  /* Apply Hessian-vector product Y = H * Omega */
+  MatDuplicate(Omega, MAT_DO_NOT_COPY_VALUES, &Y);
+  Vec omega_col, y_col;
+  for (int i = 0; i < nover; i++) {
+    if (mpirank_world==0) printf("Applying Hessian-vector product %d / %d\n", i, nover);
+    MatDenseGetColumnVecRead(Omega, i, &omega_col);
+    MatDenseGetColumnVecWrite(Y, i, &y_col);
+    evalHessVec(x, omega_col, y_col);
+    MatDenseRestoreColumnVecRead(Omega, i, &omega_col);
+    MatDenseRestoreColumnVecWrite(Y, i, &y_col);
+  }
+  
+  /* Find orthonormal basis for Y */
+  // Economy SVD of Y, keep ncut top left singular vectors
+  SVDCreate(PETSC_COMM_WORLD, &svd); 
+  SVDSetOperators(svd, Y, NULL); 
+  SVDSetType(svd, SVDTRLANCZOS);  // or SVDCROSS, SVDLAPACK
+  SVDSetDimensions(svd, ncut, PETSC_DEFAULT, PETSC_DEFAULT); 
+  SVDSetFromOptions(svd); 
+  SVDSolve(svd); 
+  SVDGetConverged(svd, &nconv); 
+  if (nconv < ncut) {
+    printf("ERROR: SVD converged to %D singular values, needed %D", nconv, ncut);
+    exit(1);
+  }
+  // Extract Q = U[:,1:ncut] (left singular vectors)
+  MatCreateDense(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, n, ncut, NULL, &Q); 
+  Vec u_col;
+  for (int i = 0; i < ncut; i++) {
+    MatDenseGetColumnVecWrite(Q, i, &u_col);
+    SVDGetSingularTriplet(svd, i, NULL, u_col, NULL);
+    MatDenseRestoreColumnVecWrite(Q, i, &u_col);
+  }
+  
+  /*  Compute Q^T * Omega and Q^T * Y */
+  MatTransposeMatMult(Q, Omega, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &QtOmega); 
+  MatTransposeMatMult(Q, Y, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &QtY);
+  
+  /* Solve least squares: B * (Q^T * Omega) = (Q^T * Y) */
+  // Transpose: (Q^T*Omega)^T * B^T = (Q^T*Y)^T
+  // Solve for B^T:  (Q^T*Omega)(Q^T*Omega)^T * B^T = (Q^T*Omega)(Q^T*Y)^T
+
+  // Compute Gram = QtOmega * QtOmega^T
+  Mat Gram;
+  MatMatTransposeMult(QtOmega, QtOmega, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Gram);
+
+  // Compute RHS = QtOmega * QtY^T
+  Mat RHS;
+  MatMatTransposeMult(QtOmega, QtY, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &RHS);
+
+  // Set up the solution matrix
+  Mat X;
+  MatDuplicate(Gram, MAT_DO_NOT_COPY_VALUES, &X);
+
+  // Solve Gram * X = RHS for X (=B^T) using Petsc KSP solver
+  KSP ksp;
+  KSPCreate(PETSC_COMM_WORLD, &ksp);
+  KSPSetOperators(ksp, Gram, Gram);
+  // PC pc;
+  // KSPGetPC(ksp, &pc);
+  // PCSetType(pc, PCLU);
+  KSPSetFromOptions(ksp);
+  KSPMatSolve(ksp, RHS, X);
+
+  // Transpose X to get B
+  MatTranspose(X, MAT_INITIAL_MATRIX, &B);
+
+  /* Eigenvalue decomposition of B */
+  EPSCreate(PETSC_COMM_WORLD, &eps);
+  EPSSetOperators(eps, B, NULL);
+  EPSSetProblemType(eps, EPS_NHEP); // Symmetric system matrix?
+  EPSSetDimensions(eps, ncut, PETSC_DEFAULT, PETSC_DEFAULT);
+  EPSSetFromOptions(eps);
+  EPSSolve(eps);
+  EPSGetConverged(eps, &nconv); 
+  if (nconv < ncut) {
+    printf("ERROR: EPS converged to %D eigenvalues, needed %D", nconv, ncut);
+  }
+  
+  // Extract eigenvectors V and eigenvalues Lambda
+  MatCreateDense(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, ncut, ncut, NULL, &U); // This will be U from B = U*Lambda*V'
+  PetscMalloc1(ncut, &lambda);
+  
+  PetscScalar eigval;
+  for (int i = 0; i < ncut; i++) {
+    MatDenseGetColumnVecWrite(U, i, &u_col);
+    EPSGetEigenpair(eps, i, &eigval, NULL, u_col, NULL);
+    lambda[i] = eigval;  // Store inverse eigenvalue
+    MatDenseRestoreColumnVecWrite(U, i, &u_col);
+  }
+  // print the eigenvalues
+  if (mpirank_world==0) {
+    printf("Dominant eigenvalues of the Hessian approximation:\n");
+    for (int i = 0; i < ncut; i++) {
+      printf("%1.14e\n", lambda[i]);
+    }
+  }
+  
+  /* Project U_final = Q * V */
+  Mat U_final;
+  MatMatMult(Q, U, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &U_final); 
+
+  /* Assemble H = U_final sigma U_final^T */
+  Vec lambda_v;
+  MatCreateVecs(U_final, &lambda_v, NULL);
+  PetscScalar *lambda_ptr;
+  VecGetArrayWrite(lambda_v, &lambda_ptr);
+  for (int i = 0; i < ncut; i++) {
+    lambda_ptr[i] = lambda[i];
+  }
+  VecRestoreArrayWrite(lambda_v, &lambda_ptr);
+
+  // Compute U_scaled = U_final * diag(lambda)
+  Mat U_scaled;
+  MatDuplicate(U_final, MAT_COPY_VALUES, &U_scaled);
+  MatDiagonalScale(U_scaled, NULL, lambda_v);  // Right scaling 
+  // Compute H = U_scaled * U_final^T
+  MatMatTransposeMult(U_scaled, U_final, MAT_REUSE_MATRIX, PETSC_DEFAULT, &H);
+
+  
+  // Alternatively, project gradient directly without forming H !!
+  // /* Gradient projection: grad_proj = U_final * Lambda^{-1} * U_final^T * grad */
+  // Vec temp_vec1, temp_vec2;
+  // VecCreateSeq(PETSC_COMM_SELF, ncut, &temp_vec1);
+  // VecCreateSeq(PETSC_COMM_SELF, ncut, &temp_vec2);
+  
+  // // temp_vec1 = U_final^T * grad
+  // MatMultTranspose(U_final, grad, temp_vec1);
+  
+  // // temp_vec2 = Lambda^{-1} * temp_vec1
+  // PetscScalar *arr1, *arr2;
+  // VecGetArray(temp_vec1, &arr1);
+  // VecGetArray(temp_vec2, &arr2);
+  // for (int i = 0; i < ncut; i++) {
+  //   arr2[i] = 1.0 / lambda[i] * arr1[i];
+  // }
+  // VecRestoreArray(temp_vec1, &arr1);
+  // VecRestoreArray(temp_vec2, &arr2);
+  
+  // // grad_proj = U_final * temp_vec2
+  // MatMult(U_final, temp_vec2, grad_proj);
+  
+  // Cleanup
+  PetscFree(lambda);
+  MatDestroy(&Q);
+  MatDestroy(&Y);
+  MatDestroy(&QtOmega);
+  MatDestroy(&Omega);
+  MatDestroy(&QtY);
+  MatDestroy(&Gram);
+  MatDestroy(&RHS);
+  MatDestroy(&X);
+  MatDestroy(&B);
+  MatDestroy(&U);
+  MatDestroy(&U_final);
+  MatDestroy(&U_scaled);
+  VecDestroy(&lambda_v);
+  SVDDestroy(&svd);
+  EPSDestroy(&eps);
+  KSPDestroy(&ksp);
+  PetscRandomDestroy(&rctx);
+  // VecDestroy(&temp_vec1);
+  // VecDestroy(&temp_vec2);
+
+  // printf("Done Hessian evaluation. \n");
+  // ush(stdout);
+}

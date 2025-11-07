@@ -508,6 +508,9 @@ int main(int argc,char **argv)
       optimctx->evalGradF(xinit, grad);
       VecNorm(grad, NORM_2, &gnorm);
       optimctx->output->writeGradient(grad);
+
+      // TEST HESSIAN FUNCTION
+      // optimctx->evalHessian(xinit, optimctx->Hessian);
     } else {
       g->zero();
       double tol = 0.0;
