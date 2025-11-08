@@ -1,0 +1,64 @@
+[system]
+nlevels = [2, 2]
+nessential = [2, 2]
+ntime = 1000
+dt = 0.1
+transfreq = [4.1, 4.8]
+selfkerr = [0.0, 0.0]
+crosskerr = [0.0]
+Jkl = [0.0]
+rotfreq = [0.0, 0.0]
+collapse_type = "none"
+decay_time = [0]
+dephase_time = [0]
+initial_condition = {type = "pure", levels = [1, 1]}
+
+[[system.apply_pipulse]]
+oscID = 0
+tstart = 0.5
+tstop = 0.604
+amp = 15.10381
+
+# hamiltonian_file_Hsys = "/path/to/Hsys.dat"
+# hamiltonian_file_Hc = "/path/to/Hc.dat"
+
+[optimization]
+# control_segments
+control_enforce_BC = true
+# control_initialization
+# control_bounds
+# carrier_frequency
+optim_target = {target_type = "file", filename = "/path/to/file"}
+optim_objective = "jfrobenius"
+# optim_weights
+optim_atol = 1e-8
+optim_rtol = 1e-8
+optim_ftol = 1e-8
+optim_inftol = 1e-5
+optim_maxiter = 100
+optim_regul = 1e-4
+# optim_penalty
+# optim_penalty_param
+# optim_penalty_dpdm
+# optim_penalty_energy
+# optim_penalty_variation
+optim_regul_tik0 = false
+
+# Example penalty settings (all defaults to 0.0)
+# optim_penalty = 0.0
+# optim_penalty_param = 0.5
+# optim_penalty_dpdm = 0.0
+# optim_penalty_energy = 0.0
+# optim_penalty_variation = 0.01
+
+[output]
+datadir = "./data_out"
+# output
+output_frequency = 1
+optim_monitor_frequency = 10
+runtype = "simulation"
+usematfree = false
+linearsolver_type = "gmres"
+linearsolver_maxiter = 10
+timestepper = "imr"
+# rand_seed = 42
