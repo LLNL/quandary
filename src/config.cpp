@@ -260,7 +260,7 @@ Config::Config(
       std::string optim_objective_str = validators::field<std::string>(optimization, "optim_objective")
         .get_or("");
       optim_objective = parseEnum(optim_objective_str, OBJECTIVE_TYPE_MAP)
-        .value_or(ObjectiveType::JFROBENIUS);
+        .value_or(optim_objective);
 
       // TODO: optim_weights
 
@@ -324,7 +324,7 @@ Config::Config(
       std::string runtype_str = validators::field<std::string>(output, "runtype")
         .get_or("");
       runtype = parseEnum(runtype_str, RUN_TYPE_MAP)
-        .value_or(RunType::SIMULATION);
+        .value_or(runtype);
 
       usematfree = validators::field<bool>(output, "usematfree")
         .get_or(usematfree);
@@ -332,7 +332,7 @@ Config::Config(
       std::string linearsolver_type_str = validators::field<std::string>(output, "linearsolver_type")
         .get_or("");
       linearsolver_type = parseEnum(linearsolver_type_str, LINEAR_SOLVER_TYPE_MAP)
-        .value_or(LinearSolverType::GMRES);
+        .value_or(linearsolver_type);
 
       linearsolver_maxiter = validators::field<size_t>(output, "linearsolver_maxiter")
         .positive()
@@ -343,9 +343,8 @@ Config::Config(
       timestepper_type = parseEnum(timestepper_type_str, TIME_STEPPER_TYPE_MAP)
         .value_or(TimeStepperType::IMR);
 
-      rand_seed = validators::field<int>(output, "rand_seed")
-        .get_or(-1);
-      }
+      setRandSeed(output["rand_seed"].value<int>());
+    }
 
   } catch (const validators::ValidationError& e) {
     exitWithError(mpi_rank, "ERROR: " + std::string(e.what()));
