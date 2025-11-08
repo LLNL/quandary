@@ -93,7 +93,9 @@ TEST_F(TomlParserTest, ParseStructSettings) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    optim_target = gate, cnot
+
+    [optimization]
+    optim_target = {target_type = "gate", gate_type = "cnot"}
     initial_condition = diagonal, 0
   )", &log, true);
 
@@ -640,7 +642,9 @@ TEST_F(TomlParserTest, OptimTarget_GateType) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    optim_target = gate, cnot
+
+    [optimization]
+    optim_target = {target_type = "gate", gate_type = "cnot"}
   )", &log, true);
 
   const auto& target = config.getOptimTarget();
@@ -655,7 +659,9 @@ TEST_F(TomlParserTest, OptimTarget_GateFromFile) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    optim_target = gate, file, /path/to/gate.dat
+
+    [optimization]
+    optim_target = {target_type = "gate", gate_type = "file", gate_file = "/path/to/gate.dat"}
   )", &log, true);
 
   const auto& target = config.getOptimTarget();
@@ -671,7 +677,9 @@ TEST_F(TomlParserTest, OptimTarget_PureState) {
     nlevels = [3, 3, 3]
     transfreq = [4.1]
     rotfreq = [0.0]
-    optim_target = pure, 0, 1, 2
+
+    [optimization]
+    optim_target = {target_type = "pure", levels = [0,1,2]}
   )", &log, true);
 
   const auto& target = config.getOptimTarget();
@@ -690,7 +698,9 @@ TEST_F(TomlParserTest, OptimTarget_FromFile) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    optim_target = file, /path/to/target.dat
+
+    [optimization]
+    optim_target = {target_type = "file", filename = "/path/to/target.dat"}
   )", &log, true);
 
   const auto& target = config.getOptimTarget();
