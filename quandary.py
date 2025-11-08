@@ -721,10 +721,10 @@ class Quandary:
         mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
         if self.gamma_tik0_interpolate > 0.0:
             mystring += "optim_regul= " + str(self.gamma_tik0_interpolate) + "\n"
-            mystring += "optim_regul_interpolate = true\n"
+            mystring += "optim_regul_tik0 = true\n"
         else:
             mystring += "optim_regul= " + str(self.gamma_tik0) + "\n"
-            mystring += "optim_regul_interpolate=False\n"
+            mystring += "optim_regul_tik0=false\n"
         mystring += "optim_penalty= " + str(self.gamma_leakage) + "\n"
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"
