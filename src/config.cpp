@@ -210,7 +210,7 @@ Config::Config(
       init_cond_config = {type_str, osc_IDs, levels, filename};
     }
     initial_condition = parseInitialCondition(init_cond_config);
-    setNumInitialConditions();
+    n_initial_conditions = computeNumInitialConditions();
 
     std::optional<std::vector<PiPulseConfig>> pipulses = std::nullopt;
     toml::array* apply_pipulse_array = system["apply_pipulse"].as_array();
@@ -411,7 +411,7 @@ Config::Config(
   copyLast(dephase_time, num_osc);
 
   initial_condition = parseInitialCondition(settings.initialcondition);
-  setNumInitialConditions();
+  n_initial_conditions = computeNumInitialConditions();
 
   apply_pipulse = parsePiPulses(settings.apply_pipulse);
 
@@ -961,7 +961,8 @@ void Config::convertIndexedCarrierFreqs(const std::optional<std::map<int, std::v
   }
 }
 
-void Config::setNumInitialConditions() {
+size_t Config::computeNumInitialConditions() const {
+  size_t n_initial_conditions = 0;
   if      (std::holds_alternative<FromFileInitialCondition>(initial_condition) ) n_initial_conditions = 1;
   else if (std::holds_alternative<PureInitialCondition>(initial_condition) ) n_initial_conditions = 1;
   else if (std::holds_alternative<PerformanceInitialCondition>(initial_condition) ) n_initial_conditions = 1;
@@ -1003,6 +1004,7 @@ void Config::setNumInitialConditions() {
   if (!quietmode) {
     logOutputToRank0(mpi_rank, "Number of initial conditions: " + std::to_string(n_initial_conditions) + "\n");
   }
+  return n_initial_conditions;
 }
 
 void Config::setOptimWeights(const std::optional<std::vector<double>>& optim_weights_) {

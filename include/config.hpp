@@ -388,7 +388,7 @@ private:
     void convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed);
     void convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed);
 
-    void setNumInitialConditions();
+    size_t computeNumInitialConditions() const;
     void setOptimWeights(const std::optional<std::vector<double>>& optim_weights_);
     void setRandSeed(std::optional<int> rand_seed_);
 
