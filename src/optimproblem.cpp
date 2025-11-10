@@ -175,19 +175,18 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   bool use_hessian = config.GetBoolParam("optim_use_hessian", false, false);
 
   if (use_hessian) {
+    // TaoSetType(tao, TAONLS);     // Newton line search, unconstrained. TODO: Check Bounds!
+    TaoSetType(tao, TAOBNLS);     // Bounded Newton with line search
+    TaoSetHessian(tao, Hessian, Hessian, TaoEvalHessian, (void*) this);
     // Create Hessian matrix
     MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, NULL, &Hessian);
     MatSetFromOptions(Hessian);
 
-    // TaoSetType(tao, TAONLS);     // Newton line search, unconstrained. TODO: Check Bounds!
-    TaoSetType(tao, TAOBNLS);     // Bounded Newton with line search
-    TaoSetHessian(tao, Hessian, Hessian, TaoEvalHessian, (void*) this);
-
-    // // TaoSetType(tao,TAOBQNLS);   // Bounded LBFGS with line search  
-    // TaoLMVMSetH0(tao, NULL);  // Remove initial Hessian approximation
-    // // Set the limited memory size to 0
-    // TaoSetFromOptions(tao);  // Allow command-line override
-    // TaoLMVMSetHistorySize(tao, lmvm_hist);
+    // TaoSetType(tao,TAOBQNLS);   // Bounded LBFGS with line search  
+    // // Disable LBFGS history to use just the (projected!) gradient
+    // Mat H_lmvm;
+    // TaoGetLMVMMatrix(tao, &H_lmvm);
+    // MatLMVMSetHistorySize(H_lmvm, 0); 
   } else {
     TaoSetType(tao,TAOBQNLS);   // Bounded LBFGS with line search  
   }
@@ -628,6 +627,8 @@ void OptimProblem::evalHessVec(const Vec x, const Vec v, Vec Hv){
 void OptimProblem::solve(Vec xinit) {
   TaoSetSolution(tao, xinit);
   TaoSolve(tao);
+
+  // TaoView(tao, NULL);
 }
 
 void OptimProblem::getStartingPoint(Vec xinit){
@@ -764,6 +765,16 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
   OptimProblem* ctx = (OptimProblem*) ptr;
   *f = ctx->getObjective();
 
+  // /* Project gradient onto dominant subspace */
+  // PetscInt ncut = 25;    // Number of dominant eigenvalues/vectors to compute TODO: READ FROM CONFIG
+  // PetscInt nextra = 10;  // Oversampling
+  // Vec grad_proj;
+  // VecDuplicate(G, &grad_proj);
+  // ctx->ProjectGradient(x, G, grad_proj, ncut, nextra);
+  // VecCopy(grad_proj, G);
+  // VecDestroy(&grad_proj);
+ 
+
   return 0;
 }
 
@@ -792,6 +803,15 @@ PetscErrorCode TaoEvalGradient(Tao /*tao*/, Vec x, Vec G, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
   ctx->evalGradF(x, G);
+
+  // /* Project gradient onto dominant subspace */
+  // PetscInt ncut = 25;    // Number of dominant eigenvalues/vectors to compute TODO: READ FROM CONFIG
+  // PetscInt nextra = 10;  // Oversampling
+  // Vec grad_proj;
+  // VecDuplicate(G, &grad_proj);
+  // ctx->ProjectGradient(x, G, grad_proj, ncut, nextra);
+  // VecCopy(grad_proj, G);
+  // VecDestroy(&grad_proj);
   
   return 0;
 }
