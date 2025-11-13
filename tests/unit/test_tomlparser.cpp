@@ -96,7 +96,7 @@ TEST_F(TomlParserTest, ParseStructSettings) {
 
     [optimization]
     optim_target = {target_type = "gate", gate_type = "cnot"}
-    initial_condition = diagonal, 0
+    initial_condition = {type = "diagonal", osc_IDs = [0]}
   )", &log, true);
 
   const auto& target = config.getOptimTarget();
