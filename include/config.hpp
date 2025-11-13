@@ -380,6 +380,7 @@ private:
     InitialCondition parseInitialCondition(const InitialConditionConfig& config) const;
     InitialCondition parseInitialCondition(const std::optional<InitialConditionConfig>& config) const;
     std::vector<std::vector<PiPulseSegment>> parsePiPulses(const std::optional<std::vector<PiPulseConfig>>& pulses) const;
+    OptimTargetSettings parseOptimTarget(const std::optional<OptimTargetConfig>& opt_config,const std::vector<size_t>& nlevels) const;
 
     void convertOptimTarget(const std::optional<OptimTargetConfig>& config);
     void convertControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed);

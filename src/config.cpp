@@ -54,11 +54,11 @@ GateType parseGateType(const std::optional<std::string>& gate_type_str) {
   }
 }
 
-OptimTargetSettings parseOptimTarget(
+} // namespace
+
+OptimTargetSettings Config::parseOptimTarget(
   const std::optional<OptimTargetConfig>& opt_config,
-  const std::vector<size_t>& nlevels,
-  int mpi_rank
-) {
+  const std::vector<size_t>& nlevels) const {
   if (!opt_config.has_value()) {
     return PureOptimTarget{};
   }
@@ -66,12 +66,12 @@ OptimTargetSettings parseOptimTarget(
   const OptimTargetConfig& config = opt_config.value();
 
   // Convert target type string to enum
-  auto type_it = TARGET_TYPE_MAP.find(config.target_type);
-  if (type_it == TARGET_TYPE_MAP.end()) {
+  auto type = parseEnum(config.target_type, TARGET_TYPE_MAP);
+  if (!type.has_value()) {
     exitWithError(mpi_rank, "ERROR: Unknown optimization target type: " + config.target_type);
   }
 
-  switch (type_it->second) {
+  switch (*type) {
     case TargetType::GATE: {
       GateOptimTarget gate_target;
       gate_target.gate_type = parseGateType(config.gate_type);
@@ -118,6 +118,7 @@ OptimTargetSettings parseOptimTarget(
   return PureOptimTarget{};
 }
 
+namespace {
 // Helper to extract optional vectors directly from TOML
 template<typename T>
 std::optional<std::vector<T>> get_optional_vector(const toml::node_view<toml::node>& node) {
