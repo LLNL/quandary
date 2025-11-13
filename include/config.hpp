@@ -318,6 +318,8 @@ class Config {
     const std::vector<size_t>& getNEssential() const { return nessential; }
     size_t getNTime() const { return ntime; }
     double getDt() const { return dt; }
+
+    // TODO: transfreq, selfkerr, crosskerr combined into per oscillator struct?
     const std::vector<double>& getTransFreq() const { return transfreq; }
     const std::vector<double>& getSelfKerr() const { return selfkerr; }
     const std::vector<double>& getCrossKerr() const { return crosskerr; }
@@ -381,9 +383,13 @@ private:
     InitialCondition parseInitialCondition(const std::optional<InitialConditionConfig>& config) const;
     std::vector<std::vector<PiPulseSegment>> parsePiPulses(const std::optional<std::vector<PiPulseConfig>>& pulses) const;
     OptimTargetSettings parseOptimTarget(const std::optional<OptimTargetConfig>& opt_config,const std::vector<size_t>& nlevels) const;
+    // TODO need to be members?
+    std::vector<std::vector<ControlSegment>> parseControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& segments_opt) const;
+    std::vector<ControlSegment> parseOscControlSegments(const std::vector<ControlSegmentConfig>& segments) const;
+    ControlSegment parseControlSegment(const ControlSegmentConfig& seg_config) const;
+    ControlSegment parseControlSegment(const toml::table& table) const;
 
     void convertOptimTarget(const std::optional<OptimTargetConfig>& config);
-    void convertControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed);
     void convertControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& indexed);
     void convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed);
     void convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed);

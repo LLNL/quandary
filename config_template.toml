@@ -23,7 +23,12 @@ amp = 15.10381
 # hamiltonian_file_Hc = "/path/to/Hc.dat"
 
 [optimization]
-# control_segments
+[[optimization.control_sements]]
+oscID = 1
+type = "spline"
+num = 20
+tstart = 0.0
+tstop = 1.0
 control_enforce_BC = true
 # control_initialization
 # control_bounds
@@ -65,3 +70,4 @@ rand_seed = 42
 [[output.write]]
 oscID = 0
 type = ["expectedEnergy", "population"]
+

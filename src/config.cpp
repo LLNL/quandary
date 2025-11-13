@@ -249,16 +249,38 @@ Config::Config(
     hamiltonian_file_Hc = system["hamiltonian_file_Hc"].value<std::string>();
 
     // Parse optimization settings
+    oscillator_optimization.resize(num_osc);
+
     if(table.contains("optimization")) {
       auto optimization = *table["optimization"].as_table();
 
       // TODO: control_segments
-      control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
-        .get_or(control_enforceBC);
+      std::map<size_t, std::vector<ControlSegment>> control_segments;
+      auto control_seg_node = optimization["control_segments"];
+      if (control_seg_node.is_array_of_tables()) {
+        for (auto& elem : *control_seg_node.as_array()) {
+          auto table = *elem.as_table();
+          size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
+          ControlSegment control_seg = parseControlSegment(table);
+          control_segments[oscilID].push_back(control_seg);
+        }
+      }
 
       // TODO: control_initialization
       // TODO: control_bounds
       // TODO: carrier_frequency
+      for (size_t i = 0; i < oscillator_optimization.size(); i++) {
+        std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}}};
+        if (control_segments.find(i) != control_segments.end()) {
+          oscillator_optimization[i].control_segments = control_segments[i];
+          default_segments = control_segments[i];
+        } else {
+          oscillator_optimization[i].control_segments = default_segments;
+        }
+      }
+
+      control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
+        .get_or(control_enforceBC);
 
       // optim_target
       if (optimization.contains("optim_target")) {
@@ -269,7 +291,7 @@ Config::Config(
         std::optional<std::vector<size_t>> levels = get_optional_vector<size_t>(target_table["levels"]);
         std::optional<std::string> filename = target_table["filename"].value<std::string>();
         OptimTargetConfig optim_target_config = {type_str, gate_type_str, filename, gate_file, levels};
-        optim_target = parseOptimTarget(optim_target_config, nlevels, mpi_rank);
+        optim_target = parseOptimTarget(optim_target_config, nlevels);
       }
 
       std::string optim_objective_str = validators::field<std::string>(optimization, "optim_objective")
@@ -450,12 +472,15 @@ Config::Config(
   // Control and optimization parameters
   oscillator_optimization.resize(num_osc);
 
-  convertControlSegments(settings.indexed_control_segments);
+  auto control_segments = parseControlSegments(settings.indexed_control_segments);
+  for (size_t i = 0; i < oscillator_optimization.size(); i++) {
+    oscillator_optimization[i].control_segments = control_segments[i];
+  }
   if (settings.control_enforceBC.has_value()) control_enforceBC = settings.control_enforceBC.value();
   convertControlInitializations(settings.indexed_control_init);
   convertIndexedControlBounds(settings.indexed_control_bounds);
   convertIndexedCarrierFreqs(settings.indexed_carrier_frequencies);
-  optim_target = parseOptimTarget(settings.optim_target, nlevels, mpi_rank);
+  optim_target = parseOptimTarget(settings.optim_target, nlevels);
 
   if (settings.gate_rot_freq.has_value()) gate_rot_freq = settings.gate_rot_freq.value();
   copyLast(gate_rot_freq, num_osc);
@@ -885,52 +910,122 @@ std::vector<std::vector<PiPulseSegment>> Config::parsePiPulses(const std::option
   return apply_pipulse;
 }
 
-void Config::convertControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& segments) {
-  ControlSegment default_segment = {ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}};
+std::vector<std::vector<ControlSegment>> Config::parseControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& segments_opt) const {
+  std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}}};
 
-  for (size_t i = 0; i < oscillator_optimization.size(); i++) {
-    if (!segments.has_value() || segments->find(static_cast<int>(i)) == segments->end()) {
-      oscillator_optimization[i].control_segments = {default_segment};
-      continue;
-    }
-    for (const auto& seg_config : segments->at(static_cast<int>(i))) {
-      const auto& params = seg_config.parameters;
-
-      // Create appropriate params variant based on type
-      ControlSegment segment;
-      segment.type = seg_config.control_type;
-
-      if (seg_config.control_type == ControlType::BSPLINE ||
-          seg_config.control_type == ControlType::BSPLINE0) {
-        SplineParams spline_params;
-        assert(params.size() >= 1); // nspline is required, should be validated in CfgParser
-        spline_params.nspline = static_cast<size_t>(params[0]);
-        spline_params.tstart = params.size() > 1 ? params[1] : 0.0;
-        spline_params.tstop = params.size() > 2 ? params[2] : ntime * dt;
-        segment.params = spline_params;
-      } else if (seg_config.control_type == ControlType::BSPLINEAMP) {
-        SplineAmpParams spline_amp_params;
-        assert(params.size() >= 2); // nspline and scaling are required, should be validated in CfgParser
-        spline_amp_params.nspline = static_cast<size_t>(params[0]);
-        spline_amp_params.scaling = static_cast<double>(params[1]);
-        spline_amp_params.tstart = params.size() > 2 ? params[2] : 0.0;
-        spline_amp_params.tstop = params.size() > 3 ? params[3] : ntime * dt;
-        segment.params = spline_amp_params;
-      } else if (seg_config.control_type == ControlType::STEP) {
-        StepParams step_params;
-        assert(params.size() >= 3); // step_amp1, step_amp2, tramp are required, should be validated in CfgParser
-        step_params.step_amp1 = static_cast<double>(params[0]);
-        step_params.step_amp2 = static_cast<double>(params[1]);
-        step_params.tramp = static_cast<double>(params[2]);
-        step_params.tstart = params.size() > 3 ? params[3] : 0.0;
-        step_params.tstop = params.size() > 4 ? params[4] : ntime * dt;
-        segment.params = step_params;
-      }
-
-      default_segment = segment;
-      oscillator_optimization[i].control_segments.push_back(segment);
+  if (!segments_opt.has_value()) {
+    return std::vector<std::vector<ControlSegment>>(nlevels.size(), default_segments);
+  }
+  const auto segments = segments_opt.value();
+  auto parsed_segments = std::vector<std::vector<ControlSegment>>(nlevels.size());
+  for (size_t i = 0; i < parsed_segments.size(); i++) {
+    if (segments.find(static_cast<int>(i)) != segments.end()) {
+      auto parsed = parseOscControlSegments(segments.at(i));
+      parsed_segments[i] = parsed;
+      default_segments = parsed;
+    } else {
+      parsed_segments[i] = default_segments;
     }
   }
+  return parsed_segments;
+}
+
+std::vector<ControlSegment> Config::parseOscControlSegments(const std::vector<ControlSegmentConfig>& segments) const {
+  std::vector<ControlSegment> control_segs = std::vector<ControlSegment>();
+
+  for (const auto& seg_config : segments) {
+    control_segs.push_back(parseControlSegment(seg_config));
+  }
+  return control_segs;
+}
+
+ControlSegment Config::parseControlSegment(const ControlSegmentConfig& seg_config) const {
+  const auto& params = seg_config.parameters;
+
+  // Create appropriate params variant based on type
+  ControlSegment segment;
+  segment.type = seg_config.control_type;
+
+  if (seg_config.control_type == ControlType::BSPLINE ||
+      seg_config.control_type == ControlType::BSPLINE0) {
+    SplineParams spline_params;
+    assert(params.size() >= 1); // nspline is required, should be validated in CfgParser
+    spline_params.nspline = static_cast<size_t>(params[0]);
+    spline_params.tstart = params.size() > 1 ? params[1] : 0.0;
+    spline_params.tstop = params.size() > 2 ? params[2] : ntime * dt;
+    segment.params = spline_params;
+  } else if (seg_config.control_type == ControlType::BSPLINEAMP) {
+    SplineAmpParams spline_amp_params;
+    assert(params.size() >= 2); // nspline and scaling are required, should be validated in CfgParser
+    spline_amp_params.nspline = static_cast<size_t>(params[0]);
+    spline_amp_params.scaling = static_cast<double>(params[1]);
+    spline_amp_params.tstart = params.size() > 2 ? params[2] : 0.0;
+    spline_amp_params.tstop = params.size() > 3 ? params[3] : ntime * dt;
+    segment.params = spline_amp_params;
+  } else if (seg_config.control_type == ControlType::STEP) {
+    StepParams step_params;
+    assert(params.size() >= 3); // step_amp1, step_amp2, tramp are required, should be validated in CfgParser
+    step_params.step_amp1 = static_cast<double>(params[0]);
+    step_params.step_amp2 = static_cast<double>(params[1]);
+    step_params.tramp = static_cast<double>(params[2]);
+    step_params.tstart = params.size() > 3 ? params[3] : 0.0;
+    step_params.tstop = params.size() > 4 ? params[4] : ntime * dt;
+    segment.params = step_params;
+  }
+
+  return segment;
+}
+
+ControlSegment Config::parseControlSegment(const toml::table& table) const {
+  ControlSegment segment;
+
+  std::string type_str = validators::field<std::string>(table, "type").required().get();
+  std::optional<ControlType> type = parseEnum(type_str, CONTROL_TYPE_MAP);
+  if (!type.has_value()) {
+    exitWithError(mpi_rank, "Unrecognized type '" + type_str + "' in control segment.");
+  }
+  segment.type = *type;
+
+  switch (*type) {
+  case ControlType::BSPLINE: {
+    SplineParams spline_params;
+    spline_params.nspline = validators::field<size_t>(table, "num").required().get();
+    spline_params.tstart = validators::field<double>(table, "tstart").get_or(0.0);
+    spline_params.tstop = validators::field<double>(table, "tstop").get_or(ntime * dt);
+    segment.params = spline_params;
+    break;
+  }
+  case ControlType::BSPLINE0: {
+    SplineParams spline_params;
+    spline_params.nspline = validators::field<size_t>(table, "num").required().get();
+    spline_params.tstart = validators::field<double>(table, "tstart").get_or(0.0);
+    spline_params.tstop = validators::field<double>(table, "tstop").get_or(ntime * dt);
+    segment.params = spline_params;
+    break;
+  }
+  case ControlType::BSPLINEAMP: {
+    SplineAmpParams spline_amp_params;
+    spline_amp_params.nspline = validators::field<size_t>(table, "num").required().get();
+    spline_amp_params.scaling = validators::field<double>(table, "scaling").required().get();
+    spline_amp_params.tstart = validators::field<double>(table, "tstart").get_or(0.0);
+    spline_amp_params.tstop = validators::field<double>(table, "tstop").get_or(ntime * dt);
+    segment.params = spline_amp_params;
+    break;
+  }
+  case ControlType::STEP:
+    StepParams step_params;
+    step_params.step_amp1 = validators::field<double>(table, "step_amp1").required().get();
+    step_params.step_amp2 = validators::field<double>(table, "step_amp2").required().get();
+    step_params.tramp = validators::field<double>(table, "tramp").required().get();
+    step_params.tstart = validators::field<double>(table, "tstart").get_or(0.0);
+    step_params.tstop = validators::field<double>(table, "tstop").get_or(ntime * dt);
+    segment.params = step_params;
+    break;
+  case ControlType::NONE:
+    exitWithError(mpi_rank, "Unexpected control type " + type_str);
+  }
+
+  return segment;
 }
 
 void Config::convertControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& init_configs) {

@@ -54,29 +54,14 @@ TEST_F(CfgParserTest, ParseVectorSettings) {
   EXPECT_DOUBLE_EQ(transfreq[2], 5.2);
 }
 
-TEST_F(CfgParserTest, ParseIndexedSettings) {
+TEST_F(CfgParserTest, ParseOutputSettings) {
   Config config = Config::fromCfgString(mpi_rank, R"(
     nlevels = 2, 2
     transfreq = 4.1, 4.8
     rotfreq = 0.0, 0.0
-    control_segments0 = spline, 150
-    control_segments1 = step, 1, 2, 3
     output0 = population
     output1 = population, expectedEnergy
   )", &log, true);
-
-  // Verify control segments were parsed correctly
-  EXPECT_EQ(config.getOscillators().size(), 2); // 2 oscillators
-
-  // Check first oscillator
-  const auto& osc0 = config.getOscillator(0);
-  EXPECT_EQ(osc0.control_segments.size(), 1); // 1 segment
-  EXPECT_EQ(osc0.control_segments[0].type, ControlType::BSPLINE);
-
-  // Check second oscillator
-  const auto& osc1 = config.getOscillator(1);
-  EXPECT_EQ(osc1.control_segments.size(), 1); // 1 segment
-  EXPECT_EQ(osc1.control_segments[0].type, ControlType::STEP);
 
   // Verify output settings
   auto output = config.getOutput();

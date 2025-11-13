@@ -55,14 +55,12 @@ TEST_F(TomlParserTest, ParseVectorSettings) {
   EXPECT_DOUBLE_EQ(transfreq[2], 5.2);
 }
 
-TEST_F(TomlParserTest, ParseIndexedSettings) {
+TEST_F(TomlParserTest, ParseOutputSettings) {
   Config config = Config::fromTomlString(mpi_rank, R"(
     [system]
     nlevels = [2, 2]
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
-    control_segments0 = spline, 150
-    control_segments1 = step, 1, 2, 3
     [[output.write]]
     oscID = 0
     type = ["population"]
@@ -70,19 +68,6 @@ TEST_F(TomlParserTest, ParseIndexedSettings) {
     oscID = 1
     type = ["population", "expectedEnergy"]
   )", &log, true);
-
-  // Verify control segments were parsed correctly
-  EXPECT_EQ(config.getOscillators().size(), 2); // 2 oscillators
-
-  // Check first oscillator
-  const auto& osc0 = config.getOscillator(0);
-  EXPECT_EQ(osc0.control_segments.size(), 1); // 1 segment
-  EXPECT_EQ(osc0.control_segments[0].type, ControlType::BSPLINE);
-
-  // Check second oscillator
-  const auto& osc1 = config.getOscillator(1);
-  EXPECT_EQ(osc1.control_segments.size(), 1); // 1 segment
-  EXPECT_EQ(osc1.control_segments[0].type, ControlType::STEP);
 
   // Verify output settings
   auto output = config.getOutput();
@@ -362,7 +347,12 @@ TEST_F(TomlParserTest, ControlSegments_Spline0) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    control_segments0 = spline0, 150, 0.0, 1.0
+    [[optimization.control_segments]]
+    oscID = 0
+    type = "spline0"
+    num = 150
+    tstart = 0.0
+    tstop = 1.0
   )", &log, true);
 
   EXPECT_EQ(config.getOscillators().size(), 1);
@@ -382,8 +372,22 @@ TEST_F(TomlParserTest, ControlSegments_Spline) {
     nlevels = [2, 2]
     transfreq = [4.1, 4.1]
     rotfreq = [0.0, 0.0]
-    control_segments0 = spline, 10
-    control_segments1 = spline, 20, 0.0, 1.0, spline, 30, 1.0, 2.0
+    [[optimization.control_segments]]
+    oscID = 0
+    type = "spline"
+    num = 10
+    [[optimization.control_segments]]
+    oscID = 1
+    type = "spline"
+    num = 20
+    tstart = 0.0
+    tstop = 1.0
+    [[optimization.control_segments]]
+    oscID = 1
+    type = "spline"
+    num = 30
+    tstart = 1.0
+    tstop = 2.0
   )", &log, true);
 
   EXPECT_EQ(config.getOscillators().size(), 2);
@@ -420,8 +424,20 @@ TEST_F(TomlParserTest, ControlSegments_Step) {
     nlevels = [2,2]
     transfreq = [4.1,4.1]
     rotfreq = [0.0,0.0]
-    control_segments0 = step, 0.1, 0.2, 0.3, 0.4, 0.5
-    control_segments1 = step, 0.1, 0.2, 0.3
+    [[optimization.control_segments]]
+    oscID = 0
+    type = "step"
+    step_amp1 = 0.1
+    step_amp2 = 0.2
+    tramp = 0.3
+    tstart = 0.4
+    tstop = 0.5
+    [[optimization.control_segments]]
+    oscID = 1
+    type = "step"
+    step_amp1 = 0.1
+    step_amp2 = 0.2
+    tramp = 0.3
   )", &log, true);
 
   EXPECT_EQ(config.getOscillators().size(), 2);
@@ -455,7 +471,12 @@ TEST_F(TomlParserTest, ControlSegments_Defaults) {
     nlevels = [2, 2, 2]
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
-    control_segments1 = spline0, 150, 0.0, 1.0
+    [[optimization.control_segments]]
+    oscID = 1
+    type = "spline0"
+    num = 150
+    tstart = 0.0
+    tstop = 1.0
     control_bounds1 = 2.0
   )", &log, true);
 
@@ -612,7 +633,25 @@ TEST_F(TomlParserTest, ControlBounds) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    control_segments0 = spline, 10, 0.0, 1.0, step, 0.1, 0.2, 0.3, 0.4, 0.5, spline0, 20, 1.0, 2.0
+    [[optimization.control_sements]]
+    oscID = 0
+    type = "spline"
+    num = 10
+    tstart = 0.0
+    tstop = 1.0
+    [[optimization.control_sements]]
+    oscID = 0
+    type = "step"
+    step_amp1 = 0.1
+    step_amp2 = 0.2
+    tramp = 0.3
+    tstart = 0.4
+    tstop = 0.5
+    [[optimization.control_sements]]
+    oscID = 0
+    num = 10
+    tstart = 1.0
+    tstop = 2.0
     control_bounds0 = 1.0, 2.0
   )", &log, true);
 

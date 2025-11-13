@@ -10,6 +10,7 @@ Oscillator::Oscillator(){
   control_enforceBC = true;
 }
 
+// TODO change signature-- pass in config only? const ref
 Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlevels_all_, const std::vector<ControlSegment>& controlsegments, const std::vector<ControlSegmentInitialization>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine){
 
   myid = id;
