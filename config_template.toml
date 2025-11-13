@@ -53,7 +53,6 @@ optim_regul_tik0 = false
 
 [output]
 datadir = "./data_out"
-# output
 output_frequency = 1
 optim_monitor_frequency = 10
 runtype = "simulation"
@@ -61,4 +60,8 @@ usematfree = false
 linearsolver_type = "gmres"
 linearsolver_maxiter = 10
 timestepper = "imr"
-# rand_seed = 42
+rand_seed = 42
+
+[[output.write]]
+oscID = 0
+type = ["expectedEnergy", "population"]

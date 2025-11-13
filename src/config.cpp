@@ -23,6 +23,22 @@ std::string enumToString(EnumType value, const std::map<std::string, EnumType>& 
   return "\"unknown\"";
 }
 
+template<typename EnumType>
+std::vector<EnumType> convertStringVectorToEnum(
+  const std::vector<std::string>& strings,
+  const std::map<std::string, EnumType>& type_map) {
+  std::vector<EnumType> result;
+  result.reserve(strings.size());
+  for (const auto& str : strings) {
+    auto enum_val = parseEnum(str, type_map);
+    if (!enum_val) {
+      throw std::runtime_error("Unknown enum value: " + str);
+    }
+    result.push_back(*enum_val);
+  }
+  return result;
+}
+
 namespace {
 
 GateType parseGateType(const std::optional<std::string>& gate_type_str) {
@@ -314,6 +330,23 @@ Config::Config(
 
       datadir = validators::field<std::string>(output, "datadir")
         .get_or(datadir);
+
+      std::optional<std::map<int, std::vector<OutputType>>> output_to_write_opt = std::nullopt;
+      toml::array* output_to_write_array = output["write"].as_array();
+      if (output_to_write_array != nullptr) {
+        output_to_write_opt = std::map<int, std::vector<OutputType>>();
+        for (auto& elem : *output_to_write_array) {
+          if (elem.as_table() != nullptr) {
+            auto output_to_write_table = *elem.as_table();
+            size_t oscilID = validators::field<size_t>(output_to_write_table, "oscID").required().get();
+            std::vector<std::string> types_str = validators::vector_field<std::string>(output_to_write_table, "type").required().get();
+            std::vector<OutputType> types = convertStringVectorToEnum(types_str, OUTPUT_TYPE_MAP);
+            (*output_to_write_opt)[oscilID] = types;
+          }
+        }
+      }
+      output_to_write = parseIndexedToVectorVector(output_to_write_opt);
+
       output_frequency = validators::field<size_t>(output, "output_frequency")
         .positive()
         .get_or(output_frequency);
@@ -460,7 +493,7 @@ Config::Config(
 
   // Output parameters
   if (settings.datadir.has_value()) datadir = settings.datadir.value();
-  convertIndexedOutput(settings.indexed_output);
+  output_to_write = parseIndexedToVectorVector(settings.indexed_output);
   if (settings.output_frequency.has_value()) output_frequency = settings.output_frequency.value();
   if (settings.optim_monitor_frequency.has_value()) optim_monitor_frequency = settings.optim_monitor_frequency.value();
   if (settings.runtype.has_value()) runtype = settings.runtype.value();
@@ -683,12 +716,12 @@ void Config::printConfig() const {
   log << "\n// Output and runtypes\n";
   log << "datadir = " << datadir << "\n";
 
-  for (size_t i = 0; i < output.size(); ++i) {
-    if (!output[i].empty()) {
+  for (size_t i = 0; i < output_to_write.size(); ++i) {
+    if (!output_to_write[i].empty()) {
       log << "output" << i << " = ";
-      for (size_t j = 0; j < output[i].size(); ++j) {
-        log << enumToString(output[i][j], OUTPUT_TYPE_MAP);
-        if (j < output[i].size() - 1) log << ", ";
+      for (size_t j = 0; j < output_to_write[i].size(); ++j) {
+        log << enumToString(output_to_write[i][j], OUTPUT_TYPE_MAP);
+        if (j < output_to_write[i].size() - 1) log << ", ";
       }
       log << "\n";
     }
@@ -708,7 +741,7 @@ void Config::printConfig() const {
 
 // Template helper implementation
 template<typename T>
-std::vector<std::vector<T>> Config::convertIndexedToVectorVector(const std::optional<std::map<int, std::vector<T>>>& indexed_map) {
+std::vector<std::vector<T>> Config::parseIndexedToVectorVector(const std::optional<std::map<int, std::vector<T>>>& indexed_map) const {
   if (!indexed_map.has_value()) {
     return std::vector<std::vector<T>>(nlevels.size()); // Empty vectors for each oscillator
   }
@@ -932,10 +965,6 @@ void Config::convertControlInitializations(const std::optional<std::map<int, std
       oscillator_optimization[i].control_initializations.push_back(init);
     }
   }
-}
-
-void Config::convertIndexedOutput(const std::optional<std::map<int, std::vector<OutputType>>>& indexed) {
-  output = convertIndexedToVectorVector(indexed);
 }
 
 void Config::convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed) {

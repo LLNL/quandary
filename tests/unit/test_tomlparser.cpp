@@ -63,8 +63,12 @@ TEST_F(TomlParserTest, ParseIndexedSettings) {
     rotfreq = [0.0, 0.0]
     control_segments0 = spline, 150
     control_segments1 = step, 1, 2, 3
-    output0 = population
-    output1 = population
+    [[output.write]]
+    oscID = 0
+    type = ["population"]
+    [[output.write]]
+    oscID = 1
+    type = ["population", "expectedEnergy"]
   )", &log, true);
 
   // Verify control segments were parsed correctly
@@ -83,8 +87,11 @@ TEST_F(TomlParserTest, ParseIndexedSettings) {
   // Verify output settings
   auto output = config.getOutput();
   EXPECT_EQ(output.size(), 2); // 2 oscillators
+  EXPECT_EQ(output[0].size(), 1); // 1 output
   EXPECT_EQ(output[0][0], OutputType::POPULATION);
+  EXPECT_EQ(output[1].size(), 2); // 2 outputs
   EXPECT_EQ(output[1][0], OutputType::POPULATION);
+  EXPECT_EQ(output[1][1], OutputType::EXPECTED_ENERGY);
 }
 
 TEST_F(TomlParserTest, ParseStructSettings) {

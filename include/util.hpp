@@ -306,7 +306,7 @@ std::string toLower(std::string str);
  */
 bool hasSuffix(const std::string& str, const std::string& suffix);
 
-
+// TODO here or in config?
 template<typename T>
 std::optional<T> parseEnum(const std::string& str, const std::map<std::string, T>& enum_map) {
   auto it = enum_map.find(toLower(str));

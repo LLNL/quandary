@@ -278,7 +278,7 @@ class Config {
 
     // Output and runtypes
     std::string datadir = "./data_out";  ///< Directory for output files
-    std::vector<std::vector<OutputType>> output;  ///< Specify the desired output for each oscillator
+    std::vector<std::vector<OutputType>> output_to_write;  ///< Specify the desired output for each oscillator
     size_t output_frequency = 1;  ///< Output frequency in the time domain: write output every <num> time-step
     size_t optim_monitor_frequency = 10;  ///< Frequency of writing output during optimization iterations
     RunType runtype = RunType::SIMULATION;  ///< Runtype options: simulation, gradient, or optimization
@@ -361,8 +361,8 @@ class Config {
     bool getOptimRegulInterpolate() const { return false; } // Deprecated - always return false
 
     const std::string& getDataDir() const { return datadir; }
-    const std::vector<std::vector<OutputType>>& getOutput() const { return output; }
-    const std::vector<OutputType>& getOutput(size_t i) const { return output[i]; }
+    const std::vector<std::vector<OutputType>>& getOutput() const { return output_to_write; }
+    const std::vector<OutputType>& getOutput(size_t i) const { return output_to_write[i]; }
     size_t getOutputFrequency() const { return output_frequency; }
     size_t getOptimMonitorFrequency() const { return optim_monitor_frequency; }
     RunType getRuntype() const { return runtype; }
@@ -384,7 +384,6 @@ private:
     void convertOptimTarget(const std::optional<OptimTargetConfig>& config);
     void convertControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& indexed);
     void convertControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& indexed);
-    void convertIndexedOutput(const std::optional<std::map<int, std::vector<OutputType>>>& indexed);
     void convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed);
     void convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed);
 
@@ -394,5 +393,5 @@ private:
 
     // Helper for indexed map conversion
     template<typename T>
-    std::vector<std::vector<T>> convertIndexedToVectorVector(const std::optional<std::map<int, std::vector<T>>>& indexed_map);
+    std::vector<std::vector<T>> parseIndexedToVectorVector(const std::optional<std::map<int, std::vector<T>>>& indexed_map) const;
 };
