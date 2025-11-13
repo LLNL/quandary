@@ -229,19 +229,17 @@ Config::Config(
     n_initial_conditions = computeNumInitialConditions();
 
     std::optional<std::vector<PiPulseConfig>> pipulses = std::nullopt;
-    toml::array* apply_pipulse_array = system["apply_pipulse"].as_array();
-    if (apply_pipulse_array != nullptr) {
+    auto apply_pipulse_node = system["apply_pipulse"];
+    if (apply_pipulse_node.is_array_of_tables()) {
       pipulses = std::vector<PiPulseConfig>();
-      for (auto& elem : *apply_pipulse_array) {
-        if (elem.as_table() != nullptr) {
-          auto pipulse_table = *elem.as_table();
-          size_t oscilID = validators::field<size_t>(pipulse_table, "oscID").required().get();
-          double tstart = validators::field<double>(pipulse_table, "tstart").required().get();
-          double tstop = validators::field<double>(pipulse_table, "tstop").required().get();
-          double amp = validators::field<double>(pipulse_table, "amp").required().get();
-          PiPulseConfig pi_pulse_config = {oscilID, tstart, tstop, amp};
-          pipulses->push_back(pi_pulse_config);
-        }
+      for (auto& elem : *apply_pipulse_node.as_array()) {
+        auto table = *elem.as_table();
+        size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
+        double tstart = validators::field<double>(table, "tstart").required().get();
+        double tstop = validators::field<double>(table, "tstop").required().get();
+        double amp = validators::field<double>(table, "amp").required().get();
+        PiPulseConfig pi_pulse_config = {oscilID, tstart, tstop, amp};
+        pipulses->push_back(pi_pulse_config);
       }
     }
     apply_pipulse = parsePiPulses(pipulses);
@@ -332,17 +330,15 @@ Config::Config(
         .get_or(datadir);
 
       std::optional<std::map<int, std::vector<OutputType>>> output_to_write_opt = std::nullopt;
-      toml::array* output_to_write_array = output["write"].as_array();
-      if (output_to_write_array != nullptr) {
+      auto write_node = output["write"];
+      if (write_node.is_array_of_tables()) {
         output_to_write_opt = std::map<int, std::vector<OutputType>>();
-        for (auto& elem : *output_to_write_array) {
-          if (elem.as_table() != nullptr) {
-            auto output_to_write_table = *elem.as_table();
-            size_t oscilID = validators::field<size_t>(output_to_write_table, "oscID").required().get();
-            std::vector<std::string> types_str = validators::vector_field<std::string>(output_to_write_table, "type").required().get();
-            std::vector<OutputType> types = convertStringVectorToEnum(types_str, OUTPUT_TYPE_MAP);
-            (*output_to_write_opt)[oscilID] = types;
-          }
+        for (auto& elem : *write_node.as_array()) {
+          auto table = *elem.as_table();
+          size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
+          std::vector<std::string> types_str = validators::vector_field<std::string>(table, "type").required().get();
+          std::vector<OutputType> types = convertStringVectorToEnum(types_str, OUTPUT_TYPE_MAP);
+          (*output_to_write_opt)[oscilID] = types;
         }
       }
       output_to_write = parseIndexedToVectorVector(output_to_write_opt);
