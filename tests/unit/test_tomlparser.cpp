@@ -519,7 +519,10 @@ TEST_F(TomlParserTest, ControlInitialization_Defaults) {
     nlevels = [2, 2, 2]
     transfreq = [4.1, 4.1, 4.1]
     rotfreq = [0.0, 0.0, 0.0]
-    control_initialization1 = random, 2.0
+    [[optimization.control_initialization]]
+    oscID = 1
+    type = "random"
+    amplitude = 2.0
   )", &log, true);
 
   EXPECT_EQ(config.getOscillators().size(), 3);
@@ -555,11 +558,34 @@ TEST_F(TomlParserTest, ControlInitialization) {
     nlevels = [2, 2, 2, 2, 2]
     transfreq = [4.1, 4.1, 4.1, 4.1, 4.1]
     rotfreq = [0.0, 0.0, 0.0, 0.0, 0.0]
-    control_initialization0 = constant, 1.0, 1.1
-    control_initialization1 = constant, 2.0
-    control_initialization2 = random, 3.0, 3.1
-    control_initialization3 = random, 4.0
-    control_initialization4 = random, 5.0, 5.1, constant, 6.0, 6.1
+    [[optimization.control_initialization]]
+    oscID = 0
+    type = "constant"
+    amplitude = 1.0
+    phase = 1.1
+    [[optimization.control_initialization]]
+    oscID = 1
+    type = "constant"
+    amplitude = 2.0
+    [[optimization.control_initialization]]
+    oscID = 2
+    type = "random"
+    amplitude = 3.0
+    phase = 3.1
+    [[optimization.control_initialization]]
+    oscID = 3
+    type = "random"
+    amplitude = 4.0
+    [[optimization.control_initialization]]
+    oscID = 4
+    type = "random"
+    amplitude = 5.0
+    phase = 5.1
+    [[optimization.control_initialization]]
+    oscID = 4
+    type = "constant"
+    amplitude = 6.0
+    phase = 6.1
   )", &log, true);
 
   // Verify control segments were parsed correctly
@@ -616,7 +642,8 @@ TEST_F(TomlParserTest, ControlInitialization_File) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    control_initialization0 = file, params.dat
+    [optimization.control_initialization]
+    filename = "params.dat"
   )", &log, true);
 
   EXPECT_EQ(config.getOscillators().size(), 1);

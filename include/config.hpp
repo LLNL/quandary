@@ -388,9 +388,11 @@ private:
     std::vector<ControlSegment> parseOscControlSegments(const std::vector<ControlSegmentConfig>& segments) const;
     ControlSegment parseControlSegment(const ControlSegmentConfig& seg_config) const;
     ControlSegment parseControlSegment(const toml::table& table) const;
+    std::vector<std::vector<ControlSegmentInitialization>>  parseControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& init_configs) const;
+    ControlSegmentInitialization parseControlInitialization(const ControlInitializationConfig& init_config) const;
+    ControlSegmentInitialization parseControlInitialization(const toml::table& table) const;
 
     void convertOptimTarget(const std::optional<OptimTargetConfig>& config);
-    void convertControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& indexed);
     void convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed);
     void convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed);
 
