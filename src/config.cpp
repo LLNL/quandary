@@ -6,6 +6,7 @@
 #include <random>
 #include <string>
 #include <toml++/impl/forward_declarations.hpp>
+#include <toml++/impl/table.hpp>
 #include <vector>
 
 #include "config_types.hpp"
@@ -249,223 +250,220 @@ Config::Config(
     hamiltonian_file_Hc = system["hamiltonian_file_Hc"].value<std::string>();
 
     // Parse optimization settings
+    toml::table optimization = table.contains("optimization") ? *table["optimization"].as_table() : toml::table{};
+
     oscillator_optimization.resize(num_osc);
 
-    if(table.contains("optimization")) {
-      auto optimization = *table["optimization"].as_table();
-
-      std::map<size_t, std::vector<ControlSegment>> control_segments;
-      auto control_seg_node = optimization["control_segments"];
-      if (control_seg_node.is_array_of_tables()) {
-        for (auto& elem : *control_seg_node.as_array()) {
-          auto table = *elem.as_table();
-          size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
-          ControlSegment control_seg = parseControlSegment(table);
-          control_segments[oscilID].push_back(control_seg);
-        }
+    std::map<size_t, std::vector<ControlSegment>> control_segments;
+    auto control_seg_node = optimization["control_segments"];
+    if (control_seg_node.is_array_of_tables()) {
+      for (auto& elem : *control_seg_node.as_array()) {
+        auto table = *elem.as_table();
+        size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
+        ControlSegment control_seg = parseControlSegment(table);
+        control_segments[oscilID].push_back(control_seg);
       }
-
-      // Parse control initialization - separate sections for file vs per-segment
-      std::map<size_t, std::vector<ControlSegmentInitialization>> osc_inits;
-      if (optimization.contains("control_initialization_file")) {
-        // Case 1: Global file initialization
-        auto file_table = *optimization["control_initialization_file"].as_table();
-        control_initialization_file = validators::field<std::string>(file_table, "filename").required().get();
-      } else if (optimization.contains("control_initialization")) {
-        // Case 2: Per-oscillator initialization
-        auto init_node = optimization["control_initialization"];
-        if (init_node.is_array_of_tables()) {
-          for (auto& elem : *init_node.as_array()) {
-            auto table = *elem.as_table();
-            size_t oscID = validators::field<size_t>(table, "oscID").required().get();
-            std::string type = validators::field<std::string>(table, "type").required().get();
-
-            ControlSegmentInitialization init;
-            if (type == "constant") {
-              double amplitude = validators::field<double>(table, "amplitude").required().get();
-              double phase = validators::field<double>(table, "phase").get_or(0.0);
-              init = {ControlSegmentInitType::CONSTANT, amplitude, phase};
-            } else if (type == "random") {
-              double amplitude = validators::field<double>(table, "amplitude").get_or(0.1);
-              double phase = validators::field<double>(table, "phase").get_or(0.0);
-              init = {ControlSegmentInitType::RANDOM, amplitude, phase};
-            } else {
-              throw std::invalid_argument("Unknown control initialization type: " + type);
-            }
-
-            osc_inits[oscID].push_back(init);
-          }
-        }
-      }
-
-      std::optional<std::map<int, std::vector<double>>> control_bounds_opt = std::nullopt;
-      auto control_bounds_node = optimization["control_bounds"];
-      if (control_bounds_node.is_array_of_tables()) {
-        control_bounds_opt = std::map<int, std::vector<double>>();
-        for (auto& elem : *control_bounds_node.as_array()) {
-          auto table = *elem.as_table();
-          size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
-          (*control_bounds_opt)[oscilID] = validators::vector_field<double>(table, "values").required().get();
-        }
-      }
-      auto control_bounds = parseIndexedToVectorVector(control_bounds_opt);
-
-      std::optional<std::map<int, std::vector<double>>> carrier_freq_opt = std::nullopt;
-      auto carrier_freq_node = optimization["carrier_frequency"];
-      if (carrier_freq_node.is_array_of_tables()) {
-        carrier_freq_opt = std::map<int, std::vector<double>>();
-        for (auto& elem : *carrier_freq_node.as_array()) {
-          auto table = *elem.as_table();
-          size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
-          (*carrier_freq_opt)[oscilID] = validators::vector_field<double>(table, "values").required().get();
-        }
-      }
-      auto carrier_freq = parseIndexedToVectorVector(carrier_freq_opt);
-
-      std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}}};
-      std::vector<ControlSegmentInitialization> default_initialization = {ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, 0.0, 0.0}};
-      std::vector<double> default_bounds = {10000.0};
-      std::vector<double> default_freq = {0.0};
-      for (size_t i = 0; i < oscillator_optimization.size(); i++) {
-        if (control_segments.find(i) != control_segments.end()) {
-          oscillator_optimization[i].control_segments = control_segments[i];
-          default_segments = control_segments[i];
-        } else {
-          oscillator_optimization[i].control_segments = default_segments;
-        }
-        if (osc_inits.find(i) != osc_inits.end()) {
-          oscillator_optimization[i].control_initializations = osc_inits[i];
-          default_initialization = osc_inits[i];
-        } else {
-          oscillator_optimization[i].control_initializations = default_initialization;
-        }
-        size_t num_segments = oscillator_optimization[i].control_segments.size();
-
-        oscillator_optimization[i].control_bounds = !control_bounds[i].empty() ? control_bounds[i] : default_bounds;
-        copyLast(oscillator_optimization[i].control_bounds, num_segments);
-
-        oscillator_optimization[i].carrier_frequencies = !carrier_freq[i].empty() ? carrier_freq[i] : default_freq;
-        copyLast(oscillator_optimization[i].carrier_frequencies, num_segments);
-      }
-
-      control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
-        .get_or(control_enforceBC);
-
-      // optim_target
-      if (optimization.contains("optim_target")) {
-        auto target_table = *optimization["optim_target"].as_table();
-        std::string type_str = validators::field<std::string>(target_table, "target_type").required().get();
-        std::optional<std::string> gate_type_str = target_table["gate_type"].value<std::string>();
-        std::optional<std::string> gate_file = target_table["gate_file"].value<std::string>();
-        std::optional<std::vector<size_t>> levels = get_optional_vector<size_t>(target_table["levels"]);
-        std::optional<std::string> filename = target_table["filename"].value<std::string>();
-        OptimTargetConfig optim_target_config = {type_str, gate_type_str, filename, gate_file, levels};
-        optim_target = parseOptimTarget(optim_target_config, nlevels);
-      }
-
-      std::string optim_objective_str = validators::field<std::string>(optimization, "optim_objective")
-        .get_or("");
-      optim_objective = parseEnum(optim_objective_str, OBJECTIVE_TYPE_MAP)
-        .value_or(optim_objective);
-
-      // TODO: optim_weights
-
-      tolerance.atol = validators::field<double>(optimization, "optim_atol")
-        .positive()
-        .get_or(tolerance.atol);
-      tolerance.rtol = validators::field<double>(optimization, "optim_rtol")
-        .positive()
-        .get_or(tolerance.rtol);
-      tolerance.ftol = validators::field<double>(optimization, "optim_ftol")
-        .positive()
-        .get_or(tolerance.ftol);
-      tolerance.inftol = validators::field<double>(optimization, "optim_inftol")
-        .positive()
-        .get_or(tolerance.inftol);
-      tolerance.maxiter = validators::field<size_t>(optimization, "optim_maxiter")
-        .positive()
-        .get_or(tolerance.maxiter);
-      optim_regul = validators::field<double>(optimization, "optim_regul")
-        .greater_than_equal(0.0)
-        .get_or(optim_regul);
-
-      penalty.penalty = validators::field<double>(optimization, "optim_penalty")
-        .greater_than_equal(0.0)
-        .get_or(penalty.penalty);
-      penalty.penalty_param = validators::field<double>(optimization, "optim_penalty_param")
-        .greater_than(0.0)
-        .get_or(penalty.penalty_param);
-      penalty.penalty_dpdm = validators::field<double>(optimization, "optim_penalty_dpdm")
-        .greater_than_equal(0.0)
-        .get_or(penalty.penalty_dpdm);
-      penalty.penalty_energy = validators::field<double>(optimization, "optim_penalty_energy")
-        .greater_than_equal(0.0)
-        .get_or(penalty.penalty_energy);
-      penalty.penalty_variation = validators::field<double>(optimization, "optim_penalty_variation")
-        .greater_than_equal(0.0)
-        .get_or(penalty.penalty_variation);
-
-      if (!optimization.contains("optim_regul_tik0") && optimization.contains("optim_regul_interpolate")) {
-        // Handle deprecated optim_regul_interpolate logic
-        optim_regul_tik0 = validators::field<bool>(optimization, "optim_regul_interpolate").get();
-        logOutputToRank0(mpi_rank, "# Warning: 'optim_regul_interpolate' is deprecated. Please use 'optim_regul_tik0' instead.\n");
-      }
-      optim_regul_tik0 = validators::field<bool>(optimization, "optim_regul_tik0")
-        .get_or(optim_regul_tik0);
     }
+
+    // Parse control initialization - separate sections for file vs per-segment
+    std::map<size_t, std::vector<ControlSegmentInitialization>> osc_inits;
+    if (optimization.contains("control_initialization_file")) {
+      // Case 1: Global file initialization
+      auto file_table = *optimization["control_initialization_file"].as_table();
+      control_initialization_file = validators::field<std::string>(file_table, "filename").required().get();
+    } else if (optimization.contains("control_initialization")) {
+      // Case 2: Per-oscillator initialization
+      auto init_node = optimization["control_initialization"];
+      if (init_node.is_array_of_tables()) {
+        for (auto& elem : *init_node.as_array()) {
+          auto table = *elem.as_table();
+          size_t oscID = validators::field<size_t>(table, "oscID").required().get();
+          std::string type = validators::field<std::string>(table, "type").required().get();
+
+          ControlSegmentInitialization init;
+          if (type == "constant") {
+            double amplitude = validators::field<double>(table, "amplitude").required().get();
+            double phase = validators::field<double>(table, "phase").get_or(0.0);
+            init = {ControlSegmentInitType::CONSTANT, amplitude, phase};
+          } else if (type == "random") {
+            double amplitude = validators::field<double>(table, "amplitude").get_or(0.1);
+            double phase = validators::field<double>(table, "phase").get_or(0.0);
+            init = {ControlSegmentInitType::RANDOM, amplitude, phase};
+          } else {
+            throw std::invalid_argument("Unknown control initialization type: " + type);
+          }
+
+          osc_inits[oscID].push_back(init);
+        }
+      }
+    }
+
+    std::optional<std::map<int, std::vector<double>>> control_bounds_opt = std::nullopt;
+    auto control_bounds_node = optimization["control_bounds"];
+    if (control_bounds_node.is_array_of_tables()) {
+      control_bounds_opt = std::map<int, std::vector<double>>();
+      for (auto& elem : *control_bounds_node.as_array()) {
+        auto table = *elem.as_table();
+        size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
+        (*control_bounds_opt)[oscilID] = validators::vector_field<double>(table, "values").required().get();
+      }
+    }
+    auto control_bounds = parseIndexedToVectorVector(control_bounds_opt);
+
+    std::optional<std::map<int, std::vector<double>>> carrier_freq_opt = std::nullopt;
+    auto carrier_freq_node = optimization["carrier_frequency"];
+    if (carrier_freq_node.is_array_of_tables()) {
+      carrier_freq_opt = std::map<int, std::vector<double>>();
+      for (auto& elem : *carrier_freq_node.as_array()) {
+        auto table = *elem.as_table();
+        size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
+        (*carrier_freq_opt)[oscilID] = validators::vector_field<double>(table, "values").required().get();
+      }
+    }
+    auto carrier_freq = parseIndexedToVectorVector(carrier_freq_opt);
+
+    std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}}};
+    std::vector<ControlSegmentInitialization> default_initialization = {ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, 0.0, 0.0}};
+    std::vector<double> default_bounds = {10000.0};
+    std::vector<double> default_freq = {0.0};
+    for (size_t i = 0; i < oscillator_optimization.size(); i++) {
+      if (control_segments.find(i) != control_segments.end()) {
+        oscillator_optimization[i].control_segments = control_segments[i];
+        default_segments = control_segments[i];
+      } else {
+        oscillator_optimization[i].control_segments = default_segments;
+      }
+      if (osc_inits.find(i) != osc_inits.end()) {
+        oscillator_optimization[i].control_initializations = osc_inits[i];
+        default_initialization = osc_inits[i];
+      } else {
+        oscillator_optimization[i].control_initializations = default_initialization;
+      }
+      size_t num_segments = oscillator_optimization[i].control_segments.size();
+
+      oscillator_optimization[i].control_bounds = !control_bounds[i].empty() ? control_bounds[i] : default_bounds;
+      copyLast(oscillator_optimization[i].control_bounds, num_segments);
+
+      oscillator_optimization[i].carrier_frequencies = !carrier_freq[i].empty() ? carrier_freq[i] : default_freq;
+      copyLast(oscillator_optimization[i].carrier_frequencies, num_segments);
+    }
+
+    control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
+      .get_or(control_enforceBC);
+
+    // optim_target
+    if (optimization.contains("optim_target")) {
+      auto target_table = *optimization["optim_target"].as_table();
+      std::string type_str = validators::field<std::string>(target_table, "target_type").required().get();
+      std::optional<std::string> gate_type_str = target_table["gate_type"].value<std::string>();
+      std::optional<std::string> gate_file = target_table["gate_file"].value<std::string>();
+      std::optional<std::vector<size_t>> levels = get_optional_vector<size_t>(target_table["levels"]);
+      std::optional<std::string> filename = target_table["filename"].value<std::string>();
+      OptimTargetConfig optim_target_config = {type_str, gate_type_str, filename, gate_file, levels};
+      optim_target = parseOptimTarget(optim_target_config, nlevels);
+    }
+
+    std::string optim_objective_str = validators::field<std::string>(optimization, "optim_objective")
+      .get_or("");
+    optim_objective = parseEnum(optim_objective_str, OBJECTIVE_TYPE_MAP)
+      .value_or(optim_objective);
+
+    // TODO: optim_weights
+
+    tolerance.atol = validators::field<double>(optimization, "optim_atol")
+      .positive()
+      .get_or(tolerance.atol);
+    tolerance.rtol = validators::field<double>(optimization, "optim_rtol")
+      .positive()
+      .get_or(tolerance.rtol);
+    tolerance.ftol = validators::field<double>(optimization, "optim_ftol")
+      .positive()
+      .get_or(tolerance.ftol);
+    tolerance.inftol = validators::field<double>(optimization, "optim_inftol")
+      .positive()
+      .get_or(tolerance.inftol);
+    tolerance.maxiter = validators::field<size_t>(optimization, "optim_maxiter")
+      .positive()
+      .get_or(tolerance.maxiter);
+    optim_regul = validators::field<double>(optimization, "optim_regul")
+      .greater_than_equal(0.0)
+      .get_or(optim_regul);
+
+    penalty.penalty = validators::field<double>(optimization, "optim_penalty")
+      .greater_than_equal(0.0)
+      .get_or(penalty.penalty);
+    penalty.penalty_param = validators::field<double>(optimization, "optim_penalty_param")
+      .greater_than(0.0)
+      .get_or(penalty.penalty_param);
+    penalty.penalty_dpdm = validators::field<double>(optimization, "optim_penalty_dpdm")
+      .greater_than_equal(0.0)
+      .get_or(penalty.penalty_dpdm);
+    penalty.penalty_energy = validators::field<double>(optimization, "optim_penalty_energy")
+      .greater_than_equal(0.0)
+      .get_or(penalty.penalty_energy);
+    penalty.penalty_variation = validators::field<double>(optimization, "optim_penalty_variation")
+      .greater_than_equal(0.0)
+      .get_or(penalty.penalty_variation);
+
+    if (!optimization.contains("optim_regul_tik0") && optimization.contains("optim_regul_interpolate")) {
+      // Handle deprecated optim_regul_interpolate logic
+      optim_regul_tik0 = validators::field<bool>(optimization, "optim_regul_interpolate").get();
+      logOutputToRank0(mpi_rank, "# Warning: 'optim_regul_interpolate' is deprecated. Please use 'optim_regul_tik0' instead.\n");
+    }
+    optim_regul_tik0 = validators::field<bool>(optimization, "optim_regul_tik0")
+      .get_or(optim_regul_tik0);
+
 
     // Parse output settings
-    if(table.contains("output")) {
-      auto output = *table["output"].as_table();
+    toml::table output = table.contains("output") ? *table["output"].as_table() : toml::table{};
 
-      datadir = validators::field<std::string>(output, "datadir")
-        .get_or(datadir);
+    datadir = validators::field<std::string>(output, "datadir")
+      .get_or(datadir);
 
-      std::optional<std::map<int, std::vector<OutputType>>> output_to_write_opt = std::nullopt;
-      auto write_node = output["write"];
-      if (write_node.is_array_of_tables()) {
-        output_to_write_opt = std::map<int, std::vector<OutputType>>();
-        for (auto& elem : *write_node.as_array()) {
-          auto table = *elem.as_table();
-          size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
-          std::vector<std::string> types_str = validators::vector_field<std::string>(table, "type").required().get();
-          std::vector<OutputType> types = convertStringVectorToEnum(types_str, OUTPUT_TYPE_MAP);
-          (*output_to_write_opt)[oscilID] = types;
-        }
+    std::optional<std::map<int, std::vector<OutputType>>> output_to_write_opt = std::nullopt;
+    auto write_node = output["write"];
+    if (write_node.is_array_of_tables()) {
+      output_to_write_opt = std::map<int, std::vector<OutputType>>();
+      for (auto& elem : *write_node.as_array()) {
+        auto table = *elem.as_table();
+        size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
+        std::vector<std::string> types_str = validators::vector_field<std::string>(table, "type").required().get();
+        std::vector<OutputType> types = convertStringVectorToEnum(types_str, OUTPUT_TYPE_MAP);
+        (*output_to_write_opt)[oscilID] = types;
       }
-      output_to_write = parseIndexedToVectorVector(output_to_write_opt);
-
-      output_frequency = validators::field<size_t>(output, "output_frequency")
-        .positive()
-        .get_or(output_frequency);
-      optim_monitor_frequency = validators::field<size_t>(output, "optim_monitor_frequency")
-        .positive()
-        .get_or(optim_monitor_frequency);
-
-      std::string runtype_str = validators::field<std::string>(output, "runtype")
-        .get_or("");
-      runtype = parseEnum(runtype_str, RUN_TYPE_MAP)
-        .value_or(runtype);
-
-      usematfree = validators::field<bool>(output, "usematfree")
-        .get_or(usematfree);
-
-      std::string linearsolver_type_str = validators::field<std::string>(output, "linearsolver_type")
-        .get_or("");
-      linearsolver_type = parseEnum(linearsolver_type_str, LINEAR_SOLVER_TYPE_MAP)
-        .value_or(linearsolver_type);
-
-      linearsolver_maxiter = validators::field<size_t>(output, "linearsolver_maxiter")
-        .positive()
-        .get_or(linearsolver_maxiter);
-
-      std::string timestepper_type_str = validators::field<std::string>(output, "timestepper")
-        .get_or("");
-      timestepper_type = parseEnum(timestepper_type_str, TIME_STEPPER_TYPE_MAP)
-        .value_or(TimeStepperType::IMR);
-
-      setRandSeed(output["rand_seed"].value<int>());
     }
+    output_to_write = parseIndexedToVectorVector(output_to_write_opt);
+
+    output_frequency = validators::field<size_t>(output, "output_frequency")
+      .positive()
+      .get_or(output_frequency);
+    optim_monitor_frequency = validators::field<size_t>(output, "optim_monitor_frequency")
+      .positive()
+      .get_or(optim_monitor_frequency);
+
+    std::string runtype_str = validators::field<std::string>(output, "runtype")
+      .get_or("");
+    runtype = parseEnum(runtype_str, RUN_TYPE_MAP)
+      .value_or(runtype);
+
+    usematfree = validators::field<bool>(output, "usematfree")
+      .get_or(usematfree);
+
+    std::string linearsolver_type_str = validators::field<std::string>(output, "linearsolver_type")
+      .get_or("");
+    linearsolver_type = parseEnum(linearsolver_type_str, LINEAR_SOLVER_TYPE_MAP)
+      .value_or(linearsolver_type);
+
+    linearsolver_maxiter = validators::field<size_t>(output, "linearsolver_maxiter")
+      .positive()
+      .get_or(linearsolver_maxiter);
+
+    std::string timestepper_type_str = validators::field<std::string>(output, "timestepper")
+      .get_or("");
+    timestepper_type = parseEnum(timestepper_type_str, TIME_STEPPER_TYPE_MAP)
+      .value_or(TimeStepperType::IMR);
+
+    setRandSeed(output["rand_seed"].value<int>());
 
   } catch (const validators::ValidationError& e) {
     exitWithError(mpi_rank, "ERROR: " + std::string(e.what()));
