@@ -660,13 +660,13 @@ TEST_F(TomlParserTest, ControlBounds) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    [[optimization.control_sements]]
+    [[optimization.control_segments]]
     oscID = 0
     type = "spline"
     num = 10
     tstart = 0.0
     tstop = 1.0
-    [[optimization.control_sements]]
+    [[optimization.control_segments]]
     oscID = 0
     type = "step"
     step_amp1 = 0.1
@@ -674,7 +674,7 @@ TEST_F(TomlParserTest, ControlBounds) {
     tramp = 0.3
     tstart = 0.4
     tstop = 0.5
-    [[optimization.control_sements]]
+    [[optimization.control_segments]]
     oscID = 0
     num = 10
     tstart = 1.0
