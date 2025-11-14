@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1762564638470,
+  "lastUpdate": 1763157151543,
   "repoUrl": "https://github.com/LLNL/quandary",
   "entries": {
     "Benchmark": [
@@ -1979,6 +1979,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
             "value": 4261.84,
+            "unit": "MB"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Stefanie Guenther",
+            "username": "steffi7574",
+            "email": "guenther5@llnl.gov"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "9a917cbbda2a8cf378b80941ae8def6bee2bb25f",
+          "message": "Merge pull request #99 from LLNL/fix_qft_default\n\nAdd config option for QFT gate.",
+          "timestamp": "2025-11-14T20:11:29Z",
+          "url": "https://github.com/LLNL/quandary/commit/9a917cbbda2a8cf378b80941ae8def6bee2bb25f"
+        },
+        "date": 1763157149871,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Time",
+            "value": 0.7613258549827151,
+            "range": "0.49954260749303386",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_4_4_4_4_nproc_2] - Memory",
+            "value": 87.75,
+            "unit": "MB"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Time",
+            "value": 5.309874934959225,
+            "range": "0.06137017558875131",
+            "unit": "seconds"
+          },
+          {
+            "name": "test_eval[nlevels_32_32_32_32_nproc_32] - Memory",
+            "value": 4267.45,
             "unit": "MB"
           }
         ]
