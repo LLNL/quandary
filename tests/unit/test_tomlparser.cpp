@@ -87,10 +87,10 @@ TEST_F(TomlParserTest, ParseStructSettings) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
+    initial_condition = {type = "diagonal", oscIDs = [0]}
 
     [optimization]
     optim_target = {target_type = "gate", gate_type = "cnot"}
-    initial_condition = {type = "diagonal", oscIDs = [0]}
   )", &log, true);
 
   const auto& target = config.getOptimTarget();
