@@ -90,7 +90,7 @@ TEST_F(TomlParserTest, ParseStructSettings) {
 
     [optimization]
     optim_target = {target_type = "gate", gate_type = "cnot"}
-    initial_condition = {type = "diagonal", osc_IDs = [0]}
+    initial_condition = {type = "diagonal", oscIDs = [0]}
   )", &log, true);
 
   const auto& target = config.getOptimTarget();
@@ -167,7 +167,7 @@ TEST_F(TomlParserTest, InitialCondition_Ensemble) {
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
     collapse_type = "decay"
-    initial_condition = {type = "ensemble", osc_IDs = [0, 1]}
+    initial_condition = {type = "ensemble", oscIDs = [0, 1]}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<EnsembleInitialCondition>(initcond));
@@ -228,7 +228,7 @@ TEST_F(TomlParserTest, InitialCondition_Diagonal_Schrodinger) {
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
     collapse_type = "none"
-    initial_condition = {type = "diagonal", osc_IDs = [1]}
+    initial_condition = {type = "diagonal", oscIDs = [1]}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
@@ -246,7 +246,7 @@ TEST_F(TomlParserTest, InitialCondition_Basis_Schrodinger) {
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
     collapse_type = "none"
-    initial_condition = {type = "basis", osc_IDs = [1]}
+    initial_condition = {type = "basis", oscIDs = [1]}
   )", &log, true);
   // For Schrodinger solver, BASIS is converted to DIAGONAL, so n_initial_conditions = nessential[1] = 2
   const auto& initcond = config.getInitialCondition();
@@ -264,7 +264,7 @@ TEST_F(TomlParserTest, InitialCondition_Basis_Lindblad) {
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
     collapse_type = "decay"
-    initial_condition = {type = "basis", osc_IDs = [1]}
+    initial_condition = {type = "basis", oscIDs = [1]}
   )", &log, true);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<BasisInitialCondition>(initcond));
@@ -479,7 +479,9 @@ TEST_F(TomlParserTest, ControlSegments_Defaults) {
     num = 150
     tstart = 0.0
     tstop = 1.0
-    control_bounds1 = 2.0
+    [[optimization.control_bounds]]
+    oscID = 1
+    values = [2.0]
   )", &log, true);
 
   // Verify control segments were parsed correctly
@@ -665,10 +667,13 @@ TEST_F(TomlParserTest, ControlBounds) {
     tstop = 0.5
     [[optimization.control_segments]]
     oscID = 0
-    num = 10
+    num = 20
+    type = "spline0"
     tstart = 1.0
     tstop = 2.0
-    control_bounds0 = 1.0, 2.0
+    [[optimization.control_bounds]]
+    oscID = 0
+    values = [1.0, 2.0]
   )", &log, true);
 
   EXPECT_EQ(config.getOscillators().size(), 1);
@@ -687,7 +692,9 @@ TEST_F(TomlParserTest, CarrierFrequencies) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    carrier_frequency0 = 1.0, 2.0
+    [[optimization.carrier_frequency]]
+    oscID = 0
+    values = [1.0, 2.0]
   )", &log, true);
 
   EXPECT_EQ(config.getOscillators().size(), 1);

@@ -222,7 +222,7 @@ Config::Config(
       auto init_cond_table = *system["initial_condition"].as_table();
       std::string type_str = validators::field<std::string>(init_cond_table, "type").required().get();
       std::optional<std::vector<size_t>> levels = get_optional_vector<size_t>(init_cond_table["levels"]);
-      std::optional<std::vector<size_t>> osc_IDs = get_optional_vector<size_t>(init_cond_table["osc_IDs"]);
+      std::optional<std::vector<size_t>> osc_IDs = get_optional_vector<size_t>(init_cond_table["oscIDs"]);
       std::optional<std::string> filename = init_cond_table["filename"].value<std::string>();
       init_cond_config = {type_str, osc_IDs, levels, filename};
     }
@@ -298,10 +298,34 @@ Config::Config(
         }
       }
 
-      // TODO: control_bounds
-      // TODO: carrier_frequency
+      std::optional<std::map<int, std::vector<double>>> control_bounds_opt = std::nullopt;
+      auto control_bounds_node = optimization["control_bounds"];
+      if (control_bounds_node.is_array_of_tables()) {
+        control_bounds_opt = std::map<int, std::vector<double>>();
+        for (auto& elem : *control_bounds_node.as_array()) {
+          auto table = *elem.as_table();
+          size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
+          (*control_bounds_opt)[oscilID] = validators::vector_field<double>(table, "values").required().get();
+        }
+      }
+      auto control_bounds = parseIndexedToVectorVector(control_bounds_opt);
+
+      std::optional<std::map<int, std::vector<double>>> carrier_freq_opt = std::nullopt;
+      auto carrier_freq_node = optimization["carrier_frequency"];
+      if (carrier_freq_node.is_array_of_tables()) {
+        carrier_freq_opt = std::map<int, std::vector<double>>();
+        for (auto& elem : *carrier_freq_node.as_array()) {
+          auto table = *elem.as_table();
+          size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
+          (*carrier_freq_opt)[oscilID] = validators::vector_field<double>(table, "values").required().get();
+        }
+      }
+      auto carrier_freq = parseIndexedToVectorVector(carrier_freq_opt);
+
       std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}}};
       std::vector<ControlSegmentInitialization> default_initialization = {ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, 0.0, 0.0}};
+      std::vector<double> default_bounds = {10000.0};
+      std::vector<double> default_freq = {0.0};
       for (size_t i = 0; i < oscillator_optimization.size(); i++) {
         if (control_segments.find(i) != control_segments.end()) {
           oscillator_optimization[i].control_segments = control_segments[i];
@@ -315,6 +339,13 @@ Config::Config(
         } else {
           oscillator_optimization[i].control_initializations = default_initialization;
         }
+        size_t num_segments = oscillator_optimization[i].control_segments.size();
+
+        oscillator_optimization[i].control_bounds = !control_bounds[i].empty() ? control_bounds[i] : default_bounds;
+        copyLast(oscillator_optimization[i].control_bounds, num_segments);
+
+        oscillator_optimization[i].carrier_frequencies = !carrier_freq[i].empty() ? carrier_freq[i] : default_freq;
+        copyLast(oscillator_optimization[i].carrier_frequencies, num_segments);
       }
 
       control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
