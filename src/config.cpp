@@ -352,6 +352,7 @@ Config::Config(
       .get_or(control_enforceBC);
 
     // optim_target
+    std::optional<OptimTargetConfig> optim_target_config;
     if (optimization.contains("optim_target")) {
       auto target_table = *optimization["optim_target"].as_table();
       std::string type_str = validators::field<std::string>(target_table, "target_type").required().get();
@@ -359,9 +360,9 @@ Config::Config(
       std::optional<std::string> gate_file = target_table["gate_file"].value<std::string>();
       std::optional<std::vector<size_t>> levels = get_optional_vector<size_t>(target_table["levels"]);
       std::optional<std::string> filename = target_table["filename"].value<std::string>();
-      OptimTargetConfig optim_target_config = {type_str, gate_type_str, filename, gate_file, levels};
-      optim_target = parseOptimTarget(optim_target_config, nlevels);
+      optim_target_config = {type_str, gate_type_str, filename, gate_file, levels};
     }
+    optim_target = parseOptimTarget(optim_target_config, nlevels);
 
     std::string optim_objective_str = validators::field<std::string>(optimization, "optim_objective")
       .get_or("");
