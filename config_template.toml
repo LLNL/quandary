@@ -23,6 +23,7 @@ amp = 15.10381
 # hamiltonian_file_Hc = "/path/to/Hc.dat"
 
 [optimization]
+
 [[optimization.control_segments]]
 oscID = 1
 type = "spline"
@@ -30,10 +31,24 @@ num = 20
 tstart = 0.0
 tstop = 1.0
 
+# [optimization.control_initialization_file]
+# filename = "params.dat"
+
+[[optimization.control_initialization]]
+oscID = 1
+type = "random"
+amplitude = 2.0
+
+[[optimization.control_bounds]]
+oscID = 0
+values = [10000, 11000]
+
+[[optimization.carrier_frequency]]
+oscID = 0
+values = [0.1, 0.1]
+
 control_enforce_BC = true
-# control_initialization
-# control_bounds
-# carrier_frequency
+
 optim_target = {target_type = "file", filename = "/path/to/file"}
 optim_objective = "jfrobenius"
 # optim_weights
