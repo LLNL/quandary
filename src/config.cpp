@@ -369,7 +369,8 @@ Config::Config(
     optim_objective = parseEnum(optim_objective_str, OBJECTIVE_TYPE_MAP)
       .value_or(optim_objective);
 
-    // TODO: optim_weights
+    std::optional<std::vector<double>> optim_weights_opt = get_optional_vector<double>(optimization["optim_weights"]);
+    optim_weights = parseOptimWeights(optim_weights_opt);
 
     tolerance.atol = validators::field<double>(optimization, "optim_atol")
       .positive()
@@ -568,7 +569,7 @@ Config::Config(
 
   if (settings.optim_objective.has_value()) optim_objective = settings.optim_objective.value();
 
-  setOptimWeights(settings.optim_weights);
+  optim_weights = parseOptimWeights(settings.optim_weights);
 
   tolerance = OptimTolerance{};
   if (settings.optim_atol.has_value()) tolerance.atol = settings.optim_atol.value();
@@ -1216,14 +1217,15 @@ size_t Config::computeNumInitialConditions() const {
   return n_initial_conditions;
 }
 
-void Config::setOptimWeights(const std::optional<std::vector<double>>& optim_weights_) {
+std::vector<double> Config::parseOptimWeights(const std::optional<std::vector<double>>& optim_weights_) const {
   // Set optimization weights, default to uniform weights summing to one
-  optim_weights = optim_weights_.value_or(std::vector<double>{1.0});
+  std::vector<double> optim_weights = optim_weights_.value_or(std::vector<double>{1.0});
   copyLast(optim_weights, n_initial_conditions);
   // Scale the weights such that they sum up to one: beta_i <- beta_i / (\sum_i beta_i)
   double scaleweights = 0.0;
   for (size_t i = 0; i < n_initial_conditions; i++) scaleweights += optim_weights[i];
   for (size_t i = 0; i < n_initial_conditions; i++) optim_weights[i] = optim_weights[i] / scaleweights;
+  return optim_weights;
 }
 
 void Config::setRandSeed(std::optional<int> rand_seed_) {

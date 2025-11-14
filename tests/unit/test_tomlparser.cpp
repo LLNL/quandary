@@ -799,6 +799,7 @@ TEST_F(TomlParserTest, OptimWeights) {
     nlevels = [2, 2]
     transfreq = [4.1, 4.1]
     rotfreq = [0.0, 0.0]
+    [optimization]
     optim_weights = [2.0, 1.0]
   )", &log, true);
 
