@@ -187,37 +187,13 @@ struct ControlSegment {
   ControlParams params; ///< Parameters for control pulse for segment
 };
 
-struct ControlSegmentInitializationFile {
-  std::string filename; ///< Filename to read control segment initialization from
-
-  std::string toString() const {
-    return "file, " + filename;
-  }
-};
-
-struct ControlSegmentInitializationConstant {
+struct ControlSegmentInitialization {
+  ControlSegmentInitType type;
   double amplitude; ///< Initial control pulse amplitude
   double phase; ///< Initial control pulse phase
 
-  std::string toString() const {
-    return "constant, " + std::to_string(amplitude) + ", " + std::to_string(phase);
-  }
+  std::string toString() const;
 };
-
-struct ControlSegmentInitializationRandom {
-  double amplitude; ///< Initial control pulse amplitude
-  double phase; ///< Initial control pulse phase
-
-  std::string toString() const {
-    return "random, " + std::to_string(amplitude) + ", " + std::to_string(phase);
-  }
-};
-
-using ControlSegmentInitialization = std::variant<
-  ControlSegmentInitializationFile,
-  ControlSegmentInitializationConstant,
-  ControlSegmentInitializationRandom
->;
 
 // TODO remove carrier_frequencies? the others are per segment?
 /**
@@ -227,7 +203,7 @@ using ControlSegmentInitialization = std::variant<
  */
 struct OscillatorOptimization {
   std::vector<ControlSegment> control_segments;                    ///< Control segments for this oscillator
-  std::vector<ControlSegmentInitialization> control_initializations; ///< Control initializations for this oscillator for each segment
+  std::vector<ControlSegmentInitialization> control_initializations; ///< Control initializations for this oscillator for each segment (if not read from file)
   std::vector<double> control_bounds;                              ///< Control bounds for this oscillator for each segment
   std::vector<double> carrier_frequencies;                         ///< Carrier frequencies for this oscillator
 };
@@ -266,6 +242,7 @@ class Config {
 
     // Optimization options
     bool control_enforceBC = true;  ///< Decide whether control pulses should start and end at zero
+    std::optional<std::string> control_initialization_file;  ///< Global control initialization file for all oscillators
     std::vector<OscillatorOptimization> oscillator_optimization;  ///< Optimization configuration for each oscillator
     OptimTargetSettings optim_target;  ///< Grouped optimization target configuration
     std::vector<double> gate_rot_freq = std::vector<double>{0.0};  ///< Frequency of rotation of the target gate, for each oscillator (GHz)
@@ -340,14 +317,7 @@ class Config {
     const std::vector<ControlSegment>& getControlSegments(size_t i_osc) const { return oscillator_optimization[i_osc].control_segments; }
     bool getControlEnforceBC() const { return control_enforceBC; }
     const std::vector<ControlSegmentInitialization>& getControlInitializations(size_t i_osc) const { return oscillator_optimization[i_osc].control_initializations; }
-
-    const std::optional<std::string> getControlInitializationFile() const {
-      if (!std::holds_alternative<ControlSegmentInitializationFile>(oscillator_optimization[0].control_initializations[0])) {
-        return std::nullopt;
-      }
-      return std::get<ControlSegmentInitializationFile>(oscillator_optimization[0].control_initializations[0]).filename;
-    }
-
+    const std::optional<std::string> getControlInitializationFile() const { return control_initialization_file; }
     const std::vector<double>& getControlBounds(size_t i_osc) const { return oscillator_optimization[i_osc].control_bounds; }
     double getControlBound(size_t i_osc, size_t i_seg) const { return oscillator_optimization[i_osc].control_bounds[i_seg]; }
     const std::vector<double>& getCarrierFrequencies(size_t i_osc) const { return oscillator_optimization[i_osc].carrier_frequencies; }
@@ -389,7 +359,6 @@ private:
     ControlSegment parseControlSegment(const ControlSegmentConfig& seg_config) const;
     ControlSegment parseControlSegment(const toml::table& table) const;
     std::vector<std::vector<ControlSegmentInitialization>>  parseControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& init_configs) const;
-    ControlSegmentInitialization parseControlInitialization(const ControlInitializationConfig& init_config) const;
     ControlSegmentInitialization parseControlInitialization(const toml::table& table) const;
 
     void convertOptimTarget(const std::optional<OptimTargetConfig>& config);

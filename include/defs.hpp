@@ -160,18 +160,16 @@ const std::map<std::string, ControlType> CONTROL_TYPE_MAP = {
 };
 
 /**
- * @brief Types of control initializations
+ * @brief Types of control initializations per segment
  */
-enum class ControlInitializationType {
+enum class ControlSegmentInitType {
   CONSTANT, ///< Constant
   RANDOM,   ///< Random 
-  FILE,     ///< Read from file
 };
 
-const std::map<std::string, ControlInitializationType> CONTROL_INITIALIZATION_TYPE_MAP = {
-    {"constant", ControlInitializationType::CONSTANT},
-    {"random", ControlInitializationType::RANDOM},
-    {"file", ControlInitializationType::FILE},
+const std::map<std::string, ControlSegmentInitType> CONTROL_SEGMENT_INIT_TYPE_MAP = {
+    {"constant", ControlSegmentInitType::CONSTANT},
+    {"random", ControlSegmentInitType::RANDOM},
 };
 
 /**

@@ -112,9 +112,10 @@ bool isValidControlType(const std::string& str) {
   return CONTROL_TYPE_MAP.find(toLower(str)) != CONTROL_TYPE_MAP.end();
 }
 
-bool isValidControlInitializationType(const std::string& str) {
-  return CONTROL_INITIALIZATION_TYPE_MAP.find(toLower(str)) != CONTROL_INITIALIZATION_TYPE_MAP.end();
+bool isValidControlSegmentInitType(const std::string& str) {
+  return CONTROL_SEGMENT_INIT_TYPE_MAP.find(toLower(str)) != CONTROL_SEGMENT_INIT_TYPE_MAP.end();
 }
+
 
 } // namespace
 
@@ -355,30 +356,30 @@ std::vector<ControlInitializationConfig> CfgParser::convertFromString<std::vecto
   size_t i = 0;
 
   while (i < parts.size()) {
-    if (!isValidControlInitializationType(parts[i])) {
-      exitWithError(mpi_rank, "ERROR: Expected control initialization type, got: " + parts[i]);
+    if (parts[i] != "file" && !isValidControlSegmentInitType(parts[i])) {
+      exitWithError(mpi_rank, "ERROR: Expected control initialization type (file, constant, random), got: " + parts[i]);
     }
 
     ControlInitializationConfig initialization;
-    initialization.init_type = convertFromString<ControlInitializationType>(parts[i++]);
-
+    std::string type_str = parts[i++];
+    
     // Validate minimum parameter count
     if (parts.size() <= 1) {
       exitWithError(mpi_rank, "ERROR: Expected control_initialization to have a type and at least one parameter.");
     }
 
-    switch (initialization.init_type) {
-      case ControlInitializationType::FILE:
-        initialization.filename = parts[i];
-        initializations.push_back(initialization);
-        return initializations;
-      case ControlInitializationType::CONSTANT:
-      case ControlInitializationType::RANDOM:
-        initialization.amplitude = convertFromString<double>(parts[i++]);
-        if (i < parts.size() && !isValidControlInitializationType(parts[i])) {
-          initialization.phase = convertFromString<double>(parts[i++]);
-        }
-        break;
+    if (type_str == "file") {
+      // File initialization
+      initialization.filename = parts[i];
+      initializations.push_back(initialization);
+      return initializations;
+    } else {
+      // Constant or random initialization
+      initialization.init_seg_type = convertFromString<ControlSegmentInitType>(type_str);
+      initialization.amplitude = convertFromString<double>(parts[i++]);
+      if (i < parts.size() && !isValidControlSegmentInitType(parts[i])) {
+        initialization.phase = convertFromString<double>(parts[i++]);
+      }
     }
 
     initializations.push_back(initialization);

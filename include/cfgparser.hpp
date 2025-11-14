@@ -227,10 +227,10 @@ private:
   }
 
   template<>
-  ControlInitializationType convertFromString<ControlInitializationType>(const std::string& str) {
-    auto it = CONTROL_INITIALIZATION_TYPE_MAP.find(toLower(str));
-    if (it == CONTROL_INITIALIZATION_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown control initialization type: " + str + ".\n");
+  ControlSegmentInitType convertFromString<ControlSegmentInitType>(const std::string& str) {
+    auto it = CONTROL_SEGMENT_INIT_TYPE_MAP.find(toLower(str));
+    if (it == CONTROL_SEGMENT_INIT_TYPE_MAP.end()) {
+      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown control segment initialization type: " + str + ".\n");
       exit(1);
     }
     return it->second;
