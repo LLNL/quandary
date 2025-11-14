@@ -175,12 +175,13 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   bool use_hessian = config.GetBoolParam("optim_use_hessian", false, false);
 
   if (use_hessian) {
-    // TaoSetType(tao, TAONLS);     // Newton line search, unconstrained. TODO: Check Bounds!
-    TaoSetType(tao, TAOBNLS);     // Bounded Newton with line search
-    TaoSetHessian(tao, Hessian, Hessian, TaoEvalHessian, (void*) this);
     // Create Hessian matrix
     MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, NULL, &Hessian);
     MatSetFromOptions(Hessian);
+
+    // TaoSetType(tao, TAONLS);     // Newton line search, unconstrained. TODO: Check Bounds!
+    TaoSetType(tao, TAOBNLS);     // Bounded Newton with line search
+    TaoSetHessian(tao, Hessian, Hessian, TaoEvalHessian, (void*) this);
 
     // TaoSetType(tao,TAOBQNLS);   // Bounded LBFGS with line search  
     // // Disable LBFGS history to use just the (projected!) gradient
@@ -1168,8 +1169,9 @@ void OptimProblem::evalHessian(const Vec x, PetscInt ncut, PetscInt nextra, Mat 
   MatDiagonalScale(U_scaled, NULL, lambda);  // Right scaling U_scaled = U * diag(lambda)
   MatMatTransposeMult(U_scaled, U, MAT_REUSE_MATRIX, PETSC_DEFAULT, &H); // H= U_scaled * U^T
 
-  MatDestroy(&U);
   VecDestroy(&lambda);
+  MatDestroy(&U);
+  MatDestroy(&U_scaled);
 }
   
 void OptimProblem::ProjectGradient(const Vec x, const Vec grad, Vec grad_proj, PetscInt ncut, PetscInt nextra){
