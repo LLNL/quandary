@@ -65,46 +65,6 @@ initial_condition = {type = "basis"}
 # ------------------- Optimization options ----------------------
 # ---------------------------------------------------------------
 [optimization]
-
-# Define the controllable segments for each oscillator and the type of parameterization.
-# Multiple of these blocks can be defined.
-# Available control types:
-# "spline" - 2nd order B-spline basis functions (recommended)
-# "spline0" - piecewise constant control parameterization (0th order B-splines)
-# "spline_amplitude" - amplitude-only parameterization
-# "step" - step function control
-[[optimization.control_segments]]
-oscID = 0
-type = "spline"
-num = 150
-# tstart = 0.0  # optional, defaults to 0.0
-# tstop = 100.0  # optional, defaults to ntime * dt
-
-[[optimization.control_segments]]
-oscID = 1
-type = "spline"
-num = 150
-
-# [[optimization.control_segments]]
-# oscID = 0
-# type = "spline0"
-# num = 300
-
-# [[optimization.control_segments]]
-# oscID = 0
-# type = "spline_amplitude"
-# num = 150
-# scaling = 1.0
-
-# [[optimization.control_segments]]
-# oscID = 0
-# type = "step"
-# step_amp1 = 0.1
-# step_amp2 = 0.2
-# tramp = 0.3
-# tstart = 0.0  # optional
-# tstop = 100.0  # optional
-
 # Decide whether control pulses should start and end at zero. Default: true.
 control_enforce_BC = false
 
@@ -156,6 +116,45 @@ optim_penalty_energy = 0.0
 optim_penalty_variation = 0.0
 # Switch to use Tikhonov regularization with ||x - x_0||^2 instead of ||x||^2
 optim_regul_tik0 = false
+
+# Define the controllable segments for each oscillator and the type of parameterization.
+# Multiple of these blocks can be defined.
+# Available control types:
+# "spline" - 2nd order B-spline basis functions (recommended)
+# "spline0" - piecewise constant control parameterization (0th order B-splines)
+# "spline_amplitude" - amplitude-only parameterization
+# "step" - step function control
+[[optimization.control_segments]]
+oscID = 0
+type = "spline"
+num = 150
+# tstart = 0.0  # optional, defaults to 0.0
+# tstop = 100.0  # optional, defaults to ntime * dt
+
+[[optimization.control_segments]]
+oscID = 1
+type = "spline"
+num = 150
+
+# [[optimization.control_segments]]
+# oscID = 0
+# type = "spline0"
+# num = 300
+
+# [[optimization.control_segments]]
+# oscID = 0
+# type = "spline_amplitude"
+# num = 150
+# scaling = 1.0
+
+# [[optimization.control_segments]]
+# oscID = 0
+# type = "step"
+# step_amp1 = 0.1
+# step_amp2 = 0.2
+# tramp = 0.3
+# tstart = 0.0  # optional
+# tstop = 100.0  # optional
 
 # Set the initial control pulse parameters (GHz). One entry for each segment.
 # Options: "constant" with amplitude and optional phase, "random" with amplitude and optional phase
