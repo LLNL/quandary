@@ -395,7 +395,7 @@ Config::Config(
       .greater_than_equal(0.0)
       .get_or(penalty.penalty);
     penalty.penalty_param = validators::field<double>(optimization, "optim_penalty_param")
-      .greater_than(0.0)
+      .greater_than_equal(0.0)
       .get_or(penalty.penalty_param);
     penalty.penalty_dpdm = validators::field<double>(optimization, "optim_penalty_dpdm")
       .greater_than_equal(0.0)
