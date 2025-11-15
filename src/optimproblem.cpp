@@ -1188,6 +1188,18 @@ void OptimProblem::evalHessian(const Vec x, PetscInt ncut, PetscInt nextra, Mat 
   Vec lambda;
   HessianRandRangeFinder(x, ncut, nextra, &U, &lambda);
 
+  // // Write lambda and U to file
+  // if (mpirank_world==0) {
+  //   PetscViewer viewer;
+  //   PetscViewerASCIIOpen(PETSC_COMM_WORLD, (output->datadir+"/eigenvalues.dat").c_str(), &viewer);
+  //   PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_SYMMODU);
+  //   VecView(lambda, viewer);
+  //   PetscViewerDestroy(&viewer);
+  //   PetscViewerASCIIOpen(PETSC_COMM_WORLD, (output->datadir+"/eigenvectors.dat").c_str(), &viewer);
+  //   MatView(U, viewer);
+  //   PetscViewerDestroy(&viewer);
+  // }
+
   /* Assemble H = U lambda U^T */
   Mat U_scaled;
   MatDuplicate(U, MAT_COPY_VALUES, &U_scaled);  // U_scaled = U
