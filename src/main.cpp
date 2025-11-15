@@ -181,13 +181,12 @@ int main(int argc,char **argv)
 
   /* Get the size of communicators  */
   // Number of cores for optimization. Under development, set to 1 for now. 
-  // int np_optim= config.GetIntParam("np_optim", 1);
-  // np_optim= min(np_optim, mpisize_world); 
-  int np_optim= 1;
+  // int np_optim= 1;
+  int np_petsc= 1;
   // Number of cores for initial condition distribution. Since this gives perfect speedup, choose maximum.
   int np_init = std::min(ninit, mpisize_world); 
-  // Number of cores for Petsc: All the remaining ones. 
-  int np_petsc = mpisize_world / (np_init * np_optim);
+  // Number of cores for Optim: All the remaining ones. 
+  int np_optim= mpisize_world / (np_init * np_petsc);
 
   /* Sanity check for communicator sizes */ 
   if (mpisize_world % ninit != 0 && ninit % mpisize_world != 0) {
@@ -217,7 +216,7 @@ int main(int argc,char **argv)
   /* Set Petsc using petsc's communicator */
   PETSC_COMM_WORLD = comm_petsc;
 
-  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
+  if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  X " << mpisize_optim << " np_optim "  << std::endl;
 
 #ifdef WITH_SLEPC
   ierr = SlepcInitialize(&argc, &argv, (char*)0, NULL);if (ierr) return ierr;
@@ -511,9 +510,11 @@ int main(int argc,char **argv)
 
       // TEST HESSIAN FUNCTION
 
-      //PetscInt ncut = 25;    // Number of dominant eigenvalues/vectors to compute
-      //PetscInt nextra = 10;  // Oversampling
-      // optimctx->evalHessian(xinit, ncut, nextra, optimctx->Hessian);
+      PetscInt ncut = 15 ; //288   // Number of dominant eigenvalues/vectors to compute
+      PetscInt nextra = 10;  // Oversampling
+      // ncut = 4;
+      // nextra=0;
+      optimctx->evalHessian(xinit, ncut, nextra, optimctx->Hessian);
     } else {
       g->zero();
       double tol = 0.0;
@@ -666,11 +667,14 @@ int main(int argc,char **argv)
 
 
 #if HESSIAN_COMPUTATION
+
     /* Hessian computation */
     int sizex = 0;
     VecGetSize(xinit, &sizex);
-    // for (int i=0; i<sizex; i++) {
-    for (int i=1085; i<sizex; i++) {
+
+
+    for (int i=0; i<sizex; i++) {
+    // for (int i=1085; i<sizex; i++) {
       printf("Hessian for index %d\n", i);
 
       Vec ei, Hei;

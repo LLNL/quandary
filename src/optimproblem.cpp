@@ -1031,14 +1031,39 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt n
   /* Apply Hessian-vector product Y = H * Omega */
   MatDuplicate(Omega, MAT_DO_NOT_COPY_VALUES, &Y);
   Vec omega_col, y_col;
-  for (int i = 0; i < nsample; i++) {
-    if (mpirank_world==0) printf("Applying Hessian-vector product %d / %d\n", i, nsample);
-    MatDenseGetColumnVecRead(Omega, i, &omega_col);
-    MatDenseGetColumnVecWrite(Y, i, &y_col);
-    evalHessVec(x, omega_col, y_col);
-    MatDenseRestoreColumnVecRead(Omega, i, &omega_col);
-    MatDenseRestoreColumnVecWrite(Y, i, &y_col);
+  int nsample_local = nsample / mpisize_optim;
+  // Sanity check for parallel distribution:
+  if (nsample % mpisize_optim != 0) {
+    printf("ERROR: Number of threads for Hessian RandRangeFinder needs to be integer divisor of the numer of samples (%d)\n", nsample);
+    exit(1);
   }
+  
+  for (int i_local= 0; i_local< nsample_local; i_local++) {
+    int i_global = mpirank_optim * nsample_local + i_local;
+
+    MatDenseGetColumnVecRead(Omega, i_global, &omega_col);
+    MatDenseGetColumnVecWrite(Y, i_global, &y_col);
+
+    // Apply hessian vector products, if this sample belongs to this processor
+    if (mpirank_init ==0) printf("%d Applying Hessian-vector product %d / %d\n", mpirank_optim, i_global, nsample);
+    evalHessVec(x, omega_col, y_col);
+
+    MatDenseRestoreColumnVecRead(Omega, i_global, &omega_col);
+    MatDenseRestoreColumnVecWrite(Y, i_global, &y_col);
+  }
+  // Allreduce the Columns
+  int rows, cols;
+  MatGetSize(Y, &rows, &cols);
+  double* mytmp = new double[rows*cols];
+  PetscScalar *ptr;
+  MatDenseGetArray(Y, &ptr);
+  for (int i=0; i<rows*cols; i++){
+    mytmp[i] = ptr[i];
+  }
+  MPI_Allreduce(mytmp, ptr, rows*cols, MPI_DOUBLE, MPI_SUM, comm_optim);
+  MatDenseRestoreArray(Y, &ptr);
+  delete [] mytmp;
+
   
   /* Find orthonormal basis for Y */
   // Economy SVD of Y, keep ncut top left singular vectors
