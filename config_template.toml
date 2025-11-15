@@ -66,7 +66,7 @@ initial_condition = {type = "basis"}
 # ---------------------------------------------------------------
 [optimization]
 # Decide whether control pulses should start and end at zero. Default: true.
-control_enforce_BC = false
+control_enforceBC = false
 
 # Global control initialization from file (alternative to per-oscillator initialization)
 # [optimization.control_initialization_file]
