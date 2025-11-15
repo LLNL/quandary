@@ -274,7 +274,7 @@ int main(int argc,char **argv)
   if (mpirank_world == 0)
   {
     /* Print parameters to file */
-    snprintf(filename, 254, "%s/config_log.dat", output->datadir.c_str());
+    snprintf(filename, 254, "%s/config_log.toml", output->datadir.c_str());
     std::ofstream logfile(filename);
     if (logfile.is_open()){
       logfile << log.str();
