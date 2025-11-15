@@ -465,7 +465,8 @@ Config::Config(
     timestepper_type = parseEnum(timestepper_type_str, TIME_STEPPER_TYPE_MAP)
       .value_or(TimeStepperType::IMR);
 
-    setRandSeed(output["rand_seed"].value<int>());
+    int rand_seed_ = validators::field<int>(output, "rand_seed").get_or(-1);
+    setRandSeed(rand_seed_);
 
   } catch (const validators::ValidationError& e) {
     exitWithError(mpi_rank, "ERROR: " + std::string(e.what()));
