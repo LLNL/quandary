@@ -226,9 +226,11 @@ InitialConditionConfig CfgParser::convertFromString<InitialConditionConfig>(cons
   } else if (type == InitialConditionType::ENSEMBLE ||
       type == InitialConditionType::DIAGONAL ||
       type == InitialConditionType::BASIS) {
-    config.osc_IDs = std::vector<size_t>();
-    for (size_t i = 1; i < parts.size(); ++i) {
-      config.osc_IDs.value().push_back(convertFromString<int>(parts[i]));
+    if (parts.size() > 1) {
+      config.osc_IDs = std::vector<size_t>();
+      for (size_t i = 1; i < parts.size(); ++i) {
+        config.osc_IDs.value().push_back(convertFromString<int>(parts[i]));
+      }
     }
   }
 
