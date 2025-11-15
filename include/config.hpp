@@ -110,11 +110,12 @@ struct GateOptimTarget {
 
   std::string toString() const {
     if (gate_type == GateType::FILE) {
-      return "gate, file, " + gate_file;
+      return "{target_type = \"gate\", gate_type = \"file\", gate_file = \"" + gate_file + "\"}";
     } else {
       auto it = std::find_if(GATE_TYPE_MAP.begin(), GATE_TYPE_MAP.end(),
                              [this](const auto& pair) { return pair.second == gate_type; });
-      return "gate, " + (it != GATE_TYPE_MAP.end() ? it->first : "unknown");
+      std::string gate_name = (it != GATE_TYPE_MAP.end() ? it->first : "unknown");
+      return "{target_type = \"gate\", gate_type = \"" + gate_name + "\"}";
     }
   }
 };
@@ -123,10 +124,12 @@ struct PureOptimTarget {
   std::vector<size_t> purestate_levels;         ///< Pure state levels (for pure targets)
 
   std::string toString() const {
-    std::string out = "pure";
-    for (size_t level : purestate_levels) {
-      out += ", " + std::to_string(level);
+    std::string out = "{target_type = \"pure\", levels = [";
+    for (size_t i = 0; i < purestate_levels.size(); ++i) {
+      out += std::to_string(purestate_levels[i]);
+      if (i < purestate_levels.size() - 1) out += ", ";
     }
+    out += "]}";
     return out;
   }
 };
@@ -135,7 +138,7 @@ struct FileOptimTarget {
   std::string file;                             ///< Target file (for file targets)
 
   std::string toString() const {
-    return "file, " + file;
+    return "{target_type = \"file\", filename = \"" + file + "\"}";
   }
 };
 

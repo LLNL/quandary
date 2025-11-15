@@ -19,9 +19,9 @@
 template<typename EnumType>
 std::string enumToString(EnumType value, const std::map<std::string, EnumType>& type_map) {
   for (const auto& [str, enum_val] : type_map) {
-    if (enum_val == value) return "\"" + str + "\"";
+    if (enum_val == value) return str;
   }
-  return "\"unknown\"";
+  return "unknown";
 }
 
 template<typename EnumType>
@@ -704,7 +704,8 @@ std::string ControlSegmentInitialization::toString() const {
   std::string str = "type = \"";
   str += enumToString(type, CONTROL_SEGMENT_INIT_TYPE_MAP);
   str += "\"\n";
-  str += "amplitude = " + std::to_string(amplitude) + "\n" + "phase = " + std::to_string(phase);
+  str += "amplitude = " + std::to_string(amplitude) + "\n";
+  str += "phase = " + std::to_string(phase);
   return str;
 }
 
@@ -727,10 +728,10 @@ std::string OscillatorIDsInitialCondition::toString(std::string name) const {
 }
 
 void Config::printConfig() const {
-  std::string delim = ", ";
   log << "# Configuration settings\n";
   log << "# =============================================\n\n";
 
+  // System section
   log << "[system]\n";
   log << "nlevels = " << printVector(nlevels) << "\n";
   log << "nessential = " << printVector(nessential) << "\n";
@@ -741,73 +742,105 @@ void Config::printConfig() const {
   log << "crosskerr = " << printVector(crosskerr) << "\n";
   log << "Jkl = " << printVector(Jkl) << "\n";
   log << "rotfreq = " << printVector(rotfreq) << "\n";
-  log << "collapse_type = " << enumToString(collapse_type, LINDBLAD_TYPE_MAP) << "\n";
+  log << "collapse_type = \"" << enumToString(collapse_type, LINDBLAD_TYPE_MAP) << "\"\n";
   log << "decay_time = " << printVector(decay_time) << "\n";
   log << "dephase_time = " << printVector(dephase_time) << "\n";
   log << "initial_condition = " << print(initial_condition) << "\n";
 
+  // Apply pi-pulse array of tables
   for (size_t i = 0; i < apply_pipulse.size(); ++i) {
     for (const auto& segment : apply_pipulse[i]) {
-      log << "apply_pipulse = " << i
-          << ", " << segment.tstart
-          << ", " << segment.tstop
-          << ", " << segment.amp << "\n";
+      log << "[[system.apply_pipulse]]\n";
+      log << "oscID = " << i << "\n";
+      log << "tstart = " << segment.tstart << "\n";
+      log << "tstop = " << segment.tstop << "\n";
+      log << "amp = " << segment.amp << "\n";
+      log << "\n";
     }
   }
+
   if (hamiltonian_file_Hsys.has_value()) {
-    log << "hamiltonian_file_Hsys = " << hamiltonian_file_Hsys.value() << "\n";
+    log << "hamiltonian_file_Hsys = \"" << hamiltonian_file_Hsys.value() << "\"\n";
   }
   if (hamiltonian_file_Hc.has_value()) {
-    log << "hamiltonian_file_Hc = " << hamiltonian_file_Hc.value() << "\n";
+    log << "hamiltonian_file_Hc = \"" << hamiltonian_file_Hc.value() << "\"\n";
   }
 
-  // Optimization Parameters
-  log << "\n// Optimization Parameters\n";
+  // Optimization section
+  log << "\n[optimization]\n";
+
+  // Control segments as array of tables
   for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].control_segments.empty()) {
       const auto& seg = oscillator_optimization[i].control_segments[0];
-      log << "control_segments" << i << " = "
-          << enumToString(seg.type, CONTROL_TYPE_MAP);
+      log << "[[optimization.control_segments]]\n";
+      log << "oscID = " << i << "\n";
+      log << "type = \"" << enumToString(seg.type, CONTROL_TYPE_MAP) << "\"\n";
+
       // Add segment-specific parameters
       if (std::holds_alternative<SplineParams>(seg.params)) {
         auto params = std::get<SplineParams>(seg.params);
-        log << ", " << params.nspline << ", " << params.tstart << ", " << params.tstop;
+        log << "num = " << params.nspline << "\n";
+        if (params.tstart != 0.0) log << "tstart = " << params.tstart << "\n";
+        if (params.tstop != dt * ntime) log << "tstop = " << params.tstop << "\n";
       } else if (std::holds_alternative<SplineAmpParams>(seg.params)) {
         auto params = std::get<SplineAmpParams>(seg.params);
-        log << ", " << params.nspline << ", " << params.scaling << ", " << params.tstart << ", " << params.tstop;
+        log << "num = " << params.nspline << "\n";
+        log << "scaling = " << params.scaling << "\n";
+        if (params.tstart != 0.0) log << "tstart = " << params.tstart << "\n";
+        if (params.tstop != dt * ntime) log << "tstop = " << params.tstop << "\n";
       } else if (std::holds_alternative<StepParams>(seg.params)) {
         auto params = std::get<StepParams>(seg.params);
-        log << ", " << params.step_amp1 << ", " << params.step_amp2 << ", " << params.tramp << ", "
-          << params.tstart << ", " << params.tstop;
+        log << "step_amp1 = " << params.step_amp1 << "\n";
+        log << "step_amp2 = " << params.step_amp2 << "\n";
+        log << "tramp = " << params.tramp << "\n";
+        log << "tstart = " << params.tstart << "\n";
+        log << "tstop = " << params.tstop << "\n";
       }
       log << "\n";
     }
   }
-  log << "control_enforceBC = " << (control_enforceBC ? "true" : "false") << "\n";
+
+  log << "control_enforce_BC = " << (control_enforceBC ? "true" : "false") << "\n";
+
+  // Control initialization file or per-oscillator initialization
   if (control_initialization_file.has_value()) {
-    log << "[optimization.control_initilization_file]\nfilename = " << control_initialization_file.value() << "\n";
+    log << "[optimization.control_initialization_file]\n";
+    log << "filename = \"" << control_initialization_file.value() << "\"\n\n";
   } else {
     for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
       if (!oscillator_optimization[i].control_initializations.empty()) {
         const auto& init = oscillator_optimization[i].control_initializations[0];
-        log << "[[optimization.control_initialization]]" << i << " = " << init.toString() << "\n";
+        log << "[[optimization.control_initialization]]\n";
+        log << "oscID = " << i << "\n";
+        log << init.toString() << "\n\n";
       }
     }
   }
+
+  // Control bounds as array of tables
   for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].control_bounds.empty()) {
-      log << "control_bounds" << i << " = " << printVector(oscillator_optimization[i].control_bounds) << "\n";
+      log << "[[optimization.control_bounds]]\n";
+      log << "oscID = " << i << "\n";
+      log << "values = " << printVector(oscillator_optimization[i].control_bounds) << "\n\n";
     }
   }
+
+  // Carrier frequencies as array of tables
   for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].carrier_frequencies.empty()) {
-      log << "carrier_frequency" << i << " = " << printVector(oscillator_optimization[i].carrier_frequencies) << "\n";
+      log << "[[optimization.carrier_frequency]]\n";
+      log << "oscID = " << i << "\n";
+      log << "values = " << printVector(oscillator_optimization[i].carrier_frequencies) << "\n\n";
     }
   }
 
   log << "optim_target = " << toString(optim_target) << "\n";
-  log << "gate_rot_freq = " << printVector(gate_rot_freq) << "\n";
-  log << "optim_objective = " << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\n";
+  if (!gate_rot_freq.empty()) {
+    log << "gate_rot_freq = " << printVector(gate_rot_freq) << "\n";
+  }
+  log << "optim_objective = \"" << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\"\n";
   log << "optim_weights = " << printVector(optim_weights) << "\n";
   log << "optim_atol = " << tolerance.atol << "\n";
   log << "optim_rtol = " << tolerance.rtol << "\n";
@@ -822,28 +855,29 @@ void Config::printConfig() const {
   log << "optim_penalty_variation = " << penalty.penalty_variation << "\n";
   log << "optim_regul_tik0 = " << (optim_regul_tik0 ? "true" : "false") << "\n";
 
-  // Output and runtypes
-  log << "\n// Output and runtypes\n";
-  log << "datadir = " << datadir << "\n";
-
+  // Output section
+  log << "\n[output]\n";
+  log << "datadir = \"" << datadir << "\"\n";
+  // Output write specifications as array of tables
   for (size_t i = 0; i < output_to_write.size(); ++i) {
     if (!output_to_write[i].empty()) {
-      log << "output" << i << " = ";
+      log << "[[output.write]]\n";
+      log << "oscID = " << i << "\n";
+      log << "type = [";
       for (size_t j = 0; j < output_to_write[i].size(); ++j) {
-        log << enumToString(output_to_write[i][j], OUTPUT_TYPE_MAP);
+        log << "\"" << enumToString(output_to_write[i][j], OUTPUT_TYPE_MAP) << "\"";
         if (j < output_to_write[i].size() - 1) log << ", ";
       }
-      log << "\n";
+      log << "]\n\n";
     }
   }
-
   log << "output_frequency = " << output_frequency << "\n";
   log << "optim_monitor_frequency = " << optim_monitor_frequency << "\n";
-  log << "runtype = " << enumToString(runtype, RUN_TYPE_MAP) << "\n";
+  log << "runtype = \"" << enumToString(runtype, RUN_TYPE_MAP) << "\"\n";
   log << "usematfree = " << (usematfree ? "true" : "false") << "\n";
-  log << "linearsolver_type = " << enumToString(linearsolver_type, LINEAR_SOLVER_TYPE_MAP) << "\n";
+  log << "linearsolver_type = \"" << enumToString(linearsolver_type, LINEAR_SOLVER_TYPE_MAP) << "\"\n";
   log << "linearsolver_maxiter = " << linearsolver_maxiter << "\n";
-  log << "timestepper = " << enumToString(timestepper_type, TIME_STEPPER_TYPE_MAP) << "\n";
+  log << "timestepper = \"" << enumToString(timestepper_type, TIME_STEPPER_TYPE_MAP) << "\"\n";
   log << "rand_seed = " << rand_seed << "\n";
 
   log << "# =============================================\n\n";
