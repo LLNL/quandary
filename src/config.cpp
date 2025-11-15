@@ -364,6 +364,10 @@ Config::Config(
     }
     optim_target = parseOptimTarget(optim_target_config, nlevels);
 
+    gate_rot_freq = validators::vector_field<double>(optimization, "gate_rot_freq")
+      .get_or(std::vector<double>(num_osc, 0.0));
+    copyLast(gate_rot_freq, num_osc);
+
     std::string optim_objective_str = validators::field<std::string>(optimization, "optim_objective")
       .get_or("");
     optim_objective = parseEnum(optim_objective_str, OBJECTIVE_TYPE_MAP)
@@ -779,9 +783,7 @@ void Config::printConfig() const {
   }
 
   log << "optim_target = " << toString(optim_target) << "\n";
-  if (!gate_rot_freq.empty()) {
-    log << "gate_rot_freq = " << printVector(gate_rot_freq) << "\n";
-  }
+  log << "gate_rot_freq = " << printVector(gate_rot_freq) << "\n";
   log << "optim_objective = \"" << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\"\n";
   log << "optim_weights = " << printVector(optim_weights) << "\n";
   log << "optim_atol = " << tolerance.atol << "\n";
