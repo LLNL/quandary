@@ -726,7 +726,7 @@ std::string PureInitialCondition::toString() const {
 }
 
 std::string OscillatorIDsInitialCondition::toString(std::string name) const {
-  std::string out = "{type = \"" + name + "\", osc_IDs = ";
+  std::string out = "{type = \"" + name + "\", oscIDs = ";
   out += printVector(osc_IDs);
   out += "}";
   return out;
