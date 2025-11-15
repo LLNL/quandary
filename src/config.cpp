@@ -770,7 +770,34 @@ void Config::printConfig() const {
   // Optimization section
   log << "\n[optimization]\n";
 
-  // Control segments as array of tables
+  log << "control_enforce_BC = " << (control_enforceBC ? "true" : "false") << "\n";
+
+  // Control initialization file
+  if (control_initialization_file.has_value()) {
+    log << "[optimization.control_initialization_file]\n";
+    log << "filename = \"" << control_initialization_file.value() << "\"\n\n";
+  }
+
+  log << "optim_target = " << toString(optim_target) << "\n";
+  if (!gate_rot_freq.empty()) {
+    log << "gate_rot_freq = " << printVector(gate_rot_freq) << "\n";
+  }
+  log << "optim_objective = \"" << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\"\n";
+  log << "optim_weights = " << printVector(optim_weights) << "\n";
+  log << "optim_atol = " << tolerance.atol << "\n";
+  log << "optim_rtol = " << tolerance.rtol << "\n";
+  log << "optim_ftol = " << tolerance.ftol << "\n";
+  log << "optim_inftol = " << tolerance.inftol << "\n";
+  log << "optim_maxiter = " << tolerance.maxiter << "\n";
+  log << "optim_regul = " << optim_regul << "\n";
+  log << "optim_penalty = " << penalty.penalty << "\n";
+  log << "optim_penalty_param = " << penalty.penalty_param << "\n";
+  log << "optim_penalty_dpdm = " << penalty.penalty_dpdm << "\n";
+  log << "optim_penalty_energy = " << penalty.penalty_energy << "\n";
+  log << "optim_penalty_variation = " << penalty.penalty_variation << "\n";
+  log << "optim_regul_tik0 = " << (optim_regul_tik0 ? "true" : "false") << "\n";
+
+    // Control segments as array of tables
   for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
     if (!oscillator_optimization[i].control_segments.empty()) {
       const auto& seg = oscillator_optimization[i].control_segments[0];
@@ -802,13 +829,8 @@ void Config::printConfig() const {
     }
   }
 
-  log << "control_enforce_BC = " << (control_enforceBC ? "true" : "false") << "\n";
-
-  // Control initialization file or per-oscillator initialization
-  if (control_initialization_file.has_value()) {
-    log << "[optimization.control_initialization_file]\n";
-    log << "filename = \"" << control_initialization_file.value() << "\"\n\n";
-  } else {
+  // Control initialization
+  if (!control_initialization_file.has_value()) {
     for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
       if (!oscillator_optimization[i].control_initializations.empty()) {
         const auto& init = oscillator_optimization[i].control_initializations[0];
@@ -837,28 +859,19 @@ void Config::printConfig() const {
     }
   }
 
-  log << "optim_target = " << toString(optim_target) << "\n";
-  if (!gate_rot_freq.empty()) {
-    log << "gate_rot_freq = " << printVector(gate_rot_freq) << "\n";
-  }
-  log << "optim_objective = \"" << enumToString(optim_objective, OBJECTIVE_TYPE_MAP) << "\"\n";
-  log << "optim_weights = " << printVector(optim_weights) << "\n";
-  log << "optim_atol = " << tolerance.atol << "\n";
-  log << "optim_rtol = " << tolerance.rtol << "\n";
-  log << "optim_ftol = " << tolerance.ftol << "\n";
-  log << "optim_inftol = " << tolerance.inftol << "\n";
-  log << "optim_maxiter = " << tolerance.maxiter << "\n";
-  log << "optim_regul = " << optim_regul << "\n";
-  log << "optim_penalty = " << penalty.penalty << "\n";
-  log << "optim_penalty_param = " << penalty.penalty_param << "\n";
-  log << "optim_penalty_dpdm = " << penalty.penalty_dpdm << "\n";
-  log << "optim_penalty_energy = " << penalty.penalty_energy << "\n";
-  log << "optim_penalty_variation = " << penalty.penalty_variation << "\n";
-  log << "optim_regul_tik0 = " << (optim_regul_tik0 ? "true" : "false") << "\n";
 
   // Output section
   log << "\n[output]\n";
   log << "datadir = \"" << datadir << "\"\n";
+  log << "output_frequency = " << output_frequency << "\n";
+  log << "optim_monitor_frequency = " << optim_monitor_frequency << "\n";
+  log << "runtype = \"" << enumToString(runtype, RUN_TYPE_MAP) << "\"\n";
+  log << "usematfree = " << (usematfree ? "true" : "false") << "\n";
+  log << "linearsolver_type = \"" << enumToString(linearsolver_type, LINEAR_SOLVER_TYPE_MAP) << "\"\n";
+  log << "linearsolver_maxiter = " << linearsolver_maxiter << "\n";
+  log << "timestepper = \"" << enumToString(timestepper_type, TIME_STEPPER_TYPE_MAP) << "\"\n";
+  log << "rand_seed = " << rand_seed << "\n";
+
   // Output write specifications as array of tables
   for (size_t i = 0; i < output_to_write.size(); ++i) {
     if (!output_to_write[i].empty()) {
@@ -872,14 +885,6 @@ void Config::printConfig() const {
       log << "]\n\n";
     }
   }
-  log << "output_frequency = " << output_frequency << "\n";
-  log << "optim_monitor_frequency = " << optim_monitor_frequency << "\n";
-  log << "runtype = \"" << enumToString(runtype, RUN_TYPE_MAP) << "\"\n";
-  log << "usematfree = " << (usematfree ? "true" : "false") << "\n";
-  log << "linearsolver_type = \"" << enumToString(linearsolver_type, LINEAR_SOLVER_TYPE_MAP) << "\"\n";
-  log << "linearsolver_maxiter = " << linearsolver_maxiter << "\n";
-  log << "timestepper = \"" << enumToString(timestepper_type, TIME_STEPPER_TYPE_MAP) << "\"\n";
-  log << "rand_seed = " << rand_seed << "\n";
 
   log << "# =============================================\n\n";
 }
