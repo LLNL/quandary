@@ -67,6 +67,8 @@ class Quandary:
     maxiter             # Maximum number of optimization iterations. Default 200
     tol_infidelity      # Optimization stopping criterion based on the infidelity. Default 1e-5
     tol_costfunc        # Optimization stopping criterion based on the objective function value. Default 1e-4
+    tol_gnorm_abs       # Optimization stopping criterion based on absolute gradient norm drop. Default 1e-4
+    tol_gnorm_rel       # Optimization stopping criterion based on relative gradient norm drop. Default 1e-4
     costfunction        # Cost function measure: "Jtrace" or "Jfrobenius". Default: "Jtrace"
     optim_target        # Optional: Set other optimization target string, if not specified through the targetgate or targetstate. 
     gamma_tik0          # Parameter for Tikhonov regularization ||alpha||^2. Default 1e-4
@@ -144,6 +146,8 @@ class Quandary:
     maxiter                : int   = 200         
     tol_infidelity         : float = 1e-5        
     tol_costfunc           : float = 1e-4        
+    tol_gnorm_abs          : float = 1e-4
+    tol_gnorm_rel          : float = 1e-4
     costfunction           : str   = "Jtrace"                      
     optim_target           : str   = "gate, none"
     gamma_tik0             : float = 1e-4 
@@ -710,17 +714,17 @@ class Quandary:
             mystring += str(val) + ", " 
         mystring += "\n"
         mystring += "optim_weights= 1.0\n"
-        mystring += "optim_atol= 1e-4\n"
-        mystring += "optim_rtol= 1e-4\n"
+        mystring += "optim_atol= " + str(self.tol_gnorm_abs) + "\n"
+        mystring += "optim_rtol= " + str(self.tol_gnorm_rel) + "\n"
         mystring += "optim_ftol= " + str(self.tol_costfunc) + "\n"
         mystring += "optim_inftol= " + str(self.tol_infidelity) + "\n"
         mystring += "optim_maxiter= " + str(self.maxiter) + "\n"
         if self.gamma_tik0_interpolate > 0.0:
             mystring += "optim_regul= " + str(self.gamma_tik0_interpolate) + "\n"
-            mystring += "optim_regul_interpolate = true\n"
+            mystring += "optim_regul_tik0 = true\n"
         else:
             mystring += "optim_regul= " + str(self.gamma_tik0) + "\n"
-            mystring += "optim_regul_interpolate=False\n"
+            mystring += "optim_regul_tik0=false\n"
         mystring += "optim_penalty= " + str(self.gamma_leakage) + "\n"
         mystring += "optim_penalty_param= 0.0\n"
         mystring += "optim_penalty_dpdm= " + str(self.gamma_dpdm) + "\n"

@@ -204,6 +204,7 @@ enum class GateType {
   SWAP,     ///< SWAP gate
   SWAP_0Q,  ///< Multi-qubit SWAP gate with 0 qubit
   CQNOT,    ///< Multi-qubit CQNOT gate
+  QFT,      ///< QFT gate
   FILE,     ///< Gate defined in a file
 };
 
@@ -217,6 +218,7 @@ const std::map<std::string, GateType> GATE_TYPE_MAP = {
     {"swap", GateType::SWAP},
     {"swap0q", GateType::SWAP_0Q},
     {"cqnot", GateType::CQNOT},
+    {"qft", GateType::QFT},
     {"file", GateType::FILE}
 };
 

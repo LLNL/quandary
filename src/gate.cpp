@@ -576,6 +576,9 @@ Gate* initTargetGate(GateType target_gate, const std::string& file, const std::v
     case GateType::CQNOT:
       mygate = new CQNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
       break;
+    case GateType::QFT:
+      mygate = new QFT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+      break;
     case GateType::FILE:
       mygate = new FromFile(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, file, quietmode);
       break;

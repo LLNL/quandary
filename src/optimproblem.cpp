@@ -83,8 +83,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   gamma_penalty_dpdm = penalty_config.penalty_dpdm;
   gamma_penalty_variation = penalty_config.penalty_variation;
 
-  gamma_tik_interpolate = config.getOptimRegulInterpolate();
-
+  gamma_tik_interpolate = config.getOptimRegulTik0();
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
     if (mpirank_world == 0 && !quietmode) {
