@@ -333,7 +333,6 @@ class Config {
     double getOptimRegul() const { return optim_regul; }
     const OptimPenalty& getOptimPenalty() const { return penalty; }
     bool getOptimRegulTik0() const { return optim_regul_tik0; }
-    bool getOptimRegulInterpolate() const { return false; } // Deprecated - always return false
 
     const std::string& getDataDir() const { return datadir; }
     const std::vector<std::vector<OutputType>>& getOutput() const { return output_to_write; }
