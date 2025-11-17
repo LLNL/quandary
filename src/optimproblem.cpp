@@ -106,7 +106,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   int col = 0;
   for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
     for (size_t iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
-      double boundval = config.getOscillator(iosc).control_bounds[iseg];
+      double boundval = config.getControlBound(iosc, iseg);
       // Scale bounds by the number of carrier waves, and convert to radians */
       boundval = boundval / (sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies());
       boundval = boundval * 2.0*M_PI;

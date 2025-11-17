@@ -165,10 +165,9 @@ int main(int argc,char **argv)
 
   // Get control segment types, carrierwaves and control initialization
   for (size_t i = 0; i < nlevels.size(); i++){
-    const auto& oscillator = config.getOscillator(i);
-    const std::vector<double>& carrier_freq = oscillator.carrier_frequencies;
-    const auto& control_seg = oscillator.control_segments;
-    const auto& control_init = oscillator.control_initializations;
+    const std::vector<double>& carrier_freq = config.getCarrierFrequencies(i);
+    const auto& control_seg = config.getControlSegments(i);
+    const auto& control_init = config.getControlInitializations(i);
 
     // Create oscillator 
     oscil_vec[i] = new Oscillator(config, i, nlevels, control_seg, control_init, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype, rand_engine);

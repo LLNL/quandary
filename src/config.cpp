@@ -252,16 +252,19 @@ Config::Config(
     // Parse optimization settings
     toml::table optimization = table.contains("optimization") ? *table["optimization"].as_table() : toml::table{};
 
-    oscillator_optimization.resize(num_osc);
+    control_segments.resize(num_osc);
+    control_initializations.resize(num_osc);
+    control_bounds.resize(num_osc);
+    carrier_frequencies.resize(num_osc);
 
-    std::map<size_t, std::vector<ControlSegment>> control_segments;
+    std::map<size_t, std::vector<ControlSegment>> control_segments_parsed;
     auto control_seg_node = optimization["control_segments"];
     if (control_seg_node.is_array_of_tables()) {
       for (auto& elem : *control_seg_node.as_array()) {
         auto table = *elem.as_table();
         size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
         ControlSegment control_seg = parseControlSegment(table);
-        control_segments[oscilID].push_back(control_seg);
+        control_segments_parsed[oscilID].push_back(control_seg);
       }
     }
 
@@ -308,7 +311,7 @@ Config::Config(
         (*control_bounds_opt)[oscilID] = validators::vector_field<double>(table, "values").required().get();
       }
     }
-    auto control_bounds = parseIndexedToVectorVector(control_bounds_opt);
+    auto control_bounds_parsed = parseIndexedToVectorVector(control_bounds_opt);
 
     std::optional<std::map<int, std::vector<double>>> carrier_freq_opt = std::nullopt;
     auto carrier_freq_node = optimization["carrier_frequency"];
@@ -326,26 +329,26 @@ Config::Config(
     std::vector<ControlSegmentInitialization> default_initialization = {ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, 0.0, 0.0}};
     std::vector<double> default_bounds = {10000.0};
     std::vector<double> default_freq = {0.0};
-    for (size_t i = 0; i < oscillator_optimization.size(); i++) {
-      if (control_segments.find(i) != control_segments.end()) {
-        oscillator_optimization[i].control_segments = control_segments[i];
-        default_segments = control_segments[i];
+    for (size_t i = 0; i < control_segments.size(); i++) {
+      if (control_segments_parsed.find(i) != control_segments_parsed.end()) {
+        control_segments[i] = control_segments_parsed[i];
+        default_segments = control_segments_parsed[i];
       } else {
-        oscillator_optimization[i].control_segments = default_segments;
+        control_segments[i] = default_segments;
       }
       if (osc_inits.find(i) != osc_inits.end()) {
-        oscillator_optimization[i].control_initializations = osc_inits[i];
+        control_initializations[i] = osc_inits[i];
         default_initialization = osc_inits[i];
       } else {
-        oscillator_optimization[i].control_initializations = default_initialization;
+        control_initializations[i] = default_initialization;
       }
-      size_t num_segments = oscillator_optimization[i].control_segments.size();
+      size_t num_segments = control_segments[i].size();
 
-      oscillator_optimization[i].control_bounds = !control_bounds[i].empty() ? control_bounds[i] : default_bounds;
-      copyLast(oscillator_optimization[i].control_bounds, num_segments);
+      control_bounds[i] = !control_bounds_parsed[i].empty() ? control_bounds_parsed[i] : default_bounds;
+      copyLast(control_bounds[i], num_segments);
 
-      oscillator_optimization[i].carrier_frequencies = !carrier_freq[i].empty() ? carrier_freq[i] : default_freq;
-      copyLast(oscillator_optimization[i].carrier_frequencies, num_segments);
+      carrier_frequencies[i] = !carrier_freq[i].empty() ? carrier_freq[i] : default_freq;
+      copyLast(carrier_frequencies[i], num_segments);
     }
 
     control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
@@ -544,12 +547,9 @@ Config::Config(
   hamiltonian_file_Hc = settings.hamiltonian_file_Hc;
 
   // Control and optimization parameters
-  oscillator_optimization.resize(num_osc);
+  carrier_frequencies.resize(num_osc);
 
-  auto control_segments = parseControlSegments(settings.indexed_control_segments);
-  for (size_t i = 0; i < oscillator_optimization.size(); i++) {
-    oscillator_optimization[i].control_segments = control_segments[i];
-  }
+  control_segments = parseControlSegments(settings.indexed_control_segments);
 
   // Control initialization
   if (settings.indexed_control_init.has_value()) {
@@ -557,10 +557,7 @@ Config::Config(
     if (init_map.find(0) != init_map.end() && !init_map[0].empty() && init_map[0][0].filename.has_value()) {
       control_initialization_file = init_map[0][0].filename;
     } else {
-      auto control_initializations = parseControlInitializations(settings.indexed_control_init);
-      for (size_t i = 0; i < oscillator_optimization.size(); i++) {
-        oscillator_optimization[i].control_initializations = control_initializations[i];
-      }
+      control_initializations = parseControlInitializations(settings.indexed_control_init);
     }
   }
 
@@ -800,9 +797,9 @@ void Config::printConfig() const {
   log << "optim_regul_tik0 = " << (optim_regul_tik0 ? "true" : "false") << "\n";
 
     // Control segments as array of tables
-  for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
-    if (!oscillator_optimization[i].control_segments.empty()) {
-      const auto& seg = oscillator_optimization[i].control_segments[0];
+  for (size_t i = 0; i < control_segments.size(); ++i) {
+    if (!control_segments[i].empty()) {
+      const auto& seg = control_segments[i][0];
       log << "[[optimization.control_segments]]\n";
       log << "oscID = " << i << "\n";
       log << "type = \"" << enumToString(seg.type, CONTROL_TYPE_MAP) << "\"\n";
@@ -833,9 +830,9 @@ void Config::printConfig() const {
 
   // Control initialization
   if (!control_initialization_file.has_value()) {
-    for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
-      if (!oscillator_optimization[i].control_initializations.empty()) {
-        const auto& init = oscillator_optimization[i].control_initializations[0];
+    for (size_t i = 0; i < control_initializations.size(); ++i) {
+      if (!control_initializations[i].empty()) {
+        const auto& init = control_initializations[i][0];
         log << "[[optimization.control_initialization]]\n";
         log << "oscID = " << i << "\n";
         log << init.toString() << "\n\n";
@@ -844,20 +841,20 @@ void Config::printConfig() const {
   }
 
   // Control bounds as array of tables
-  for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
-    if (!oscillator_optimization[i].control_bounds.empty()) {
+  for (size_t i = 0; i < control_bounds.size(); ++i) {
+    if (!control_bounds[i].empty()) {
       log << "[[optimization.control_bounds]]\n";
       log << "oscID = " << i << "\n";
-      log << "values = " << printVector(oscillator_optimization[i].control_bounds) << "\n\n";
+      log << "values = " << printVector(control_bounds[i]) << "\n\n";
     }
   }
 
   // Carrier frequencies as array of tables
-  for (size_t i = 0; i < oscillator_optimization.size(); ++i) {
-    if (!oscillator_optimization[i].carrier_frequencies.empty()) {
+  for (size_t i = 0; i < carrier_frequencies.size(); ++i) {
+    if (!carrier_frequencies[i].empty()) {
       log << "[[optimization.carrier_frequency]]\n";
       log << "oscID = " << i << "\n";
-      log << "values = " << printVector(oscillator_optimization[i].carrier_frequencies) << "\n\n";
+      log << "values = " << printVector(carrier_frequencies[i]) << "\n\n";
     }
   }
 
@@ -1192,12 +1189,13 @@ ControlSegmentInitialization Config::parseControlInitialization(const toml::tabl
 }
 
 void Config::convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed) {
+  control_bounds.resize(control_segments.size());
   if (indexed.has_value()) {
     for (const auto& [osc_idx, bounds] : *indexed) {
-      if (static_cast<size_t>(osc_idx) < oscillator_optimization.size()) {
-        size_t num_segments = oscillator_optimization[osc_idx].control_segments.size();
-        oscillator_optimization[osc_idx].control_bounds = bounds;
-        copyLast(oscillator_optimization[osc_idx].control_bounds, num_segments);
+      if (static_cast<size_t>(osc_idx) < control_segments.size()) {
+        size_t num_segments = control_segments[osc_idx].size();
+        control_bounds[osc_idx] = bounds;
+        copyLast(control_bounds[osc_idx], num_segments);
       }
     }
   }
@@ -1206,8 +1204,8 @@ void Config::convertIndexedControlBounds(const std::optional<std::map<int, std::
 void Config::convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed) {
   if (indexed.has_value()) {
     for (const auto& [osc_idx, freqs] : *indexed) {
-      if (static_cast<size_t>(osc_idx) < oscillator_optimization.size()) {
-        oscillator_optimization[osc_idx].carrier_frequencies = freqs;
+      if (static_cast<size_t>(osc_idx) < carrier_frequencies.size()) {
+        carrier_frequencies[osc_idx] = freqs;
       }
     }
   }

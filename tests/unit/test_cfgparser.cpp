@@ -311,12 +311,10 @@ TEST_F(CfgParserTest, ControlSegments_Spline0) {
     control_segments0 = spline0, 150, 0.0, 1.0
   )", &log, true);
 
-  EXPECT_EQ(config.getOscillators().size(), 1);
-
-  const auto& osc0 = config.getOscillator(0);
-  EXPECT_EQ(osc0.control_segments.size(), 1);
-  EXPECT_EQ(osc0.control_segments[0].type, ControlType::BSPLINE0);
-  SplineParams params0 = std::get<SplineParams>(osc0.control_segments[0].params);
+  const auto& control_seg0 = config.getControlSegments(0);
+  EXPECT_EQ(control_seg0.size(), 1);
+  EXPECT_EQ(control_seg0[0].type, ControlType::BSPLINE0);
+  SplineParams params0 = std::get<SplineParams>(control_seg0[0].params);
   EXPECT_EQ(params0.nspline, 150);
   EXPECT_DOUBLE_EQ(params0.tstart, 0.0);
   EXPECT_DOUBLE_EQ(params0.tstop, 1.0);
@@ -331,29 +329,27 @@ TEST_F(CfgParserTest, ControlSegments_Spline) {
     control_segments1 = spline, 20, 0.0, 1.0, spline, 30, 1.0, 2.0
   )", &log, true);
 
-  EXPECT_EQ(config.getOscillators().size(), 2);
-
   // Check first oscillator with one segment
-  const auto& osc0 = config.getOscillator(0);
-  EXPECT_EQ(osc0.control_segments.size(), 1);
-  EXPECT_EQ(osc0.control_segments[0].type, ControlType::BSPLINE);
-  SplineParams params0 = std::get<SplineParams>(osc0.control_segments[0].params);
+  const auto& control_seg0 = config.getControlSegments(0);
+  EXPECT_EQ(control_seg0.size(), 1);
+  EXPECT_EQ(control_seg0[0].type, ControlType::BSPLINE);
+  SplineParams params0 = std::get<SplineParams>(control_seg0[0].params);
   EXPECT_EQ(params0.nspline, 10);
   EXPECT_DOUBLE_EQ(params0.tstart, 0.0);
   EXPECT_DOUBLE_EQ(params0.tstop, config.getNTime() * config.getDt());
 
   // Check second oscillator with two segments
-  const auto& osc1 = config.getOscillator(1);
-  EXPECT_EQ(osc1.control_segments.size(), 2);
+  const auto& control_seg1 = config.getControlSegments(1);
+  EXPECT_EQ(control_seg1.size(), 2);
 
-  EXPECT_EQ(osc1.control_segments[0].type, ControlType::BSPLINE);
-  SplineParams params1 = std::get<SplineParams>(osc1.control_segments[0].params);
+  EXPECT_EQ(control_seg1[0].type, ControlType::BSPLINE);
+  SplineParams params1 = std::get<SplineParams>(control_seg1[0].params);
   EXPECT_EQ(params1.nspline, 20);
   EXPECT_DOUBLE_EQ(params1.tstart, 0.0);
   EXPECT_DOUBLE_EQ(params1.tstop, 1.0);
 
-  EXPECT_EQ(osc1.control_segments[1].type, ControlType::BSPLINE);
-  SplineParams params2 = std::get<SplineParams>(osc1.control_segments[1].params);
+  EXPECT_EQ(control_seg1[1].type, ControlType::BSPLINE);
+  SplineParams params2 = std::get<SplineParams>(control_seg1[1].params);
   EXPECT_EQ(params2.nspline, 30);
   EXPECT_DOUBLE_EQ(params2.tstart, 1.0);
   EXPECT_DOUBLE_EQ(params2.tstop, 2.0);
@@ -368,13 +364,11 @@ TEST_F(CfgParserTest, ControlSegments_Step) {
     control_segments1 = step, 0.1, 0.2, 0.3
   )", &log, true);
 
-  EXPECT_EQ(config.getOscillators().size(), 2);
-
   // Check first oscillator
-  const auto& osc0 = config.getOscillator(0);
-  EXPECT_EQ(osc0.control_segments.size(), 1);
-  EXPECT_EQ(osc0.control_segments[0].type, ControlType::STEP);
-  StepParams params0 = std::get<StepParams>(osc0.control_segments[0].params);
+  const auto& control_seg0 = config.getControlSegments(0);
+  EXPECT_EQ(control_seg0.size(), 1);
+  EXPECT_EQ(control_seg0[0].type, ControlType::STEP);
+  StepParams params0 = std::get<StepParams>(control_seg0[0].params);
   EXPECT_EQ(params0.step_amp1, 0.1);
   EXPECT_DOUBLE_EQ(params0.step_amp2, 0.2);
   EXPECT_DOUBLE_EQ(params0.tramp, 0.3);
@@ -382,10 +376,10 @@ TEST_F(CfgParserTest, ControlSegments_Step) {
   EXPECT_DOUBLE_EQ(params0.tstop, 0.5);
 
   // Check second oscillator
-  const auto& osc1 = config.getOscillator(1);
-  EXPECT_EQ(osc1.control_segments.size(), 1);
-  EXPECT_EQ(osc1.control_segments[0].type, ControlType::STEP);
-  StepParams params1 = std::get<StepParams>(osc1.control_segments[0].params);
+  const auto& control_seg1 = config.getControlSegments(1);
+  EXPECT_EQ(control_seg1.size(), 1);
+  EXPECT_EQ(control_seg1[0].type, ControlType::STEP);
+  StepParams params1 = std::get<StepParams>(control_seg1[0].params);
   EXPECT_EQ(params1.step_amp1, 0.1);
   EXPECT_DOUBLE_EQ(params1.step_amp2, 0.2);
   EXPECT_DOUBLE_EQ(params1.tramp, 0.3);
@@ -402,34 +396,32 @@ TEST_F(CfgParserTest, ControlSegments_Defaults) {
     control_bounds1 = 2.0
   )", &log, true);
 
-  // Verify control segments were parsed correctly
-  EXPECT_EQ(config.getOscillators().size(), 3); // 2 oscillators
-
   // Check first oscillator has default settings
-  const auto& osc0 = config.getOscillator(0);
-  EXPECT_EQ(osc0.control_segments.size(), 1);
-  EXPECT_EQ(osc0.control_segments[0].type, ControlType::BSPLINE);
-  SplineParams params0 = std::get<SplineParams>(osc0.control_segments[0].params);
+  const auto& control_seg0 = config.getControlSegments(0);
+  EXPECT_EQ(control_seg0.size(), 1);
+  EXPECT_EQ(control_seg0[0].type, ControlType::BSPLINE);
+  SplineParams params0 = std::get<SplineParams>(control_seg0[0].params);
   EXPECT_EQ(params0.nspline, 10);
   EXPECT_DOUBLE_EQ(params0.tstart, 0.0);
   EXPECT_DOUBLE_EQ(params0.tstop, config.getNTime() * config.getDt());
 
   // Check second oscillator has given settings
-  const auto& osc1 = config.getOscillator(1);
-  EXPECT_EQ(osc1.control_segments.size(), 1);
-  EXPECT_EQ(osc1.control_segments[0].type, ControlType::BSPLINE0);
-  EXPECT_EQ(osc1.control_bounds.size(), 1);
-  EXPECT_DOUBLE_EQ(osc1.control_bounds[0], 2.0);
-  SplineParams params1 = std::get<SplineParams>(osc1.control_segments[0].params);
+  const auto& control_seg1 = config.getControlSegments(1);
+  const auto& control_bounds1 = config.getControlBounds(1);
+  EXPECT_EQ(control_seg1.size(), 1);
+  EXPECT_EQ(control_seg1[0].type, ControlType::BSPLINE0);
+  EXPECT_EQ(control_bounds1.size(), 1);
+  EXPECT_DOUBLE_EQ(control_bounds1[0], 2.0);
+  SplineParams params1 = std::get<SplineParams>(control_seg1[0].params);
   EXPECT_EQ(params1.nspline, 150);
   EXPECT_DOUBLE_EQ(params1.tstart, 0.0);
   EXPECT_DOUBLE_EQ(params1.tstop, 1.0);
 
   // Check third oscillator defaults to the second's settings
-  const auto& osc2 = config.getOscillator(2);
-  EXPECT_EQ(osc2.control_segments.size(), 1);
-  EXPECT_EQ(osc2.control_segments[0].type, ControlType::BSPLINE0);
-  SplineParams params2 = std::get<SplineParams>(osc2.control_segments[0].params);
+  const auto& control_seg2 = config.getControlSegments(2);
+  EXPECT_EQ(control_seg2.size(), 1);
+  EXPECT_EQ(control_seg2[0].type, ControlType::BSPLINE0);
+  SplineParams params2 = std::get<SplineParams>(control_seg2[0].params);
   EXPECT_EQ(params2.nspline, 150);
   EXPECT_DOUBLE_EQ(params2.tstart, 0.0);
   EXPECT_DOUBLE_EQ(params2.tstop, 1.0);
@@ -443,28 +435,26 @@ TEST_F(CfgParserTest, ControlInitialization_Defaults) {
     control_initialization1 = random, 2.0
   )", &log, true);
 
-  EXPECT_EQ(config.getOscillators().size(), 3);
-
   // Check first oscillator has default settings
-  const auto& osc0 = config.getOscillator(0);
-  EXPECT_EQ(osc0.control_initializations.size(), 1);
-  EXPECT_EQ(osc0.control_initializations[0].type, ControlSegmentInitType::CONSTANT);
-  EXPECT_DOUBLE_EQ(osc0.control_initializations[0].amplitude, 0.0);
-  EXPECT_DOUBLE_EQ(osc0.control_initializations[0].phase, 0.0);
+  const auto& control_init0 = config.getControlInitializations(0);
+  EXPECT_EQ(control_init0.size(), 1);
+  EXPECT_EQ(control_init0[0].type, ControlSegmentInitType::CONSTANT);
+  EXPECT_DOUBLE_EQ(control_init0[0].amplitude, 0.0);
+  EXPECT_DOUBLE_EQ(control_init0[0].phase, 0.0);
 
   // Check second oscillator has given settings
-  const auto& osc1 = config.getOscillator(1);
-  EXPECT_EQ(osc1.control_initializations.size(), 1);
-  EXPECT_EQ(osc1.control_initializations[0].type, ControlSegmentInitType::RANDOM);
-  EXPECT_DOUBLE_EQ(osc1.control_initializations[0].amplitude, 2.0);
-  EXPECT_DOUBLE_EQ(osc1.control_initializations[0].phase, 0.0);
+  const auto& control_init1 = config.getControlInitializations(1);
+  EXPECT_EQ(control_init1.size(), 1);
+  EXPECT_EQ(control_init1[0].type, ControlSegmentInitType::RANDOM);
+  EXPECT_DOUBLE_EQ(control_init1[0].amplitude, 2.0);
+  EXPECT_DOUBLE_EQ(control_init1[0].phase, 0.0);
 
   // Check third oscillator defaults to the second's settings
-  const auto& osc2 = config.getOscillator(2);
-  EXPECT_EQ(osc2.control_initializations.size(), 1);
-  EXPECT_EQ(osc2.control_initializations[0].type, ControlSegmentInitType::RANDOM);
-  EXPECT_DOUBLE_EQ(osc2.control_initializations[0].amplitude, 2.0);
-  EXPECT_DOUBLE_EQ(osc2.control_initializations[0].phase, 0.0);
+  const auto& control_init2 = config.getControlInitializations(2);
+  EXPECT_EQ(control_init2.size(), 1);
+  EXPECT_EQ(control_init2[0].type, ControlSegmentInitType::RANDOM);
+  EXPECT_DOUBLE_EQ(control_init2[0].amplitude, 2.0);
+  EXPECT_DOUBLE_EQ(control_init2[0].phase, 0.0);
 }
 
 TEST_F(CfgParserTest, ControlInitialization) {
@@ -479,46 +469,43 @@ TEST_F(CfgParserTest, ControlInitialization) {
     control_initialization4 = random, 5.0, 5.1, constant, 6.0, 6.1
   )", &log, true);
 
-  // Verify control segments were parsed correctly
-  EXPECT_EQ(config.getOscillators().size(), 5);
-
   // Check first oscillator
-  const auto& osc0 = config.getOscillator(0);
-  EXPECT_EQ(osc0.control_initializations.size(), 1);
-  EXPECT_EQ(osc0.control_initializations[0].type, ControlSegmentInitType::CONSTANT);
-  EXPECT_DOUBLE_EQ(osc0.control_initializations[0].amplitude, 1.0);
-  EXPECT_DOUBLE_EQ(osc0.control_initializations[0].phase, 1.1);
+  const auto& control_init0 = config.getControlInitializations(0);
+  EXPECT_EQ(control_init0.size(), 1);
+  EXPECT_EQ(control_init0[0].type, ControlSegmentInitType::CONSTANT);
+  EXPECT_DOUBLE_EQ(control_init0[0].amplitude, 1.0);
+  EXPECT_DOUBLE_EQ(control_init0[0].phase, 1.1);
 
   // Check second oscillator
-  const auto& osc1 = config.getOscillator(1);
-  EXPECT_EQ(osc1.control_initializations.size(), 1);
-  EXPECT_EQ(osc1.control_initializations[0].type, ControlSegmentInitType::CONSTANT);
-  EXPECT_DOUBLE_EQ(osc1.control_initializations[0].amplitude, 2.0);
-  EXPECT_DOUBLE_EQ(osc1.control_initializations[0].phase, 0.0);
+  const auto& control_init1 = config.getControlInitializations(1);
+  EXPECT_EQ(control_init1.size(), 1);
+  EXPECT_EQ(control_init1[0].type, ControlSegmentInitType::CONSTANT);
+  EXPECT_DOUBLE_EQ(control_init1[0].amplitude, 2.0);
+  EXPECT_DOUBLE_EQ(control_init1[0].phase, 0.0);
 
   // Check third oscillator
-  const auto& osc2 = config.getOscillator(2);
-  EXPECT_EQ(osc2.control_initializations.size(), 1);
-  EXPECT_EQ(osc2.control_initializations[0].type, ControlSegmentInitType::RANDOM);
-  EXPECT_DOUBLE_EQ(osc2.control_initializations[0].amplitude, 3.0);
-  EXPECT_DOUBLE_EQ(osc2.control_initializations[0].phase, 3.1);
+  const auto& control_init2 = config.getControlInitializations(2);
+  EXPECT_EQ(control_init2.size(), 1);
+  EXPECT_EQ(control_init2[0].type, ControlSegmentInitType::RANDOM);
+  EXPECT_DOUBLE_EQ(control_init2[0].amplitude, 3.0);
+  EXPECT_DOUBLE_EQ(control_init2[0].phase, 3.1);
 
   // Check fourth oscillator
-  const auto& osc3 = config.getOscillator(3);
-  EXPECT_EQ(osc3.control_initializations.size(), 1);
-  EXPECT_EQ(osc3.control_initializations[0].type, ControlSegmentInitType::RANDOM);
-  EXPECT_DOUBLE_EQ(osc3.control_initializations[0].amplitude, 4.0);
-  EXPECT_DOUBLE_EQ(osc3.control_initializations[0].phase, 0.0);
+  const auto& control_init3 = config.getControlInitializations(3);
+  EXPECT_EQ(control_init3.size(), 1);
+  EXPECT_EQ(control_init3[0].type, ControlSegmentInitType::RANDOM);
+  EXPECT_DOUBLE_EQ(control_init3[0].amplitude, 4.0);
+  EXPECT_DOUBLE_EQ(control_init3[0].phase, 0.0);
 
   // Check fifth oscillator with two segments
-  const auto& osc4 = config.getOscillator(4);
-  EXPECT_EQ(osc4.control_initializations.size(), 2);
-  EXPECT_EQ(osc4.control_initializations[0].type, ControlSegmentInitType::RANDOM);
-  EXPECT_DOUBLE_EQ(osc4.control_initializations[0].amplitude, 5.0);
-  EXPECT_DOUBLE_EQ(osc4.control_initializations[0].phase, 5.1);
-  EXPECT_EQ(osc4.control_initializations[1].type, ControlSegmentInitType::CONSTANT);
-  EXPECT_DOUBLE_EQ(osc4.control_initializations[1].amplitude, 6.0);
-  EXPECT_DOUBLE_EQ(osc4.control_initializations[1].phase, 6.1);
+  const auto& control_init4 = config.getControlInitializations(4);
+  EXPECT_EQ(control_init4.size(), 2);
+  EXPECT_EQ(control_init4[0].type, ControlSegmentInitType::RANDOM);
+  EXPECT_DOUBLE_EQ(control_init4[0].amplitude, 5.0);
+  EXPECT_DOUBLE_EQ(control_init4[0].phase, 5.1);
+  EXPECT_EQ(control_init4[1].type, ControlSegmentInitType::CONSTANT);
+  EXPECT_DOUBLE_EQ(control_init4[1].amplitude, 6.0);
+  EXPECT_DOUBLE_EQ(control_init4[1].phase, 6.1);
 }
 
 TEST_F(CfgParserTest, ControlInitialization_File) {
@@ -542,14 +529,12 @@ TEST_F(CfgParserTest, ControlBounds) {
     control_bounds0 = 1.0, 2.0
   )", &log, true);
 
-  EXPECT_EQ(config.getOscillators().size(), 1);
-
   // Check control bounds for the three segments
-  const auto& osc0 = config.getOscillator(0);
-  EXPECT_EQ(osc0.control_bounds.size(), 3);
-  EXPECT_EQ(osc0.control_bounds[0], 1.0);
-  EXPECT_EQ(osc0.control_bounds[1], 2.0);
-  EXPECT_EQ(osc0.control_bounds[2], 2.0); // Use last bound for extra segments
+  const auto& control_bounds0 = config.getControlBounds(0);
+  EXPECT_EQ(control_bounds0.size(), 3);
+  EXPECT_EQ(control_bounds0[0], 1.0);
+  EXPECT_EQ(control_bounds0[1], 2.0);
+  EXPECT_EQ(control_bounds0[2], 2.0); // Use last bound for extra segments
 }
 
 TEST_F(CfgParserTest, CarrierFrequencies) {
@@ -560,12 +545,10 @@ TEST_F(CfgParserTest, CarrierFrequencies) {
     carrier_frequency0 = 1.0, 2.0
   )", &log, true);
 
-  EXPECT_EQ(config.getOscillators().size(), 1);
-
-  const auto& osc0 = config.getOscillator(0);
-  EXPECT_EQ(osc0.carrier_frequencies.size(), 2);
-  EXPECT_EQ(osc0.carrier_frequencies[0], 1.0);
-  EXPECT_EQ(osc0.carrier_frequencies[1], 2.0);
+  const auto& carrier_freq0 = config.getCarrierFrequencies(0);
+  EXPECT_EQ(carrier_freq0.size(), 2);
+  EXPECT_EQ(carrier_freq0[0], 1.0);
+  EXPECT_EQ(carrier_freq0[1], 2.0);
 }
 
 TEST_F(CfgParserTest, OptimTarget_GateType) {

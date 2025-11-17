@@ -198,18 +198,6 @@ struct ControlSegmentInitialization {
   std::string toString() const;
 };
 
-// TODO remove carrier_frequencies? the others are per segment?
-/**
- * @brief Per-oscillator optimization configuration settings.
- *
- * Groups all optimization-related settings for a single oscillator.
- */
-struct OscillatorOptimization {
-  std::vector<ControlSegment> control_segments;                    ///< Control segments for this oscillator
-  std::vector<ControlSegmentInitialization> control_initializations; ///< Control initializations for this oscillator for each segment (if not read from file)
-  std::vector<double> control_bounds;                              ///< Control bounds for this oscillator for each segment
-  std::vector<double> carrier_frequencies;                         ///< Carrier frequencies for this oscillator
-};
 /**
  * @brief Final validated configuration class.
  *
@@ -246,7 +234,10 @@ class Config {
     // Optimization options
     bool control_enforceBC = true;  ///< Decide whether control pulses should start and end at zero
     std::optional<std::string> control_initialization_file;  ///< Global control initialization file for all oscillators
-    std::vector<OscillatorOptimization> oscillator_optimization;  ///< Optimization configuration for each oscillator
+    std::vector<std::vector<ControlSegment>> control_segments;  ///< Control segments for each oscillator
+    std::vector<std::vector<ControlSegmentInitialization>> control_initializations;  ///< Control initializations for each oscillator
+    std::vector<std::vector<double>> control_bounds;  ///< Control bounds for each oscillator
+    std::vector<std::vector<double>> carrier_frequencies;  ///< Carrier frequencies for each oscillator
     OptimTargetSettings optim_target;  ///< Grouped optimization target configuration
     std::vector<double> gate_rot_freq = std::vector<double>{0.0};  ///< Frequency of rotation of the target gate, for each oscillator (GHz)
     ObjectiveType optim_objective = ObjectiveType::JFROBENIUS;  ///< Objective function measure
@@ -315,16 +306,14 @@ class Config {
     const std::optional<std::string>& getHamiltonianFileHsys() const { return hamiltonian_file_Hsys; }
     const std::optional<std::string>& getHamiltonianFileHc() const { return hamiltonian_file_Hc; }
 
-    const std::vector<OscillatorOptimization>& getOscillators() const { return oscillator_optimization; } // TODO rename
-    const OscillatorOptimization& getOscillator(size_t i) const { return oscillator_optimization[i]; }
-    const std::vector<ControlSegment>& getControlSegments(size_t i_osc) const { return oscillator_optimization[i_osc].control_segments; }
+    const std::vector<ControlSegment>& getControlSegments(size_t i_osc) const { return control_segments[i_osc]; }
     bool getControlEnforceBC() const { return control_enforceBC; }
-    const std::vector<ControlSegmentInitialization>& getControlInitializations(size_t i_osc) const { return oscillator_optimization[i_osc].control_initializations; }
+    const std::vector<ControlSegmentInitialization>& getControlInitializations(size_t i_osc) const { return control_initializations[i_osc]; }
     const std::optional<std::string> getControlInitializationFile() const { return control_initialization_file; }
-    const std::vector<double>& getControlBounds(size_t i_osc) const { return oscillator_optimization[i_osc].control_bounds; }
-    double getControlBound(size_t i_osc, size_t i_seg) const { return oscillator_optimization[i_osc].control_bounds[i_seg]; }
-    const std::vector<double>& getCarrierFrequencies(size_t i_osc) const { return oscillator_optimization[i_osc].carrier_frequencies; }
-    double getCarrierFrequency(size_t i_osc, size_t i_seg) const { return oscillator_optimization[i_osc].carrier_frequencies[i_seg]; }
+    const std::vector<double>& getControlBounds(size_t i_osc) const { return control_bounds[i_osc]; }
+    double getControlBound(size_t i_osc, size_t i_seg) const { return control_bounds[i_osc][i_seg]; }
+    const std::vector<double>& getCarrierFrequencies(size_t i_osc) const { return carrier_frequencies[i_osc]; }
+    double getCarrierFrequency(size_t i_osc, size_t i_seg) const { return carrier_frequencies[i_osc][i_seg]; }
     const OptimTargetSettings& getOptimTarget() const { return optim_target; }
     const std::vector<double>& getGateRotFreq() const { return gate_rot_freq; }
     ObjectiveType getOptimObjective() const { return optim_objective; }
