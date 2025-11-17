@@ -10,8 +10,7 @@ rotfreq = [4.1, 4.2, 4.3, 4.4]
 collapse_type = "none"
 decay_time = [0.0, 0.0, 0.0, 0.0]
 dephase_time = [0.0, 0.0, 0.0, 0.0]
-initial_condition = {type = "pure", levels = [1, 0]}
-rand_seed = 1234
+initial_condition = {type = "pure", levels = [1, 0, 0, 0]}
 
 [optimization]
 control_enforceBC = false
@@ -112,6 +111,7 @@ usematfree = false
 linearsolver_type = "gmres"
 linearsolver_maxiter = 20
 timestepper = "IMR"
+rand_seed = 1234
 
 [[output.write]]
 oscID = 0

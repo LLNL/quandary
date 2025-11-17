@@ -1,17 +1,23 @@
 [system]
-nlevels = 3
-nessential = 2
+nlevels = [3]
+nessential = [2]
 ntime = 10000
 dt = 0.0001
-transfreq = 4416.66
-selfkerr = 230.56
-crosskerr = 0.0
-Jkl = 0.0
-rotfreq = 4416.66
+transfreq = [4416.66]
+selfkerr = [230.56]
+crosskerr = [0.0]
+Jkl = [0.0]
+rotfreq = [4416.66]
 collapse_type = "both"
-decay_time = 20.0
-dephase_time = 26.0
+decay_time = [20.0]
+dephase_time = [26.0]
 initial_condition = {type = "basis"}
+
+[[system.apply_pipulse]]
+oscID = 0
+tstart = 0.01
+tstop = 0.8
+amp = 15.10381
 
 [optimization]
 control_enforceBC = true
@@ -47,7 +53,7 @@ amplitude = 0.0
 
 [[optimization.carrier_frequency]]
 oscID = 0
-values = 0.0
+values = [0.0]
 
 [output]
 datadir = "data_out"

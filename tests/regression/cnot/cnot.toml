@@ -1,5 +1,4 @@
 [system]
-rand_seed = 1234
 nlevels = [2, 2]
 ntime = 1000
 dt = 0.1
@@ -13,11 +12,9 @@ decay_time = [0.0, 0.0]
 dephase_time = [0.0, 0.0]
 crosskerr = [0.1]
 Jkl = [0.0]
-hamiltonian_file = "none"
 
 [optimization]
 control_enforceBC = false
-optim_monitor_frequency = 1
 optim_target = {target_type = "gate", gate_type = "cnot"}
 gate_rot_freq = [4.10595, 4.81526]
 optim_objective = "Jtrace"
@@ -76,9 +73,11 @@ runtype = "optimization"
 usematfree = true
 datadir = "./data_out"
 output_frequency = 1
+optim_monitor_frequency = 1
 linearsolver_type = "gmres"
 linearsolver_maxiter = 20
 timestepper = "IMR"
+rand_seed = 1234
 
 [[output.write]]
 oscID = 0

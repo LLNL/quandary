@@ -10,8 +10,7 @@ rotfreq = [4416.66, 6840.815]
 collapse_type = "both"
 decay_time = [80.0, 0.3892042]
 dephase_time = [26.0, 5.0]
-initial_condition = {type = "diagonal"}
-rand_seed = 1234
+initial_condition = {type = "diagonal", oscIDs = [0]}
 
 [optimization]
 control_enforceBC = true
@@ -28,7 +27,6 @@ optim_penalty = 1.0
 optim_penalty_param = 0.5
 optim_penalty_dpdm = 0.0
 optim_penalty_energy = 0.1
-optim_monitor_frequency = 1
 
 [[optimization.control_segments]]
 oscID = 0
@@ -69,10 +67,12 @@ values = [0.0, 1.176]
 [output]
 datadir = "data_out"
 output_frequency = 100
+optim_monitor_frequency = 1
 runtype = "simulation"
 usematfree = true
 linearsolver_type = "gmres"
 linearsolver_maxiter = 20
+rand_seed = 1234
 
 [[output.write]]
 oscID = 0

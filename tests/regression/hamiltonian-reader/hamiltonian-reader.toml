@@ -10,7 +10,8 @@ crosskerr = [0.0]
 Jkl = [0.0]
 collapse_type = "none"
 initial_condition = {type = "diagonal"}
-rand_seed = 1234
+hamiltonian_file_Hsys = "hamiltonian_Hsys.dat"
+hamiltonian_file_Hc = "hamiltonian_Hc.dat"
 
 [optimization]
 control_enforceBC = false
@@ -24,7 +25,7 @@ optim_ftol = 0.0001
 optim_inftol = 1e-05
 optim_maxiter = 200
 optim_regul = 0.0001
-optim_regul_interpolate = false
+optim_regul_tik0 = false
 optim_penalty = 0.1
 optim_penalty_param = 0.0
 optim_penalty_dpdm = 0.0
@@ -76,6 +77,7 @@ usematfree = false
 linearsolver_type = "gmres"
 linearsolver_maxiter = 20
 timestepper = "IMR"
+rand_seed = 1234
 
 [[output.write]]
 oscID = 0

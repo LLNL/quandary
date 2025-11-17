@@ -12,7 +12,8 @@ collapse_type = "both"
 decay_time = [10.0, 20.0]
 dephase_time = [30.0, 40.0]
 initial_condition = {type = "diagonal"}
-rand_seed = 1234
+hamiltonian_file_Hsys = "hamiltonian_Hsys.dat"
+hamiltonian_file_Hc = "hamiltonian_Hc.dat"
 
 [optimization]
 control_enforceBC = false
@@ -78,6 +79,7 @@ usematfree = false
 linearsolver_type = "gmres"
 linearsolver_maxiter = 20
 timestepper = "IMR"
+rand_seed = 1234
 
 [[output.write]]
 oscID = 0

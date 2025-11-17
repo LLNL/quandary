@@ -11,7 +11,6 @@ collapse_type = "both"
 decay_time = [80.0, 0.3892042]
 dephase_time = [26.0, 5.0]
 initial_condition = {type = "file", filename = "./alice_sumbasis.dat"}
-rand_seed = 1234
 
 [optimization]
 control_enforceBC = true
@@ -73,6 +72,7 @@ runtype = "simulation"
 usematfree = true
 linearsolver_type = "gmres"
 linearsolver_maxiter = 20
+rand_seed = 1234
 
 [[output.write]]
 oscID = 0

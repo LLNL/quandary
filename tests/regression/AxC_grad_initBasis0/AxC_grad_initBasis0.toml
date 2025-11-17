@@ -10,8 +10,7 @@ rotfreq = [4416.66, 6840.815]
 collapse_type = "both"
 decay_time = [80.0, 0.3892042]
 dephase_time = [26.0, 5.0]
-initial_condition = {type = "basis"}
-rand_seed = 1234
+initial_condition = {type = "basis", oscIDs = [0]}
 
 [optimization]
 control_enforceBC = true
@@ -73,6 +72,7 @@ runtype = "gradient"
 usematfree = true
 linearsolver_type = "gmres"
 linearsolver_maxiter = 20
+rand_seed = 1234
 
 [[output.write]]
 oscID = 0
