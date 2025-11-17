@@ -1,0 +1,89 @@
+[system]
+rand_seed = 1234
+nlevels = [2, 2]
+ntime = 1000
+dt = 0.1
+nessential = [2, 2]
+initial_condition = {type = "basis"}
+transfreq = [4.10595, 4.81526]
+rotfreq = [4.10595, 4.81526]
+selfkerr = [0.2198, 0.2252]
+collapse_type = "none"
+decay_time = [0.0, 0.0]
+dephase_time = [0.0, 0.0]
+crosskerr = [0.1]
+Jkl = [0.0]
+hamiltonian_file = "none"
+
+[optimization]
+control_enforceBC = false
+optim_monitor_frequency = 1
+optim_target = {target_type = "gate", gate_type = "cnot"}
+gate_rot_freq = [4.10595, 4.81526]
+optim_objective = "Jtrace"
+optim_weights = [1.0]
+optim_regul = 1e-05
+optim_atol = 1e-07
+optim_ftol = 1e-05
+optim_inftol = 1e-05
+optim_rtol = 1e-08
+optim_maxiter = 200
+optim_penalty = 0.0
+optim_penalty_param = 0.0
+optim_penalty_energy = 0.0
+optim_regul_tik0 = false
+optim_penalty_dpdm = 0.0
+optim_penalty_variation = 0.0
+
+[[optimization.control_segments]]
+oscID = 0
+type = "spline"
+num = 150
+
+[[optimization.control_segments]]
+oscID = 1
+type = "spline"
+num = 150
+
+[[optimization.control_bounds]]
+oscID = 0
+values = [0.008]
+
+[[optimization.control_bounds]]
+oscID = 1
+values = [0.008]
+
+[[optimization.control_initialization]]
+oscID = 0
+type = "constant"
+amplitude = 0.005
+
+[[optimization.control_initialization]]
+oscID = 1
+type = "constant"
+amplitude = 0.005
+
+[[optimization.carrier_frequency]]
+oscID = 0
+values = [0.0, -0.2198, -0.1]
+
+[[optimization.carrier_frequency]]
+oscID = 1
+values = [0.0, -0.2252, -0.1]
+
+[output]
+runtype = "optimization"
+usematfree = true
+datadir = "./data_out"
+output_frequency = 1
+linearsolver_type = "gmres"
+linearsolver_maxiter = 20
+timestepper = "IMR"
+
+[[output.write]]
+oscID = 0
+type = ["population", "expectedEnergy"]
+
+[[output.write]]
+oscID = 1
+type = ["population", "expectedEnergy"]

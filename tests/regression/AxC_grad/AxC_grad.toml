@@ -1,0 +1,83 @@
+[system]
+nlevels = [3, 20]
+ntime = 2500
+dt = 0.0001
+transfreq = [4416.66, 6840.815]
+selfkerr = [230.56, 0.0]
+crosskerr = [1.176]
+Jkl = [0.0]
+rotfreq = [4416.66, 6840.815]
+collapse_type = "both"
+decay_time = [80.0, 0.3892042]
+dephase_time = [26.0, 5.0]
+initial_condition = {type = "pure", levels = [2, 0]}
+rand_seed = 1234
+
+[optimization]
+control_enforceBC = true
+optim_target = {target_type = "pure", levels = [0, 0]}
+optim_objective = "Jmeasure"
+optim_weights = [1.0, 1.0]
+optim_ftol = 1e-05
+optim_inftol = 1e-05
+optim_atol = 1e-07
+optim_rtol = 1e-08
+optim_maxiter = 200
+optim_regul = 1e-05
+optim_penalty = 1.0
+optim_penalty_param = 0.5
+optim_penalty_dpdm = 0.0
+optim_penalty_energy = 0.1
+optim_monitor_frequency = 1
+
+[[optimization.control_segments]]
+oscID = 0
+type = "spline"
+num = 75
+
+[[optimization.control_segments]]
+oscID = 1
+type = "spline"
+num = 75
+
+[[optimization.control_bounds]]
+oscID = 0
+values = [25.0]
+
+[[optimization.control_bounds]]
+oscID = 1
+values = [100.0]
+
+[[optimization.control_initialization]]
+oscID = 0
+type = "constant"
+amplitude = 5.0
+
+[[optimization.control_initialization]]
+oscID = 1
+type = "constant"
+amplitude = 1.0
+
+[[optimization.carrier_frequency]]
+oscID = 0
+values = [0.0, -230.56, 1.176]
+
+[[optimization.carrier_frequency]]
+oscID = 1
+values = [0.0, 1.176]
+
+[output]
+datadir = "data_out"
+output_frequency = 100
+runtype = "gradient"
+usematfree = true
+linearsolver_type = "gmres"
+linearsolver_maxiter = 20
+
+[[output.write]]
+oscID = 0
+type = ["expectedEnergy"]
+
+[[output.write]]
+oscID = 1
+type = ["expectedEnergy"]
