@@ -1,6 +1,5 @@
 #include <cstddef>
 #include <set>
-#include <sstream>
 #include <type_traits>
 #include <vector>
 
@@ -34,17 +33,14 @@ private:
   std::unordered_map<std::string, std::function<void(const std::string&)>> setters; ///< Setters from config string
   std::unordered_map<std::string, std::function<void(int, const std::string&)>> indexed_setters; ///< Setters for indexed config strings
 
-  // MPI and logging
-  int mpi_rank; ///< MPI rank of the current process.
-  std::stringstream* log; ///< Pointer to log stream for output messages.
-  bool quietmode; ///< Flag to control verbose output.
+  const MPILogger& logger;
 
   // Configuration settings storage
   ConfigSettings settings;  ///< All configuration settings in one place
   std::optional<bool> optim_regul_interpolate;  ///< Deprecated version of optim_regul_tik0
 
 public:
-  CfgParser(int mpi_rank, std::stringstream& logstream, bool quietmode = false);
+  CfgParser(const MPILogger& logger);
   ConfigSettings parseFile(const std::string& filename);
   ConfigSettings parseString(const std::string& config_content);
 
@@ -130,8 +126,7 @@ private:
   RunType convertFromString<RunType>(const std::string& str) {
     auto it = RUN_TYPE_MAP.find(toLower(str));
     if (it == RUN_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown run type: " + str + ".\n");
-      exit(1);
+      logger.exitWithError("\n\n ERROR: Unknown run type: " + str + ".\n");
     }
     return it->second;
   }
@@ -140,8 +135,7 @@ private:
   LindbladType convertFromString<LindbladType>(const std::string& str) {
     auto it = LINDBLAD_TYPE_MAP.find(toLower(str));
     if (it == LINDBLAD_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown Lindblad type: " + str + ".\n");
-      exit(1);
+      logger.exitWithError("\n\n ERROR: Unknown Lindblad type: " + str + ".\n");
     }
     return it->second;
   }
@@ -150,8 +144,7 @@ private:
   LinearSolverType convertFromString<LinearSolverType>(const std::string& str) {
     auto it = LINEAR_SOLVER_TYPE_MAP.find(toLower(str));
     if (it == LINEAR_SOLVER_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown linear solver type: " + str + ".\n");
-      exit(1);
+      logger.exitWithError("\n\n ERROR: Unknown linear solver type: " + str + ".\n");
     }
     return it->second;
   }
@@ -160,8 +153,7 @@ private:
   TimeStepperType convertFromString<TimeStepperType>(const std::string& str) {
     auto it = TIME_STEPPER_TYPE_MAP.find(toLower(str));
     if (it == TIME_STEPPER_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown time stepper type: " + str + ".\n");
-      exit(1);
+      logger.exitWithError("\n\n ERROR: Unknown time stepper type: " + str + ".\n");
     }
     return it->second;
   }
@@ -170,8 +162,7 @@ private:
   TargetType convertFromString<TargetType>(const std::string& str) {
     auto it = TARGET_TYPE_MAP.find(toLower(str));
     if (it == TARGET_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown target type: " + str + ".\n");
-      exit(1);
+      logger.exitWithError("\n\n ERROR: Unknown target type: " + str + ".\n");
     }
     return it->second;
   }
@@ -180,8 +171,7 @@ private:
   InitialConditionType convertFromString<InitialConditionType>(const std::string& str) {
     auto it = INITCOND_TYPE_MAP.find(toLower(str));
     if (it == INITCOND_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown initial condition type: " + str + ".\n");
-      exit(1);
+      logger.exitWithError("\n\n ERROR: Unknown initial condition type: " + str + ".\n");
     }
     return it->second;
   }
@@ -190,8 +180,7 @@ private:
   GateType convertFromString<GateType>(const std::string& str) {
     auto it = GATE_TYPE_MAP.find(toLower(str));
     if (it == GATE_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown gate type: " + str + ".\n");
-      exit(1);
+      logger.exitWithError("\n\n ERROR: Unknown gate type: " + str + ".\n");
     }
     return it->second;
   }
@@ -200,8 +189,7 @@ private:
   OutputType convertFromString<OutputType>(const std::string& str) {
     auto it = OUTPUT_TYPE_MAP.find(toLower(str));
     if (it == OUTPUT_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown output type: " + str + ".\n");
-      exit(1);
+      logger.exitWithError("\n\n ERROR: Unknown output type: " + str + ".\n");
     }
     return it->second;
   }
@@ -210,8 +198,7 @@ private:
   ObjectiveType convertFromString<ObjectiveType>(const std::string& str) {
     auto it = OBJECTIVE_TYPE_MAP.find(toLower(str));
     if (it == OBJECTIVE_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown objective type: " + str + ".\n");
-      exit(1);
+      logger.exitWithError("\n\n ERROR: Unknown objective type: " + str + ".\n");
     }
     return it->second;
   }
@@ -220,8 +207,7 @@ private:
   ControlType convertFromString<ControlType>(const std::string& str) {
     auto it = CONTROL_TYPE_MAP.find(toLower(str));
     if (it == CONTROL_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown control type: " + str + ".\n");
-      exit(1);
+      logger.exitWithError("\n\n ERROR: Unknown control type: " + str + ".\n");
     }
     return it->second;
   }
@@ -230,8 +216,7 @@ private:
   ControlSegmentInitType convertFromString<ControlSegmentInitType>(const std::string& str) {
     auto it = CONTROL_SEGMENT_INIT_TYPE_MAP.find(toLower(str));
     if (it == CONTROL_SEGMENT_INIT_TYPE_MAP.end()) {
-      logErrorToRank0(mpi_rank, "\n\n ERROR: Unknown control segment initialization type: " + str + ".\n");
-      exit(1);
+      logger.exitWithError("\n\n ERROR: Unknown control segment initialization type: " + str + ".\n");
     }
     return it->second;
   }

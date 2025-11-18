@@ -1,5 +1,6 @@
 #include "defs.hpp"
 #include "config_types.hpp"
+#include "util.hpp"
 
 #include <toml++/toml.hpp>
 
@@ -206,11 +207,8 @@ struct ControlSegmentInitialization {
  */
 class Config {
   private:
-    // MPI and logging (still needed for runtime operations)
-    int mpi_rank; ///< MPI rank of the current process.
-
-    std::stringstream& log; ///< Reference to log stream for output messages.
-    bool quietmode; ///< Flag to control verbose output.
+    // Logging
+    MPILogger logger; ///< MPI-aware logger for output messages.
 
     // General options
     std::vector<size_t> nlevels;  ///< Number of levels per subsystem
@@ -261,28 +259,24 @@ class Config {
 
   public:
     Config(
-      int mpi_rank_,
-      std::stringstream& log_,
-      bool quietmode_,
+      const MPILogger& logger,
       const toml::table& table
     );
 
     Config(
-      int mpi_rank_,
-      std::stringstream& log_,
-      bool quietmode_,
+      const MPILogger& logger,
       const ConfigSettings& settings
     );
 
     ~Config();
 
-    static Config fromFile(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode = false);
-    static Config fromToml(int mpi_rank, const std::string& toml_filename, std::stringstream* log, bool quietmode = false);
-    static Config fromTomlString(int mpi_rank, const std::string& toml_content, std::stringstream* log, bool quietmode = false);
-    static Config fromCfg(int mpi_rank, const std::string& cfg_filename, std::stringstream* log, bool quietmode = false);
-    static Config fromCfgString(int mpi_rank, const std::string& cfg_content, std::stringstream* log, bool quietmode = false);
+    static Config fromFile(const std::string& filename, const MPILogger& logger);
+    static Config fromToml(const std::string& toml_filename, const MPILogger& logger);
+    static Config fromTomlString(const std::string& toml_content, const MPILogger& logger);
+    static Config fromCfg(const std::string& cfg_filename, const MPILogger& logger);
+    static Config fromCfgString(const std::string& cfg_content, const MPILogger& logger);
 
-    void printConfig() const;
+    void printConfig(std::stringstream& log) const;
 
     // getters
     const std::vector<size_t>& getNLevels() const { return nlevels; }

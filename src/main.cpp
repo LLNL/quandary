@@ -72,10 +72,11 @@ int main(int argc,char **argv)
     MPI_Finalize();
     return 0;
   }
-  std::stringstream log;
+  MPILogger logger(mpirank_world, quietmode);
   std::string config_file = argv[1];
-  Config config = Config::fromFile(mpirank_world, config_file, &log, quietmode);
-  config.printConfig();
+  Config config = Config::fromFile(config_file, logger);
+  std::stringstream log;
+  config.printConfig(log);
   std::cout << log.str() << std::endl; // TODO remove, for debugging
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */

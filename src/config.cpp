@@ -44,12 +44,12 @@ namespace {
 
 void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse,
                       size_t oscilID, double tstart, double tstop, double amp,
-                      const std::vector<size_t>& nlevels, int mpi_rank) {
+                      const std::vector<size_t>& nlevels, const MPILogger& logger) {
   if (oscilID < nlevels.size()) {
     PiPulseSegment segment = {tstart, tstop, amp};
     apply_pipulse[oscilID].push_back(segment);
 
-    logOutputToRank0(mpi_rank, "Applying PiPulse to oscillator " +
+    logger.log("Applying PiPulse to oscillator " +
       std::to_string(oscilID) + " in [" + std::to_string(tstart) +
       ", " + std::to_string(tstop) + "]: |p+iq|=" + std::to_string(amp) + "\n");
 
@@ -63,7 +63,7 @@ void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse,
   }
 }
 
-std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseConfig>>& pulses, const std::vector<size_t>& nlevels, int mpi_rank) {
+std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseConfig>>& pulses, const std::vector<size_t>& nlevels, const MPILogger& logger) {
   auto apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
 
   if (!pulses.has_value()) {
@@ -71,7 +71,7 @@ std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optiona
   }
   for (const auto& pulse_config : *pulses) {
     addPiPulseSegment(apply_pipulse, pulse_config.oscil_id, pulse_config.tstart,
-                     pulse_config.tstop, pulse_config.amp, nlevels, mpi_rank);
+                     pulse_config.tstop, pulse_config.amp, nlevels, logger);
   }
   return apply_pipulse;
 }
@@ -90,7 +90,7 @@ OptimTargetSettings Config::parseOptimTarget(
   // Convert target type string to enum
   auto type = parseEnum(config.target_type, TARGET_TYPE_MAP);
   if (!type.has_value()) {
-    exitWithError(mpi_rank, "Unknown optimization target type: " + config.target_type);
+    logger.exitWithError("Unknown optimization target type: " + config.target_type);
   }
 
   switch (*type) {
@@ -107,7 +107,7 @@ OptimTargetSettings Config::parseOptimTarget(
       PureOptimTarget pure_target;
 
       if (!config.levels.has_value() || config.levels->empty()) {
-        logOutputToRank0(mpi_rank, "# Warning: You want to prepare a pure state, but didn't specify which one."
+        logger.log("# Warning: You want to prepare a pure state, but didn't specify which one."
           " Taking default: ground-state |0...0> \n");
         pure_target.purestate_levels = std::vector<size_t>(nlevels.size(), 0);
         return pure_target;
@@ -121,7 +121,7 @@ OptimTargetSettings Config::parseOptimTarget(
 
       for (size_t i = 0; i < nlevels.size(); i++) {
         if (pure_target.purestate_levels[i] >= nlevels[i]) {
-          exitWithError(mpi_rank, "ERROR in config setting. The requested pure state target |" +
+          logger.exitWithError("ERROR in config setting. The requested pure state target |" +
             std::to_string(pure_target.purestate_levels[i]) +
             "> exceeds the number of modeled levels for that oscillator (" +
             std::to_string(nlevels[i]) + ").\n");
@@ -162,19 +162,15 @@ std::optional<std::vector<T>> get_optional_vector(const toml::node_view<toml::no
 } // namespace
 
 Config::Config(
-  int mpi_rank_,
-  std::stringstream& log_,
-  bool quietmode_,
+  const MPILogger& logger,
   const toml::table& table
 ) :
-  mpi_rank(mpi_rank_),
-  log(log_),
-  quietmode(quietmode_) {
+  logger(logger) {
 
   try {
     // Parse system settings
     if(!table.contains("system")) {
-      exitWithError(mpi_rank, "[system] section required in TOML config");
+      logger.exitWithError("[system] section required in TOML config");
     }
     auto system = *table["system"].as_table();
 
@@ -263,7 +259,7 @@ Config::Config(
         double tstop = validators::field<double>(table, "tstop").required().value();
         double amp = validators::field<double>(table, "amp").required().value();
 
-        addPiPulseSegment(apply_pipulse, oscilID, tstart, tstop, amp, nlevels, mpi_rank);
+        addPiPulseSegment(apply_pipulse, oscilID, tstart, tstop, amp, nlevels, logger);
       }
     }
 
@@ -446,7 +442,7 @@ Config::Config(
     if (!optimization.contains("optim_regul_tik0") && optimization.contains("optim_regul_interpolate")) {
       // Handle deprecated optim_regul_interpolate logic
       optim_regul_tik0 = validators::field<bool>(optimization, "optim_regul_interpolate").value();
-      logOutputToRank0(mpi_rank, "# Warning: 'optim_regul_interpolate' is deprecated. Please use 'optim_regul_tik0' instead.\n");
+      logger.log("# Warning: 'optim_regul_interpolate' is deprecated. Please use 'optim_regul_tik0' instead.\n");
     }
     optim_regul_tik0 = validators::field<bool>(optimization, "optim_regul_tik0")
       .valueOr(optim_regul_tik0);
@@ -505,7 +501,7 @@ Config::Config(
     setRandSeed(rand_seed_);
 
   } catch (const validators::ValidationError& e) {
-    exitWithError(mpi_rank, std::string(e.what()));
+    logger.exitWithError(std::string(e.what()));
   }
 
   // Finalize and validate
@@ -514,18 +510,14 @@ Config::Config(
 }
 
 Config::Config(
-  int mpi_rank_,
-  std::stringstream& log_,
-  bool quietmode_,
+  const MPILogger& logger,
   const ConfigSettings& settings
 ) :
-  mpi_rank(mpi_rank_),
-  log(log_),
-  quietmode(quietmode_)
+  logger(logger)
 {
 
   if (!settings.nlevels.has_value()) {
-    exitWithError(mpi_rank, "nlevels cannot be empty");
+    logger.exitWithError("nlevels cannot be empty");
   }
   nlevels = settings.nlevels.value();
   size_t num_osc = nlevels.size();
@@ -539,7 +531,7 @@ Config::Config(
   if (settings.dt.has_value()) dt = settings.dt.value();
 
   if (!settings.transfreq.has_value()) {
-    exitWithError(mpi_rank, "transfreq cannot be empty");
+    logger.exitWithError("transfreq cannot be empty");
   }
   transfreq = settings.transfreq.value();
   copyLast(transfreq, num_osc);
@@ -554,7 +546,7 @@ Config::Config(
   copyLast(Jkl, num_pairs_osc);
 
   if (!settings.rotfreq.has_value()) {
-    exitWithError(mpi_rank, "rotfreq cannot be empty");
+    logger.exitWithError("rotfreq cannot be empty");
   }
   rotfreq = settings.rotfreq.value();
   copyLast(rotfreq, num_osc);
@@ -570,7 +562,7 @@ Config::Config(
   initial_condition = parseInitialCondition(settings.initialcondition);
   n_initial_conditions = computeNumInitialConditions();
 
-  apply_pipulse = parsePiPulsesFromCfg(settings.apply_pipulse, nlevels, mpi_rank);
+  apply_pipulse = parsePiPulsesFromCfg(settings.apply_pipulse, nlevels, logger);
 
   hamiltonian_file_Hsys = settings.hamiltonian_file_Hsys;
   hamiltonian_file_Hc = settings.hamiltonian_file_Hc;
@@ -637,7 +629,7 @@ Config::Config(
   } else if (settings.optim_regul_interpolate.has_value()) {
     // Handle deprecated optim_regul_interpolate logic
     optim_regul_tik0 = settings.optim_regul_interpolate.value();
-    logOutputToRank0(mpi_rank, "# Warning: 'optim_regul_interpolate' is deprecated. Please use 'optim_regul_tik0' instead.\n");
+    logger.log("# Warning: 'optim_regul_interpolate' is deprecated. Please use 'optim_regul_tik0' instead.\n");
   }
 
   // Output parameters
@@ -663,65 +655,63 @@ Config::~Config(){}
 void Config::finalize() {
   // Hamiltonian file + matrix-free compatibility check
   if ((hamiltonian_file_Hsys.has_value() || hamiltonian_file_Hc.has_value()) && usematfree) {
-    if (!quietmode) {
-      logOutputToRank0(mpi_rank, "# Warning: Matrix-free solver cannot be used when Hamiltonian is read from file. Switching to sparse-matrix version.\n");
-    }
+    logger.log("# Warning: Matrix-free solver cannot be used when Hamiltonian is read from file. Switching to sparse-matrix version.\n");
     usematfree = false;
   }
 }
 
 void Config::validate() const {
   if (ntime <= 0) {
-    exitWithError(mpi_rank, "ntime must be positive, got " + std::to_string(ntime));
+    logger.exitWithError("ntime must be positive, got " + std::to_string(ntime));
   }
 
   if (dt <= 0) {
-    exitWithError(mpi_rank, "dt must be positive, got " + std::to_string(dt));
+    logger.exitWithError("dt must be positive, got " + std::to_string(dt));
   }
 
   // Validate essential levels don't exceed total levels
   if (nessential.size() != nlevels.size()) {
-    exitWithError(mpi_rank, "nessential size must match nlevels size");
+    logger.exitWithError("nessential size must match nlevels size");
   }
 
   for (size_t i = 0; i < nlevels.size(); i++) {
     if (nessential[i] > nlevels[i]) {
-      exitWithError(mpi_rank, "nessential[" + std::to_string(i) + "] = " + std::to_string(nessential[i]) +
+      logger.exitWithError("nessential[" + std::to_string(i) + "] = " + std::to_string(nessential[i]) +
         " cannot exceed nlevels[" + std::to_string(i) + "] = " + std::to_string(nlevels[i]));
     }
   }
 }
 
-Config Config::fromFile(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode) {
+Config Config::fromFile(const std::string& filename, const MPILogger& logger) {
   if (hasSuffix(filename, ".toml")) {
-    return Config::fromToml(mpi_rank, filename, log, quietmode);
+    return Config::fromToml(filename, logger);
   } else {
-    logOutputToRank0(mpi_rank, "# Warning: Config file does not have .toml extension. "
+    logger.log("# Warning: Config file does not have .toml extension. "
       "The deprecated .cfg format will be removed in future versions.\n");
-    return Config::fromCfg(mpi_rank, filename, log, quietmode);
+    return Config::fromCfg(filename, logger);
   }
 }
 
-Config Config::fromToml(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode) {
+Config Config::fromToml(const std::string& filename, const MPILogger& logger) {
   toml::table config = toml::parse_file(filename);
-  return Config(mpi_rank, *log, quietmode, config);
+  return Config(logger, config);
 }
 
-Config Config::fromTomlString(int mpi_rank, const std::string& toml_content, std::stringstream* log, bool quietmode) {
+Config Config::fromTomlString(const std::string& toml_content, const MPILogger& logger) {
   toml::table config = toml::parse(toml_content);
-  return Config(mpi_rank, *log, quietmode, config);
+  return Config(logger, config);
 }
 
-Config Config::fromCfg(int mpi_rank, const std::string& filename, std::stringstream* log, bool quietmode) {
-  CfgParser parser(mpi_rank, *log, quietmode);
+Config Config::fromCfg(const std::string& filename, const MPILogger& logger) {
+  CfgParser parser(logger);
   ConfigSettings settings = parser.parseFile(filename);
-  return Config(mpi_rank, *log, quietmode, settings);
+  return Config(logger, settings);
 }
 
-Config Config::fromCfgString(int mpi_rank, const std::string& cfg_content, std::stringstream* log, bool quietmode) {
-  CfgParser parser(mpi_rank, *log, quietmode);
+Config Config::fromCfgString(const std::string& cfg_content, const MPILogger& logger) {
+  CfgParser parser(logger);
   ConfigSettings settings = parser.parseString(cfg_content);
-  return Config(mpi_rank, *log, quietmode, settings);
+  return Config(logger, settings);
 }
 
 namespace {
@@ -772,7 +762,7 @@ std::string OscillatorIDsInitialCondition::toString(std::string name) const {
   return out;
 }
 
-void Config::printConfig() const {
+void Config::printConfig(std::stringstream& log) const {
   log << "# Configuration settings\n";
   log << "# =============================================\n\n";
 
@@ -953,7 +943,7 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
   auto opt_type = parseEnum(config.type, INITCOND_TYPE_MAP);
 
   if (!opt_type.has_value()) {
-    exitWithError(mpi_rank, "initial condition type is required.");
+    logger.exitWithError("initial condition type is required.");
   }
   InitialConditionType type = opt_type.value();
 
@@ -962,7 +952,7 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
     if (type == InitialConditionType::ENSEMBLE ||
         type == InitialConditionType::THREESTATES ||
         type == InitialConditionType::NPLUSONE ){
-          exitWithError(mpi_rank, "\n\n ERROR for initial condition setting: \n When running Schroedingers solver"
+          logger.exitWithError("\n\n ERROR for initial condition setting: \n When running Schroedingers solver"
             " (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'."
             " Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
     }
@@ -981,20 +971,20 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
   switch (type) {
     case InitialConditionType::FROMFILE:
       if (!config.filename.has_value()) {
-        exitWithError(mpi_rank, "initialcondition of type FROMFILE must have a filename");
+        logger.exitWithError("initialcondition of type FROMFILE must have a filename");
       }
       return FromFileInitialCondition{config.filename.value()};
     case InitialConditionType::PURE:
       if (!config.levels.has_value()) {
-        exitWithError(mpi_rank, "initialcondition of type PURE must have 'levels'");
+        logger.exitWithError("initialcondition of type PURE must have 'levels'");
       }
       if (config.levels.value().size() != nlevels.size()) {
-        exitWithError(mpi_rank, "initialcondition of type PURE must have exactly " +
+        logger.exitWithError("initialcondition of type PURE must have exactly " +
           std::to_string(nlevels.size()) + " parameters, got " + std::to_string(config.levels.value().size()));
       }
       for (size_t k=0; k < config.levels.value().size(); k++) {
         if (config.levels.value()[k] >= nlevels[k]){
-          exitWithError(mpi_rank, "ERROR in config setting. The requested pure state initialization "
+          logger.exitWithError("ERROR in config setting. The requested pure state initialization "
             + std::to_string(config.levels.value()[k]) + " exceeds the number of allowed levels for that oscillator ("
             + std::to_string(nlevels[k]) + ").\n");
         }
@@ -1010,12 +1000,12 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
 
     case InitialConditionType::ENSEMBLE:
       if (init_cond_IDs.back() >= nlevels.size()) {
-        exitWithError(mpi_rank, "Last element in initialcondition params exceeds number of oscillators");
+        logger.exitWithError("Last element in initialcondition params exceeds number of oscillators");
       }
 
       for (size_t i = 1; i < init_cond_IDs.size()-1; i++){
         if (init_cond_IDs[i]+1 != init_cond_IDs[i+1]) {
-          exitWithError(mpi_rank, "List of oscillators for ensemble initialization should be consecutive!\n");
+          logger.exitWithError("List of oscillators for ensemble initialization should be consecutive!\n");
         }
       }
       return EnsembleInitialCondition{init_cond_IDs};
@@ -1121,7 +1111,7 @@ ControlSegment Config::parseControlSegment(const toml::table& table) const {
   std::string type_str = validators::field<std::string>(table, "type").required().value();
   std::optional<ControlType> type = parseEnum(type_str, CONTROL_TYPE_MAP);
   if (!type.has_value()) {
-    exitWithError(mpi_rank, "Unrecognized type '" + type_str + "' in control segment.");
+    logger.exitWithError("Unrecognized type '" + type_str + "' in control segment.");
   }
   segment.type = *type;
 
@@ -1161,7 +1151,7 @@ ControlSegment Config::parseControlSegment(const toml::table& table) const {
     segment.params = step_params;
     break;
   case ControlType::NONE:
-    exitWithError(mpi_rank, "Unexpected control type " + type_str);
+    logger.exitWithError("Unexpected control type " + type_str);
   }
 
   return segment;
@@ -1191,7 +1181,7 @@ ControlSegmentInitialization Config::parseControlInitialization(const toml::tabl
 
   std::optional<ControlSegmentInitType> type = parseEnum(type_str, CONTROL_SEGMENT_INIT_TYPE_MAP);
   if (!type.has_value()) {
-    exitWithError(mpi_rank, "Unrecognized type '" + type_str + "' in control initialization.");
+    logger.exitWithError("Unrecognized type '" + type_str + "' in control initialization.");
   }
   return ControlSegmentInitialization {
     type.value(),
@@ -1240,9 +1230,7 @@ size_t Config::computeNumInitialConditions() const {
       n_initial_conditions = (int) pow(n_initial_conditions, 2.0);
     }
   }
-  if (!quietmode) {
-    logOutputToRank0(mpi_rank, "Number of initial conditions: " + std::to_string(n_initial_conditions) + "\n");
-  }
+  logger.log("Number of initial conditions: " + std::to_string(n_initial_conditions) + "\n");
   return n_initial_conditions;
 }
 

@@ -309,6 +309,50 @@ std::string toLower(std::string str);
 bool hasSuffix(const std::string& str, const std::string& suffix);
 
 /**
+ * @brief MPI-aware logger that handles rank filtering and quiet mode.
+ *
+ * Encapsulates MPI rank and quiet mode to simplify logging calls throughout
+ * the codebase. Only rank 0 outputs messages, and quiet mode can suppress output.
+ */
+class MPILogger {
+private:
+  int mpi_rank;
+  bool quiet_mode;
+  std::stringstream* default_stream;
+
+public:
+  MPILogger(int rank, bool quiet = false, std::stringstream* stream = nullptr)
+    : mpi_rank(rank), quiet_mode(quiet), default_stream(stream) {}
+
+  void log(const std::string& message) const {
+    if (default_stream) {
+      logOutputToRank0(mpi_rank, *default_stream, message, quiet_mode);
+    } else {
+      logOutputToRank0(mpi_rank, message, quiet_mode);
+    }
+  }
+
+  void log(std::stringstream& stream, const std::string& message) const {
+    logOutputToRank0(mpi_rank, stream, message, quiet_mode);
+  }
+
+  void logToConsole(const std::string& message) const {
+    logOutputToRank0(mpi_rank, message, quiet_mode);
+  }
+
+  void error(const std::string& message) const {
+    logErrorToRank0(mpi_rank, message);
+  }
+
+  void exitWithError(const std::string& message) const {
+    ::exitWithError(mpi_rank, message);
+  }
+
+  bool isQuiet() const { return quiet_mode; }
+  int getRank() const { return mpi_rank; }
+};
+
+/**
  * @brief Generic enum parsing utility with case-insensitive lookup.
  *
  * @param str String value to parse into enum
