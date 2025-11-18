@@ -308,7 +308,13 @@ std::string toLower(std::string str);
  */
 bool hasSuffix(const std::string& str, const std::string& suffix);
 
-// TODO here or in config?
+/**
+ * @brief Generic enum parsing utility with case-insensitive lookup.
+ *
+ * @param str String value to parse into enum
+ * @param enum_map Map from string to enum values
+ * @return std::optional<T> Parsed enum value or nullopt if not found
+ */
 template<typename T>
 std::optional<T> parseEnum(const std::string& str, const std::map<std::string, T>& enum_map) {
   auto it = enum_map.find(toLower(str));
