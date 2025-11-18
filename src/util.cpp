@@ -665,14 +665,14 @@ void exitWithError(int mpi_rank, const std::string& message) {
   exit(1);
 }
 
-void logOutputToRank0(int mpi_rank, const std::string& message) {
-  if (mpi_rank == 0) {
+void logOutputToRank0(int mpi_rank, const std::string& message, bool quietmode) {
+  if (!quietmode && mpi_rank == 0) {
     std::cout << message << std::endl;
   }
 }
 
-void logOutputToRank0(int mpi_rank, std::stringstream& stream, const std::string& message) {
-  if (mpi_rank == 0) {
+void logOutputToRank0(int mpi_rank, std::stringstream& stream, const std::string& message, bool quietmode) {
+  if (!quietmode && mpi_rank == 0) {
     stream << message << std::endl;
   }
 }

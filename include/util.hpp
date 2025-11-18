@@ -277,8 +277,9 @@ void exitWithError(int mpi_rank, const std::string& message);
  *
  * @param mpi_rank MPI rank of the current process.
  * @param message Error message to log.
+ * @param quietmode Flag to suppress output when true.
  */
-void logOutputToRank0(int mpi_rank, const std::string& message);
+void logOutputToRank0(int mpi_rank, const std::string& message, bool quietmode = false);
 
 /**
  * @brief Prints output message to rank 0 for given stream.
@@ -286,8 +287,9 @@ void logOutputToRank0(int mpi_rank, const std::string& message);
  * @param mpi_rank MPI rank of the current process.
  * @param stream Stream to log output to.
  * @param message Error message to log.
+ * @param quietmode Flag to suppress output when true.
  */
-void logOutputToRank0(int mpi_rank, std::stringstream& stream, const std::string& message);
+void logOutputToRank0(int mpi_rank, std::stringstream& stream, const std::string& message, bool quietmode = false);
 
 /**
  * @brief Returns a lowercase version of the input string.
