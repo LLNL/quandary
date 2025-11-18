@@ -355,8 +355,6 @@ private:
     std::vector<std::vector<double>> parseIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed, double default_val) const;
     std::vector<std::vector<double>> parseIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed, size_t num_oscillators, double default_val) const;
 
-    void convertOptimTarget(const std::optional<OptimTargetConfig>& config);
-
     size_t computeNumInitialConditions() const;
     void setRandSeed(std::optional<int> rand_seed_);
 
