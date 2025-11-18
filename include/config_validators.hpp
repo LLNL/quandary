@@ -8,12 +8,11 @@
 #include <sstream>
 #include <stdexcept>
 
-// TODO make naming camel case
 namespace validators {
 
 // Helper to get readable type names for error messages
 template<typename T>
-std::string get_type_name() {
+std::string getTypeName() {
   if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t> || std::is_same_v<T, size_t>) {
     return "integer";
   } else if constexpr (std::is_same_v<T, double> || std::is_same_v<T, float>) {
@@ -38,78 +37,77 @@ public:
 template<typename T>
 class Validator {
 private:
-  const toml::table& config_;
-  std::string key_;
-  std::optional<T> value_;
-  bool required_ = false;
-  std::optional<T> greaterThan_;
-  std::optional<T> greaterThanEqual_;
-  std::vector<std::function<bool(const T&)>> predicates_;
-  std::vector<std::string> error_messages_;
+  const toml::table& config;
+  std::string key;
+  bool is_required = false;
+  std::optional<T> greater_than;
+  std::optional<T> greater_than_equal;
+  std::vector<std::function<bool(const T&)>> predicates;
+  std::vector<std::string> error_messages;
 
 public:
-  Validator(const toml::table& config, const std::string& key)
-    : config_(config), key_(key) {}
+  Validator(const toml::table& config_, const std::string& key_)
+    : config(config_), key(key_) {}
 
   Validator& required() {
-    required_ = true;
+    is_required = true;
     return *this;
   }
 
-  Validator& greater_than(T greaterThan) {
-    greaterThan_ = greaterThan;
+  Validator& greaterThan(T greater_than_) {
+    greater_than = greater_than_;
     return *this;
   }
 
-  Validator& greater_than_equal(T greaterThanEqual) {
-    greaterThanEqual_ = greaterThanEqual;
+  Validator& greaterThanEqual(T greater_than_equal_) {
+    greater_than_equal = greater_than_equal_;
     return *this;
   }
 
   Validator& positive() {
-    greater_than(T{0});
+    greaterThan(T{0});
     return *this;
   }
 
-  Validator& custom(std::function<bool(const T&)> predicate, const std::string& error_msg) {
-    predicates_.push_back(predicate);
-    error_messages_.push_back(error_msg);
+  Validator& custom(std::function<bool(const T&)> predicate_, const std::string& error_msg_) {
+    predicates.push_back(predicate_);
+    error_messages.push_back(error_msg_);
     return *this;
   }
 
 private:
-  std::optional<T> extract_value() {
+  std::optional<T> extractValue() {
     // If key doesn't exist, return nullopt
-    if (!config_.contains(key_)) {
+    if (!config.contains(key)) {
       return std::nullopt;
     }
 
     // Key exists, try to extract value with type checking
-    auto val = config_[key_].template value<T>();
+    auto val = config[key].template value<T>();
     if (!val) {
       // Key exists but wrong type - always an error
-      throw ValidationError(key_, "wrong type (expected " + get_type_name<T>() + ")");
+      throw ValidationError(key, "wrong type (expected " + getTypeName<T>() + ")");
     }
 
     return val;
   }
 
-  T validate_value(T result) {
-    if (greaterThan_ && result <= *greaterThan_) {
+  T validateValue(T result) {
+    if (greater_than && result <= *greater_than) {
       std::ostringstream oss;
-      oss << "must be > " << *greaterThan_ << ", got " << result;
-      throw ValidationError(key_, oss.str());
+      oss << "must be > " << *greater_than << ", got " << result;
+      throw ValidationError(key, oss.str());
     }
 
-    if (greaterThanEqual_ && result < *greaterThanEqual_) {
+    if (greater_than_equal && result < *greater_than_equal) {
       std::ostringstream oss;
-      oss << "must be >= " << *greaterThanEqual_ << ", got " << result;
-      throw ValidationError(key_, oss.str());
+      oss << "must be >= " << *greater_than_equal << ", got " << result;
+      throw ValidationError(key, oss.str());
     }
 
-    for (size_t i = 0; i < predicates_.size(); ++i) {
-      if (!predicates_[i](result)) {
-        throw ValidationError(key_, error_messages_[i]);
+    for (size_t i = 0; i < predicates.size(); ++i) {
+      if (!predicates[i](result)) {
+        throw ValidationError(key, error_messages[i]);
       }
     }
 
@@ -117,25 +115,24 @@ private:
   }
 
 public:
-// TODO value and value_or is more like optionals
-  T get() {
-    auto val = extract_value();
+  T value() {
+    auto val = extractValue();
 
-    if (!val && required_) {
-      throw ValidationError(key_, "field is required");
+    if (!val && is_required) {
+      throw ValidationError(key, "field is required");
     }
     if (!val) {
-      throw ValidationError(key_, "field not found");
+      throw ValidationError(key, "field not found");
     }
 
-    return validate_value(*val);
+    return validateValue(*val);
   }
 
-  T get_or(T default_value) {
-    auto val = extract_value();
-    if (!val) return default_value;  // Key doesn't exist - use default
+  T valueOr(T default_value_) {
+    auto val = extractValue();
+    if (!val) return default_value_;  // Key doesn't exist - use default
 
-    return validate_value(*val);  // Key exists - validate it (will throw on wrong type)
+    return validateValue(*val);  // Key exists - validate it (will throw on wrong type)
   }
 };
 
@@ -143,55 +140,55 @@ public:
 template<typename T>
 class VectorValidator {
 private:
-  const toml::table& config_;
-  std::string key_;
-  bool required_ = false;
-  std::optional<size_t> min_length_;
-  std::optional<size_t> max_length_;
-  std::optional<T> min_value_;
-  bool positive_ = false;
+  const toml::table& config;
+  std::string key;
+  bool is_required = false;
+  std::optional<size_t> min_length;
+  std::optional<size_t> max_length;
+  std::optional<T> min_value;
+  bool is_positive = false;
 
 public:
-  VectorValidator(const toml::table& config, const std::string& key)
-    : config_(config), key_(key) {}
+  VectorValidator(const toml::table& config_, const std::string& key_)
+    : config(config_), key(key_) {}
 
   VectorValidator& required() {
-    required_ = true;
+    is_required = true;
     return *this;
   }
 
-  VectorValidator& min_length(size_t min_len) {
-    min_length_ = min_len;
+  VectorValidator& minLength(size_t min_len_) {
+    min_length = min_len_;
     return *this;
   }
 
-  VectorValidator& max_length(size_t max_len) {
-    max_length_ = max_len;
+  VectorValidator& maxLength(size_t max_len_) {
+    max_length = max_len_;
     return *this;
   }
 
   VectorValidator& positive() {
-    positive_ = true;
+    is_positive = true;
     return *this;
   }
 
-  VectorValidator& min_value(T min_val) {
-    min_value_ = min_val;
+  VectorValidator& minValue(T min_val_) {
+    min_value = min_val_;
     return *this;
   }
 
 private:
-  std::optional<std::vector<T>> extract_vector() {
+  std::optional<std::vector<T>> extractVector() {
     // If key doesn't exist, return nullopt
-    if (!config_.contains(key_)) {
+    if (!config.contains(key)) {
       return std::nullopt;
     }
 
     // Key exists, check if it's an array
-    auto* arr = config_[key_].as_array();
+    auto* arr = config[key].as_array();
     if (!arr) {
       // Key exists but wrong type - always an error
-      throw ValidationError(key_, "wrong type (expected array)");
+      throw ValidationError(key, "wrong type (expected array)");
     }
 
     // Extract and validate array elements
@@ -200,8 +197,8 @@ private:
       auto val = arr->at(i).template value<T>();
       if (!val) {
         std::ostringstream oss;
-        oss << "element [" << i << "] wrong type (expected " << get_type_name<T>() << ")";
-        throw ValidationError(key_, oss.str());
+        oss << "element [" << i << "] wrong type (expected " << getTypeName<T>() << ")";
+        throw ValidationError(key, oss.str());
       }
       result.push_back(*val);
     }
@@ -209,32 +206,32 @@ private:
     return result;
   }
 
-  std::vector<T> validate_vector(std::vector<T> result) {
-    if (min_length_ && result.size() < *min_length_) {
+  std::vector<T> validateVector(std::vector<T> result) {
+    if (min_length && result.size() < *min_length) {
       std::ostringstream oss;
-      oss << "must have at least " << *min_length_ << " elements, got " << result.size();
-      throw ValidationError(key_, oss.str());
+      oss << "must have at least " << *min_length << " elements, got " << result.size();
+      throw ValidationError(key, oss.str());
     }
 
-    if (max_length_ && result.size() > *max_length_) {
+    if (max_length && result.size() > *max_length) {
       std::ostringstream oss;
-      oss << "must have at most " << *max_length_ << " elements, got " << result.size();
-      throw ValidationError(key_, oss.str());
+      oss << "must have at most " << *max_length << " elements, got " << result.size();
+      throw ValidationError(key, oss.str());
     }
 
     for (size_t i = 0; i < result.size(); ++i) {
       T& element = result[i];
 
-      if (positive_ && element <= T{0}) {
+      if (is_positive && element <= T{0}) {
         std::ostringstream oss;
         oss << "element [" << i << "] must be positive, got " << element;
-        throw ValidationError(key_, oss.str());
+        throw ValidationError(key, oss.str());
       }
 
-      if (min_value_ && element < *min_value_) {
+      if (min_value && element < *min_value) {
         std::ostringstream oss;
-        oss << "element [" << i << "] must be >= " << *min_value_ << ", got " << element;
-        throw ValidationError(key_, oss.str());
+        oss << "element [" << i << "] must be >= " << *min_value << ", got " << element;
+        throw ValidationError(key, oss.str());
       }
     }
 
@@ -242,36 +239,36 @@ private:
   }
 
 public:
-  std::vector<T> get() {
-    auto val = extract_vector();
+  std::vector<T> value() {
+    auto val = extractVector();
 
-    if (!val && required_) {
-      throw ValidationError(key_, "field is required");
+    if (!val && is_required) {
+      throw ValidationError(key, "field is required");
     }
     if (!val) {
-      throw ValidationError(key_, "field not found");
+      throw ValidationError(key, "field not found");
     }
 
-    return validate_vector(*val);
+    return validateVector(*val);
   }
 
-  std::vector<T> get_or(const std::vector<T>& default_value) {
-    auto val = extract_vector();
-    if (!val) return default_value;  // Key doesn't exist - use default
+  std::vector<T> valueOr(const std::vector<T>& default_value_) {
+    auto val = extractVector();
+    if (!val) return default_value_;  // Key doesn't exist - use default
 
-    return validate_vector(*val);  // Key exists - validate it (will throw on wrong type)
+    return validateVector(*val);  // Key exists - validate it (will throw on wrong type)
   }
 };
 
 // Helper functions to start validation chains
 template<typename T>
-Validator<T> field(const toml::table& config, const std::string& key) {
-  return Validator<T>(config, key);
+Validator<T> field(const toml::table& config_, const std::string& key_) {
+  return Validator<T>(config_, key_);
 }
 
 template<typename T>
-VectorValidator<T> vector_field(const toml::table& config, const std::string& key) {
-  return VectorValidator<T>(config, key);
+VectorValidator<T> vectorField(const toml::table& config_, const std::string& key_) {
+  return VectorValidator<T>(config_, key_);
 }
 
 } // namespace validators
