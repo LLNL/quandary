@@ -383,8 +383,13 @@ Config::Config(
       }
     }
 
-    control_bounds = parseIndexedControlBounds(control_bounds_opt, 10000.0);
-    carrier_frequencies = parseIndexedCarrierFreqs(carrier_freq_opt, num_osc, 0.0);
+    control_bounds = parseIndexedWithDefaults<double>(control_bounds_opt, control_segments.size(), {10000.0});
+    // Extend bounds to match number of control segments
+    for (size_t i = 0; i < control_bounds.size(); i++) {
+      copyLast(control_bounds[i], control_segments[i].size());
+    }
+
+    carrier_frequencies = parseIndexedWithDefaults<double>(carrier_freq_opt, num_osc, {0.0});
 
     control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
       .valueOr(control_enforceBC);
@@ -476,7 +481,7 @@ Config::Config(
         (*output_to_write_opt)[oscilID] = types;
       }
     }
-    output_to_write = parseIndexedToVectorVector(output_to_write_opt);
+    output_to_write = parseIndexedWithDefaults<OutputType>(output_to_write_opt, num_osc);
 
     output_frequency = validators::field<size_t>(output, "output_frequency")
       .positive()
@@ -606,8 +611,13 @@ Config::Config(
   }
 
   if (settings.control_enforceBC.has_value()) control_enforceBC = settings.control_enforceBC.value();
-  control_bounds = parseIndexedControlBounds(settings.indexed_control_bounds, 10000.0);
-  carrier_frequencies = parseIndexedCarrierFreqs(settings.indexed_carrier_frequencies, num_osc, 0.0);
+  control_bounds = parseIndexedWithDefaults<double>(settings.indexed_control_bounds, control_segments.size(), {10000.0});
+  // Extend bounds to match number of control segments
+  for (size_t i = 0; i < control_bounds.size(); i++) {
+    copyLast(control_bounds[i], control_segments[i].size());
+  }
+
+  carrier_frequencies = parseIndexedWithDefaults<double>(settings.indexed_carrier_frequencies, num_osc, {0.0});
   optim_target = parseOptimTarget(settings.optim_target, nlevels);
 
   if (settings.gate_rot_freq.has_value()) gate_rot_freq = settings.gate_rot_freq.value();
@@ -643,7 +653,7 @@ Config::Config(
 
   // Output parameters
   if (settings.datadir.has_value()) datadir = settings.datadir.value();
-  output_to_write = parseIndexedToVectorVector(settings.indexed_output);
+  output_to_write = parseIndexedWithDefaults<OutputType>(settings.indexed_output, num_osc);
   if (settings.output_frequency.has_value()) output_frequency = settings.output_frequency.value();
   if (settings.optim_monitor_frequency.has_value()) optim_monitor_frequency = settings.optim_monitor_frequency.value();
   if (settings.runtype.has_value()) runtype = settings.runtype.value();
@@ -932,17 +942,19 @@ void Config::printConfig() const {
   log << "# =============================================\n\n";
 }
 
-// Template helper implementation
 template<typename T>
-std::vector<std::vector<T>> Config::parseIndexedToVectorVector(const std::optional<std::map<int, std::vector<T>>>& indexed_map) const {
-  if (!indexed_map.has_value()) {
-    return std::vector<std::vector<T>>(nlevels.size()); // Empty vectors for each oscillator
-  }
+std::vector<std::vector<T>> Config::parseIndexedWithDefaults(
+    const std::optional<std::map<int, std::vector<T>>>& indexed,
+    size_t num_entries,
+    const std::vector<T>& default_values) const {
 
-  std::vector<std::vector<T>> result(nlevels.size());
-  for (const auto& [osc_idx, values] : *indexed_map) {
-    if (static_cast<size_t>(osc_idx) < result.size()) {
-      result[osc_idx] = values;
+  std::vector<std::vector<T>> result(num_entries);
+
+  for (size_t i = 0; i < num_entries; i++) {
+    if (indexed.has_value() && indexed->find(static_cast<int>(i)) != indexed->end()) {
+      result[i] = indexed->at(static_cast<int>(i));
+    } else {
+      result[i] = default_values;
     }
   }
   return result;
@@ -1198,51 +1210,6 @@ ControlSegmentInitialization Config::parseControlInitialization(const toml::tabl
     validators::field<double>(table, "phase").valueOr(0.0)
   };
 }
-
-std::vector<std::vector<double>> Config::parseIndexedControlBounds(
-    const std::optional<std::map<int, std::vector<double>>>& indexed,
-    double default_val) const {
-
-  std::vector<std::vector<double>> result;
-  result.resize(control_segments.size());
-
-  std::vector<double> default_bounds = {default_val};
-
-  for (size_t i = 0; i < control_segments.size(); i++) {
-    size_t num_segments = control_segments[i].size();
-
-    if (indexed.has_value() && indexed->find(static_cast<int>(i)) != indexed->end()) {
-      result[i] = indexed->at(static_cast<int>(i));
-    } else {
-      result[i] = default_bounds;
-    }
-    copyLast(result[i], num_segments);
-  }
-
-  return result;
-}
-
-std::vector<std::vector<double>> Config::parseIndexedCarrierFreqs(
-    const std::optional<std::map<int, std::vector<double>>>& indexed,
-    size_t num_oscillators,
-    double default_val) const {
-
-  std::vector<std::vector<double>> result;
-  result.resize(num_oscillators);
-
-  std::vector<double> default_freq = {default_val};
-
-  for (size_t i = 0; i < num_oscillators; i++) {
-    if (indexed.has_value() && indexed->find(static_cast<int>(i)) != indexed->end()) {
-      result[i] = indexed->at(static_cast<int>(i));
-    } else {
-      result[i] = default_freq;
-    }
-  }
-
-  return result;
-}
-
 
 size_t Config::computeNumInitialConditions() const {
   size_t n_initial_conditions = 0;

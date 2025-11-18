@@ -352,10 +352,10 @@ private:
     std::vector<std::vector<ControlSegmentInitialization>>  parseControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& init_configs) const;
     ControlSegmentInitialization parseControlInitialization(const toml::table& table) const;
     std::vector<double> parseOptimWeights(const std::optional<std::vector<double>>& optim_weights_) const;
-    std::vector<std::vector<double>> parseIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed, double default_val) const;
-    std::vector<std::vector<double>> parseIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed, size_t num_oscillators, double default_val) const;
 
-    // Helper for indexed map conversion
     template<typename T>
-    std::vector<std::vector<T>> parseIndexedToVectorVector(const std::optional<std::map<int, std::vector<T>>>& indexed_map) const;
+    std::vector<std::vector<T>> parseIndexedWithDefaults(
+        const std::optional<std::map<int, std::vector<T>>>& indexed,
+        size_t num_entries,
+        const std::vector<T>& default_values = {}) const;
 };
