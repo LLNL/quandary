@@ -352,10 +352,10 @@ private:
     std::vector<std::vector<ControlSegmentInitialization>>  parseControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& init_configs) const;
     ControlSegmentInitialization parseControlInitialization(const toml::table& table) const;
     std::vector<double> parseOptimWeights(const std::optional<std::vector<double>>& optim_weights_) const;
+    std::vector<std::vector<double>> parseIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed, double default_val) const;
+    std::vector<std::vector<double>> parseIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed, size_t num_oscillators, double default_val) const;
 
     void convertOptimTarget(const std::optional<OptimTargetConfig>& config);
-    void convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed);
-    void convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed);
 
     size_t computeNumInitialConditions() const;
     void setRandSeed(std::optional<int> rand_seed_);

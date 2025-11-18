@@ -320,8 +320,6 @@ Config::Config(
         (*control_bounds_opt)[oscilID] = validators::vector_field<double>(table, "values").required().get();
       }
     }
-    auto control_bounds_parsed = parseIndexedToVectorVector(control_bounds_opt);
-
     std::optional<std::map<int, std::vector<double>>> carrier_freq_opt = std::nullopt;
     auto carrier_freq_node = optimization["carrier_frequency"];
     if (carrier_freq_node.is_array_of_tables()) {
@@ -332,12 +330,10 @@ Config::Config(
         (*carrier_freq_opt)[oscilID] = validators::vector_field<double>(table, "values").required().get();
       }
     }
-    auto carrier_freq = parseIndexedToVectorVector(carrier_freq_opt);
 
     std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}}};
     std::vector<ControlSegmentInitialization> default_initialization = {ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, 0.0, 0.0}};
-    std::vector<double> default_bounds = {10000.0};
-    std::vector<double> default_freq = {0.0};
+
     for (size_t i = 0; i < control_segments.size(); i++) {
       if (control_segments_parsed.find(i) != control_segments_parsed.end()) {
         control_segments[i] = control_segments_parsed[i];
@@ -353,14 +349,10 @@ Config::Config(
         size_t num_segments = control_segments[i].size();
         copyLast(control_initializations[i], num_segments);
       }
-      size_t num_segments = control_segments[i].size();
-
-      control_bounds[i] = !control_bounds_parsed[i].empty() ? control_bounds_parsed[i] : default_bounds;
-      copyLast(control_bounds[i], num_segments);
-
-      carrier_frequencies[i] = !carrier_freq[i].empty() ? carrier_freq[i] : default_freq;
-      copyLast(carrier_frequencies[i], num_segments);
     }
+
+    control_bounds = parseIndexedControlBounds(control_bounds_opt, 10000.0);
+    carrier_frequencies = parseIndexedCarrierFreqs(carrier_freq_opt, num_osc, 0.0);
 
     control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
       .get_or(control_enforceBC);
@@ -582,8 +574,8 @@ Config::Config(
   }
 
   if (settings.control_enforceBC.has_value()) control_enforceBC = settings.control_enforceBC.value();
-  convertIndexedControlBounds(settings.indexed_control_bounds);
-  convertIndexedCarrierFreqs(settings.indexed_carrier_frequencies);
+  control_bounds = parseIndexedControlBounds(settings.indexed_control_bounds, 10000.0);
+  carrier_frequencies = parseIndexedCarrierFreqs(settings.indexed_carrier_frequencies, num_osc, 0.0);
   optim_target = parseOptimTarget(settings.optim_target, nlevels);
 
   if (settings.gate_rot_freq.has_value()) gate_rot_freq = settings.gate_rot_freq.value();
@@ -1208,28 +1200,50 @@ ControlSegmentInitialization Config::parseControlInitialization(const toml::tabl
   };
 }
 
-void Config::convertIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed) {
-  control_bounds.resize(control_segments.size());
-  if (indexed.has_value()) {
-    for (const auto& [osc_idx, bounds] : *indexed) {
-      if (static_cast<size_t>(osc_idx) < control_segments.size()) {
-        size_t num_segments = control_segments[osc_idx].size();
-        control_bounds[osc_idx] = bounds;
-        copyLast(control_bounds[osc_idx], num_segments);
-      }
+std::vector<std::vector<double>> Config::parseIndexedControlBounds(
+    const std::optional<std::map<int, std::vector<double>>>& indexed,
+    double default_val) const {
+
+  std::vector<std::vector<double>> result;
+  result.resize(control_segments.size());
+
+  std::vector<double> default_bounds = {default_val};
+
+  for (size_t i = 0; i < control_segments.size(); i++) {
+    size_t num_segments = control_segments[i].size();
+
+    if (indexed.has_value() && indexed->find(static_cast<int>(i)) != indexed->end()) {
+      result[i] = indexed->at(static_cast<int>(i));
+    } else {
+      result[i] = default_bounds;
     }
+    copyLast(result[i], num_segments);
   }
+
+  return result;
 }
 
-void Config::convertIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed) {
-  if (indexed.has_value()) {
-    for (const auto& [osc_idx, freqs] : *indexed) {
-      if (static_cast<size_t>(osc_idx) < carrier_frequencies.size()) {
-        carrier_frequencies[osc_idx] = freqs;
-      }
+std::vector<std::vector<double>> Config::parseIndexedCarrierFreqs(
+    const std::optional<std::map<int, std::vector<double>>>& indexed,
+    size_t num_oscillators,
+    double default_val) const {
+
+  std::vector<std::vector<double>> result;
+  result.resize(num_oscillators);
+
+  std::vector<double> default_freq = {default_val};
+
+  for (size_t i = 0; i < num_oscillators; i++) {
+    if (indexed.has_value() && indexed->find(static_cast<int>(i)) != indexed->end()) {
+      result[i] = indexed->at(static_cast<int>(i));
+    } else {
+      result[i] = default_freq;
     }
   }
+
+  return result;
 }
+
 
 size_t Config::computeNumInitialConditions() const {
   size_t n_initial_conditions = 0;
