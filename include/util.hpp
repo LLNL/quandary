@@ -253,43 +253,6 @@ void copyLast(std::vector<Tval>& fillme, int tosize){
     // }
 };
 
-/**
- * @brief Prints error message to rank 0 cerr stream.
- *
- * @param mpi_rank MPI rank of the current process.
- * @param message Error message to log.
- */
-void logErrorToRank0(int mpi_rank, const std::string& message);
-
-/**
- * @brief Logs error message to rank 0 and exits program.
- *
- * Combines logErrorToRank0 and exit(1) into a single function for fatal errors
- * in MPI programs. Ensures only rank 0 outputs the error before terminating.
- *
- * @param mpi_rank Current MPI rank
- * @param message Error message to log before exiting
- */
-void exitWithError(int mpi_rank, const std::string& message);
-
-/**
- * @brief Prints output message to rank 0 cout stream.
- *
- * @param mpi_rank MPI rank of the current process.
- * @param message Error message to log.
- * @param quietmode Flag to suppress output when true.
- */
-void logOutputToRank0(int mpi_rank, const std::string& message, bool quietmode = false);
-
-/**
- * @brief Prints output message to rank 0 for given stream.
- *
- * @param mpi_rank MPI rank of the current process.
- * @param stream Stream to log output to.
- * @param message Error message to log.
- * @param quietmode Flag to suppress output when true.
- */
-void logOutputToRank0(int mpi_rank, std::stringstream& stream, const std::string& message, bool quietmode = false);
 
 /**
  * @brief Returns a lowercase version of the input string.
@@ -326,30 +289,42 @@ public:
 
   void log(const std::string& message) const {
     if (default_stream) {
-      logOutputToRank0(mpi_rank, *default_stream, message, quiet_mode);
+      logToStream(*default_stream, message);
     } else {
-      logOutputToRank0(mpi_rank, message, quiet_mode);
+      logToConsole(message);
     }
   }
 
   void log(std::stringstream& stream, const std::string& message) const {
-    logOutputToRank0(mpi_rank, stream, message, quiet_mode);
+    logToStream(stream, message);
   }
 
   void logToConsole(const std::string& message) const {
-    logOutputToRank0(mpi_rank, message, quiet_mode);
+    if (!quiet_mode && mpi_rank == 0) {
+      std::cout << message << std::endl;
+    }
   }
 
   void error(const std::string& message) const {
-    logErrorToRank0(mpi_rank, message);
+    if (mpi_rank == 0) {
+      std::cerr << "ERROR: " << message << std::endl;
+    }
   }
 
   void exitWithError(const std::string& message) const {
-    ::exitWithError(mpi_rank, message);
+    error(message);
+    exit(1);
   }
 
   bool isQuiet() const { return quiet_mode; }
   int getRank() const { return mpi_rank; }
+
+private:
+  void logToStream(std::stringstream& stream, const std::string& message) const {
+    if (!quiet_mode && mpi_rank == 0) {
+      stream << message << std::endl;
+    }
+  }
 };
 
 /**
