@@ -207,6 +207,13 @@ struct ControlSegmentInitialization {
  */
 class Config {
   private:
+    // Default values for repeated constants
+    static constexpr double DEFAULT_CONTROL_BOUND = 10000.0;
+    static constexpr double DEFAULT_CARRIER_FREQ = 0.0;
+    static constexpr size_t DEFAULT_SPLINE_COUNT = 10;
+    static constexpr double DEFAULT_CONTROL_INIT_AMPLITUDE = 0.0;
+    static constexpr double DEFAULT_CONTROL_INIT_PHASE = 0.0;
+
     // Logging
     MPILogger logger; ///< MPI-aware logger for output messages.
 

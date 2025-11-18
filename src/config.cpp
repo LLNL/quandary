@@ -348,8 +348,8 @@ Config::Config(
       }
     }
 
-    std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}}};
-    std::vector<ControlSegmentInitialization> default_initialization = {ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, 0.0, 0.0}};
+    std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{DEFAULT_SPLINE_COUNT, 0.0, ntime * dt}}};
+    std::vector<ControlSegmentInitialization> default_initialization = {ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, DEFAULT_CONTROL_INIT_AMPLITUDE, DEFAULT_CONTROL_INIT_PHASE}};
 
     for (size_t i = 0; i < control_segments.size(); i++) {
       if (control_segments_parsed.find(i) != control_segments_parsed.end()) {
@@ -368,13 +368,13 @@ Config::Config(
       }
     }
 
-    control_bounds = parseIndexedWithDefaults<double>(control_bounds_opt, control_segments.size(), {10000.0});
+    control_bounds = parseIndexedWithDefaults<double>(control_bounds_opt, control_segments.size(), {DEFAULT_CONTROL_BOUND});
     // Extend bounds to match number of control segments
     for (size_t i = 0; i < control_bounds.size(); i++) {
       copyLast(control_bounds[i], control_segments[i].size());
     }
 
-    carrier_frequencies = parseIndexedWithDefaults<double>(carrier_freq_opt, num_osc, {0.0});
+    carrier_frequencies = parseIndexedWithDefaults<double>(carrier_freq_opt, num_osc, {DEFAULT_CARRIER_FREQ});
 
     control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
       .valueOr(control_enforceBC);
@@ -579,7 +579,7 @@ Config::Config(
       control_initialization_file = init_map[0][0].filename;
       control_initializations.resize(num_osc);
       // Populate with default initialization for each oscillator, extended to match segments
-      ControlSegmentInitialization default_init = ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, 0.0, 0.0};
+      ControlSegmentInitialization default_init = ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, DEFAULT_CONTROL_INIT_AMPLITUDE, DEFAULT_CONTROL_INIT_PHASE};
       std::vector<ControlSegmentInitialization> default_initialization = {default_init};
       for (size_t i = 0; i < num_osc; i++) {
         control_initializations[i] = default_initialization;
@@ -592,13 +592,13 @@ Config::Config(
   }
 
   if (settings.control_enforceBC.has_value()) control_enforceBC = settings.control_enforceBC.value();
-  control_bounds = parseIndexedWithDefaults<double>(settings.indexed_control_bounds, control_segments.size(), {10000.0});
+  control_bounds = parseIndexedWithDefaults<double>(settings.indexed_control_bounds, control_segments.size(), {DEFAULT_CONTROL_BOUND});
   // Extend bounds to match number of control segments
   for (size_t i = 0; i < control_bounds.size(); i++) {
     copyLast(control_bounds[i], control_segments[i].size());
   }
 
-  carrier_frequencies = parseIndexedWithDefaults<double>(settings.indexed_carrier_frequencies, num_osc, {0.0});
+  carrier_frequencies = parseIndexedWithDefaults<double>(settings.indexed_carrier_frequencies, num_osc, {DEFAULT_CARRIER_FREQ});
   optim_target = parseOptimTarget(settings.optim_target, nlevels);
 
   if (settings.gate_rot_freq.has_value()) gate_rot_freq = settings.gate_rot_freq.value();
