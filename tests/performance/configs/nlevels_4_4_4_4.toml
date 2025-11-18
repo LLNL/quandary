@@ -1,0 +1,132 @@
+[system]
+nlevels = [4, 4, 4, 4]
+ntime = 500
+dt = 0.01
+transfreq = [4.1, 4.2, 4.3, 4.4]
+selfkerr = [0.2, 0.2, 0.2, 0.2]
+crosskerr = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
+Jkl = [0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
+rotfreq = [4.1, 4.2, 4.3, 4.4]
+collapse_type = "none"
+decay_time = [0.0, 0.0, 0.0, 0.0]
+dephase_time = [0.0, 0.0, 0.0, 0.0]
+
+initial_condition = {type = "pure", levels = [1, 0, 0, 0]}
+
+[optimization]
+control_enforceBC = false
+
+optim_target = {target_type = "pure", levels = [0, 0, 0, 0]}
+optim_objective = "Jtrace"
+optim_weights = [1.0]
+optim_atol = 1e-7
+optim_rtol = 1e-8
+optim_ftol = 1e-5
+optim_inftol = 1e-5
+optim_maxiter = 200
+optim_regul = 0.00001
+optim_penalty = 0.0
+optim_penalty_param = 0.0
+optim_penalty_dpdm = 0.0
+optim_penalty_energy = 0.0
+optim_penalty_variation = 0.0
+optim_regul_tik0 = false
+
+[[optimization.control_segments]]
+oscID = 0
+type = "spline"
+num = 15
+
+[[optimization.control_segments]]
+oscID = 1
+type = "spline"
+num = 15
+
+[[optimization.control_segments]]
+oscID = 2
+type = "spline"
+num = 15
+
+[[optimization.control_segments]]
+oscID = 3
+type = "spline"
+num = 15
+
+[[optimization.control_initialization]]
+oscID = 0
+type = "constant"
+amplitude = 0.005
+
+[[optimization.control_initialization]]
+oscID = 1
+type = "constant"
+amplitude = 0.005
+
+[[optimization.control_initialization]]
+oscID = 2
+type = "constant"
+amplitude = 0.005
+
+[[optimization.control_initialization]]
+oscID = 3
+type = "constant"
+amplitude = 0.005
+
+[[optimization.control_bounds]]
+oscID = 0
+values = [0.008]
+
+[[optimization.control_bounds]]
+oscID = 1
+values = [0.008]
+
+[[optimization.control_bounds]]
+oscID = 2
+values = [0.008]
+
+[[optimization.control_bounds]]
+oscID = 3
+values = [0.008]
+
+[[optimization.carrier_frequency]]
+oscID = 0
+values = [0.0, -0.2, -0.001]
+
+[[optimization.carrier_frequency]]
+oscID = 1
+values = [0.0, -0.2, -0.001]
+
+[[optimization.carrier_frequency]]
+oscID = 2
+values = [0.0, -0.2, -0.001]
+
+[[optimization.carrier_frequency]]
+oscID = 3
+values = [0.0, -0.2, -0.001]
+
+[output]
+datadir = "./data_out"
+output_frequency = 1
+optim_monitor_frequency = 1
+runtype = "simulation"
+usematfree = false
+linearsolver_type = "gmres"
+linearsolver_maxiter = 20
+timestepper = "IMR"
+rand_seed = 1234
+
+[[output.write]]
+oscID = 0
+type = []
+
+[[output.write]]
+oscID = 1
+type = []
+
+[[output.write]]
+oscID = 2
+type = []
+
+[[output.write]]
+oscID = 3
+type = []
