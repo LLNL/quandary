@@ -341,6 +341,8 @@ Config::Config(
         default_initialization = osc_inits[i];
       } else {
         control_initializations[i] = default_initialization;
+        size_t num_segments = control_segments[i].size();
+        copyLast(control_initializations[i], num_segments);
       }
       size_t num_segments = control_segments[i].size();
 
@@ -556,6 +558,15 @@ Config::Config(
     auto init_map = settings.indexed_control_init.value();
     if (init_map.find(0) != init_map.end() && !init_map[0].empty() && init_map[0][0].filename.has_value()) {
       control_initialization_file = init_map[0][0].filename;
+      control_initializations.resize(num_osc);
+      // Populate with default initialization for each oscillator, extended to match segments
+      ControlSegmentInitialization default_init = ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, 0.0, 0.0};
+      std::vector<ControlSegmentInitialization> default_initialization = {default_init};
+      for (size_t i = 0; i < num_osc; i++) {
+        control_initializations[i] = default_initialization;
+        size_t num_segments = control_segments[i].size();
+        copyLast(control_initializations[i], num_segments);
+      }
     } else {
       control_initializations = parseControlInitializations(settings.indexed_control_init);
     }
