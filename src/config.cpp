@@ -55,6 +55,40 @@ GateType parseGateType(const std::optional<std::string>& gate_type_str) {
   }
 }
 
+void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse,
+                      size_t oscilID, double tstart, double tstop, double amp,
+                      const std::vector<size_t>& nlevels, int mpi_rank) {
+  if (oscilID < nlevels.size()) {
+    PiPulseSegment segment = {tstart, tstop, amp};
+    apply_pipulse[oscilID].push_back(segment);
+
+    logOutputToRank0(mpi_rank, "Applying PiPulse to oscillator " +
+      std::to_string(oscilID) + " in [" + std::to_string(tstart) +
+      ", " + std::to_string(tstop) + "]: |p+iq|=" + std::to_string(amp) + "\n");
+
+    // Set zero control for all other oscillators during this pipulse
+    for (size_t i = 0; i < nlevels.size(); i++) {
+      if (i != oscilID) {
+        PiPulseSegment zero_segment = {tstart, tstop, 0.0};
+        apply_pipulse[i].push_back(zero_segment);
+      }
+    }
+  }
+}
+
+std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseConfig>>& pulses, const std::vector<size_t>& nlevels, int mpi_rank) {
+  auto apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
+
+  if (!pulses.has_value()) {
+    return apply_pipulse;
+  }
+  for (const auto& pulse_config : *pulses) {
+    addPiPulseSegment(apply_pipulse, pulse_config.oscil_id, pulse_config.tstart,
+                     pulse_config.tstop, pulse_config.amp, nlevels, mpi_rank);
+  }
+  return apply_pipulse;
+}
+
 } // namespace
 
 OptimTargetSettings Config::parseOptimTarget(
@@ -230,21 +264,19 @@ Config::Config(
     initial_condition = parseInitialCondition(init_cond_config);
     n_initial_conditions = computeNumInitialConditions();
 
-    std::optional<std::vector<PiPulseConfig>> pipulses = std::nullopt;
+    apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
     auto apply_pipulse_node = system["apply_pipulse"];
     if (apply_pipulse_node.is_array_of_tables()) {
-      pipulses = std::vector<PiPulseConfig>();
       for (auto& elem : *apply_pipulse_node.as_array()) {
         auto table = *elem.as_table();
         size_t oscilID = validators::field<size_t>(table, "oscID").required().get();
         double tstart = validators::field<double>(table, "tstart").required().get();
         double tstop = validators::field<double>(table, "tstop").required().get();
         double amp = validators::field<double>(table, "amp").required().get();
-        PiPulseConfig pi_pulse_config = {oscilID, tstart, tstop, amp};
-        pipulses->push_back(pi_pulse_config);
+
+        addPiPulseSegment(apply_pipulse, oscilID, tstart, tstop, amp, nlevels, mpi_rank);
       }
     }
-    apply_pipulse = parsePiPulses(pipulses);
 
     hamiltonian_file_Hsys = system["hamiltonian_file_Hsys"].value<std::string>();
     hamiltonian_file_Hc = system["hamiltonian_file_Hc"].value<std::string>();
@@ -544,7 +576,7 @@ Config::Config(
   initial_condition = parseInitialCondition(settings.initialcondition);
   n_initial_conditions = computeNumInitialConditions();
 
-  apply_pipulse = parsePiPulses(settings.apply_pipulse);
+  apply_pipulse = parsePiPulsesFromCfg(settings.apply_pipulse, nlevels, mpi_rank);
 
   hamiltonian_file_Hsys = settings.hamiltonian_file_Hsys;
   hamiltonian_file_Hc = settings.hamiltonian_file_Hc;
@@ -1015,39 +1047,6 @@ InitialCondition Config::parseInitialCondition(const std::optional<InitialCondit
   return parseInitialCondition(config.value());
 }
 
-std::vector<std::vector<PiPulseSegment>> Config::parsePiPulses(const std::optional<std::vector<PiPulseConfig>>& pulses) const {
-  auto apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
-
-  if (!pulses.has_value()) {
-    return apply_pipulse;
-  }
-  for (const auto& pulse_config : *pulses) {
-    if (pulse_config.oscil_id < nlevels.size()) {
-      // Set pipulse for this oscillator
-      PiPulseSegment segment;
-      segment.tstart = pulse_config.tstart;
-      segment.tstop = pulse_config.tstop;
-      segment.amp = pulse_config.amp;
-      apply_pipulse[pulse_config.oscil_id].push_back(segment);
-
-      logOutputToRank0(mpi_rank, "Applying PiPulse to oscillator " +
-        std::to_string(pulse_config.oscil_id) + " in [" + std::to_string(segment.tstart) +
-        ", " + std::to_string(segment.tstop) + "]: |p+iq|=" + std::to_string(segment.amp) + "\n");
-
-      // Set zero control for all other oscillators during this pipulse
-      for (size_t i = 0; i < nlevels.size(); i++){
-        if (i != pulse_config.oscil_id) {
-          PiPulseSegment zero_segment;
-          zero_segment.tstart = pulse_config.tstart;
-          zero_segment.tstop = pulse_config.tstop;
-          zero_segment.amp = 0.0;
-          apply_pipulse[i].push_back(zero_segment);
-        }
-      }
-    }
-  }
-  return apply_pipulse;
-}
 
 std::vector<std::vector<ControlSegment>> Config::parseControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& segments_opt) const {
   std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}}};
