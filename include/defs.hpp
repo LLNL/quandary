@@ -164,12 +164,14 @@ const std::map<std::string, ControlType> CONTROL_TYPE_MAP = {
  */
 enum class ControlSegmentInitType {
   CONSTANT, ///< Constant
-  RANDOM,   ///< Random 
+  RANDOM,   ///< Random
+  FILE,     ///< From file
 };
 
 const std::map<std::string, ControlSegmentInitType> CONTROL_SEGMENT_INIT_TYPE_MAP = {
     {"constant", ControlSegmentInitType::CONSTANT},
     {"random", ControlSegmentInitType::RANDOM},
+    {"file", ControlSegmentInitType::FILE},
 };
 
 /**

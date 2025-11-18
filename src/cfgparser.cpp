@@ -358,33 +358,37 @@ std::vector<ControlInitializationConfig> CfgParser::convertFromString<std::vecto
   size_t i = 0;
 
   while (i < parts.size()) {
-    if (parts[i] != "file" && !isValidControlSegmentInitType(parts[i])) {
-      exitWithError(mpi_rank, "ERROR: Expected control initialization type (file, constant, random), got: " + parts[i]);
-    }
-
-    ControlInitializationConfig initialization;
     std::string type_str = parts[i++];
-    
+
     // Validate minimum parameter count
     if (parts.size() <= 1) {
       exitWithError(mpi_rank, "ERROR: Expected control_initialization to have a type and at least one parameter.");
     }
 
-    if (type_str == "file") {
-      // File initialization
-      initialization.filename = parts[i];
-      initializations.push_back(initialization);
-      return initializations;
-    } else {
-      // Constant or random initialization
-      initialization.init_seg_type = convertFromString<ControlSegmentInitType>(type_str);
-      initialization.amplitude = convertFromString<double>(parts[i++]);
-      if (i < parts.size() && !isValidControlSegmentInitType(parts[i])) {
-        initialization.phase = convertFromString<double>(parts[i++]);
-      }
+    ControlInitializationConfig initialization;
+
+    auto type_enum = parseEnum(type_str, CONTROL_SEGMENT_INIT_TYPE_MAP);
+    if (!type_enum.has_value()) {
+      exitWithError(mpi_rank, "ERROR: Expected control initialization type (file, constant, random), got: " + type_str);
     }
 
-    initializations.push_back(initialization);
+    switch (type_enum.value()) {
+      case ControlSegmentInitType::FILE: {
+        initialization.filename = parts[i];
+        initializations.push_back(initialization);
+        return initializations;
+      }
+      case ControlSegmentInitType::CONSTANT:
+      case ControlSegmentInitType::RANDOM: {
+        initialization.init_seg_type = type_enum.value();
+        initialization.amplitude = convertFromString<double>(parts[i++]);
+        if (i < parts.size() && !isValidControlSegmentInitType(parts[i])) {
+          initialization.phase = convertFromString<double>(parts[i++]);
+        }
+        initializations.push_back(initialization);
+        break;
+      }
+    }
   }
 
   return initializations;

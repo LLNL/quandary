@@ -624,7 +624,8 @@ TEST_F(TomlParserTest, ControlInitialization_File) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-    [optimization.control_initialization_file]
+    [[optimization.control_initialization]]
+    type = "file"
     filename = "params.dat"
   )", &log, true);
 

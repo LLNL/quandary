@@ -68,9 +68,22 @@ initial_condition = {type = "basis"}
 # Decide whether control pulses should start and end at zero. Default: true.
 control_enforceBC = false
 
-# Global control initialization from file (alternative to per-oscillator initialization)
-# [optimization.control_initialization_file]
+# Control initialization options:
+# Option 1: File initialization (applies to all oscillators)
+# [[optimization.control_initialization]]
+# type = "file"
 # filename = "params.dat"
+
+# Option 2: Per-oscillator initialization
+# [[optimization.control_initialization]]
+# oscID = 0
+# type = "constant"
+# amplitude = 0.1
+# phase = 0.0
+# [[optimization.control_initialization]]
+# oscID = 1
+# type = "random"
+# amplitude = 0.2
 
 # Optimization target_type options: "gate", "pure", or "file".
 # Gate types: "cnot", "cqnot", "swap", "swap0q", "qft", "xgate", "ygate", "zgate", "hadamard"

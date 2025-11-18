@@ -268,35 +268,44 @@ Config::Config(
       }
     }
 
-    // Parse control initialization - separate sections for file vs per-segment
+    // Parse control initialization
     std::map<size_t, std::vector<ControlSegmentInitialization>> osc_inits;
-    if (optimization.contains("control_initialization_file")) {
-      // Case 1: Global file initialization
-      auto file_table = *optimization["control_initialization_file"].as_table();
-      control_initialization_file = validators::field<std::string>(file_table, "filename").required().get();
-    } else if (optimization.contains("control_initialization")) {
-      // Case 2: Per-oscillator initialization
+
+    if (optimization.contains("control_initialization")) {
       auto init_node = optimization["control_initialization"];
       if (init_node.is_array_of_tables()) {
         for (auto& elem : *init_node.as_array()) {
           auto table = *elem.as_table();
-          size_t oscID = validators::field<size_t>(table, "oscID").required().get();
           std::string type = validators::field<std::string>(table, "type").required().get();
 
-          ControlSegmentInitialization init;
-          if (type == "constant") {
-            double amplitude = validators::field<double>(table, "amplitude").required().get();
-            double phase = validators::field<double>(table, "phase").get_or(0.0);
-            init = {ControlSegmentInitType::CONSTANT, amplitude, phase};
-          } else if (type == "random") {
-            double amplitude = validators::field<double>(table, "amplitude").get_or(0.1);
-            double phase = validators::field<double>(table, "phase").get_or(0.0);
-            init = {ControlSegmentInitType::RANDOM, amplitude, phase};
-          } else {
+          auto type_enum = parseEnum(type, CONTROL_SEGMENT_INIT_TYPE_MAP);
+          if (!type_enum.has_value()) {
             throw std::invalid_argument("Unknown control initialization type: " + type);
           }
 
-          osc_inits[oscID].push_back(init);
+          switch (type_enum.value()) {
+            case ControlSegmentInitType::FILE: {
+              std::string filename = validators::field<std::string>(table, "filename").required().get();
+              control_initialization_file = filename;
+              break;
+            }
+            case ControlSegmentInitType::CONSTANT: {
+              size_t oscID = validators::field<size_t>(table, "oscID").required().get();
+              double amplitude = validators::field<double>(table, "amplitude").required().get();
+              double phase = validators::field<double>(table, "phase").get_or(0.0);
+              ControlSegmentInitialization init = {ControlSegmentInitType::CONSTANT, amplitude, phase};
+              osc_inits[oscID].push_back(init);
+              break;
+            }
+            case ControlSegmentInitType::RANDOM: {
+              size_t oscID = validators::field<size_t>(table, "oscID").required().get();
+              double amplitude = validators::field<double>(table, "amplitude").get_or(0.1);
+              double phase = validators::field<double>(table, "phase").get_or(0.0);
+              ControlSegmentInitialization init = {ControlSegmentInitType::RANDOM, amplitude, phase};
+              osc_inits[oscID].push_back(init);
+              break;
+            }
+          }
         }
       }
     }
