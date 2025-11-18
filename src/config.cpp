@@ -42,19 +42,6 @@ std::vector<EnumType> convertStringVectorToEnum(
 
 namespace {
 
-GateType parseGateType(const std::optional<std::string>& gate_type_str) {
-  if (!gate_type_str.has_value()) {
-    return GateType::NONE;
-  }
-
-  auto it = GATE_TYPE_MAP.find(gate_type_str.value());
-  if (it != GATE_TYPE_MAP.end()) {
-    return it->second;
-  } else {
-    return GateType::NONE;
-  }
-}
-
 void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse,
                       size_t oscilID, double tstart, double tstop, double amp,
                       const std::vector<size_t>& nlevels, int mpi_rank) {
@@ -109,7 +96,9 @@ OptimTargetSettings Config::parseOptimTarget(
   switch (*type) {
     case TargetType::GATE: {
       GateOptimTarget gate_target;
-      gate_target.gate_type = parseGateType(config.gate_type);
+      gate_target.gate_type = config.gate_type.has_value()
+        ? parseEnum(config.gate_type.value(), GATE_TYPE_MAP).value_or(GateType::NONE)
+        : GateType::NONE;
       gate_target.gate_file = config.gate_file.value_or("");
       return gate_target;
     }
