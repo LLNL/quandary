@@ -143,13 +143,13 @@ void CfgParser::applyConfigLine(const std::string& line) {
       try {
         setters[key](value);
       } catch (const std::exception& e) {
-        logErrorToRank0(mpi_rank, "Error parsing '" + key + "': " + e.what());
+        exitWithError(mpi_rank, "Error parsing '" + key + "': " + e.what());
       }
     } else {
       // Try to handle indexed settings (e.g., control_segments0, output1)
       bool handled = handleIndexedSetting(key, value);
       if (!handled) {
-        logErrorToRank0(mpi_rank, "Unknown option '" + key + "'");
+        exitWithError(mpi_rank, "Unknown option '" + key + "'");
       }
     }
   }
@@ -175,7 +175,7 @@ bool CfgParser::handleIndexedSetting(const std::string& key, const std::string& 
       indexed_setters[base_key](index, value);
       return true;
     } catch (const std::exception& e) {
-      logErrorToRank0(mpi_rank, "Error parsing indexed setting '" + key + "': " + e.what());
+      exitWithError(mpi_rank, "Error parsing indexed setting '" + key + "': " + e.what());
     }
   }
 
@@ -185,8 +185,7 @@ bool CfgParser::handleIndexedSetting(const std::string& key, const std::string& 
 ConfigSettings CfgParser::parseFile(const std::string& filename) {
   std::ifstream file(filename);
   if (!file.is_open()) {
-    logErrorToRank0(mpi_rank, "Unable to read the file " + filename);
-    exit(1);
+    exitWithError(mpi_rank, "Unable to read the file " + filename);
   }
 
   loadFromStream(file);
@@ -205,8 +204,7 @@ template<>
 InitialConditionConfig CfgParser::convertFromString<InitialConditionConfig>(const std::string& str) {
   auto parts = split(str);
   if (parts.empty()) {
-    logErrorToRank0(mpi_rank, "ERROR: Empty initialcondition specification");
-    exit(1);
+    exitWithError(mpi_rank, "Empty initialcondition specification");
   }
 
   InitialConditionConfig config;
@@ -215,7 +213,7 @@ InitialConditionConfig CfgParser::convertFromString<InitialConditionConfig>(cons
 
   if (type == InitialConditionType::FROMFILE) {
     if (parts.size() < 2) {
-      logErrorToRank0(mpi_rank, "ERROR: initialcondition of type FROMFILE must have a filename");
+      exitWithError(mpi_rank, "initialcondition of type FROMFILE must have a filename");
     }
     config.filename = parts[1];
   } else if (type == InitialConditionType::PURE) {
@@ -241,7 +239,7 @@ template<>
 OptimTargetConfig CfgParser::convertFromString<OptimTargetConfig>(const std::string& str) {
   auto parts = split(str);
   if (parts.empty()) {
-    exitWithError(mpi_rank, "ERROR: optim_target must have at least a target type specified.");
+    exitWithError(mpi_rank, "optim_target must have at least a target type specified.");
   }
 
   OptimTargetConfig config;
@@ -258,7 +256,7 @@ OptimTargetConfig CfgParser::convertFromString<OptimTargetConfig>(const std::str
 
       if (gate_type == GateType::FILE) {
         if (parts.size() < 3) {
-          exitWithError(mpi_rank, "ERROR: Gate type 'file' requires a filename.");
+          exitWithError(mpi_rank, "Gate type 'file' requires a filename.");
         }
         config.gate_file = parts[2];
       }
@@ -272,7 +270,7 @@ OptimTargetConfig CfgParser::convertFromString<OptimTargetConfig>(const std::str
       break;
     case TargetType::FROMFILE:
       if (parts.size() < 2) {
-        exitWithError(mpi_rank, "ERROR: Gate type 'file' requires a filename.");
+        exitWithError(mpi_rank, "Gate type 'file' requires a filename.");
       }
       config.filename = parts[1];
       break;
@@ -285,7 +283,7 @@ template<>
 std::vector<PiPulseConfig> CfgParser::convertFromString<std::vector<PiPulseConfig>>(const std::string& str) {
   auto parts = split(str);
   if (parts.size() % 4 != 0) {
-    exitWithError(mpi_rank, "ERROR: PiPulse vector requires multiples of 4 parameters: oscil_id, tstart, tstop, amp");
+    exitWithError(mpi_rank, "PiPulse vector requires multiples of 4 parameters: oscil_id, tstart, tstop, amp");
   }
 
   std::vector<PiPulseConfig> configs;
@@ -310,7 +308,7 @@ std::vector<ControlSegmentConfig> CfgParser::convertFromString<std::vector<Contr
 
   while (i < parts.size()) {
     if (!isValidControlType(parts[i])) {
-      exitWithError(mpi_rank, "ERROR: Expected control type, got: " + parts[i]);
+      exitWithError(mpi_rank, "Expected control type, got: " + parts[i]);
     }
 
     ControlSegmentConfig segment;
@@ -335,12 +333,12 @@ std::vector<ControlSegmentConfig> CfgParser::convertFromString<std::vector<Contr
         min_params = 2; // nspline, scaling
         break;
       case ControlType::NONE:
-        exitWithError(mpi_rank, "ERROR: Control segment type NONE is not valid for configuration.");
+        exitWithError(mpi_rank, "Control segment type NONE is not valid for configuration.");
         break;
     }
 
     if (segment.parameters.size() < min_params) {
-      exitWithError(mpi_rank, "ERROR: Control type requires at least " + std::to_string(min_params) +
+      exitWithError(mpi_rank, "Control type requires at least " + std::to_string(min_params) +
         " parameters, got " + std::to_string(segment.parameters.size()));
     }
 
@@ -362,14 +360,14 @@ std::vector<ControlInitializationConfig> CfgParser::convertFromString<std::vecto
 
     // Validate minimum parameter count
     if (parts.size() <= 1) {
-      exitWithError(mpi_rank, "ERROR: Expected control_initialization to have a type and at least one parameter.");
+      exitWithError(mpi_rank, "Expected control_initialization to have a type and at least one parameter.");
     }
 
     ControlInitializationConfig initialization;
 
     auto type_enum = parseEnum(type_str, CONTROL_SEGMENT_INIT_TYPE_MAP);
     if (!type_enum.has_value()) {
-      exitWithError(mpi_rank, "ERROR: Expected control initialization type (file, constant, random), got: " + type_str);
+      exitWithError(mpi_rank, "Expected control initialization type (file, constant, random), got: " + type_str);
     }
 
     switch (type_enum.value()) {

@@ -90,7 +90,7 @@ OptimTargetSettings Config::parseOptimTarget(
   // Convert target type string to enum
   auto type = parseEnum(config.target_type, TARGET_TYPE_MAP);
   if (!type.has_value()) {
-    exitWithError(mpi_rank, "ERROR: Unknown optimization target type: " + config.target_type);
+    exitWithError(mpi_rank, "Unknown optimization target type: " + config.target_type);
   }
 
   switch (*type) {
@@ -174,7 +174,7 @@ Config::Config(
   try {
     // Parse system settings
     if(!table.contains("system")) {
-      exitWithError(mpi_rank, "ERROR: [system] section required in TOML config");
+      exitWithError(mpi_rank, "[system] section required in TOML config");
     }
     auto system = *table["system"].as_table();
 
@@ -505,7 +505,7 @@ Config::Config(
     setRandSeed(rand_seed_);
 
   } catch (const validators::ValidationError& e) {
-    exitWithError(mpi_rank, "ERROR: " + std::string(e.what()));
+    exitWithError(mpi_rank, std::string(e.what()));
   }
 
   // Finalize and validate
@@ -525,7 +525,7 @@ Config::Config(
 {
 
   if (!settings.nlevels.has_value()) {
-    exitWithError(mpi_rank, "ERROR: nlevels cannot be empty");
+    exitWithError(mpi_rank, "nlevels cannot be empty");
   }
   nlevels = settings.nlevels.value();
   size_t num_osc = nlevels.size();
@@ -539,7 +539,7 @@ Config::Config(
   if (settings.dt.has_value()) dt = settings.dt.value();
 
   if (!settings.transfreq.has_value()) {
-    exitWithError(mpi_rank, "ERROR: transfreq cannot be empty");
+    exitWithError(mpi_rank, "transfreq cannot be empty");
   }
   transfreq = settings.transfreq.value();
   copyLast(transfreq, num_osc);
@@ -554,7 +554,7 @@ Config::Config(
   copyLast(Jkl, num_pairs_osc);
 
   if (!settings.rotfreq.has_value()) {
-    exitWithError(mpi_rank, "ERROR: rotfreq cannot be empty");
+    exitWithError(mpi_rank, "rotfreq cannot be empty");
   }
   rotfreq = settings.rotfreq.value();
   copyLast(rotfreq, num_osc);
@@ -672,11 +672,11 @@ void Config::finalize() {
 
 void Config::validate() const {
   if (ntime <= 0) {
-    exitWithError(mpi_rank, "ERROR: ntime must be positive, got " + std::to_string(ntime));
+    exitWithError(mpi_rank, "ntime must be positive, got " + std::to_string(ntime));
   }
 
   if (dt <= 0) {
-    exitWithError(mpi_rank, "ERROR: dt must be positive, got " + std::to_string(dt));
+    exitWithError(mpi_rank, "dt must be positive, got " + std::to_string(dt));
   }
 
   // Validate essential levels don't exceed total levels
@@ -953,7 +953,7 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
   auto opt_type = parseEnum(config.type, INITCOND_TYPE_MAP);
 
   if (!opt_type.has_value()) {
-    exitWithError(mpi_rank, "ERROR: initial condition type is required.");
+    exitWithError(mpi_rank, "initial condition type is required.");
   }
   InitialConditionType type = opt_type.value();
 
@@ -981,15 +981,15 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
   switch (type) {
     case InitialConditionType::FROMFILE:
       if (!config.filename.has_value()) {
-        exitWithError(mpi_rank, "ERROR: initialcondition of type FROMFILE must have a filename");
+        exitWithError(mpi_rank, "initialcondition of type FROMFILE must have a filename");
       }
       return FromFileInitialCondition{config.filename.value()};
     case InitialConditionType::PURE:
       if (!config.levels.has_value()) {
-        exitWithError(mpi_rank, "ERROR: initialcondition of type PURE must have 'levels'");
+        exitWithError(mpi_rank, "initialcondition of type PURE must have 'levels'");
       }
       if (config.levels.value().size() != nlevels.size()) {
-        exitWithError(mpi_rank, "ERROR: initialcondition of type PURE must have exactly " +
+        exitWithError(mpi_rank, "initialcondition of type PURE must have exactly " +
           std::to_string(nlevels.size()) + " parameters, got " + std::to_string(config.levels.value().size()));
       }
       for (size_t k=0; k < config.levels.value().size(); k++) {
@@ -1010,12 +1010,12 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
 
     case InitialConditionType::ENSEMBLE:
       if (init_cond_IDs.back() >= nlevels.size()) {
-        exitWithError(mpi_rank, "ERROR: Last element in initialcondition params exceeds number of oscillators");
+        exitWithError(mpi_rank, "Last element in initialcondition params exceeds number of oscillators");
       }
 
       for (size_t i = 1; i < init_cond_IDs.size()-1; i++){
         if (init_cond_IDs[i]+1 != init_cond_IDs[i+1]) {
-          exitWithError(mpi_rank, "ERROR: List of oscillators for ensemble initialization should be consecutive!\n");
+          exitWithError(mpi_rank, "List of oscillators for ensemble initialization should be consecutive!\n");
         }
       }
       return EnsembleInitialCondition{init_cond_IDs};
