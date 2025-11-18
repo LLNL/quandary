@@ -339,6 +339,9 @@ private:
     void finalize();
     void validate() const;
 
+    size_t computeNumInitialConditions() const;
+    void setRandSeed(std::optional<int> rand_seed_);
+
     // Conversion helper methods
     InitialCondition parseInitialCondition(const InitialConditionConfig& config) const;
     InitialCondition parseInitialCondition(const std::optional<InitialConditionConfig>& config) const;
@@ -354,9 +357,6 @@ private:
     std::vector<double> parseOptimWeights(const std::optional<std::vector<double>>& optim_weights_) const;
     std::vector<std::vector<double>> parseIndexedControlBounds(const std::optional<std::map<int, std::vector<double>>>& indexed, double default_val) const;
     std::vector<std::vector<double>> parseIndexedCarrierFreqs(const std::optional<std::map<int, std::vector<double>>>& indexed, size_t num_oscillators, double default_val) const;
-
-    size_t computeNumInitialConditions() const;
-    void setRandSeed(std::optional<int> rand_seed_);
 
     // Helper for indexed map conversion
     template<typename T>
