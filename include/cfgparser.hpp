@@ -8,6 +8,7 @@
 #include "config_types.hpp"
 #include "defs.hpp"
 #include "util.hpp"
+#include "mpi_logger.hpp"
 
 #pragma once
 

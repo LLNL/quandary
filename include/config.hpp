@@ -1,6 +1,7 @@
 #include "defs.hpp"
 #include "config_types.hpp"
 #include "util.hpp"
+#include "mpi_logger.hpp"
 
 #include <toml++/toml.hpp>
 
