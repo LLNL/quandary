@@ -217,7 +217,7 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize optimization --- */
-  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, ninit, output, quietmode);
+  OptimProblem* optimctx = new OptimProblem(config, mytimestepper, comm_init, comm_optim, output, quietmode);
 
   /* Set upt solution and gradient vector */
   Vec xinit;

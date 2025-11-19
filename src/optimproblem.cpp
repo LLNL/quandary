@@ -1,9 +1,9 @@
 #include "optimproblem.hpp"
 
-OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, Output* output_, bool quietmode_){
+OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, Output* output_, bool quietmode_){
 
   timestepper = timestepper_;
-  ninit = ninit_;
+  ninit = config.getNInitialConditions();
   output = output_;
   quietmode = quietmode_;
   /* Reset */
