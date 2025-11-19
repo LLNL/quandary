@@ -887,7 +887,7 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
   auto opt_type = parseEnum(config.type, INITCOND_TYPE_MAP);
 
   if (!opt_type.has_value()) {
-    logger.exitWithError("initial condition type is required.");
+    logger.exitWithError("initial condition type not found.");
   }
   InitialConditionType type = opt_type.value();
 
