@@ -14,48 +14,75 @@
 #include "defs.hpp"
 #include "mpi_logger.hpp"
 
-// Individual structs for each initial condition type
+/**
+ * @brief Initial condition loaded from file.
+ */
 struct FromFileInitialCondition {
   std::string filename; ///< File to read initial condition from
-
   std::string toString() const;
 };
 
+/**
+ * @brief Pure state initial condition (single quantum state).
+ */
 struct PureInitialCondition {
   std::vector<size_t> levels; ///< Quantum level for each oscillator
-
   std::string toString() const;
 };
 
+/**
+ * @brief Base class for initial conditions defined by oscillator IDs.
+ */
 struct OscillatorIDsInitialCondition {
   std::vector<size_t> osc_IDs; ///< Oscillator IDs
-
   std::string toString(std::string name) const;
 };
+
+/**
+ * @brief Ensemble initial condition for specified oscillators.
+ */
 struct EnsembleInitialCondition : public OscillatorIDsInitialCondition {
   std::string toString() const { return OscillatorIDsInitialCondition::toString("ensemble"); }
 };
 
+/**
+ * @brief Diagonal initial condition for specified oscillators.
+ */
 struct DiagonalInitialCondition : public OscillatorIDsInitialCondition {
   std::string toString() const { return OscillatorIDsInitialCondition::toString("diagonal"); }
 };
 
+/**
+ * @brief Basis initial condition for specified oscillators.
+ */
 struct BasisInitialCondition : public OscillatorIDsInitialCondition {
   std::string toString() const { return OscillatorIDsInitialCondition::toString("basis"); }
 };
 
+/**
+ * @brief Three-state initial condition.
+ */
 struct ThreeStatesInitialCondition {
   std::string toString() const { return "type = \"3states\""; }
 };
 
+/**
+ * @brief N+1 initial condition.
+ */
 struct NPlusOneInitialCondition {
   std::string toString() const { return "type = \"nplus1\""; }
 };
 
+/**
+ * @brief Performance test initial condition.
+ */
 struct PerformanceInitialCondition {
   std::string toString() const { return "type = \"performance\""; }
 };
 
+/**
+ * @brief Variant type representing any initial condition configuration.
+ */
 using InitialCondition = std::variant<FromFileInitialCondition, PureInitialCondition, EnsembleInitialCondition,
                                       DiagonalInitialCondition, BasisInitialCondition, ThreeStatesInitialCondition,
                                       NPlusOneInitialCondition, PerformanceInitialCondition>;
@@ -86,6 +113,9 @@ struct OptimPenalty {
   double penalty_variation = 0.01; ///< Amplitude variation penalty coefficient
 };
 
+/**
+ * @brief Gate-based optimization target.
+ */
 struct GateOptimTarget {
   GateType gate_type = GateType::NONE; ///< Gate type (for gate targets)
   std::string gate_file; ///< Gate file (for gate from file)
@@ -102,6 +132,9 @@ struct GateOptimTarget {
   }
 };
 
+/**
+ * @brief Pure state optimization target.
+ */
 struct PureOptimTarget {
   std::vector<size_t> purestate_levels; ///< Pure state levels (for pure targets)
 
@@ -116,14 +149,26 @@ struct PureOptimTarget {
   }
 };
 
+/**
+ * @brief File-based optimization target.
+ */
 struct FileOptimTarget {
   std::string file; ///< Target file (for file targets)
 
   std::string toString() const { return "{target_type = \"file\", filename = \"" + file + "\"}"; }
 };
 
+/**
+ * @brief Variant type representing any optimization target configuration.
+ */
 using OptimTargetSettings = std::variant<GateOptimTarget, PureOptimTarget, FileOptimTarget>;
 
+/**
+ * @brief Converts optimization target to string representation.
+ *
+ * @param target Optimization target variant
+ * @return String representation of the target
+ */
 inline std::string toString(const OptimTargetSettings& target) {
   return std::visit([](const auto& t) { return t.toString(); }, target);
 }
@@ -139,24 +184,36 @@ struct PiPulseSegment {
   double amp; ///< Amplitude for pulse segment
 };
 
+/**
+ * @brief Parameters for B-spline control segments.
+ */
 struct SplineParams {
   size_t nspline; ///< Number of basis functions in this segment
   double tstart; ///< Start time of the control segment
   double tstop; ///< Stop time of the control segment
 };
 
+/**
+ * @brief Parameters for amplitude-scaled B-spline control segments.
+ */
 struct SplineAmpParams : SplineParams {
-  double scaling;
+  double scaling; ///< Amplitude scaling factor
 };
 
+/**
+ * @brief Parameters for step function control segments.
+ */
 struct StepParams {
-  double step_amp1; ///< Real part of amplitude of the step pulse.
-  double step_amp2; ///< Imaginary part of amplitude of the step pulse.
-  double tramp; ///< Ramp time.
+  double step_amp1; ///< Real part of amplitude of the step pulse
+  double step_amp2; ///< Imaginary part of amplitude of the step pulse
+  double tramp; ///< Ramp time
   double tstart; ///< Start time of the control segment
   double tstop; ///< Stop time of the control segment
 };
 
+/**
+ * @brief Variant type for control segment parameters.
+ */
 using ControlParams = std::variant<SplineParams, SplineAmpParams, StepParams>;
 
 /**
@@ -170,8 +227,11 @@ struct ControlSegment {
   ControlParams params; ///< Parameters for control pulse for segment
 };
 
+/**
+ * @brief Control segment initialization settings.
+ */
 struct ControlSegmentInitialization {
-  ControlSegmentInitType type;
+  ControlSegmentInitType type; ///< Initialization type
   double amplitude; ///< Initial control pulse amplitude
   double phase; ///< Initial control pulse phase
 
@@ -182,7 +242,7 @@ struct ControlSegmentInitialization {
  * @brief Final validated configuration class.
  *
  * Contains only validated, typed configuration parameters. All fields are required
- * and have been validated by CfgParser. This class is immutable after construction.
+ * and have been validated with defaults set. This class is immutable after construction.
  */
 class Config {
  private:
