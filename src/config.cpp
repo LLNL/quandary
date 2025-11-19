@@ -152,7 +152,7 @@ Config::Config(const MPILogger& logger, const toml::table& table) : logger(logge
 
           auto type_enum = parseEnum(type, CONTROL_SEGMENT_INIT_TYPE_MAP);
           if (!type_enum.has_value()) {
-            throw std::invalid_argument("Unknown control initialization type: " + type);
+            logger.exitWithError("Unknown control initialization type: " + type);
           }
 
           switch (type_enum.value()) {
