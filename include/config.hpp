@@ -263,10 +263,14 @@ class Config {
 
   // getters
   const std::vector<size_t>& getNLevels() const { return nlevels; }
+  size_t getNLevels(size_t i_osc) const { return nlevels[i_osc]; }
   size_t getNumOsc() const { return nlevels.size(); }
   const std::vector<size_t>& getNEssential() const { return nessential; }
+  size_t getNEssential(size_t i_osc) const { return nessential[i_osc]; }
   size_t getNTime() const { return ntime; }
   double getDt() const { return dt; }
+  double getTotalTime() const { return ntime * dt; }
+
 
   const std::vector<double>& getTransFreq() const { return transfreq; }
   const std::vector<double>& getSelfKerr() const { return selfkerr; }

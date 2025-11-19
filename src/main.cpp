@@ -84,14 +84,6 @@ int main(int argc,char **argv)
   std::mt19937 rand_engine{}; // Use Mersenne Twister for cross-platform reproducibility
   rand_engine.seed(rand_seed);
 
-  /* --- Get some options from the config file --- */
-  const std::vector<size_t> nlevels = config.getNLevels();
-  size_t num_osc = config.getNumOsc();
-  int ntime = config.getNTime();
-  double dt = config.getDt();
-  RunType runtype = config.getRuntype();
-  std::vector<size_t> nessential = config.getNEssential();
-
   /* Get type and the total number of initial conditions */
   int ninit = config.getNInitialConditions();
 
@@ -148,9 +140,7 @@ int main(int argc,char **argv)
 #endif
   PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
 
-
-
-  double total_time = ntime * dt;
+  size_t num_osc = config.getNumOsc();
 
   /* --- Initialize the Oscillators --- */
   Oscillator** oscil_vec = new Oscillator*[num_osc];
@@ -176,17 +166,21 @@ int main(int argc,char **argv)
   /* Output */
   Output* output = new Output(config, comm_petsc, comm_init, quietmode);
 
+  int ntime = config.getNTime();
+  double dt = config.getDt();
+  double total_time = config.getTotalTime();
+
   // Some screen output 
   if (mpirank_world == 0 && !quietmode) {
     std::cout<< "System: ";
-    for (size_t i=0; i<nlevels.size(); i++) {
-      std::cout<< nlevels[i];
-      if (i < nlevels.size()-1) std::cout<< "x";
+    for (size_t i=0; i<num_osc; i++) {
+      std::cout<< config.getNLevels(i);
+      if (i < num_osc-1) std::cout<< "x";
     }
     std::cout<<"  (essential levels: ";
-    for (size_t i=0; i<nlevels.size(); i++) {
-      std::cout<< nessential[i];
-      if (i < nlevels.size()-1) std::cout<< "x";
+    for (size_t i=0; i<num_osc; i++) {
+      std::cout<< config.getNEssential(i);
+      if (i < num_osc-1) std::cout<< "x";
     }
     std::cout << ") " << std::endl;
 
@@ -201,6 +195,7 @@ int main(int argc,char **argv)
 
   /* My time stepper */
   bool storeFWD = false;
+  RunType runtype = config.getRuntype();
   if (mastereq->lindbladtype != LindbladType::NONE &&   
      (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
 
@@ -579,7 +574,7 @@ int main(int argc,char **argv)
 #endif
 
   /* Clean up */
-  for (size_t i=0; i<nlevels.size(); i++){
+  for (size_t i=0; i<num_osc; i++){
     delete oscil_vec[i];
   }
   delete [] oscil_vec;
