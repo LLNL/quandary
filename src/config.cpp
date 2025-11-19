@@ -16,6 +16,8 @@
 #include "defs.hpp"
 #include "util.hpp"
 
+namespace {
+
 // Helper function to convert enum back to string using existing enum maps
 template <typename EnumType>
 std::string enumToString(EnumType value, const std::map<std::string, EnumType>& type_map) {
@@ -39,8 +41,6 @@ std::vector<EnumType> convertStringVectorToEnum(const std::vector<std::string>& 
   }
   return result;
 }
-
-namespace {
 
 void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
                        double tstop, double amp, const std::vector<size_t>& nlevels, const MPILogger& logger) {
@@ -76,73 +76,6 @@ std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optiona
   return apply_pipulse;
 }
 
-} // namespace
-
-OptimTargetSettings Config::parseOptimTarget(const std::optional<OptimTargetConfig>& opt_config,
-                                             const std::vector<size_t>& nlevels) const {
-  if (!opt_config.has_value()) {
-    return PureOptimTarget{};
-  }
-
-  const OptimTargetConfig& config = opt_config.value();
-
-  // Convert target type string to enum
-  auto type = parseEnum(config.target_type, TARGET_TYPE_MAP);
-  if (!type.has_value()) {
-    logger.exitWithError("Unknown optimization target type: " + config.target_type);
-  }
-
-  switch (*type) {
-    case TargetType::GATE: {
-      GateOptimTarget gate_target;
-      gate_target.gate_type = config.gate_type.has_value()
-          ? parseEnum(config.gate_type.value(), GATE_TYPE_MAP).value_or(GateType::NONE)
-          : GateType::NONE;
-      gate_target.gate_file = config.gate_file.value_or("");
-      return gate_target;
-    }
-
-    case TargetType::PURE: {
-      PureOptimTarget pure_target;
-
-      if (!config.levels.has_value() || config.levels->empty()) {
-        logger.log(
-            "# Warning: You want to prepare a pure state, but didn't specify which one."
-            " Taking default: ground-state |0...0> \n");
-        pure_target.purestate_levels = std::vector<size_t>(nlevels.size(), 0);
-        return pure_target;
-      }
-
-      // Copy levels and validate
-      for (auto level : config.levels.value()) {
-        pure_target.purestate_levels.push_back(static_cast<size_t>(level));
-      }
-      pure_target.purestate_levels.resize(nlevels.size(), nlevels.back());
-
-      for (size_t i = 0; i < nlevels.size(); i++) {
-        if (pure_target.purestate_levels[i] >= nlevels[i]) {
-          logger.exitWithError("ERROR in config setting. The requested pure state target |" +
-                               std::to_string(pure_target.purestate_levels[i]) +
-                               "> exceeds the number of modeled levels for that oscillator (" +
-                               std::to_string(nlevels[i]) + ").\n");
-        }
-      }
-
-      return pure_target;
-    }
-
-    case TargetType::FROMFILE: {
-      FileOptimTarget file_target;
-      file_target.file = config.filename.value_or("");
-      return file_target;
-    }
-  }
-
-  // Should never reach here, but satisfy compiler
-  return PureOptimTarget{};
-}
-
-namespace {
 // Helper to extract optional vectors directly from TOML
 template <typename T>
 std::optional<std::vector<T>> get_optional_vector(const toml::node_view<toml::node>& node) {
@@ -666,6 +599,7 @@ Config Config::fromCfgString(const std::string& cfg_content, const MPILogger& lo
 }
 
 namespace {
+
 template <typename T>
 std::string printVector(std::vector<T> vec) {
   std::string out = "[";
@@ -682,6 +616,7 @@ std::string printVector(std::vector<T> vec) {
 std::string print(const InitialCondition& initial_condition) {
   return std::visit([](const auto& opt) { return opt.toString(); }, initial_condition);
 }
+
 } //namespace
 
 std::string ControlSegmentInitialization::toString() const {
@@ -865,6 +800,70 @@ void Config::printConfig(std::stringstream& log) const {
   }
 
   log << "# =============================================\n\n";
+}
+
+OptimTargetSettings Config::parseOptimTarget(const std::optional<OptimTargetConfig>& opt_config,
+                                             const std::vector<size_t>& nlevels) const {
+  if (!opt_config.has_value()) {
+    return PureOptimTarget{};
+  }
+
+  const OptimTargetConfig& config = opt_config.value();
+
+  // Convert target type string to enum
+  auto type = parseEnum(config.target_type, TARGET_TYPE_MAP);
+  if (!type.has_value()) {
+    logger.exitWithError("Unknown optimization target type: " + config.target_type);
+  }
+
+  switch (*type) {
+    case TargetType::GATE: {
+      GateOptimTarget gate_target;
+      gate_target.gate_type = config.gate_type.has_value()
+          ? parseEnum(config.gate_type.value(), GATE_TYPE_MAP).value_or(GateType::NONE)
+          : GateType::NONE;
+      gate_target.gate_file = config.gate_file.value_or("");
+      return gate_target;
+    }
+
+    case TargetType::PURE: {
+      PureOptimTarget pure_target;
+
+      if (!config.levels.has_value() || config.levels->empty()) {
+        logger.log(
+            "# Warning: You want to prepare a pure state, but didn't specify which one."
+            " Taking default: ground-state |0...0> \n");
+        pure_target.purestate_levels = std::vector<size_t>(nlevels.size(), 0);
+        return pure_target;
+      }
+
+      // Copy levels and validate
+      for (auto level : config.levels.value()) {
+        pure_target.purestate_levels.push_back(static_cast<size_t>(level));
+      }
+      pure_target.purestate_levels.resize(nlevels.size(), nlevels.back());
+
+      for (size_t i = 0; i < nlevels.size(); i++) {
+        if (pure_target.purestate_levels[i] >= nlevels[i]) {
+          logger.exitWithError("ERROR in config setting. The requested pure state target |" +
+                               std::to_string(pure_target.purestate_levels[i]) +
+                               "> exceeds the number of modeled levels for that oscillator (" +
+                               std::to_string(nlevels[i]) + ").\n");
+        }
+      }
+
+      return pure_target;
+    }
+
+    case TargetType::FROMFILE: {
+      FileOptimTarget file_target;
+      file_target.file = config.filename.value_or("");
+      return file_target;
+    }
+  }
+
+  // Should never reach here, but satisfy compiler
+  return PureOptimTarget{};
 }
 
 template <typename T>
