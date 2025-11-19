@@ -30,6 +30,7 @@ TEST_F(CfgParserTest, ParseBasicSettings) {
         ntime = 500
         dt = 0.05
         collapse_type = none
+        initialcondition = basis
       )",
       logger);
 
@@ -44,6 +45,7 @@ TEST_F(CfgParserTest, ParseVectorSettings) {
         nlevels = 2, 3
         transfreq = 4.1, 4.8, 5.2
         rotfreq = 0.0, 0.0
+        initialcondition = basis
       )",
       logger);
 
@@ -65,6 +67,7 @@ TEST_F(CfgParserTest, ParseOutputSettings) {
         nlevels = 2, 2
         transfreq = 4.1, 4.8
         rotfreq = 0.0, 0.0
+        initialcondition = basis
         output0 = population
         output1 = population, expectedEnergy
       )",
@@ -108,6 +111,7 @@ TEST_F(CfgParserTest, ApplyDefaults) {
         nlevels = 2
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
       )",
       logger);
 
@@ -289,6 +293,7 @@ TEST_F(CfgParserTest, ParsePiPulseSettings_Structure) {
         nlevels = 2, 2
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
         apply_pipulse = 0, 0.5, 1.0, 0.8
       )",
       logger);
@@ -314,6 +319,7 @@ TEST_F(CfgParserTest, ParsePiPulseSettings_Multiple) {
         nlevels = 2, 2
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
         apply_pipulse = 0, 0.5, 1.0, 0.8, 1, 0, 0.5, 0.2
       )",
       logger);
@@ -344,6 +350,7 @@ TEST_F(CfgParserTest, ControlSegments_Spline0) {
         nlevels = 2
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
         control_segments0 = spline0, 150, 0.0, 1.0
       )",
       logger);
@@ -363,6 +370,7 @@ TEST_F(CfgParserTest, ControlSegments_Spline) {
         nlevels = 2, 2
         transfreq = 4.1, 4.1
         rotfreq = 0.0, 0.0
+        initialcondition = basis
         control_segments0 = spline, 10
         control_segments1 = spline, 20, 0.0, 1.0, spline, 30, 1.0, 2.0
       )",
@@ -400,6 +408,7 @@ TEST_F(CfgParserTest, ControlSegments_Step) {
         nlevels = 2,2
         transfreq = 4.1,4.1
         rotfreq = 0.0,0.0
+        initialcondition = basis
         control_segments0 = step, 0.1, 0.2, 0.3, 0.4, 0.5
         control_segments1 = step, 0.1, 0.2, 0.3
       )",
@@ -434,6 +443,7 @@ TEST_F(CfgParserTest, ControlSegments_Defaults) {
         nlevels = 2, 2, 2
         transfreq = 4.1, 4.8
         rotfreq = 0.0, 0.0
+        initialcondition = basis
         control_segments1 = spline0, 150, 0.0, 1.0
         control_bounds1 = 2.0
       )",
@@ -476,6 +486,7 @@ TEST_F(CfgParserTest, ControlInitialization_Defaults) {
         nlevels = 2, 2, 2
         transfreq = 4.1, 4.1, 4.1
         rotfreq = 0.0, 0.0, 0.0
+        initialcondition = basis
         control_initialization1 = random, 2.0
       )",
       logger);
@@ -508,6 +519,7 @@ TEST_F(CfgParserTest, ControlInitialization) {
         nlevels = 2, 2, 2, 2, 2
         transfreq = 4.1, 4.1, 4.1, 4.1, 4.1
         rotfreq = 0.0, 0.0, 0.0, 0.0, 0.0
+        initialcondition = basis
         control_initialization0 = constant, 1.0, 1.1
         control_initialization1 = constant, 2.0
         control_initialization2 = random, 3.0, 3.1
@@ -561,6 +573,7 @@ TEST_F(CfgParserTest, ControlInitialization_File) {
         nlevels = 2
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
         control_initialization0 = file, params.dat
       )",
       logger);
@@ -575,6 +588,7 @@ TEST_F(CfgParserTest, ControlBounds) {
         nlevels = 2
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
         control_segments0 = spline, 10, 0.0, 1.0, step, 0.1, 0.2, 0.3, 0.4, 0.5, spline0, 20, 1.0, 2.0
         control_bounds0 = 1.0, 2.0
       )",
@@ -594,6 +608,7 @@ TEST_F(CfgParserTest, CarrierFrequencies) {
         nlevels = 2
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
         carrier_frequency0 = 1.0, 2.0
       )",
       logger);
@@ -610,6 +625,7 @@ TEST_F(CfgParserTest, OptimTarget_GateType) {
         nlevels = 2
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
         optim_target = gate, cnot
       )",
       logger);
@@ -626,6 +642,7 @@ TEST_F(CfgParserTest, OptimTarget_GateFromFile) {
         nlevels = 2
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
         optim_target = gate, file, /path/to/gate.dat
       )",
       logger);
@@ -643,6 +660,7 @@ TEST_F(CfgParserTest, OptimTarget_PureState) {
         nlevels = 3, 3, 3
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
         optim_target = pure, 0, 1, 2
       )",
       logger);
@@ -663,6 +681,7 @@ TEST_F(CfgParserTest, OptimTarget_FromFile) {
         nlevels = 2
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
         optim_target = file, /path/to/target.dat
       )",
       logger);
@@ -679,6 +698,7 @@ TEST_F(CfgParserTest, OptimTarget_DefaultPure) {
         nlevels = 2
         transfreq = 4.1
         rotfreq = 0.0
+        initialcondition = basis
       )",
       logger);
 
@@ -695,6 +715,7 @@ TEST_F(CfgParserTest, OptimWeights) {
         nlevels = 2, 2
         transfreq = 4.1, 4.1
         rotfreq = 0.0, 0.0
+        initialcondition = basis
         optim_weights = 2.0, 1.0
       )",
       logger);

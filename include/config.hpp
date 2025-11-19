@@ -398,7 +398,6 @@ class Config {
                                                   const std::map<std::string, EnumType>& type_map) const;
 
   InitialCondition parseInitialCondition(const InitialConditionData& config) const;
-  InitialCondition parseInitialCondition(const std::optional<InitialConditionData>& config) const;
 
   void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
                          double tstop, double amp) const;

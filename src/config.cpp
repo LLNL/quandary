@@ -76,16 +76,12 @@ Config::Config(const MPILogger& logger, const toml::table& table) : logger(logge
     dephase_time = validators::vectorField<double>(system, "dephase_time").valueOr(std::vector<double>(num_osc, 0.0));
     copyLast(dephase_time, num_osc);
 
-    std::optional<InitialConditionData> init_cond_config = std::nullopt;
-    if (system.contains("initial_condition")) {
-      auto init_cond_table = *system["initial_condition"].as_table();
-      std::string type_str = validators::field<std::string>(init_cond_table, "type").required().value();
-      std::optional<std::vector<size_t>> levels = validators::getOptionalVector<size_t>(init_cond_table["levels"]);
-      std::optional<std::vector<size_t>> osc_IDs = validators::getOptionalVector<size_t>(init_cond_table["oscIDs"]);
-      std::optional<std::string> filename = init_cond_table["filename"].value<std::string>();
-      init_cond_config = {type_str, osc_IDs, levels, filename};
-    }
-    initial_condition = parseInitialCondition(init_cond_config);
+    auto init_cond_table = validators::getRequiredTable(system, "initial_condition");
+    std::string type_str = validators::field<std::string>(init_cond_table, "type").required().value();
+    std::optional<std::vector<size_t>> levels = validators::getOptionalVector<size_t>(init_cond_table["levels"]);
+    std::optional<std::vector<size_t>> osc_IDs = validators::getOptionalVector<size_t>(init_cond_table["oscIDs"]);
+    std::optional<std::string> filename = init_cond_table["filename"].value<std::string>();
+    initial_condition = parseInitialCondition({type_str, osc_IDs, levels, filename});
     n_initial_conditions = computeNumInitialConditions();
 
     apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
@@ -366,7 +362,10 @@ Config::Config(const MPILogger& logger, const ParsedConfigData& settings) : logg
   dephase_time = settings.dephase_time.value_or(std::vector<double>(num_osc, 0.0));
   copyLast(dephase_time, num_osc);
 
-  initial_condition = parseInitialCondition(settings.initialcondition);
+  if (!settings.initialcondition.has_value()) {
+    logger.exitWithError("initialcondition cannot be empty");
+  }
+  initial_condition = parseInitialCondition(settings.initialcondition.value());
   n_initial_conditions = computeNumInitialConditions();
 
   apply_pipulse = parsePiPulsesFromCfg(settings.apply_pipulse);
@@ -912,20 +911,6 @@ InitialCondition Config::parseInitialCondition(const InitialConditionData& confi
     case InitialConditionType::PERFORMANCE:
       return PerformanceInitialCondition{};
   }
-}
-
-// Conversion helper implementations
-InitialCondition Config::parseInitialCondition(const std::optional<InitialConditionData>& config) const {
-  if (!config.has_value()) {
-    // Default: BasisInitialCondition with all oscillators
-    std::vector<size_t> all_oscillators;
-    for (size_t i = 0; i < nlevels.size(); i++) {
-      all_oscillators.push_back(i);
-    }
-    return BasisInitialCondition{all_oscillators};
-  }
-
-  return parseInitialCondition(config.value());
 }
 
 void Config::addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,

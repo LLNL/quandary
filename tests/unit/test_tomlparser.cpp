@@ -30,6 +30,7 @@ TEST_F(TomlParserTest, ParseBasicSettings) {
         ntime = 500
         dt = 0.05
         collapse_type = "none"
+        initial_condition = {type = "basis"}
       )",
       logger);
 
@@ -45,6 +46,7 @@ TEST_F(TomlParserTest, ParseVectorSettings) {
         nlevels = [2, 3]
         transfreq = [4.1, 4.8, 5.2]
         rotfreq = [0.0, 0.0]
+        initial_condition = {type = "basis"}
       )",
       logger);
 
@@ -67,6 +69,7 @@ TEST_F(TomlParserTest, ParseOutputSettings) {
         nlevels = [2, 2]
         transfreq = [4.1, 4.8]
         rotfreq = [0.0, 0.0]
+        initial_condition = {type = "basis"}
         [[output.write]]
         oscID = 0
         type = ["population"]
@@ -118,6 +121,7 @@ TEST_F(TomlParserTest, ApplyDefaults) {
         nlevels = [2]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
       )",
       logger);
 
@@ -310,6 +314,7 @@ TEST_F(TomlParserTest, ParsePiPulseSettings_Structure) {
         nlevels = [2, 2]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
 
         [[system.apply_pipulse]]
         oscID = 0
@@ -341,6 +346,7 @@ TEST_F(TomlParserTest, ParsePiPulseSettings_Multiple) {
         nlevels = [2, 2]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
 
         [[system.apply_pipulse]]
         oscID = 0
@@ -383,6 +389,8 @@ TEST_F(TomlParserTest, ControlSegments_Spline0) {
         nlevels = [2]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
+
         [[optimization.control_segments]]
         oscID = 0
         type = "spline0"
@@ -408,6 +416,8 @@ TEST_F(TomlParserTest, ControlSegments_Spline) {
         nlevels = [2, 2]
         transfreq = [4.1, 4.1]
         rotfreq = [0.0, 0.0]
+        initial_condition = {type = "basis"}
+
         [[optimization.control_segments]]
         oscID = 0
         type = "spline"
@@ -460,6 +470,8 @@ TEST_F(TomlParserTest, ControlSegments_Step) {
         nlevels = [2,2]
         transfreq = [4.1,4.1]
         rotfreq = [0.0,0.0]
+        initial_condition = {type = "basis"}
+
         [[optimization.control_segments]]
         oscID = 0
         type = "step"
@@ -507,6 +519,8 @@ TEST_F(TomlParserTest, ControlSegments_Defaults) {
         nlevels = [2, 2, 2]
         transfreq = [4.1, 4.8]
         rotfreq = [0.0, 0.0]
+        initial_condition = {type = "basis"}
+
         [[optimization.control_segments]]
         oscID = 1
         type = "spline0"
@@ -557,6 +571,8 @@ TEST_F(TomlParserTest, ControlInitialization_Defaults) {
         nlevels = [2, 2, 2]
         transfreq = [4.1, 4.1, 4.1]
         rotfreq = [0.0, 0.0, 0.0]
+        initial_condition = {type = "basis"}
+
         [[optimization.control_initialization]]
         oscID = 1
         type = "random"
@@ -593,6 +609,8 @@ TEST_F(TomlParserTest, ControlInitialization) {
         nlevels = [2, 2, 2, 2, 2]
         transfreq = [4.1, 4.1, 4.1, 4.1, 4.1]
         rotfreq = [0.0, 0.0, 0.0, 0.0, 0.0]
+        initial_condition = {type = "basis"}
+
         [[optimization.control_initialization]]
         oscID = 0
         type = "constant"
@@ -670,6 +688,8 @@ TEST_F(TomlParserTest, ControlInitialization_File) {
         nlevels = [2]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
+
         [[optimization.control_initialization]]
         type = "file"
         filename = "params.dat"
@@ -687,6 +707,8 @@ TEST_F(TomlParserTest, ControlBounds) {
         nlevels = [2]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
+
         [[optimization.control_segments]]
         oscID = 0
         type = "spline"
@@ -728,6 +750,8 @@ TEST_F(TomlParserTest, CarrierFrequencies) {
         nlevels = [2]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
+
         [[optimization.carrier_frequency]]
         oscID = 0
         values = [1.0, 2.0]
@@ -747,6 +771,7 @@ TEST_F(TomlParserTest, OptimTarget_GateType) {
         nlevels = [2]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
 
         [optimization]
         optim_target = {target_type = "gate", gate_type = "cnot"}
@@ -766,6 +791,7 @@ TEST_F(TomlParserTest, OptimTarget_GateFromFile) {
         nlevels = [2]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
 
         [optimization]
         optim_target = {target_type = "gate", gate_type = "file", gate_file = "/path/to/gate.dat"}
@@ -786,6 +812,7 @@ TEST_F(TomlParserTest, OptimTarget_PureState) {
         nlevels = [3, 3, 3]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
 
         [optimization]
         optim_target = {target_type = "pure", levels = [0,1,2]}
@@ -809,6 +836,7 @@ TEST_F(TomlParserTest, OptimTarget_FromFile) {
         nlevels = [2]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
 
         [optimization]
         optim_target = {target_type = "file", filename = "/path/to/target.dat"}
@@ -828,6 +856,7 @@ TEST_F(TomlParserTest, OptimTarget_DefaultPure) {
         nlevels = [2]
         transfreq = [4.1]
         rotfreq = [0.0]
+        initial_condition = {type = "basis"}
       )",
       logger);
 
@@ -845,6 +874,8 @@ TEST_F(TomlParserTest, OptimWeights) {
         nlevels = [2, 2]
         transfreq = [4.1, 4.1]
         rotfreq = [0.0, 0.0]
+        initial_condition = {type = "basis"}
+
         [optimization]
         optim_weights = [2.0, 1.0]
       )",
