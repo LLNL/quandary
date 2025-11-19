@@ -75,9 +75,8 @@ int main(int argc,char **argv)
   MPILogger logger(mpirank_world, quietmode);
   std::string config_file = argv[1];
   Config config = Config::fromFile(config_file, logger);
-  std::stringstream log;
-  config.printConfig(log);
-  std::cout << log.str() << std::endl; // TODO remove, for debugging
+  std::stringstream config_log;
+  config.printConfig(config_log);
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
   int rand_seed = config.getRandSeed();
@@ -277,7 +276,7 @@ int main(int argc,char **argv)
     snprintf(filename, 254, "%s/config_log.toml", output->datadir.c_str());
     std::ofstream logfile(filename);
     if (logfile.is_open()){
-      logfile << log.str();
+      logfile << config_log.str();
       logfile.close();
       if (!quietmode) printf("File written: %s\n", filename);
     }
