@@ -6,6 +6,12 @@
 #include <toml++/toml.hpp>
 #include <vector>
 
+/**
+ * @brief Validation utilities for TOML configuration parsing.
+ *
+ * Provides chainable validators for type-safe TOML field extraction with
+ * built-in validation (required, positive, ranges, custom predicates).
+ */
 namespace validators {
 
 // Helper to get readable type names for error messages
@@ -24,14 +30,20 @@ std::string getTypeName() {
   }
 }
 
-// Custom exception for validation errors
+/**
+ * @brief Exception thrown when configuration validation fails.
+ */
 class ValidationError : public std::runtime_error {
  public:
   ValidationError(const std::string& field, const std::string& message)
       : std::runtime_error("Validation error for field '" + field + "': " + message) {}
 };
 
-// Chainable validator builder
+/**
+ * @brief Chainable validator for scalar TOML fields.
+ *
+ * @tparam T Type of field to validate (int, double, string, etc.)
+ */
 template <typename T>
 class Validator {
  private:
@@ -44,21 +56,33 @@ class Validator {
  public:
   Validator(const toml::table& config_, const std::string& key_) : config(config_), key(key_) {}
 
+  /**
+  * @brief Marks field as required (will error if missing).
+  */
   Validator& required() {
     is_required = true;
     return *this;
   }
 
+  /**
+  * @brief Requires value > threshold.
+  */
   Validator& greaterThan(T greater_than_) {
     greater_than = greater_than_;
     return *this;
   }
 
+  /**
+  * @brief Requires value >= threshold.
+  */
   Validator& greaterThanEqual(T greater_than_equal_) {
     greater_than_equal = greater_than_equal_;
     return *this;
   }
 
+  /**
+  * @brief Requires value > 0.
+  */
   Validator& positive() {
     greaterThan(T{0});
     return *this;
@@ -98,6 +122,9 @@ class Validator {
   }
 
  public:
+  /**
+  * @brief Extracts value, throwing if required and missing.
+  */
   T value() {
     auto val = extractValue();
 
@@ -111,6 +138,9 @@ class Validator {
     return validateValue(*val);
   }
 
+  /**
+  * @brief Extracts value or returns default if missing.
+  */
   T valueOr(T default_value_) {
     auto val = extractValue();
     if (!val) return default_value_; // Key doesn't exist - use default
