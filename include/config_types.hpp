@@ -1,10 +1,11 @@
 #pragma once
 
-#include "defs.hpp"
 #include <map>
 #include <optional>
 #include <string>
 #include <vector>
+
+#include "defs.hpp"
 
 /**
  * @brief Common configuration structures shared between CfgParser and Config
@@ -14,37 +15,37 @@
  */
 
 struct InitialConditionConfig {
-  std::string type;  ///< Type of initial condition
-  std::optional<std::vector<size_t>> osc_IDs;  ///< Oscillator IDs
-  std::optional<std::vector<size_t>> levels;  ///< Levels for each oscillator
-  std::optional<std::string> filename;  ///< Filename (if type is FILE)
+  std::string type; ///< Type of initial condition
+  std::optional<std::vector<size_t>> osc_IDs; ///< Oscillator IDs
+  std::optional<std::vector<size_t>> levels; ///< Levels for each oscillator
+  std::optional<std::string> filename; ///< Filename (if type is FILE)
 };
 
 struct OptimTargetConfig {
-  std::string target_type;               ///< Target type (gate, pure, file)
-  std::optional<std::string> gate_type;    ///< Gate type (for "gate, cnot")
-  std::optional<std::string> filename;  ///< Filename (for "file, path.dat")
+  std::string target_type; ///< Target type (gate, pure, file)
+  std::optional<std::string> gate_type; ///< Gate type (for "gate, cnot")
+  std::optional<std::string> filename; ///< Filename (for "file, path.dat")
   std::optional<std::string> gate_file; ///< Gate filename (for "gate, file, path.dat")
-  std::optional<std::vector<size_t>> levels;           ///< Pure state levels (for "pure, 0, 1")
+  std::optional<std::vector<size_t>> levels; ///< Pure state levels (for "pure, 0, 1")
 };
 
 struct PiPulseConfig {
-  size_t oscil_id;  ///< Oscillator ID
-  double tstart;    ///< Start time
-  double tstop;     ///< Stop time
-  double amp;       ///< Amplitude
+  size_t oscil_id; ///< Oscillator ID
+  double tstart; ///< Start time
+  double tstop; ///< Stop time
+  double amp; ///< Amplitude
 };
 
 struct ControlSegmentConfig {
-  ControlType control_type;        ///< Type of control segment
-  std::vector<double> parameters;  ///< Parameters for control segment
+  ControlType control_type; ///< Type of control segment
+  std::vector<double> parameters; ///< Parameters for control segment
 };
 
 struct ControlInitializationConfig {
-  ControlSegmentInitType init_seg_type;  ///< Type of initialization per segment
-  std::optional<double> amplitude;      ///< Initial amplitude
-  std::optional<double> phase;          ///< Initial phase (optional)
-  std::optional<std::string> filename;  ///< Filename (for file init - mutually exclusive with above)
+  ControlSegmentInitType init_seg_type; ///< Type of initialization per segment
+  std::optional<double> amplitude; ///< Initial amplitude
+  std::optional<double> phase; ///< Initial phase (optional)
+  std::optional<std::string> filename; ///< Filename (for file init - mutually exclusive with above)
 };
 
 /**

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
-#include <cstdlib>
 
 /**
  * @brief MPI-aware logger that handles rank filtering and quiet mode.
@@ -11,14 +11,14 @@
  * the codebase. Only rank 0 outputs messages, and quiet mode can suppress output.
  */
 class MPILogger {
-private:
+ private:
   int mpi_rank;
   bool quiet_mode;
   std::stringstream* default_stream;
 
-public:
+ public:
   MPILogger(int rank, bool quiet = false, std::stringstream* stream = nullptr)
-    : mpi_rank(rank), quiet_mode(quiet), default_stream(stream) {}
+      : mpi_rank(rank), quiet_mode(quiet), default_stream(stream) {}
 
   void log(const std::string& message) const {
     if (default_stream) {
@@ -28,9 +28,7 @@ public:
     }
   }
 
-  void log(std::stringstream& stream, const std::string& message) const {
-    logToStream(stream, message);
-  }
+  void log(std::stringstream& stream, const std::string& message) const { logToStream(stream, message); }
 
   void logToConsole(const std::string& message) const {
     if (!quiet_mode && mpi_rank == 0) {
@@ -52,7 +50,7 @@ public:
   bool isQuiet() const { return quiet_mode; }
   int getRank() const { return mpi_rank; }
 
-private:
+ private:
   void logToStream(std::stringstream& stream, const std::string& message) const {
     if (!quiet_mode && mpi_rank == 0) {
       stream << message << std::endl;

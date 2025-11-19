@@ -1,17 +1,16 @@
 #pragma once
 
-#include <toml++/toml.hpp>
-
-#include <vector>
-#include <string>
 #include <functional>
 #include <sstream>
 #include <stdexcept>
+#include <string>
+#include <toml++/toml.hpp>
+#include <vector>
 
 namespace validators {
 
 // Helper to get readable type names for error messages
-template<typename T>
+template <typename T>
 std::string getTypeName() {
   if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t> || std::is_same_v<T, size_t>) {
     return "integer";
@@ -28,15 +27,15 @@ std::string getTypeName() {
 
 // Custom exception for validation errors
 class ValidationError : public std::runtime_error {
-public:
+ public:
   ValidationError(const std::string& field, const std::string& message)
-    : std::runtime_error("Validation error for field '" + field + "': " + message) {}
+      : std::runtime_error("Validation error for field '" + field + "': " + message) {}
 };
 
 // Chainable validator builder
-template<typename T>
+template <typename T>
 class Validator {
-private:
+ private:
   const toml::table& config;
   std::string key;
   bool is_required = false;
@@ -45,9 +44,8 @@ private:
   std::vector<std::function<bool(const T&)>> predicates;
   std::vector<std::string> error_messages;
 
-public:
-  Validator(const toml::table& config_, const std::string& key_)
-    : config(config_), key(key_) {}
+ public:
+  Validator(const toml::table& config_, const std::string& key_) : config(config_), key(key_) {}
 
   Validator& required() {
     is_required = true;
@@ -75,7 +73,7 @@ public:
     return *this;
   }
 
-private:
+ private:
   std::optional<T> extractValue() {
     // If key doesn't exist, return nullopt
     if (!config.contains(key)) {
@@ -114,7 +112,7 @@ private:
     return result;
   }
 
-public:
+ public:
   T value() {
     auto val = extractValue();
 
@@ -130,16 +128,16 @@ public:
 
   T valueOr(T default_value_) {
     auto val = extractValue();
-    if (!val) return default_value_;  // Key doesn't exist - use default
+    if (!val) return default_value_; // Key doesn't exist - use default
 
-    return validateValue(*val);  // Key exists - validate it (will throw on wrong type)
+    return validateValue(*val); // Key exists - validate it (will throw on wrong type)
   }
 };
 
 // Vector validator specialization
-template<typename T>
+template <typename T>
 class VectorValidator {
-private:
+ private:
   const toml::table& config;
   std::string key;
   bool is_required = false;
@@ -148,9 +146,8 @@ private:
   std::optional<T> min_value;
   bool is_positive = false;
 
-public:
-  VectorValidator(const toml::table& config_, const std::string& key_)
-    : config(config_), key(key_) {}
+ public:
+  VectorValidator(const toml::table& config_, const std::string& key_) : config(config_), key(key_) {}
 
   VectorValidator& required() {
     is_required = true;
@@ -177,7 +174,7 @@ public:
     return *this;
   }
 
-private:
+ private:
   std::optional<std::vector<T>> extractVector() {
     // If key doesn't exist, return nullopt
     if (!config.contains(key)) {
@@ -238,7 +235,7 @@ private:
     return result;
   }
 
-public:
+ public:
   std::vector<T> value() {
     auto val = extractVector();
 
@@ -254,19 +251,19 @@ public:
 
   std::vector<T> valueOr(const std::vector<T>& default_value_) {
     auto val = extractVector();
-    if (!val) return default_value_;  // Key doesn't exist - use default
+    if (!val) return default_value_; // Key doesn't exist - use default
 
-    return validateVector(*val);  // Key exists - validate it (will throw on wrong type)
+    return validateVector(*val); // Key exists - validate it (will throw on wrong type)
   }
 };
 
 // Helper functions to start validation chains
-template<typename T>
+template <typename T>
 Validator<T> field(const toml::table& config_, const std::string& key_) {
   return Validator<T>(config_, key_);
 }
 
-template<typename T>
+template <typename T>
 VectorValidator<T> vectorField(const toml::table& config_, const std::string& key_) {
   return VectorValidator<T>(config_, key_);
 }

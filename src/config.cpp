@@ -1,4 +1,5 @@
 #include "config.hpp"
+
 #include <cassert>
 #include <cstddef>
 #include <iostream>
@@ -9,14 +10,14 @@
 #include <toml++/impl/table.hpp>
 #include <vector>
 
-#include "config_types.hpp"
 #include "cfgparser.hpp"
+#include "config_types.hpp"
+#include "config_validators.hpp"
 #include "defs.hpp"
 #include "util.hpp"
-#include "config_validators.hpp"
 
 // Helper function to convert enum back to string using existing enum maps
-template<typename EnumType>
+template <typename EnumType>
 std::string enumToString(EnumType value, const std::map<std::string, EnumType>& type_map) {
   for (const auto& [str, enum_val] : type_map) {
     if (enum_val == value) return str;
@@ -24,10 +25,9 @@ std::string enumToString(EnumType value, const std::map<std::string, EnumType>& 
   return "unknown";
 }
 
-template<typename EnumType>
-std::vector<EnumType> convertStringVectorToEnum(
-  const std::vector<std::string>& strings,
-  const std::map<std::string, EnumType>& type_map) {
+template <typename EnumType>
+std::vector<EnumType> convertStringVectorToEnum(const std::vector<std::string>& strings,
+                                                const std::map<std::string, EnumType>& type_map) {
   std::vector<EnumType> result;
   result.reserve(strings.size());
   for (const auto& str : strings) {
@@ -42,16 +42,14 @@ std::vector<EnumType> convertStringVectorToEnum(
 
 namespace {
 
-void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse,
-                      size_t oscilID, double tstart, double tstop, double amp,
-                      const std::vector<size_t>& nlevels, const MPILogger& logger) {
+void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
+                       double tstop, double amp, const std::vector<size_t>& nlevels, const MPILogger& logger) {
   if (oscilID < nlevels.size()) {
     PiPulseSegment segment = {tstart, tstop, amp};
     apply_pipulse[oscilID].push_back(segment);
 
-    logger.log("Applying PiPulse to oscillator " +
-      std::to_string(oscilID) + " in [" + std::to_string(tstart) +
-      ", " + std::to_string(tstop) + "]: |p+iq|=" + std::to_string(amp) + "\n");
+    logger.log("Applying PiPulse to oscillator " + std::to_string(oscilID) + " in [" + std::to_string(tstart) + ", " +
+               std::to_string(tstop) + "]: |p+iq|=" + std::to_string(amp) + "\n");
 
     // Set zero control for all other oscillators during this pipulse
     for (size_t i = 0; i < nlevels.size(); i++) {
@@ -63,24 +61,25 @@ void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse,
   }
 }
 
-std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseConfig>>& pulses, const std::vector<size_t>& nlevels, const MPILogger& logger) {
+std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseConfig>>& pulses,
+                                                              const std::vector<size_t>& nlevels,
+                                                              const MPILogger& logger) {
   auto apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
 
   if (!pulses.has_value()) {
     return apply_pipulse;
   }
   for (const auto& pulse_config : *pulses) {
-    addPiPulseSegment(apply_pipulse, pulse_config.oscil_id, pulse_config.tstart,
-                     pulse_config.tstop, pulse_config.amp, nlevels, logger);
+    addPiPulseSegment(apply_pipulse, pulse_config.oscil_id, pulse_config.tstart, pulse_config.tstop, pulse_config.amp,
+                      nlevels, logger);
   }
   return apply_pipulse;
 }
 
 } // namespace
 
-OptimTargetSettings Config::parseOptimTarget(
-  const std::optional<OptimTargetConfig>& opt_config,
-  const std::vector<size_t>& nlevels) const {
+OptimTargetSettings Config::parseOptimTarget(const std::optional<OptimTargetConfig>& opt_config,
+                                             const std::vector<size_t>& nlevels) const {
   if (!opt_config.has_value()) {
     return PureOptimTarget{};
   }
@@ -97,8 +96,8 @@ OptimTargetSettings Config::parseOptimTarget(
     case TargetType::GATE: {
       GateOptimTarget gate_target;
       gate_target.gate_type = config.gate_type.has_value()
-        ? parseEnum(config.gate_type.value(), GATE_TYPE_MAP).value_or(GateType::NONE)
-        : GateType::NONE;
+          ? parseEnum(config.gate_type.value(), GATE_TYPE_MAP).value_or(GateType::NONE)
+          : GateType::NONE;
       gate_target.gate_file = config.gate_file.value_or("");
       return gate_target;
     }
@@ -107,8 +106,9 @@ OptimTargetSettings Config::parseOptimTarget(
       PureOptimTarget pure_target;
 
       if (!config.levels.has_value() || config.levels->empty()) {
-        logger.log("# Warning: You want to prepare a pure state, but didn't specify which one."
-          " Taking default: ground-state |0...0> \n");
+        logger.log(
+            "# Warning: You want to prepare a pure state, but didn't specify which one."
+            " Taking default: ground-state |0...0> \n");
         pure_target.purestate_levels = std::vector<size_t>(nlevels.size(), 0);
         return pure_target;
       }
@@ -122,9 +122,9 @@ OptimTargetSettings Config::parseOptimTarget(
       for (size_t i = 0; i < nlevels.size(); i++) {
         if (pure_target.purestate_levels[i] >= nlevels[i]) {
           logger.exitWithError("ERROR in config setting. The requested pure state target |" +
-            std::to_string(pure_target.purestate_levels[i]) +
-            "> exceeds the number of modeled levels for that oscillator (" +
-            std::to_string(nlevels[i]) + ").\n");
+                               std::to_string(pure_target.purestate_levels[i]) +
+                               "> exceeds the number of modeled levels for that oscillator (" +
+                               std::to_string(nlevels[i]) + ").\n");
         }
       }
 
@@ -144,7 +144,7 @@ OptimTargetSettings Config::parseOptimTarget(
 
 namespace {
 // Helper to extract optional vectors directly from TOML
-template<typename T>
+template <typename T>
 std::optional<std::vector<T>> get_optional_vector(const toml::node_view<toml::node>& node) {
   auto* arr = node.as_array();
   if (!arr) return std::nullopt;
@@ -152,7 +152,7 @@ std::optional<std::vector<T>> get_optional_vector(const toml::node_view<toml::no
   std::vector<T> result;
   for (size_t i = 0; i < arr->size(); ++i) {
     auto val = arr->at(i).template value<T>();
-    if (!val) return std::nullopt;  // Type mismatch in array element
+    if (!val) return std::nullopt; // Type mismatch in array element
     result.push_back(*val);
   }
 
@@ -161,80 +161,51 @@ std::optional<std::vector<T>> get_optional_vector(const toml::node_view<toml::no
 
 } // namespace
 
-Config::Config(
-  const MPILogger& logger,
-  const toml::table& table
-) :
-  logger(logger) {
-
+Config::Config(const MPILogger& logger, const toml::table& table) : logger(logger) {
   try {
     // Parse system settings
-    if(!table.contains("system")) {
+    if (!table.contains("system")) {
       logger.exitWithError("[system] section required in TOML config");
     }
     auto system = *table["system"].as_table();
 
-    nlevels = validators::vectorField<size_t>(system, "nlevels")
-      .required()
-      .minLength(1)
-      .positive()
-      .value();
+    nlevels = validators::vectorField<size_t>(system, "nlevels").required().minLength(1).positive().value();
 
     size_t num_osc = nlevels.size();
     size_t num_pairs_osc = (num_osc - 1) * num_osc / 2;
 
-    nessential = validators::vectorField<size_t>(system, "nessential")
-      .minLength(1)
-      .positive()
-      .valueOr(nlevels);
+    nessential = validators::vectorField<size_t>(system, "nessential").minLength(1).positive().valueOr(nlevels);
     copyLast(nessential, num_osc);
 
-    ntime = validators::field<size_t>(system, "ntime")
-      .positive()
-      .valueOr(ntime);
+    ntime = validators::field<size_t>(system, "ntime").positive().valueOr(ntime);
 
-    dt = validators::field<double>(system, "dt")
-      .positive()
-      .valueOr(dt);
+    dt = validators::field<double>(system, "dt").positive().valueOr(dt);
 
-    transfreq = validators::vectorField<double>(system, "transfreq")
-      .required()
-      .minLength(1)
-      .value();
+    transfreq = validators::vectorField<double>(system, "transfreq").required().minLength(1).value();
     copyLast(transfreq, num_osc);
 
-    selfkerr = validators::vectorField<double>(system, "selfkerr")
-      .minLength(1)
-      .valueOr(std::vector<double>(num_osc, 0.0));
+    selfkerr =
+        validators::vectorField<double>(system, "selfkerr").minLength(1).valueOr(std::vector<double>(num_osc, 0.0));
     copyLast(selfkerr, num_osc);
 
     crosskerr = validators::vectorField<double>(system, "crosskerr")
-      .minLength(1)
-      .valueOr(std::vector<double>(num_pairs_osc, 0.0));
+                    .minLength(1)
+                    .valueOr(std::vector<double>(num_pairs_osc, 0.0));
     copyLast(crosskerr, num_pairs_osc);
 
-    Jkl = validators::vectorField<double>(system, "Jkl")
-      .minLength(1)
-      .valueOr(std::vector<double>(num_pairs_osc, 0.0));
+    Jkl = validators::vectorField<double>(system, "Jkl").minLength(1).valueOr(std::vector<double>(num_pairs_osc, 0.0));
     copyLast(Jkl, num_pairs_osc);
 
-    rotfreq = validators::vectorField<double>(system, "rotfreq")
-      .required()
-      .minLength(1)
-      .value();
+    rotfreq = validators::vectorField<double>(system, "rotfreq").required().minLength(1).value();
     copyLast(rotfreq, num_osc);
 
-    std::string collapse_type_str = validators::field<std::string>(system, "collapse_type")
-      .valueOr("none");
-    collapse_type = parseEnum(collapse_type_str, LINDBLAD_TYPE_MAP)
-      .value_or(LindbladType::NONE);
+    std::string collapse_type_str = validators::field<std::string>(system, "collapse_type").valueOr("none");
+    collapse_type = parseEnum(collapse_type_str, LINDBLAD_TYPE_MAP).value_or(LindbladType::NONE);
 
-    decay_time = validators::vectorField<double>(system, "decay_time")
-      .valueOr(std::vector<double>(num_osc, 0.0));
+    decay_time = validators::vectorField<double>(system, "decay_time").valueOr(std::vector<double>(num_osc, 0.0));
     copyLast(decay_time, num_osc);
 
-    dephase_time = validators::vectorField<double>(system, "dephase_time")
-      .valueOr(std::vector<double>(num_osc, 0.0));
+    dephase_time = validators::vectorField<double>(system, "dephase_time").valueOr(std::vector<double>(num_osc, 0.0));
     copyLast(dephase_time, num_osc);
 
     std::optional<InitialConditionConfig> init_cond_config = std::nullopt;
@@ -348,8 +319,10 @@ Config::Config(
       }
     }
 
-    std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{DEFAULT_SPLINE_COUNT, 0.0, ntime * dt}}};
-    std::vector<ControlSegmentInitialization> default_initialization = {ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, DEFAULT_CONTROL_INIT_AMPLITUDE, DEFAULT_CONTROL_INIT_PHASE}};
+    std::vector<ControlSegment> default_segments = {
+        {ControlType::BSPLINE, SplineParams{DEFAULT_SPLINE_COUNT, 0.0, ntime * dt}}};
+    std::vector<ControlSegmentInitialization> default_initialization = {ControlSegmentInitialization{
+        ControlSegmentInitType::CONSTANT, DEFAULT_CONTROL_INIT_AMPLITUDE, DEFAULT_CONTROL_INIT_PHASE}};
 
     for (size_t i = 0; i < control_segments.size(); i++) {
       if (control_segments_parsed.find(i) != control_segments_parsed.end()) {
@@ -368,7 +341,8 @@ Config::Config(
       }
     }
 
-    control_bounds = parseIndexedWithDefaults<double>(control_bounds_opt, control_segments.size(), {DEFAULT_CONTROL_BOUND});
+    control_bounds =
+        parseIndexedWithDefaults<double>(control_bounds_opt, control_segments.size(), {DEFAULT_CONTROL_BOUND});
     // Extend bounds to match number of control segments
     for (size_t i = 0; i < control_bounds.size(); i++) {
       copyLast(control_bounds[i], control_segments[i].size());
@@ -376,8 +350,7 @@ Config::Config(
 
     carrier_frequencies = parseIndexedWithDefaults<double>(carrier_freq_opt, num_osc, {DEFAULT_CARRIER_FREQ});
 
-    control_enforceBC = validators::field<bool>(optimization, "control_enforceBC")
-      .valueOr(control_enforceBC);
+    control_enforceBC = validators::field<bool>(optimization, "control_enforceBC").valueOr(control_enforceBC);
 
     // optim_target
     std::optional<OptimTargetConfig> optim_target_config;
@@ -392,67 +365,49 @@ Config::Config(
     }
     optim_target = parseOptimTarget(optim_target_config, nlevels);
 
-    gate_rot_freq = validators::vectorField<double>(optimization, "gate_rot_freq")
-      .valueOr(std::vector<double>(num_osc, 0.0));
+    gate_rot_freq =
+        validators::vectorField<double>(optimization, "gate_rot_freq").valueOr(std::vector<double>(num_osc, 0.0));
     copyLast(gate_rot_freq, num_osc);
 
-    std::string optim_objective_str = validators::field<std::string>(optimization, "optim_objective")
-      .valueOr("");
-    optim_objective = parseEnum(optim_objective_str, OBJECTIVE_TYPE_MAP)
-      .value_or(optim_objective);
+    std::string optim_objective_str = validators::field<std::string>(optimization, "optim_objective").valueOr("");
+    optim_objective = parseEnum(optim_objective_str, OBJECTIVE_TYPE_MAP).value_or(optim_objective);
 
     std::optional<std::vector<double>> optim_weights_opt = get_optional_vector<double>(optimization["optim_weights"]);
     optim_weights = parseOptimWeights(optim_weights_opt);
 
-    tolerance.atol = validators::field<double>(optimization, "optim_atol")
-      .positive()
-      .valueOr(tolerance.atol);
-    tolerance.rtol = validators::field<double>(optimization, "optim_rtol")
-      .positive()
-      .valueOr(tolerance.rtol);
-    tolerance.ftol = validators::field<double>(optimization, "optim_ftol")
-      .positive()
-      .valueOr(tolerance.ftol);
-    tolerance.inftol = validators::field<double>(optimization, "optim_inftol")
-      .positive()
-      .valueOr(tolerance.inftol);
-    tolerance.maxiter = validators::field<size_t>(optimization, "optim_maxiter")
-      .positive()
-      .valueOr(tolerance.maxiter);
-    optim_regul = validators::field<double>(optimization, "optim_regul")
-      .greaterThanEqual(0.0)
-      .valueOr(optim_regul);
+    tolerance.atol = validators::field<double>(optimization, "optim_atol").positive().valueOr(tolerance.atol);
+    tolerance.rtol = validators::field<double>(optimization, "optim_rtol").positive().valueOr(tolerance.rtol);
+    tolerance.ftol = validators::field<double>(optimization, "optim_ftol").positive().valueOr(tolerance.ftol);
+    tolerance.inftol = validators::field<double>(optimization, "optim_inftol").positive().valueOr(tolerance.inftol);
+    tolerance.maxiter = validators::field<size_t>(optimization, "optim_maxiter").positive().valueOr(tolerance.maxiter);
+    optim_regul = validators::field<double>(optimization, "optim_regul").greaterThanEqual(0.0).valueOr(optim_regul);
 
-    penalty.penalty = validators::field<double>(optimization, "optim_penalty")
-      .greaterThanEqual(0.0)
-      .valueOr(penalty.penalty);
+    penalty.penalty =
+        validators::field<double>(optimization, "optim_penalty").greaterThanEqual(0.0).valueOr(penalty.penalty);
     penalty.penalty_param = validators::field<double>(optimization, "optim_penalty_param")
-      .greaterThanEqual(0.0)
-      .valueOr(penalty.penalty_param);
+                                .greaterThanEqual(0.0)
+                                .valueOr(penalty.penalty_param);
     penalty.penalty_dpdm = validators::field<double>(optimization, "optim_penalty_dpdm")
-      .greaterThanEqual(0.0)
-      .valueOr(penalty.penalty_dpdm);
+                               .greaterThanEqual(0.0)
+                               .valueOr(penalty.penalty_dpdm);
     penalty.penalty_energy = validators::field<double>(optimization, "optim_penalty_energy")
-      .greaterThanEqual(0.0)
-      .valueOr(penalty.penalty_energy);
+                                 .greaterThanEqual(0.0)
+                                 .valueOr(penalty.penalty_energy);
     penalty.penalty_variation = validators::field<double>(optimization, "optim_penalty_variation")
-      .greaterThanEqual(0.0)
-      .valueOr(penalty.penalty_variation);
+                                    .greaterThanEqual(0.0)
+                                    .valueOr(penalty.penalty_variation);
 
     if (!optimization.contains("optim_regul_tik0") && optimization.contains("optim_regul_interpolate")) {
       // Handle deprecated optim_regul_interpolate logic
       optim_regul_tik0 = validators::field<bool>(optimization, "optim_regul_interpolate").value();
       logger.log("# Warning: 'optim_regul_interpolate' is deprecated. Please use 'optim_regul_tik0' instead.\n");
     }
-    optim_regul_tik0 = validators::field<bool>(optimization, "optim_regul_tik0")
-      .valueOr(optim_regul_tik0);
-
+    optim_regul_tik0 = validators::field<bool>(optimization, "optim_regul_tik0").valueOr(optim_regul_tik0);
 
     // Parse output settings
     toml::table output = table.contains("output") ? *table["output"].as_table() : toml::table{};
 
-    datadir = validators::field<std::string>(output, "datadir")
-      .valueOr(datadir);
+    datadir = validators::field<std::string>(output, "datadir").valueOr(datadir);
 
     std::optional<std::map<int, std::vector<OutputType>>> output_to_write_opt = std::nullopt;
     auto write_node = output["write"];
@@ -468,34 +423,23 @@ Config::Config(
     }
     output_to_write = parseIndexedWithDefaults<OutputType>(output_to_write_opt, num_osc);
 
-    output_frequency = validators::field<size_t>(output, "output_frequency")
-      .positive()
-      .valueOr(output_frequency);
-    optim_monitor_frequency = validators::field<size_t>(output, "optim_monitor_frequency")
-      .positive()
-      .valueOr(optim_monitor_frequency);
+    output_frequency = validators::field<size_t>(output, "output_frequency").positive().valueOr(output_frequency);
+    optim_monitor_frequency =
+        validators::field<size_t>(output, "optim_monitor_frequency").positive().valueOr(optim_monitor_frequency);
 
-    std::string runtype_str = validators::field<std::string>(output, "runtype")
-      .valueOr("");
-    runtype = parseEnum(runtype_str, RUN_TYPE_MAP)
-      .value_or(runtype);
+    std::string runtype_str = validators::field<std::string>(output, "runtype").valueOr("");
+    runtype = parseEnum(runtype_str, RUN_TYPE_MAP).value_or(runtype);
 
-    usematfree = validators::field<bool>(output, "usematfree")
-      .valueOr(usematfree);
+    usematfree = validators::field<bool>(output, "usematfree").valueOr(usematfree);
 
-    std::string linearsolver_type_str = validators::field<std::string>(output, "linearsolver_type")
-      .valueOr("");
-    linearsolver_type = parseEnum(linearsolver_type_str, LINEAR_SOLVER_TYPE_MAP)
-      .value_or(linearsolver_type);
+    std::string linearsolver_type_str = validators::field<std::string>(output, "linearsolver_type").valueOr("");
+    linearsolver_type = parseEnum(linearsolver_type_str, LINEAR_SOLVER_TYPE_MAP).value_or(linearsolver_type);
 
-    linearsolver_maxiter = validators::field<size_t>(output, "linearsolver_maxiter")
-      .positive()
-      .valueOr(linearsolver_maxiter);
+    linearsolver_maxiter =
+        validators::field<size_t>(output, "linearsolver_maxiter").positive().valueOr(linearsolver_maxiter);
 
-    std::string timestepper_type_str = validators::field<std::string>(output, "timestepper")
-      .valueOr("");
-    timestepper_type = parseEnum(timestepper_type_str, TIME_STEPPER_TYPE_MAP)
-      .value_or(TimeStepperType::IMR);
+    std::string timestepper_type_str = validators::field<std::string>(output, "timestepper").valueOr("");
+    timestepper_type = parseEnum(timestepper_type_str, TIME_STEPPER_TYPE_MAP).value_or(TimeStepperType::IMR);
 
     int rand_seed_ = validators::field<int>(output, "rand_seed").valueOr(-1);
     setRandSeed(rand_seed_);
@@ -509,13 +453,7 @@ Config::Config(
   validate();
 }
 
-Config::Config(
-  const MPILogger& logger,
-  const ConfigSettings& settings
-) :
-  logger(logger)
-{
-
+Config::Config(const MPILogger& logger, const ConfigSettings& settings) : logger(logger) {
   if (!settings.nlevels.has_value()) {
     logger.exitWithError("nlevels cannot be empty");
   }
@@ -579,7 +517,8 @@ Config::Config(
       control_initialization_file = init_map[0][0].filename;
       control_initializations.resize(num_osc);
       // Populate with default initialization for each oscillator, extended to match segments
-      ControlSegmentInitialization default_init = ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, DEFAULT_CONTROL_INIT_AMPLITUDE, DEFAULT_CONTROL_INIT_PHASE};
+      ControlSegmentInitialization default_init = ControlSegmentInitialization{
+          ControlSegmentInitType::CONSTANT, DEFAULT_CONTROL_INIT_AMPLITUDE, DEFAULT_CONTROL_INIT_PHASE};
       std::vector<ControlSegmentInitialization> default_initialization = {default_init};
       for (size_t i = 0; i < num_osc; i++) {
         control_initializations[i] = default_initialization;
@@ -592,13 +531,15 @@ Config::Config(
   }
 
   if (settings.control_enforceBC.has_value()) control_enforceBC = settings.control_enforceBC.value();
-  control_bounds = parseIndexedWithDefaults<double>(settings.indexed_control_bounds, control_segments.size(), {DEFAULT_CONTROL_BOUND});
+  control_bounds = parseIndexedWithDefaults<double>(settings.indexed_control_bounds, control_segments.size(),
+                                                    {DEFAULT_CONTROL_BOUND});
   // Extend bounds to match number of control segments
   for (size_t i = 0; i < control_bounds.size(); i++) {
     copyLast(control_bounds[i], control_segments[i].size());
   }
 
-  carrier_frequencies = parseIndexedWithDefaults<double>(settings.indexed_carrier_frequencies, num_osc, {DEFAULT_CARRIER_FREQ});
+  carrier_frequencies =
+      parseIndexedWithDefaults<double>(settings.indexed_carrier_frequencies, num_osc, {DEFAULT_CARRIER_FREQ});
   optim_target = parseOptimTarget(settings.optim_target, nlevels);
 
   if (settings.gate_rot_freq.has_value()) gate_rot_freq = settings.gate_rot_freq.value();
@@ -622,7 +563,8 @@ Config::Config(
   if (settings.optim_penalty_param.has_value()) penalty.penalty_param = settings.optim_penalty_param.value();
   if (settings.optim_penalty_dpdm.has_value()) penalty.penalty_dpdm = settings.optim_penalty_dpdm.value();
   if (settings.optim_penalty_energy.has_value()) penalty.penalty_energy = settings.optim_penalty_energy.value();
-  if (settings.optim_penalty_variation.has_value()) penalty.penalty_variation = settings.optim_penalty_variation.value();
+  if (settings.optim_penalty_variation.has_value())
+    penalty.penalty_variation = settings.optim_penalty_variation.value();
 
   if (settings.optim_regul_tik0.has_value()) {
     optim_regul_tik0 = settings.optim_regul_tik0.value();
@@ -649,13 +591,14 @@ Config::Config(
   validate();
 }
 
-Config::~Config(){}
-
+Config::~Config() {}
 
 void Config::finalize() {
   // Hamiltonian file + matrix-free compatibility check
   if ((hamiltonian_file_Hsys.has_value() || hamiltonian_file_Hc.has_value()) && usematfree) {
-    logger.log("# Warning: Matrix-free solver cannot be used when Hamiltonian is read from file. Switching to sparse-matrix version.\n");
+    logger.log(
+        "# Warning: Matrix-free solver cannot be used when Hamiltonian is read from file. Switching to sparse-matrix "
+        "version.\n");
     usematfree = false;
   }
 }
@@ -677,7 +620,7 @@ void Config::validate() const {
   for (size_t i = 0; i < nlevels.size(); i++) {
     if (nessential[i] > nlevels[i]) {
       logger.exitWithError("nessential[" + std::to_string(i) + "] = " + std::to_string(nessential[i]) +
-        " cannot exceed nlevels[" + std::to_string(i) + "] = " + std::to_string(nlevels[i]));
+                           " cannot exceed nlevels[" + std::to_string(i) + "] = " + std::to_string(nlevels[i]));
     }
   }
 }
@@ -686,8 +629,9 @@ Config Config::fromFile(const std::string& filename, const MPILogger& logger) {
   if (hasSuffix(filename, ".toml")) {
     return Config::fromToml(filename, logger);
   } else {
-    logger.log("# Warning: Config file does not have .toml extension. "
-      "The deprecated .cfg format will be removed in future versions.\n");
+    logger.log(
+        "# Warning: Config file does not have .toml extension. "
+        "The deprecated .cfg format will be removed in future versions.\n");
     return Config::fromCfg(filename, logger);
   }
 }
@@ -715,24 +659,22 @@ Config Config::fromCfgString(const std::string& cfg_content, const MPILogger& lo
 }
 
 namespace {
-  template<typename T>
-  std::string printVector(std::vector<T> vec) {
-    std::string out = "[";
-    for (size_t i = 0; i < vec.size(); ++i) {
-      out += std::to_string(vec[i]);
-      if (i < vec.size() - 1) {
-        out += ", ";
-      }
+template <typename T>
+std::string printVector(std::vector<T> vec) {
+  std::string out = "[";
+  for (size_t i = 0; i < vec.size(); ++i) {
+    out += std::to_string(vec[i]);
+    if (i < vec.size() - 1) {
+      out += ", ";
     }
-    out += "]";
-    return out;
   }
+  out += "]";
+  return out;
+}
 
-  std::string print(const InitialCondition& initial_condition) {
-    return std::visit([](const auto& opt) {
-        return opt.toString();
-    }, initial_condition);
-  }
+std::string print(const InitialCondition& initial_condition) {
+  return std::visit([](const auto& opt) { return opt.toString(); }, initial_condition);
+}
 } //namespace
 
 std::string ControlSegmentInitialization::toString() const {
@@ -744,9 +686,7 @@ std::string ControlSegmentInitialization::toString() const {
   return str;
 }
 
-std::string FromFileInitialCondition::toString() const {
-  return "{type = \"file\", filename = \"" + filename + "}";
-}
+std::string FromFileInitialCondition::toString() const { return "{type = \"file\", filename = \"" + filename + "}"; }
 
 std::string PureInitialCondition::toString() const {
   std::string out = "{type = \"pure\", levels = ";
@@ -829,7 +769,7 @@ void Config::printConfig(std::stringstream& log) const {
   log << "optim_penalty_variation = " << penalty.penalty_variation << "\n";
   log << "optim_regul_tik0 = " << (optim_regul_tik0 ? "true" : "false") << "\n";
 
-    // Control segments as array of tables
+  // Control segments as array of tables
   for (size_t i = 0; i < control_segments.size(); ++i) {
     if (!control_segments[i].empty()) {
       const auto& seg = control_segments[i][0];
@@ -891,7 +831,6 @@ void Config::printConfig(std::stringstream& log) const {
     }
   }
 
-
   // Output section
   log << "\n[output]\n";
   log << "datadir = \"" << datadir << "\"\n";
@@ -921,12 +860,10 @@ void Config::printConfig(std::stringstream& log) const {
   log << "# =============================================\n\n";
 }
 
-template<typename T>
+template <typename T>
 std::vector<std::vector<T>> Config::parseIndexedWithDefaults(
-    const std::optional<std::map<int, std::vector<T>>>& indexed,
-    size_t num_entries,
+    const std::optional<std::map<int, std::vector<T>>>& indexed, size_t num_entries,
     const std::vector<T>& default_values) const {
-
   std::vector<std::vector<T>> result(num_entries);
 
   for (size_t i = 0; i < num_entries; i++) {
@@ -947,22 +884,23 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
   }
   InitialConditionType type = opt_type.value();
 
-    /* Sanity check for Schrodinger solver initial conditions */
-  if (collapse_type == LindbladType::NONE){
-    if (type == InitialConditionType::ENSEMBLE ||
-        type == InitialConditionType::THREESTATES ||
-        type == InitialConditionType::NPLUSONE ){
-          logger.exitWithError("\n\n ERROR for initial condition setting: \n When running Schroedingers solver"
-            " (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or 'basis'."
-            " Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
+  /* Sanity check for Schrodinger solver initial conditions */
+  if (collapse_type == LindbladType::NONE) {
+    if (type == InitialConditionType::ENSEMBLE || type == InitialConditionType::THREESTATES ||
+        type == InitialConditionType::NPLUSONE) {
+      logger.exitWithError(
+          "\n\n ERROR for initial condition setting: \n When running Schroedingers solver"
+          " (collapse_type == NONE), the initial condition needs to be either 'pure' or 'from file' or 'diagonal' or "
+          "'basis'."
+          " Note that 'diagonal' and 'basis' in the Schroedinger case are the same (all unit vectors).\n\n");
     }
   }
 
   // If no params are given for BASIS, ENSEMBLE, or DIAGONAL, default to all oscillators
   auto init_cond_IDs = config.osc_IDs.value_or(std::vector<size_t>{});
-  if (!config.osc_IDs.has_value() && (type == InitialConditionType::BASIS ||
-      type == InitialConditionType::ENSEMBLE ||
-      type == InitialConditionType::DIAGONAL)) {
+  if (!config.osc_IDs.has_value() &&
+      (type == InitialConditionType::BASIS || type == InitialConditionType::ENSEMBLE ||
+       type == InitialConditionType::DIAGONAL)) {
     for (size_t i = 0; i < nlevels.size(); i++) {
       init_cond_IDs.push_back(i);
     }
@@ -979,14 +917,15 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
         logger.exitWithError("initialcondition of type PURE must have 'levels'");
       }
       if (config.levels.value().size() != nlevels.size()) {
-        logger.exitWithError("initialcondition of type PURE must have exactly " +
-          std::to_string(nlevels.size()) + " parameters, got " + std::to_string(config.levels.value().size()));
+        logger.exitWithError("initialcondition of type PURE must have exactly " + std::to_string(nlevels.size()) +
+                             " parameters, got " + std::to_string(config.levels.value().size()));
       }
-      for (size_t k=0; k < config.levels.value().size(); k++) {
-        if (config.levels.value()[k] >= nlevels[k]){
-          logger.exitWithError("ERROR in config setting. The requested pure state initialization "
-            + std::to_string(config.levels.value()[k]) + " exceeds the number of allowed levels for that oscillator ("
-            + std::to_string(nlevels[k]) + ").\n");
+      for (size_t k = 0; k < config.levels.value().size(); k++) {
+        if (config.levels.value()[k] >= nlevels[k]) {
+          logger.exitWithError("ERROR in config setting. The requested pure state initialization " +
+                               std::to_string(config.levels.value()[k]) +
+                               " exceeds the number of allowed levels for that oscillator (" +
+                               std::to_string(nlevels[k]) + ").\n");
         }
       }
       return PureInitialCondition{config.levels.value()};
@@ -1003,8 +942,8 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
         logger.exitWithError("Last element in initialcondition params exceeds number of oscillators");
       }
 
-      for (size_t i = 1; i < init_cond_IDs.size()-1; i++){
-        if (init_cond_IDs[i]+1 != init_cond_IDs[i+1]) {
+      for (size_t i = 1; i < init_cond_IDs.size() - 1; i++) {
+        if (init_cond_IDs[i] + 1 != init_cond_IDs[i + 1]) {
           logger.exitWithError("List of oscillators for ensemble initialization should be consecutive!\n");
         }
       }
@@ -1038,8 +977,8 @@ InitialCondition Config::parseInitialCondition(const std::optional<InitialCondit
   return parseInitialCondition(config.value());
 }
 
-
-std::vector<std::vector<ControlSegment>> Config::parseControlSegments(const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& segments_opt) const {
+std::vector<std::vector<ControlSegment>> Config::parseControlSegments(
+    const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& segments_opt) const {
   std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}}};
 
   if (!segments_opt.has_value()) {
@@ -1075,8 +1014,7 @@ ControlSegment Config::parseControlSegment(const ControlSegmentConfig& seg_confi
   ControlSegment segment;
   segment.type = seg_config.control_type;
 
-  if (seg_config.control_type == ControlType::BSPLINE ||
-      seg_config.control_type == ControlType::BSPLINE0) {
+  if (seg_config.control_type == ControlType::BSPLINE || seg_config.control_type == ControlType::BSPLINE0) {
     SplineParams spline_params;
     assert(params.size() >= 1); // nspline is required, should be validated in CfgParser
     spline_params.nspline = static_cast<size_t>(params[0]);
@@ -1116,48 +1054,49 @@ ControlSegment Config::parseControlSegment(const toml::table& table) const {
   segment.type = *type;
 
   switch (*type) {
-  case ControlType::BSPLINE: {
-    SplineParams spline_params;
-    spline_params.nspline = validators::field<size_t>(table, "num").required().value();
-    spline_params.tstart = validators::field<double>(table, "tstart").valueOr(0.0);
-    spline_params.tstop = validators::field<double>(table, "tstop").valueOr(ntime * dt);
-    segment.params = spline_params;
-    break;
-  }
-  case ControlType::BSPLINE0: {
-    SplineParams spline_params;
-    spline_params.nspline = validators::field<size_t>(table, "num").required().value();
-    spline_params.tstart = validators::field<double>(table, "tstart").valueOr(0.0);
-    spline_params.tstop = validators::field<double>(table, "tstop").valueOr(ntime * dt);
-    segment.params = spline_params;
-    break;
-  }
-  case ControlType::BSPLINEAMP: {
-    SplineAmpParams spline_amp_params;
-    spline_amp_params.nspline = validators::field<size_t>(table, "num").required().value();
-    spline_amp_params.scaling = validators::field<double>(table, "scaling").required().value();
-    spline_amp_params.tstart = validators::field<double>(table, "tstart").valueOr(0.0);
-    spline_amp_params.tstop = validators::field<double>(table, "tstop").valueOr(ntime * dt);
-    segment.params = spline_amp_params;
-    break;
-  }
-  case ControlType::STEP:
-    StepParams step_params;
-    step_params.step_amp1 = validators::field<double>(table, "step_amp1").required().value();
-    step_params.step_amp2 = validators::field<double>(table, "step_amp2").required().value();
-    step_params.tramp = validators::field<double>(table, "tramp").required().value();
-    step_params.tstart = validators::field<double>(table, "tstart").valueOr(0.0);
-    step_params.tstop = validators::field<double>(table, "tstop").valueOr(ntime * dt);
-    segment.params = step_params;
-    break;
-  case ControlType::NONE:
-    logger.exitWithError("Unexpected control type " + type_str);
+    case ControlType::BSPLINE: {
+      SplineParams spline_params;
+      spline_params.nspline = validators::field<size_t>(table, "num").required().value();
+      spline_params.tstart = validators::field<double>(table, "tstart").valueOr(0.0);
+      spline_params.tstop = validators::field<double>(table, "tstop").valueOr(ntime * dt);
+      segment.params = spline_params;
+      break;
+    }
+    case ControlType::BSPLINE0: {
+      SplineParams spline_params;
+      spline_params.nspline = validators::field<size_t>(table, "num").required().value();
+      spline_params.tstart = validators::field<double>(table, "tstart").valueOr(0.0);
+      spline_params.tstop = validators::field<double>(table, "tstop").valueOr(ntime * dt);
+      segment.params = spline_params;
+      break;
+    }
+    case ControlType::BSPLINEAMP: {
+      SplineAmpParams spline_amp_params;
+      spline_amp_params.nspline = validators::field<size_t>(table, "num").required().value();
+      spline_amp_params.scaling = validators::field<double>(table, "scaling").required().value();
+      spline_amp_params.tstart = validators::field<double>(table, "tstart").valueOr(0.0);
+      spline_amp_params.tstop = validators::field<double>(table, "tstop").valueOr(ntime * dt);
+      segment.params = spline_amp_params;
+      break;
+    }
+    case ControlType::STEP:
+      StepParams step_params;
+      step_params.step_amp1 = validators::field<double>(table, "step_amp1").required().value();
+      step_params.step_amp2 = validators::field<double>(table, "step_amp2").required().value();
+      step_params.tramp = validators::field<double>(table, "tramp").required().value();
+      step_params.tstart = validators::field<double>(table, "tstart").valueOr(0.0);
+      step_params.tstop = validators::field<double>(table, "tstop").valueOr(ntime * dt);
+      segment.params = step_params;
+      break;
+    case ControlType::NONE:
+      logger.exitWithError("Unexpected control type " + type_str);
   }
 
   return segment;
 }
 
-std::vector<std::vector<ControlSegmentInitialization>> Config::parseControlInitializations(const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& init_configs) const {
+std::vector<std::vector<ControlSegmentInitialization>> Config::parseControlInitializations(
+    const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& init_configs) const {
   ControlSegmentInitialization default_init = ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, 0.0, 0.0};
 
   std::vector<std::vector<ControlSegmentInitialization>> control_initializations(nlevels.size());
@@ -1167,7 +1106,8 @@ std::vector<std::vector<ControlSegmentInitialization>> Config::parseControlIniti
       continue;
     }
     for (const auto& init_config : init_configs->at(static_cast<int>(i))) {
-      ControlSegmentInitialization init = ControlSegmentInitialization{init_config.init_seg_type, init_config.amplitude.value(), init_config.phase.value_or(0.0)};
+      ControlSegmentInitialization init = ControlSegmentInitialization{
+          init_config.init_seg_type, init_config.amplitude.value(), init_config.phase.value_or(0.0)};
 
       default_init = init;
       control_initializations[i].push_back(init);
@@ -1183,29 +1123,30 @@ ControlSegmentInitialization Config::parseControlInitialization(const toml::tabl
   if (!type.has_value()) {
     logger.exitWithError("Unrecognized type '" + type_str + "' in control initialization.");
   }
-  return ControlSegmentInitialization {
-    type.value(),
-    validators::field<double>(table, "amplitude").required().value(),
-    validators::field<double>(table, "phase").valueOr(0.0)
-  };
+  return ControlSegmentInitialization{type.value(), validators::field<double>(table, "amplitude").required().value(),
+                                      validators::field<double>(table, "phase").valueOr(0.0)};
 }
 
 size_t Config::computeNumInitialConditions() const {
   size_t n_initial_conditions = 0;
-  if      (std::holds_alternative<FromFileInitialCondition>(initial_condition) ) n_initial_conditions = 1;
-  else if (std::holds_alternative<PureInitialCondition>(initial_condition) ) n_initial_conditions = 1;
-  else if (std::holds_alternative<PerformanceInitialCondition>(initial_condition) ) n_initial_conditions = 1;
-  else if (std::holds_alternative<EnsembleInitialCondition>(initial_condition) ) n_initial_conditions = 1;
-  else if (std::holds_alternative<ThreeStatesInitialCondition>(initial_condition) ) n_initial_conditions = 3;
-  else if (std::holds_alternative<NPlusOneInitialCondition>(initial_condition) )  {
+  if (std::holds_alternative<FromFileInitialCondition>(initial_condition))
+    n_initial_conditions = 1;
+  else if (std::holds_alternative<PureInitialCondition>(initial_condition))
+    n_initial_conditions = 1;
+  else if (std::holds_alternative<PerformanceInitialCondition>(initial_condition))
+    n_initial_conditions = 1;
+  else if (std::holds_alternative<EnsembleInitialCondition>(initial_condition))
+    n_initial_conditions = 1;
+  else if (std::holds_alternative<ThreeStatesInitialCondition>(initial_condition))
+    n_initial_conditions = 3;
+  else if (std::holds_alternative<NPlusOneInitialCondition>(initial_condition)) {
     // compute system dimension N
     n_initial_conditions = 1;
-    for (size_t i=0; i<nlevels.size(); i++){
+    for (size_t i = 0; i < nlevels.size(); i++) {
       n_initial_conditions *= nlevels[i];
     }
-    n_initial_conditions +=1;
-  }
-  else if (std::holds_alternative<DiagonalInitialCondition>(initial_condition)) {
+    n_initial_conditions += 1;
+  } else if (std::holds_alternative<DiagonalInitialCondition>(initial_condition)) {
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
     const auto& diag_init = std::get<DiagonalInitialCondition>(initial_condition);
     const auto& osc_IDs = diag_init.osc_IDs;
@@ -1214,8 +1155,7 @@ size_t Config::computeNumInitialConditions() const {
     for (size_t oscilID : osc_IDs) {
       if (oscilID < nessential.size()) n_initial_conditions *= nessential[oscilID];
     }
-  }
-  else if (std::holds_alternative<BasisInitialCondition>(initial_condition)) {
+  } else if (std::holds_alternative<BasisInitialCondition>(initial_condition)) {
     /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
     const auto& basis_init = std::get<BasisInitialCondition>(initial_condition);
     const auto& osc_IDs = basis_init.osc_IDs;
@@ -1227,7 +1167,7 @@ size_t Config::computeNumInitialConditions() const {
     // if Schroedinger solver: ninit = N, do nothing.
     // else Lindblad solver: ninit = N^2
     if (collapse_type != LindbladType::NONE) {
-      n_initial_conditions = (int) pow(n_initial_conditions, 2.0);
+      n_initial_conditions = (int)pow(n_initial_conditions, 2.0);
     }
   }
   logger.log("Number of initial conditions: " + std::to_string(n_initial_conditions) + "\n");
@@ -1247,8 +1187,8 @@ std::vector<double> Config::parseOptimWeights(const std::optional<std::vector<do
 
 void Config::setRandSeed(std::optional<int> rand_seed_) {
   rand_seed = rand_seed_.value_or(-1);
-  if (rand_seed < 0){
+  if (rand_seed < 0) {
     std::random_device rd;
-    rand_seed = rd();  // random non-reproducable seed
+    rand_seed = rd(); // random non-reproducable seed
   }
 }

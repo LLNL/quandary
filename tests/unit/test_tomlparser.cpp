@@ -1,12 +1,14 @@
 #include <gtest/gtest.h>
-#include <sstream>
 #include <mpi.h>
+
+#include <sstream>
+
 #include "config.hpp"
 #include "config_types.hpp"
 #include "defs.hpp"
 
 class TomlParserTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     // Initialize MPI if not already done (for tests)
     int initialized;
@@ -30,7 +32,8 @@ TEST_F(TomlParserTest, ParseBasicSettings) {
     ntime = 500
     dt = 0.05
     collapse_type = "none"
-  )", logger);
+  )",
+                                         logger);
 
   EXPECT_EQ(config.getNTime(), 500);
   EXPECT_DOUBLE_EQ(config.getDt(), 0.05);
@@ -43,7 +46,8 @@ TEST_F(TomlParserTest, ParseVectorSettings) {
     nlevels = [2, 3]
     transfreq = [4.1, 4.8, 5.2]
     rotfreq = [0.0, 0.0]
-  )", logger);
+  )",
+                                         logger);
 
   auto nlevels = config.getNLevels();
   EXPECT_EQ(nlevels.size(), 2);
@@ -69,7 +73,8 @@ TEST_F(TomlParserTest, ParseOutputSettings) {
     [[output.write]]
     oscID = 1
     type = ["population", "expectedEnergy"]
-  )", logger);
+  )",
+                                         logger);
 
   // Verify output settings
   auto output = config.getOutput();
@@ -91,7 +96,8 @@ TEST_F(TomlParserTest, ParseStructSettings) {
 
     [optimization]
     optim_target = {target_type = "gate", gate_type = "cnot"}
-  )", logger);
+  )",
+                                         logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -110,7 +116,8 @@ TEST_F(TomlParserTest, ApplyDefaults) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-  )", logger);
+  )",
+                                         logger);
 
   // Check defaults were applied
   EXPECT_EQ(config.getNTime(), 1000); // Default ntime
@@ -125,7 +132,8 @@ TEST_F(TomlParserTest, InitialCondition_FromFile) {
     transfreq = [4.1]
     rotfreq = [0.0]
     initial_condition = {type = "file", filename = "test.dat"}
-  )", logger);
+  )",
+                                         logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<FromFileInitialCondition>(initcond));
   EXPECT_EQ(std::get<FromFileInitialCondition>(initcond).filename, "test.dat");
@@ -139,11 +147,12 @@ TEST_F(TomlParserTest, InitialCondition_Pure) {
     transfreq = [4.1, 4.8]
     rotfreq = [0.0, 0.0]
     initial_condition = {type = "pure", levels = [1, 0]}
-  )", logger);
+  )",
+                                         logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PureInitialCondition>(initcond));
   const auto& pure_init = std::get<PureInitialCondition>(initcond);
-  EXPECT_EQ(pure_init.levels, std::vector<size_t>({1,0}));
+  EXPECT_EQ(pure_init.levels, std::vector<size_t>({1, 0}));
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
@@ -154,7 +163,8 @@ TEST_F(TomlParserTest, InitialCondition_Performance) {
     transfreq = [4.1]
     rotfreq = [0.0]
     initial_condition = {type = "performance"}
-  )", logger);
+  )",
+                                         logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PerformanceInitialCondition>(initcond));
   EXPECT_EQ(config.getNInitialConditions(), 1);
@@ -168,11 +178,12 @@ TEST_F(TomlParserTest, InitialCondition_Ensemble) {
     rotfreq = [0.0, 0.0]
     collapse_type = "decay"
     initial_condition = {type = "ensemble", oscIDs = [0, 1]}
-  )", logger);
+  )",
+                                         logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<EnsembleInitialCondition>(initcond));
   const auto& ensemble_init = std::get<EnsembleInitialCondition>(initcond);
-  EXPECT_EQ(ensemble_init.osc_IDs, std::vector<size_t>({0,1}));
+  EXPECT_EQ(ensemble_init.osc_IDs, std::vector<size_t>({0, 1}));
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
@@ -184,7 +195,8 @@ TEST_F(TomlParserTest, InitialCondition_ThreeStates) {
     rotfreq = [0.0]
     collapse_type = "decay"
     initial_condition = {type = "3states"}
-  )", logger);
+  )",
+                                         logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<ThreeStatesInitialCondition>(initcond));
   EXPECT_EQ(config.getNInitialConditions(), 3);
@@ -198,7 +210,8 @@ TEST_F(TomlParserTest, InitialCondition_NPlusOne_SingleOscillator) {
     rotfreq = [0.0]
     collapse_type = "decay"
     initial_condition = {type = "nplus1"}
-  )", logger);
+  )",
+                                         logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
   // For nlevels = [3], system dimension N = 3, so n_initial_conditions = N + 1 = 4
@@ -213,7 +226,8 @@ TEST_F(TomlParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
     rotfreq = [0.0, 0.0]
     collapse_type = "decay"
     initial_condition = {type = "nplus1"}
-  )", logger);
+  )",
+                                         logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
   // For nlevels = [2, 3], system dimension N = 2 * 3 = 6, so n_initial_conditions = N + 1 = 7
@@ -229,7 +243,8 @@ TEST_F(TomlParserTest, InitialCondition_Diagonal_Schrodinger) {
     rotfreq = [0.0, 0.0]
     collapse_type = "none"
     initial_condition = {type = "diagonal", oscIDs = [1]}
-  )", logger);
+  )",
+                                         logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
   const auto& diagonal_init = std::get<DiagonalInitialCondition>(initcond);
@@ -247,7 +262,8 @@ TEST_F(TomlParserTest, InitialCondition_Basis_Schrodinger) {
     rotfreq = [0.0, 0.0]
     collapse_type = "none"
     initial_condition = {type = "basis", oscIDs = [1]}
-  )", logger);
+  )",
+                                         logger);
   // For Schrodinger solver, BASIS is converted to DIAGONAL, so n_initial_conditions = nessential[1] = 2
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
@@ -265,7 +281,8 @@ TEST_F(TomlParserTest, InitialCondition_Basis_Lindblad) {
     rotfreq = [0.0, 0.0]
     collapse_type = "decay"
     initial_condition = {type = "basis", oscIDs = [1]}
-  )", logger);
+  )",
+                                         logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<BasisInitialCondition>(initcond));
   const auto& basis_init = std::get<BasisInitialCondition>(initcond);
@@ -286,7 +303,8 @@ TEST_F(TomlParserTest, ParsePiPulseSettings_Structure) {
     tstart = 0.5
     tstop = 1.0
     amp = 0.8
-  )", logger);
+  )",
+                                         logger);
 
   const auto& pulses = config.getApplyPiPulses();
   EXPECT_EQ(pulses.size(), 2);
@@ -321,7 +339,8 @@ TEST_F(TomlParserTest, ParsePiPulseSettings_Multiple) {
     tstart = 0
     tstop = 0.5
     amp = 0.2
-  )", logger);
+  )",
+                                         logger);
 
   const auto& pulses = config.getApplyPiPulses();
   EXPECT_EQ(pulses.size(), 2);
@@ -355,7 +374,8 @@ TEST_F(TomlParserTest, ControlSegments_Spline0) {
     num = 150
     tstart = 0.0
     tstop = 1.0
-  )", logger);
+  )",
+                                         logger);
 
   const auto& control_segments = config.getControlSegments(0);
   EXPECT_EQ(control_segments.size(), 1);
@@ -388,7 +408,8 @@ TEST_F(TomlParserTest, ControlSegments_Spline) {
     num = 30
     tstart = 1.0
     tstop = 2.0
-  )", logger);
+  )",
+                                         logger);
 
   // Check first oscillator with one segment
   const auto& control_seg0 = config.getControlSegments(0);
@@ -436,7 +457,8 @@ TEST_F(TomlParserTest, ControlSegments_Step) {
     step_amp1 = 0.1
     step_amp2 = 0.2
     tramp = 0.3
-  )", logger);
+  )",
+                                         logger);
 
   // Check first oscillator
   const auto& control_seg0 = config.getControlSegments(0);
@@ -476,7 +498,8 @@ TEST_F(TomlParserTest, ControlSegments_Defaults) {
     [[optimization.control_bounds]]
     oscID = 1
     values = [2.0]
-  )", logger);
+  )",
+                                         logger);
 
   // Check first oscillator has default settings
   const auto& control_seg0 = config.getControlSegments(0);
@@ -519,7 +542,8 @@ TEST_F(TomlParserTest, ControlInitialization_Defaults) {
     oscID = 1
     type = "random"
     amplitude = 2.0
-  )", logger);
+  )",
+                                         logger);
 
   // Check first oscillator has default settings
   const auto& control_init0 = config.getControlInitializations(0);
@@ -577,7 +601,8 @@ TEST_F(TomlParserTest, ControlInitialization) {
     type = "constant"
     amplitude = 6.0
     phase = 6.1
-  )", logger);
+  )",
+                                         logger);
 
   // Check first oscillator
   const auto& control_init0 = config.getControlInitializations(0);
@@ -627,7 +652,8 @@ TEST_F(TomlParserTest, ControlInitialization_File) {
     [[optimization.control_initialization]]
     type = "file"
     filename = "params.dat"
-  )", logger);
+  )",
+                                         logger);
 
   EXPECT_TRUE(config.getControlInitializationFile().has_value());
   EXPECT_EQ(config.getControlInitializationFile().value(), "params.dat");
@@ -662,7 +688,8 @@ TEST_F(TomlParserTest, ControlBounds) {
     [[optimization.control_bounds]]
     oscID = 0
     values = [1.0, 2.0]
-  )", logger);
+  )",
+                                         logger);
 
   // Check control bounds for the three segments
   const auto& control_bounds0 = config.getControlBounds(0);
@@ -681,7 +708,8 @@ TEST_F(TomlParserTest, CarrierFrequencies) {
     [[optimization.carrier_frequency]]
     oscID = 0
     values = [1.0, 2.0]
-  )", logger);
+  )",
+                                         logger);
 
   const auto& carrier_freq0 = config.getCarrierFrequencies(0);
   EXPECT_EQ(carrier_freq0.size(), 2);
@@ -698,7 +726,8 @@ TEST_F(TomlParserTest, OptimTarget_GateType) {
 
     [optimization]
     optim_target = {target_type = "gate", gate_type = "cnot"}
-  )", logger);
+  )",
+                                         logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -715,7 +744,8 @@ TEST_F(TomlParserTest, OptimTarget_GateFromFile) {
 
     [optimization]
     optim_target = {target_type = "gate", gate_type = "file", gate_file = "/path/to/gate.dat"}
-  )", logger);
+  )",
+                                         logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -733,7 +763,8 @@ TEST_F(TomlParserTest, OptimTarget_PureState) {
 
     [optimization]
     optim_target = {target_type = "pure", levels = [0,1,2]}
-  )", logger);
+  )",
+                                         logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
@@ -754,7 +785,8 @@ TEST_F(TomlParserTest, OptimTarget_FromFile) {
 
     [optimization]
     optim_target = {target_type = "file", filename = "/path/to/target.dat"}
-  )", logger);
+  )",
+                                         logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<FileOptimTarget>(target));
@@ -768,7 +800,8 @@ TEST_F(TomlParserTest, OptimTarget_DefaultPure) {
     nlevels = [2]
     transfreq = [4.1]
     rotfreq = [0.0]
-  )", logger);
+  )",
+                                         logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
@@ -785,7 +818,8 @@ TEST_F(TomlParserTest, OptimWeights) {
     rotfreq = [0.0, 0.0]
     [optimization]
     optim_weights = [2.0, 1.0]
-  )", logger);
+  )",
+                                         logger);
 
   const auto& weights = config.getOptimWeights();
   EXPECT_EQ(weights.size(), 4);

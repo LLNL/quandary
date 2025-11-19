@@ -1,17 +1,16 @@
+#include "cfgparser.hpp"
+
 #include <cstdio>
 #include <fstream>
 #include <vector>
 
-#include "cfgparser.hpp"
 #include "config.hpp"
 #include "config_types.hpp"
 #include "defs.hpp"
-#include "util.hpp"
 #include "mpi_logger.hpp"
+#include "util.hpp"
 
-CfgParser::CfgParser(const MPILogger& logger) :
-  logger(logger) {
-
+CfgParser::CfgParser(const MPILogger& logger) : logger(logger) {
   // Register config parameter setters
   // General options
   registerConfig("nlevels", settings.nlevels);
@@ -72,8 +71,7 @@ CfgParser::CfgParser(const MPILogger& logger) :
 }
 
 std::vector<std::vector<double>> CfgParser::convertIndexedToVectorVector(
-    const std::map<int, std::vector<double>>& indexed_map,
-    size_t num_oscillators) {
+    const std::map<int, std::vector<double>>& indexed_map, size_t num_oscillators) {
   std::vector<std::vector<double>> result(num_oscillators);
   for (const auto& [osc_idx, values] : indexed_map) {
     if (static_cast<size_t>(osc_idx) < result.size()) {
@@ -84,8 +82,7 @@ std::vector<std::vector<double>> CfgParser::convertIndexedToVectorVector(
 }
 
 std::vector<std::vector<OutputType>> CfgParser::convertIndexedToOutputVector(
-    const std::map<int, std::vector<OutputType>>& indexed_map,
-    size_t num_oscillators) {
+    const std::map<int, std::vector<OutputType>>& indexed_map, size_t num_oscillators) {
   std::vector<std::vector<OutputType>> result(num_oscillators);
   for (const auto& [osc_idx, values] : indexed_map) {
     if (static_cast<size_t>(osc_idx) < result.size()) {
@@ -98,14 +95,11 @@ std::vector<std::vector<OutputType>> CfgParser::convertIndexedToOutputVector(
 namespace {
 
 std::string trimWhitespace(std::string s) {
-  s.erase(std::remove_if(s.begin(), s.end(),
-    [](unsigned char c) { return std::isspace(c); }), s.end());
+  s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c) { return std::isspace(c); }), s.end());
   return s;
 }
 
-bool isComment(const std::string& line) {
-  return line.size() > 0 && (line[0] == '#' || line[0] == '/');
-}
+bool isComment(const std::string& line) { return line.size() > 0 && (line[0] == '#' || line[0] == '/'); }
 
 bool isValidControlType(const std::string& str) {
   return CONTROL_TYPE_MAP.find(toLower(str)) != CONTROL_TYPE_MAP.end();
@@ -114,7 +108,6 @@ bool isValidControlType(const std::string& str) {
 bool isValidControlSegmentInitType(const std::string& str) {
   return CONTROL_SEGMENT_INIT_TYPE_MAP.find(toLower(str)) != CONTROL_SEGMENT_INIT_TYPE_MAP.end();
 }
-
 
 } // namespace
 
@@ -199,7 +192,7 @@ ConfigSettings CfgParser::parseString(const std::string& config_content) {
 }
 
 // Struct converter implementations
-template<>
+template <>
 InitialConditionConfig CfgParser::convertFromString<InitialConditionConfig>(const std::string& str) {
   auto parts = split(str);
   if (parts.empty()) {
@@ -220,9 +213,8 @@ InitialConditionConfig CfgParser::convertFromString<InitialConditionConfig>(cons
     for (size_t i = 1; i < parts.size(); ++i) {
       config.levels.value().push_back(convertFromString<int>(parts[i]));
     }
-  } else if (type == InitialConditionType::ENSEMBLE ||
-      type == InitialConditionType::DIAGONAL ||
-      type == InitialConditionType::BASIS) {
+  } else if (type == InitialConditionType::ENSEMBLE || type == InitialConditionType::DIAGONAL ||
+             type == InitialConditionType::BASIS) {
     if (parts.size() > 1) {
       config.osc_IDs = std::vector<size_t>();
       for (size_t i = 1; i < parts.size(); ++i) {
@@ -234,7 +226,7 @@ InitialConditionConfig CfgParser::convertFromString<InitialConditionConfig>(cons
   return config;
 }
 
-template<>
+template <>
 OptimTargetConfig CfgParser::convertFromString<OptimTargetConfig>(const std::string& str) {
   auto parts = split(str);
   if (parts.empty()) {
@@ -278,7 +270,7 @@ OptimTargetConfig CfgParser::convertFromString<OptimTargetConfig>(const std::str
   return config;
 }
 
-template<>
+template <>
 std::vector<PiPulseConfig> CfgParser::convertFromString<std::vector<PiPulseConfig>>(const std::string& str) {
   auto parts = split(str);
   if (parts.size() % 4 != 0) {
@@ -289,17 +281,18 @@ std::vector<PiPulseConfig> CfgParser::convertFromString<std::vector<PiPulseConfi
   for (size_t i = 0; i < parts.size(); i += 4) {
     PiPulseConfig config;
     config.oscil_id = convertFromString<size_t>(parts[i]);
-    config.tstart = convertFromString<double>(parts[i+1]);
-    config.tstop = convertFromString<double>(parts[i+2]);
-    config.amp = convertFromString<double>(parts[i+3]);
+    config.tstart = convertFromString<double>(parts[i + 1]);
+    config.tstop = convertFromString<double>(parts[i + 2]);
+    config.amp = convertFromString<double>(parts[i + 3]);
     configs.push_back(config);
   }
 
   return configs;
 }
 
-template<>
-std::vector<ControlSegmentConfig> CfgParser::convertFromString<std::vector<ControlSegmentConfig>>(const std::string& str) {
+template <>
+std::vector<ControlSegmentConfig> CfgParser::convertFromString<std::vector<ControlSegmentConfig>>(
+    const std::string& str) {
   const auto parts = split(str);
 
   std::vector<ControlSegmentConfig> segments;
@@ -337,8 +330,8 @@ std::vector<ControlSegmentConfig> CfgParser::convertFromString<std::vector<Contr
     }
 
     if (segment.parameters.size() < min_params) {
-      logger.exitWithError("Control type requires at least " + std::to_string(min_params) +
-        " parameters, got " + std::to_string(segment.parameters.size()));
+      logger.exitWithError("Control type requires at least " + std::to_string(min_params) + " parameters, got " +
+                           std::to_string(segment.parameters.size()));
     }
 
     segments.push_back(segment);
@@ -347,8 +340,9 @@ std::vector<ControlSegmentConfig> CfgParser::convertFromString<std::vector<Contr
   return segments;
 }
 
-template<>
-std::vector<ControlInitializationConfig> CfgParser::convertFromString<std::vector<ControlInitializationConfig>>(const std::string& str) {
+template <>
+std::vector<ControlInitializationConfig> CfgParser::convertFromString<std::vector<ControlInitializationConfig>>(
+    const std::string& str) {
   const auto parts = split(str);
 
   std::vector<ControlInitializationConfig> initializations;
