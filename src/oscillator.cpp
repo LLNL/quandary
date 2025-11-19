@@ -1,6 +1,7 @@
 #include "oscillator.hpp"
 #include "config.hpp"
 #include "defs.hpp"
+#include "mpi_logger.hpp"
 #include <stdexcept>
 
 Oscillator::Oscillator(){
@@ -49,6 +50,8 @@ Oscillator::Oscillator(const Config& config, size_t id, std::mt19937 rand_engine
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+
+  MPILogger logger(mpirank_world);
 
   // Get system dimension N (Schroedinger) or N^2 (Lindblad)
   PetscInt dim = 1;
@@ -112,7 +115,7 @@ Oscillator::Oscillator(const Config& config, size_t id, std::mt19937 rand_engine
       break;
     }
     case ControlType::NONE: {
-      throw std::invalid_argument("Control type 'none' not supported.");
+      logger.exitWithError("Control type 'none' not supported.");
     }
     } // end switch
   }
