@@ -1,10 +1,7 @@
 #include <gtest/gtest.h>
 #include <mpi.h>
 
-#include <sstream>
-
 #include "config.hpp"
-#include "config_types.hpp"
 #include "defs.hpp"
 
 class TomlParserTest : public ::testing::Test {

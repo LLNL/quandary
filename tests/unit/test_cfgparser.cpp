@@ -2,10 +2,8 @@
 #include <mpi.h>
 
 #include <cstdio>
-#include <sstream>
 
 #include "config.hpp"
-#include "util.hpp"
 
 class CfgParserTest : public ::testing::Test {
  protected:
