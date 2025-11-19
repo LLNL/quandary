@@ -27,55 +27,6 @@ std::string enumToString(EnumType value, const std::map<std::string, EnumType>& 
   return "unknown";
 }
 
-template <typename EnumType>
-std::vector<EnumType> convertStringVectorToEnum(const std::vector<std::string>& strings,
-                                                const std::map<std::string, EnumType>& type_map) {
-  std::vector<EnumType> result;
-  result.reserve(strings.size());
-  for (const auto& str : strings) {
-    auto enum_val = parseEnum(str, type_map);
-    if (!enum_val) {
-      throw std::runtime_error("Unknown enum value: " + str);
-    }
-    result.push_back(*enum_val);
-  }
-  return result;
-}
-
-void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
-                       double tstop, double amp, const std::vector<size_t>& nlevels, const MPILogger& logger) {
-  if (oscilID < nlevels.size()) {
-    PiPulseSegment segment = {tstart, tstop, amp};
-    apply_pipulse[oscilID].push_back(segment);
-
-    logger.log("Applying PiPulse to oscillator " + std::to_string(oscilID) + " in [" + std::to_string(tstart) + ", " +
-               std::to_string(tstop) + "]: |p+iq|=" + std::to_string(amp) + "\n");
-
-    // Set zero control for all other oscillators during this pipulse
-    for (size_t i = 0; i < nlevels.size(); i++) {
-      if (i != oscilID) {
-        PiPulseSegment zero_segment = {tstart, tstop, 0.0};
-        apply_pipulse[i].push_back(zero_segment);
-      }
-    }
-  }
-}
-
-std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseData>>& pulses,
-                                                              const std::vector<size_t>& nlevels,
-                                                              const MPILogger& logger) {
-  auto apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
-
-  if (!pulses.has_value()) {
-    return apply_pipulse;
-  }
-  for (const auto& pulse_config : *pulses) {
-    addPiPulseSegment(apply_pipulse, pulse_config.oscil_id, pulse_config.tstart, pulse_config.tstop, pulse_config.amp,
-                      nlevels, logger);
-  }
-  return apply_pipulse;
-}
-
 // Helper to extract optional vectors directly from TOML
 template <typename T>
 std::optional<std::vector<T>> get_optional_vector(const toml::node_view<toml::node>& node) {
@@ -163,7 +114,7 @@ Config::Config(const MPILogger& logger, const toml::table& table) : logger(logge
         double tstop = validators::field<double>(table, "tstop").required().value();
         double amp = validators::field<double>(table, "amp").required().value();
 
-        addPiPulseSegment(apply_pipulse, oscilID, tstart, tstop, amp, nlevels, logger);
+        addPiPulseSegment(apply_pipulse, oscilID, tstart, tstop, amp, nlevels);
       }
     }
 
@@ -433,7 +384,7 @@ Config::Config(const MPILogger& logger, const ParsedConfigData& settings) : logg
   initial_condition = parseInitialCondition(settings.initialcondition);
   n_initial_conditions = computeNumInitialConditions();
 
-  apply_pipulse = parsePiPulsesFromCfg(settings.apply_pipulse, nlevels, logger);
+  apply_pipulse = parsePiPulsesFromCfg(settings.apply_pipulse, nlevels);
 
   hamiltonian_file_Hsys = settings.hamiltonian_file_Hsys;
   hamiltonian_file_Hc = settings.hamiltonian_file_Hc;
@@ -1198,4 +1149,52 @@ void Config::setRandSeed(std::optional<int> rand_seed_) {
     std::random_device rd;
     rand_seed = rd(); // random non-reproducable seed
   }
+}
+
+void Config::addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
+                       double tstop, double amp, const std::vector<size_t>& nlevels) const {
+  if (oscilID < nlevels.size()) {
+    PiPulseSegment segment = {tstart, tstop, amp};
+    apply_pipulse[oscilID].push_back(segment);
+
+    logger.log("Applying PiPulse to oscillator " + std::to_string(oscilID) + " in [" + std::to_string(tstart) + ", " +
+               std::to_string(tstop) + "]: |p+iq|=" + std::to_string(amp) + "\n");
+
+    // Set zero control for all other oscillators during this pipulse
+    for (size_t i = 0; i < nlevels.size(); i++) {
+      if (i != oscilID) {
+        PiPulseSegment zero_segment = {tstart, tstop, 0.0};
+        apply_pipulse[i].push_back(zero_segment);
+      }
+    }
+  }
+}
+
+std::vector<std::vector<PiPulseSegment>> Config::parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseData>>& pulses,
+                                                              const std::vector<size_t>& nlevels) const {
+  auto apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
+
+  if (!pulses.has_value()) {
+    return apply_pipulse;
+  }
+  for (const auto& pulse_config : *pulses) {
+    addPiPulseSegment(apply_pipulse, pulse_config.oscil_id, pulse_config.tstart, pulse_config.tstop, pulse_config.amp,
+                      nlevels);
+  }
+  return apply_pipulse;
+}
+
+template <typename EnumType>
+std::vector<EnumType> Config::convertStringVectorToEnum(const std::vector<std::string>& strings,
+                                                const std::map<std::string, EnumType>& type_map) const {
+  std::vector<EnumType> result;
+  result.reserve(strings.size());
+  for (const auto& str : strings) {
+    auto enum_val = parseEnum(str, type_map);
+    if (!enum_val) {
+      logger.exitWithError("Unknown enum value: " + str);
+    }
+    result.push_back(*enum_val);
+  }
+  return result;
 }
