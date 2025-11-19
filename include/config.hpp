@@ -263,6 +263,7 @@ class Config {
 
   // getters
   const std::vector<size_t>& getNLevels() const { return nlevels; }
+  size_t getNumOsc() const { return nlevels.size(); }
   const std::vector<size_t>& getNEssential() const { return nessential; }
   size_t getNTime() const { return ntime; }
   double getDt() const { return dt; }

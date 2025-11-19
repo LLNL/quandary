@@ -86,6 +86,7 @@ int main(int argc,char **argv)
 
   /* --- Get some options from the config file --- */
   const std::vector<size_t> nlevels = config.getNLevels();
+  size_t num_osc = config.getNumOsc();
   int ntime = config.getNTime();
   double dt = config.getDt();
   RunType runtype = config.getRuntype();
@@ -152,14 +153,14 @@ int main(int argc,char **argv)
   double total_time = ntime * dt;
 
   /* --- Initialize the Oscillators --- */
-  Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
-  for (size_t i = 0; i < nlevels.size(); i++){
+  Oscillator** oscil_vec = new Oscillator*[num_osc];
+  for (size_t i = 0; i < num_osc; i++){
     oscil_vec[i] = new Oscillator(config, i, rand_engine);
   }
 
 
   // Get pi-pulses, if any
-  for (size_t i=0; i<nlevels.size(); i++){
+  for (size_t i=0; i<num_osc; i++){
     oscil_vec[i]->pipulse = config.getApplyPiPulse(i);
   }
 
@@ -173,7 +174,7 @@ int main(int argc,char **argv)
   MasterEq* mastereq = new MasterEq(config, oscil_vec, quietmode);
 
   /* Output */
-  Output* output = new Output(config, comm_petsc, comm_init, nlevels.size(), quietmode);
+  Output* output = new Output(config, comm_petsc, comm_init, quietmode);
 
   // Some screen output 
   if (mpirank_world == 0 && !quietmode) {

@@ -57,7 +57,7 @@ class Output{
      * @param noscillators Number of oscillators in the system
      * @param quietmode Flag for reduced output (default: false)
      */
-    Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode=false);
+    Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, bool quietmode=false);
 
     ~Output();
 

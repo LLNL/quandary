@@ -10,7 +10,9 @@ Output::Output(){
   quietmode = false;
 }
 
-Output::Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode_) : Output() {
+Output::Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, bool quietmode_) : Output() {
+
+  size_t noscillators = config.getNumOsc();
 
   /* Get communicator ranks */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -41,19 +43,19 @@ Output::Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, in
   /* Reset flags and data file pointers */
   ufile = NULL;
   vfile = NULL;
-  for (int i=0; i< noscillators; i++) expectedfile.push_back (NULL);
-  for (int i=0; i< noscillators; i++) populationfile.push_back (NULL);
+  for (size_t i=0; i< noscillators; i++) expectedfile.push_back (NULL);
+  for (size_t i=0; i< noscillators; i++) populationfile.push_back (NULL);
   expectedfile_comp=NULL;
   populationfile_comp=NULL;
   writeFullState = false;
   writeExpectedEnergy_comp = false;
   writePopulation_comp = false;
-  for (int i=0; i<noscillators; i++) writeExpectedEnergy.push_back(false);
-  for (int i=0; i<noscillators; i++) writePopulation.push_back(false);
+  for (size_t i=0; i<noscillators; i++) writeExpectedEnergy.push_back(false);
+  for (size_t i=0; i<noscillators; i++) writePopulation.push_back(false);
 
   /* Check the output strings for each oscillator to determine which files should be written */
   output = config.getOutput();
-  for (int i=0; i<noscillators; i++) { // iterates over oscillators
+  for (size_t i=0; i<noscillators; i++) { // iterates over oscillators
     for (auto output_type : output[i]) { // iterates over output types for this oscillator
       switch (output_type) {
         case OutputType::EXPECTED_ENERGY: writeExpectedEnergy[i] = true;
