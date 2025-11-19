@@ -190,6 +190,106 @@ ConfigSettings CfgParser::parseString(const std::string& config_content) {
   return settings;
 }
 
+// Enum converter implementations
+template <>
+RunType CfgParser::convertFromString<RunType>(const std::string& str) {
+  auto it = RUN_TYPE_MAP.find(toLower(str));
+  if (it == RUN_TYPE_MAP.end()) {
+    logger.exitWithError("\n\n ERROR: Unknown run type: " + str + ".\n");
+  }
+  return it->second;
+}
+
+template <>
+LindbladType CfgParser::convertFromString<LindbladType>(const std::string& str) {
+  auto it = LINDBLAD_TYPE_MAP.find(toLower(str));
+  if (it == LINDBLAD_TYPE_MAP.end()) {
+    logger.exitWithError("\n\n ERROR: Unknown Lindblad type: " + str + ".\n");
+  }
+  return it->second;
+}
+
+template <>
+LinearSolverType CfgParser::convertFromString<LinearSolverType>(const std::string& str) {
+  auto it = LINEAR_SOLVER_TYPE_MAP.find(toLower(str));
+  if (it == LINEAR_SOLVER_TYPE_MAP.end()) {
+    logger.exitWithError("\n\n ERROR: Unknown linear solver type: " + str + ".\n");
+  }
+  return it->second;
+}
+
+template <>
+TimeStepperType CfgParser::convertFromString<TimeStepperType>(const std::string& str) {
+  auto it = TIME_STEPPER_TYPE_MAP.find(toLower(str));
+  if (it == TIME_STEPPER_TYPE_MAP.end()) {
+    logger.exitWithError("\n\n ERROR: Unknown time stepper type: " + str + ".\n");
+  }
+  return it->second;
+}
+
+template <>
+TargetType CfgParser::convertFromString<TargetType>(const std::string& str) {
+  auto it = TARGET_TYPE_MAP.find(toLower(str));
+  if (it == TARGET_TYPE_MAP.end()) {
+    logger.exitWithError("\n\n ERROR: Unknown target type: " + str + ".\n");
+  }
+  return it->second;
+}
+
+template <>
+InitialConditionType CfgParser::convertFromString<InitialConditionType>(const std::string& str) {
+  auto it = INITCOND_TYPE_MAP.find(toLower(str));
+  if (it == INITCOND_TYPE_MAP.end()) {
+    logger.exitWithError("\n\n ERROR: Unknown initial condition type: " + str + ".\n");
+  }
+  return it->second;
+}
+
+template <>
+GateType CfgParser::convertFromString<GateType>(const std::string& str) {
+  auto it = GATE_TYPE_MAP.find(toLower(str));
+  if (it == GATE_TYPE_MAP.end()) {
+    logger.exitWithError("\n\n ERROR: Unknown gate type: " + str + ".\n");
+  }
+  return it->second;
+}
+
+template <>
+OutputType CfgParser::convertFromString<OutputType>(const std::string& str) {
+  auto it = OUTPUT_TYPE_MAP.find(toLower(str));
+  if (it == OUTPUT_TYPE_MAP.end()) {
+    logger.exitWithError("\n\n ERROR: Unknown output type: " + str + ".\n");
+  }
+  return it->second;
+}
+
+template <>
+ObjectiveType CfgParser::convertFromString<ObjectiveType>(const std::string& str) {
+  auto it = OBJECTIVE_TYPE_MAP.find(toLower(str));
+  if (it == OBJECTIVE_TYPE_MAP.end()) {
+    logger.exitWithError("\n\n ERROR: Unknown objective type: " + str + ".\n");
+  }
+  return it->second;
+}
+
+template <>
+ControlType CfgParser::convertFromString<ControlType>(const std::string& str) {
+  auto it = CONTROL_TYPE_MAP.find(toLower(str));
+  if (it == CONTROL_TYPE_MAP.end()) {
+    logger.exitWithError("\n\n ERROR: Unknown control type: " + str + ".\n");
+  }
+  return it->second;
+}
+
+template <>
+ControlSegmentInitType CfgParser::convertFromString<ControlSegmentInitType>(const std::string& str) {
+  auto it = CONTROL_SEGMENT_INIT_TYPE_MAP.find(toLower(str));
+  if (it == CONTROL_SEGMENT_INIT_TYPE_MAP.end()) {
+    logger.exitWithError("\n\n ERROR: Unknown control segment initialization type: " + str + ".\n");
+  }
+  return it->second;
+}
+
 // Struct converter implementations
 template <>
 InitialConditionConfig CfgParser::convertFromString<InitialConditionConfig>(const std::string& str) {

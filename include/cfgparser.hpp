@@ -114,103 +114,37 @@ class CfgParser {
 
   // Enum converter specializations
   template <>
-  RunType convertFromString<RunType>(const std::string& str) {
-    auto it = RUN_TYPE_MAP.find(toLower(str));
-    if (it == RUN_TYPE_MAP.end()) {
-      logger.exitWithError("\n\n ERROR: Unknown run type: " + str + ".\n");
-    }
-    return it->second;
-  }
+  RunType convertFromString<RunType>(const std::string& str);
 
   template <>
-  LindbladType convertFromString<LindbladType>(const std::string& str) {
-    auto it = LINDBLAD_TYPE_MAP.find(toLower(str));
-    if (it == LINDBLAD_TYPE_MAP.end()) {
-      logger.exitWithError("\n\n ERROR: Unknown Lindblad type: " + str + ".\n");
-    }
-    return it->second;
-  }
+  LindbladType convertFromString<LindbladType>(const std::string& str);
 
   template <>
-  LinearSolverType convertFromString<LinearSolverType>(const std::string& str) {
-    auto it = LINEAR_SOLVER_TYPE_MAP.find(toLower(str));
-    if (it == LINEAR_SOLVER_TYPE_MAP.end()) {
-      logger.exitWithError("\n\n ERROR: Unknown linear solver type: " + str + ".\n");
-    }
-    return it->second;
-  }
+  LinearSolverType convertFromString<LinearSolverType>(const std::string& str);
 
   template <>
-  TimeStepperType convertFromString<TimeStepperType>(const std::string& str) {
-    auto it = TIME_STEPPER_TYPE_MAP.find(toLower(str));
-    if (it == TIME_STEPPER_TYPE_MAP.end()) {
-      logger.exitWithError("\n\n ERROR: Unknown time stepper type: " + str + ".\n");
-    }
-    return it->second;
-  }
+  TimeStepperType convertFromString<TimeStepperType>(const std::string& str);
 
   template <>
-  TargetType convertFromString<TargetType>(const std::string& str) {
-    auto it = TARGET_TYPE_MAP.find(toLower(str));
-    if (it == TARGET_TYPE_MAP.end()) {
-      logger.exitWithError("\n\n ERROR: Unknown target type: " + str + ".\n");
-    }
-    return it->second;
-  }
+  TargetType convertFromString<TargetType>(const std::string& str);
 
   template <>
-  InitialConditionType convertFromString<InitialConditionType>(const std::string& str) {
-    auto it = INITCOND_TYPE_MAP.find(toLower(str));
-    if (it == INITCOND_TYPE_MAP.end()) {
-      logger.exitWithError("\n\n ERROR: Unknown initial condition type: " + str + ".\n");
-    }
-    return it->second;
-  }
+  InitialConditionType convertFromString<InitialConditionType>(const std::string& str);
 
   template <>
-  GateType convertFromString<GateType>(const std::string& str) {
-    auto it = GATE_TYPE_MAP.find(toLower(str));
-    if (it == GATE_TYPE_MAP.end()) {
-      logger.exitWithError("\n\n ERROR: Unknown gate type: " + str + ".\n");
-    }
-    return it->second;
-  }
+  GateType convertFromString<GateType>(const std::string& str);
 
   template <>
-  OutputType convertFromString<OutputType>(const std::string& str) {
-    auto it = OUTPUT_TYPE_MAP.find(toLower(str));
-    if (it == OUTPUT_TYPE_MAP.end()) {
-      logger.exitWithError("\n\n ERROR: Unknown output type: " + str + ".\n");
-    }
-    return it->second;
-  }
+  OutputType convertFromString<OutputType>(const std::string& str);
 
   template <>
-  ObjectiveType convertFromString<ObjectiveType>(const std::string& str) {
-    auto it = OBJECTIVE_TYPE_MAP.find(toLower(str));
-    if (it == OBJECTIVE_TYPE_MAP.end()) {
-      logger.exitWithError("\n\n ERROR: Unknown objective type: " + str + ".\n");
-    }
-    return it->second;
-  }
+  ObjectiveType convertFromString<ObjectiveType>(const std::string& str);
 
   template <>
-  ControlType convertFromString<ControlType>(const std::string& str) {
-    auto it = CONTROL_TYPE_MAP.find(toLower(str));
-    if (it == CONTROL_TYPE_MAP.end()) {
-      logger.exitWithError("\n\n ERROR: Unknown control type: " + str + ".\n");
-    }
-    return it->second;
-  }
+  ControlType convertFromString<ControlType>(const std::string& str);
 
   template <>
-  ControlSegmentInitType convertFromString<ControlSegmentInitType>(const std::string& str) {
-    auto it = CONTROL_SEGMENT_INIT_TYPE_MAP.find(toLower(str));
-    if (it == CONTROL_SEGMENT_INIT_TYPE_MAP.end()) {
-      logger.exitWithError("\n\n ERROR: Unknown control segment initialization type: " + str + ".\n");
-    }
-    return it->second;
-  }
+  ControlSegmentInitType convertFromString<ControlSegmentInitType>(const std::string& str);
 
   // Struct converters
   template <>
