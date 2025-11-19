@@ -2,7 +2,6 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <sstream>
 
 /**
  * @brief MPI-aware logger that handles rank filtering and quiet mode.
@@ -14,23 +13,12 @@ class MPILogger {
  private:
   int mpi_rank;
   bool quiet_mode;
-  std::stringstream* default_stream;
 
  public:
-  MPILogger(int rank, bool quiet = false, std::stringstream* stream = nullptr)
-      : mpi_rank(rank), quiet_mode(quiet), default_stream(stream) {}
+  MPILogger(int rank, bool quiet = false)
+      : mpi_rank(rank), quiet_mode(quiet) {}
 
   void log(const std::string& message) const {
-    if (default_stream) {
-      logToStream(*default_stream, message);
-    } else {
-      logToConsole(message);
-    }
-  }
-
-  void log(std::stringstream& stream, const std::string& message) const { logToStream(stream, message); }
-
-  void logToConsole(const std::string& message) const {
     if (!quiet_mode && mpi_rank == 0) {
       std::cout << message << std::endl;
     }
@@ -49,11 +37,4 @@ class MPILogger {
 
   bool isQuiet() const { return quiet_mode; }
   int getRank() const { return mpi_rank; }
-
- private:
-  void logToStream(std::stringstream& stream, const std::string& message) const {
-    if (!quiet_mode && mpi_rank == 0) {
-      stream << message << std::endl;
-    }
-  }
 };
