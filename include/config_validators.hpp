@@ -364,4 +364,30 @@ VectorValidator<T> vectorField(const toml::table& config_, const std::string& ke
   return VectorValidator<T>(config_, key_);
 }
 
+/**
+ * @brief Extracts an optional vector from a TOML node.
+ *
+ * Helper for extracting vectors when the validator API doesn't fit well
+ * (e.g., nested structures or conditional parsing). If the node is not
+ * an array or contains type mismatches, returns nullopt.
+ *
+ * @tparam T Element type of the vector
+ * @param node TOML node that may contain an array
+ * @return Vector if node is a valid array with matching types, nullopt otherwise
+ */
+template <typename T>
+std::optional<std::vector<T>> getOptionalVector(const toml::node_view<toml::node>& node) {
+  auto* arr = node.as_array();
+  if (!arr) return std::nullopt;
+
+  std::vector<T> result;
+  for (size_t i = 0; i < arr->size(); ++i) {
+    auto val = arr->at(i).template value<T>();
+    if (!val) return std::nullopt; // Type mismatch in array element
+    result.push_back(*val);
+  }
+
+  return result;
+}
+
 } // namespace validators
