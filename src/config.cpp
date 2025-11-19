@@ -822,13 +822,16 @@ template <typename T>
 std::vector<std::vector<T>> Config::parseIndexedWithDefaults(
     const std::optional<std::map<int, std::vector<T>>>& indexed, size_t num_entries,
     const std::vector<T>& default_values) const {
-  std::vector<std::vector<T>> result(num_entries);
 
-  for (size_t i = 0; i < num_entries; i++) {
-    if (indexed.has_value() && indexed->find(static_cast<int>(i)) != indexed->end()) {
-      result[i] = indexed->at(static_cast<int>(i));
-    } else {
-      result[i] = default_values;
+  // Start with all defaults
+  std::vector<std::vector<T>> result(num_entries, default_values);
+
+  // Overwrite with specified values
+  if (indexed.has_value()) {
+    for (const auto& [idx, vals] : *indexed) {
+      if (idx >= 0 && static_cast<size_t>(idx) < num_entries) {
+        result[idx] = vals;
+      }
     }
   }
   return result;
