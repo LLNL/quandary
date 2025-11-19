@@ -55,7 +55,4 @@ class MPILogger {
     error(message);
     exit(1);
   }
-
-  bool isQuiet() const { return quiet_mode; }
-  int getRank() const { return mpi_rank; }
 };
