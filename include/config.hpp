@@ -271,7 +271,6 @@ class Config {
   double getDt() const { return dt; }
   double getTotalTime() const { return ntime * dt; }
 
-
   const std::vector<double>& getTransFreq() const { return transfreq; }
   const std::vector<double>& getSelfKerr() const { return selfkerr; }
   const std::vector<double>& getCrossKerr() const { return crosskerr; }

@@ -603,8 +603,9 @@ void Config::finalize() {
   }
 
   if (usematfree && nlevels.size() > 5) {
-    logger.log("Warning: Matrix free solver is only implemented for systems with 2, 3, 4, or 5 oscillators."
-      "Switching to sparse-matrix solver now.\n");
+    logger.log(
+        "Warning: Matrix free solver is only implemented for systems with 2, 3, 4, or 5 oscillators."
+        "Switching to sparse-matrix solver now.\n");
     usematfree = false;
   }
 }

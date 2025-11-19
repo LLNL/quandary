@@ -22,15 +22,16 @@ class CfgParserTest : public ::testing::Test {
 };
 
 TEST_F(CfgParserTest, ParseBasicSettings) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    ntime = 500
-    dt = 0.05
-    collapse_type = none
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        ntime = 500
+        dt = 0.05
+        collapse_type = none
+      )",
+      logger);
 
   EXPECT_EQ(config.getNTime(), 500);
   EXPECT_DOUBLE_EQ(config.getDt(), 0.05);
@@ -38,12 +39,13 @@ TEST_F(CfgParserTest, ParseBasicSettings) {
 }
 
 TEST_F(CfgParserTest, ParseVectorSettings) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2, 3
-    transfreq = 4.1, 4.8, 5.2
-    rotfreq = 0.0, 0.0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2, 3
+        transfreq = 4.1, 4.8, 5.2
+        rotfreq = 0.0, 0.0
+      )",
+      logger);
 
   auto nlevels = config.getNLevels();
   EXPECT_EQ(nlevels.size(), 2);
@@ -58,14 +60,15 @@ TEST_F(CfgParserTest, ParseVectorSettings) {
 }
 
 TEST_F(CfgParserTest, ParseOutputSettings) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
-    output0 = population
-    output1 = population, expectedEnergy
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2, 2
+        transfreq = 4.1, 4.8
+        rotfreq = 0.0, 0.0
+        output0 = population
+        output1 = population, expectedEnergy
+      )",
+      logger);
 
   // Verify output settings
   auto output = config.getOutput();
@@ -78,14 +81,15 @@ TEST_F(CfgParserTest, ParseOutputSettings) {
 }
 
 TEST_F(CfgParserTest, ParseStructSettings) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    optim_target = gate, cnot
-    initialcondition = diagonal, 0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        optim_target = gate, cnot
+        initialcondition = diagonal, 0
+      )",
+      logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -99,12 +103,13 @@ TEST_F(CfgParserTest, ParseStructSettings) {
 }
 
 TEST_F(CfgParserTest, ApplyDefaults) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+      )",
+      logger);
 
   // Check defaults were applied
   EXPECT_EQ(config.getNTime(), 1000); // Default ntime
@@ -113,13 +118,14 @@ TEST_F(CfgParserTest, ApplyDefaults) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_FromFile) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    initialcondition = file, test.dat
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        initialcondition = file, test.dat
+      )",
+      logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<FromFileInitialCondition>(initcond));
   EXPECT_EQ(std::get<FromFileInitialCondition>(initcond).filename, "test.dat");
@@ -127,13 +133,14 @@ TEST_F(CfgParserTest, InitialCondition_FromFile) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_Pure) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 3, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
-    initialcondition = pure, 1, 0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 3, 2
+        transfreq = 4.1, 4.8
+        rotfreq = 0.0, 0.0
+        initialcondition = pure, 1, 0
+      )",
+      logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PureInitialCondition>(initcond));
   const auto& pure_init = std::get<PureInitialCondition>(initcond);
@@ -142,27 +149,29 @@ TEST_F(CfgParserTest, InitialCondition_Pure) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_Performance) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    initialcondition = performance
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        initialcondition = performance
+      )",
+      logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<PerformanceInitialCondition>(initcond));
   EXPECT_EQ(config.getNInitialConditions(), 1);
 }
 
 TEST_F(CfgParserTest, InitialCondition_Ensemble) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 3, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
-    collapse_type = decay
-    initialcondition = ensemble, 0, 1
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 3, 2
+        transfreq = 4.1, 4.8
+        rotfreq = 0.0, 0.0
+        collapse_type = decay
+        initialcondition = ensemble, 0, 1
+      )",
+      logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<EnsembleInitialCondition>(initcond));
   const auto& ensemble_init = std::get<EnsembleInitialCondition>(initcond);
@@ -171,28 +180,30 @@ TEST_F(CfgParserTest, InitialCondition_Ensemble) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_ThreeStates) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 3
-    transfreq = 4.1
-    rotfreq = 0.0
-    collapse_type = decay
-    initialcondition = 3states
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 3
+        transfreq = 4.1
+        rotfreq = 0.0
+        collapse_type = decay
+        initialcondition = 3states
+      )",
+      logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<ThreeStatesInitialCondition>(initcond));
   EXPECT_EQ(config.getNInitialConditions(), 3);
 }
 
 TEST_F(CfgParserTest, InitialCondition_NPlusOne_SingleOscillator) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 3
-    transfreq = 4.1
-    rotfreq = 0.0
-    collapse_type = decay
-    initialcondition = nplus1
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 3
+        transfreq = 4.1
+        rotfreq = 0.0
+        collapse_type = decay
+        initialcondition = nplus1
+      )",
+      logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
   // For nlevels = [3], system dimension N = 3, so n_initial_conditions = N + 1 = 4
@@ -200,14 +211,15 @@ TEST_F(CfgParserTest, InitialCondition_NPlusOne_SingleOscillator) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2, 3
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
-    collapse_type = decay
-    initialcondition = nplus1
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2, 3
+        transfreq = 4.1, 4.8
+        rotfreq = 0.0, 0.0
+        collapse_type = decay
+        initialcondition = nplus1
+      )",
+      logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<NPlusOneInitialCondition>(initcond));
   // For nlevels = [2, 3], system dimension N = 2 * 3 = 6, so n_initial_conditions = N + 1 = 7
@@ -215,15 +227,16 @@ TEST_F(CfgParserTest, InitialCondition_NPlusOne_MultipleOscillators) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_Diagonal_Schrodinger) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 3, 2
-    nessential = 3, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
-    collapse_type = none
-    initialcondition = diagonal, 1
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 3, 2
+        nessential = 3, 2
+        transfreq = 4.1, 4.8
+        rotfreq = 0.0, 0.0
+        collapse_type = none
+        initialcondition = diagonal, 1
+      )",
+      logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
   const auto& diagonal_init = std::get<DiagonalInitialCondition>(initcond);
@@ -233,15 +246,16 @@ TEST_F(CfgParserTest, InitialCondition_Diagonal_Schrodinger) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_Basis_Schrodinger) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 3, 2
-    nessential = 3, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
-    collapse_type = none
-    initialcondition = basis, 1
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 3, 2
+        nessential = 3, 2
+        transfreq = 4.1, 4.8
+        rotfreq = 0.0, 0.0
+        collapse_type = none
+        initialcondition = basis, 1
+      )",
+      logger);
   // For Schrodinger solver, BASIS is converted to DIAGONAL, so n_initial_conditions = nessential[1] = 2
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<DiagonalInitialCondition>(initcond));
@@ -251,15 +265,16 @@ TEST_F(CfgParserTest, InitialCondition_Basis_Schrodinger) {
 }
 
 TEST_F(CfgParserTest, InitialCondition_Basis_Lindblad) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 3, 2
-    nessential = 3, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
-    collapse_type = decay
-    initialcondition = basis, 1
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 3, 2
+        nessential = 3, 2
+        transfreq = 4.1, 4.8
+        rotfreq = 0.0, 0.0
+        collapse_type = decay
+        initialcondition = basis, 1
+      )",
+      logger);
   const auto& initcond = config.getInitialCondition();
   EXPECT_TRUE(std::holds_alternative<BasisInitialCondition>(initcond));
   const auto& basis_init = std::get<BasisInitialCondition>(initcond);
@@ -269,13 +284,14 @@ TEST_F(CfgParserTest, InitialCondition_Basis_Lindblad) {
 }
 
 TEST_F(CfgParserTest, ParsePiPulseSettings_Structure) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2, 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    apply_pipulse = 0, 0.5, 1.0, 0.8
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2, 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        apply_pipulse = 0, 0.5, 1.0, 0.8
+      )",
+      logger);
 
   const auto& pulses = config.getApplyPiPulses();
   EXPECT_EQ(pulses.size(), 2);
@@ -293,13 +309,14 @@ TEST_F(CfgParserTest, ParsePiPulseSettings_Structure) {
 }
 
 TEST_F(CfgParserTest, ParsePiPulseSettings_Multiple) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2, 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    apply_pipulse = 0, 0.5, 1.0, 0.8, 1, 0, 0.5, 0.2
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2, 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        apply_pipulse = 0, 0.5, 1.0, 0.8, 1, 0, 0.5, 0.2
+      )",
+      logger);
 
   const auto& pulses = config.getApplyPiPulses();
   EXPECT_EQ(pulses.size(), 2);
@@ -322,13 +339,14 @@ TEST_F(CfgParserTest, ParsePiPulseSettings_Multiple) {
 }
 
 TEST_F(CfgParserTest, ControlSegments_Spline0) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    control_segments0 = spline0, 150, 0.0, 1.0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        control_segments0 = spline0, 150, 0.0, 1.0
+      )",
+      logger);
 
   const auto& control_seg0 = config.getControlSegments(0);
   EXPECT_EQ(control_seg0.size(), 1);
@@ -340,14 +358,15 @@ TEST_F(CfgParserTest, ControlSegments_Spline0) {
 }
 
 TEST_F(CfgParserTest, ControlSegments_Spline) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2, 2
-    transfreq = 4.1, 4.1
-    rotfreq = 0.0, 0.0
-    control_segments0 = spline, 10
-    control_segments1 = spline, 20, 0.0, 1.0, spline, 30, 1.0, 2.0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2, 2
+        transfreq = 4.1, 4.1
+        rotfreq = 0.0, 0.0
+        control_segments0 = spline, 10
+        control_segments1 = spline, 20, 0.0, 1.0, spline, 30, 1.0, 2.0
+      )",
+      logger);
 
   // Check first oscillator with one segment
   const auto& control_seg0 = config.getControlSegments(0);
@@ -376,14 +395,15 @@ TEST_F(CfgParserTest, ControlSegments_Spline) {
 }
 
 TEST_F(CfgParserTest, ControlSegments_Step) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2,2
-    transfreq = 4.1,4.1
-    rotfreq = 0.0,0.0
-    control_segments0 = step, 0.1, 0.2, 0.3, 0.4, 0.5
-    control_segments1 = step, 0.1, 0.2, 0.3
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2,2
+        transfreq = 4.1,4.1
+        rotfreq = 0.0,0.0
+        control_segments0 = step, 0.1, 0.2, 0.3, 0.4, 0.5
+        control_segments1 = step, 0.1, 0.2, 0.3
+      )",
+      logger);
 
   // Check first oscillator
   const auto& control_seg0 = config.getControlSegments(0);
@@ -409,14 +429,15 @@ TEST_F(CfgParserTest, ControlSegments_Step) {
 }
 
 TEST_F(CfgParserTest, ControlSegments_Defaults) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2, 2, 2
-    transfreq = 4.1, 4.8
-    rotfreq = 0.0, 0.0
-    control_segments1 = spline0, 150, 0.0, 1.0
-    control_bounds1 = 2.0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2, 2, 2
+        transfreq = 4.1, 4.8
+        rotfreq = 0.0, 0.0
+        control_segments1 = spline0, 150, 0.0, 1.0
+        control_bounds1 = 2.0
+      )",
+      logger);
 
   // Check first oscillator has default settings
   const auto& control_seg0 = config.getControlSegments(0);
@@ -450,13 +471,14 @@ TEST_F(CfgParserTest, ControlSegments_Defaults) {
 }
 
 TEST_F(CfgParserTest, ControlInitialization_Defaults) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2, 2, 2
-    transfreq = 4.1, 4.1, 4.1
-    rotfreq = 0.0, 0.0, 0.0
-    control_initialization1 = random, 2.0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2, 2, 2
+        transfreq = 4.1, 4.1, 4.1
+        rotfreq = 0.0, 0.0, 0.0
+        control_initialization1 = random, 2.0
+      )",
+      logger);
 
   // Check first oscillator has default settings
   const auto& control_init0 = config.getControlInitializations(0);
@@ -481,17 +503,18 @@ TEST_F(CfgParserTest, ControlInitialization_Defaults) {
 }
 
 TEST_F(CfgParserTest, ControlInitialization) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2, 2, 2, 2, 2
-    transfreq = 4.1, 4.1, 4.1, 4.1, 4.1
-    rotfreq = 0.0, 0.0, 0.0, 0.0, 0.0
-    control_initialization0 = constant, 1.0, 1.1
-    control_initialization1 = constant, 2.0
-    control_initialization2 = random, 3.0, 3.1
-    control_initialization3 = random, 4.0
-    control_initialization4 = random, 5.0, 5.1, constant, 6.0, 6.1
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2, 2, 2, 2, 2
+        transfreq = 4.1, 4.1, 4.1, 4.1, 4.1
+        rotfreq = 0.0, 0.0, 0.0, 0.0, 0.0
+        control_initialization0 = constant, 1.0, 1.1
+        control_initialization1 = constant, 2.0
+        control_initialization2 = random, 3.0, 3.1
+        control_initialization3 = random, 4.0
+        control_initialization4 = random, 5.0, 5.1, constant, 6.0, 6.1
+      )",
+      logger);
 
   // Check first oscillator
   const auto& control_init0 = config.getControlInitializations(0);
@@ -533,27 +556,29 @@ TEST_F(CfgParserTest, ControlInitialization) {
 }
 
 TEST_F(CfgParserTest, ControlInitialization_File) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    control_initialization0 = file, params.dat
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        control_initialization0 = file, params.dat
+      )",
+      logger);
 
   EXPECT_TRUE(config.getControlInitializationFile().has_value());
   EXPECT_EQ(config.getControlInitializationFile().value(), "params.dat");
 }
 
 TEST_F(CfgParserTest, ControlBounds) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    control_segments0 = spline, 10, 0.0, 1.0, step, 0.1, 0.2, 0.3, 0.4, 0.5, spline0, 20, 1.0, 2.0
-    control_bounds0 = 1.0, 2.0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        control_segments0 = spline, 10, 0.0, 1.0, step, 0.1, 0.2, 0.3, 0.4, 0.5, spline0, 20, 1.0, 2.0
+        control_bounds0 = 1.0, 2.0
+      )",
+      logger);
 
   // Check control bounds for the three segments
   const auto& control_bounds0 = config.getControlBounds(0);
@@ -564,13 +589,14 @@ TEST_F(CfgParserTest, ControlBounds) {
 }
 
 TEST_F(CfgParserTest, CarrierFrequencies) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    carrier_frequency0 = 1.0, 2.0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        carrier_frequency0 = 1.0, 2.0
+      )",
+      logger);
 
   const auto& carrier_freq0 = config.getCarrierFrequencies(0);
   EXPECT_EQ(carrier_freq0.size(), 2);
@@ -579,13 +605,14 @@ TEST_F(CfgParserTest, CarrierFrequencies) {
 }
 
 TEST_F(CfgParserTest, OptimTarget_GateType) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    optim_target = gate, cnot
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        optim_target = gate, cnot
+      )",
+      logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -594,13 +621,14 @@ TEST_F(CfgParserTest, OptimTarget_GateType) {
 }
 
 TEST_F(CfgParserTest, OptimTarget_GateFromFile) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    optim_target = gate, file, /path/to/gate.dat
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        optim_target = gate, file, /path/to/gate.dat
+      )",
+      logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<GateOptimTarget>(target));
@@ -610,13 +638,14 @@ TEST_F(CfgParserTest, OptimTarget_GateFromFile) {
 }
 
 TEST_F(CfgParserTest, OptimTarget_PureState) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 3, 3, 3
-    transfreq = 4.1
-    rotfreq = 0.0
-    optim_target = pure, 0, 1, 2
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 3, 3, 3
+        transfreq = 4.1
+        rotfreq = 0.0
+        optim_target = pure, 0, 1, 2
+      )",
+      logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
@@ -629,13 +658,14 @@ TEST_F(CfgParserTest, OptimTarget_PureState) {
 }
 
 TEST_F(CfgParserTest, OptimTarget_FromFile) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-    optim_target = file, /path/to/target.dat
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+        optim_target = file, /path/to/target.dat
+      )",
+      logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<FileOptimTarget>(target));
@@ -644,12 +674,13 @@ TEST_F(CfgParserTest, OptimTarget_FromFile) {
 }
 
 TEST_F(CfgParserTest, OptimTarget_DefaultPure) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2
-    transfreq = 4.1
-    rotfreq = 0.0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2
+        transfreq = 4.1
+        rotfreq = 0.0
+      )",
+      logger);
 
   const auto& target = config.getOptimTarget();
   EXPECT_TRUE(std::holds_alternative<PureOptimTarget>(target));
@@ -659,13 +690,14 @@ TEST_F(CfgParserTest, OptimTarget_DefaultPure) {
 }
 
 TEST_F(CfgParserTest, OptimWeights) {
-  Config config = Config::fromCfgString(R"(
-    nlevels = 2, 2
-    transfreq = 4.1, 4.1
-    rotfreq = 0.0, 0.0
-    optim_weights = 2.0, 1.0
-  )",
-                                        logger);
+  Config config = Config::fromCfgString(
+      R"(
+        nlevels = 2, 2
+        transfreq = 4.1, 4.1
+        rotfreq = 0.0, 0.0
+        optim_weights = 2.0, 1.0
+      )",
+      logger);
 
   const auto& weights = config.getOptimWeights();
   EXPECT_EQ(weights.size(), 4);
