@@ -114,7 +114,7 @@ Config::Config(const MPILogger& logger, const toml::table& table) : logger(logge
         double tstop = validators::field<double>(table, "tstop").required().value();
         double amp = validators::field<double>(table, "amp").required().value();
 
-        addPiPulseSegment(apply_pipulse, oscilID, tstart, tstop, amp, nlevels);
+        addPiPulseSegment(apply_pipulse, oscilID, tstart, tstop, amp);
       }
     }
 
@@ -1148,8 +1148,8 @@ void Config::setRandSeed(std::optional<int> rand_seed_) {
 }
 
 void Config::addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
-                       double tstop, double amp, const std::vector<size_t>& nlevels) const {
-  if (oscilID < nlevels.size()) {
+                       double tstop, double amp) const {
+  if (oscilID < getNumOsc()) {
     PiPulseSegment segment = {tstart, tstop, amp};
     apply_pipulse[oscilID].push_back(segment);
 
@@ -1157,7 +1157,7 @@ void Config::addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_p
                std::to_string(tstop) + "]: |p+iq|=" + std::to_string(amp) + "\n");
 
     // Set zero control for all other oscillators during this pipulse
-    for (size_t i = 0; i < nlevels.size(); i++) {
+    for (size_t i = 0; i < getNumOsc(); i++) {
       if (i != oscilID) {
         PiPulseSegment zero_segment = {tstart, tstop, 0.0};
         apply_pipulse[i].push_back(zero_segment);
@@ -1174,8 +1174,7 @@ std::vector<std::vector<PiPulseSegment>> Config::parsePiPulsesFromCfg(const std:
     return apply_pipulse;
   }
   for (const auto& pulse_config : *pulses) {
-    addPiPulseSegment(apply_pipulse, pulse_config.oscil_id, pulse_config.tstart, pulse_config.tstop, pulse_config.amp,
-                      nlevels);
+    addPiPulseSegment(apply_pipulse, pulse_config.oscil_id, pulse_config.tstart, pulse_config.tstop, pulse_config.amp);
   }
   return apply_pipulse;
 }
