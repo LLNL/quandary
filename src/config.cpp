@@ -813,7 +813,6 @@ template <typename T>
 std::vector<std::vector<T>> Config::parseIndexedWithDefaults(
     const std::optional<std::map<int, std::vector<T>>>& indexed, size_t num_entries,
     const std::vector<T>& default_values) const {
-
   // Start with all defaults
   std::vector<std::vector<T>> result(num_entries, default_values);
 
@@ -830,7 +829,7 @@ std::vector<std::vector<T>> Config::parseIndexedWithDefaults(
 
 template <typename EnumType>
 std::vector<EnumType> Config::convertStringVectorToEnum(const std::vector<std::string>& strings,
-                                                const std::map<std::string, EnumType>& type_map) const {
+                                                        const std::map<std::string, EnumType>& type_map) const {
   std::vector<EnumType> result;
   result.reserve(strings.size());
   for (const auto& str : strings) {
@@ -945,7 +944,7 @@ InitialCondition Config::parseInitialCondition(const std::optional<InitialCondit
 }
 
 void Config::addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
-                       double tstop, double amp) const {
+                               double tstop, double amp) const {
   if (oscilID < getNumOsc()) {
     PiPulseSegment segment = {tstart, tstop, amp};
     apply_pipulse[oscilID].push_back(segment);

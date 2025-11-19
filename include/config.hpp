@@ -328,7 +328,7 @@ class Config {
   void setRandSeed(std::optional<int> rand_seed_);
 
   // Conversion helper methods
-    template <typename T>
+  template <typename T>
   std::vector<std::vector<T>> parseIndexedWithDefaults(const std::optional<std::map<int, std::vector<T>>>& indexed,
                                                        size_t num_entries,
                                                        const std::vector<T>& default_values = {}) const;

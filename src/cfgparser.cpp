@@ -390,8 +390,7 @@ std::vector<PiPulseData> CfgParser::convertFromString<std::vector<PiPulseData>>(
 }
 
 template <>
-std::vector<ControlSegmentData> CfgParser::convertFromString<std::vector<ControlSegmentData>>(
-    const std::string& str) {
+std::vector<ControlSegmentData> CfgParser::convertFromString<std::vector<ControlSegmentData>>(const std::string& str) {
   const auto parts = split(str);
 
   std::vector<ControlSegmentData> segments;
