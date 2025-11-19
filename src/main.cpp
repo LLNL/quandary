@@ -153,25 +153,13 @@ int main(int argc,char **argv)
 
   /* --- Initialize the Oscillators --- */
   Oscillator** oscil_vec = new Oscillator*[nlevels.size()];
-  // Get fundamental and rotation frequencies from config file 
-  const std::vector<double>& trans_freq = config.getTransFreq();
-  const std::vector<double>& rot_freq = config.getRotFreq();
-  const std::vector<double>& selfkerr = config.getSelfKerr();
-
-  // Get lindblad type and collapse times
-  LindbladType lindbladtype = config.getCollapseType();
-  const std::vector<double>& decay_time = config.getDecayTime();
-  const std::vector<double>& dephase_time = config.getDephaseTime();
-
-  // Get control segment types, carrierwaves and control initialization
   for (size_t i = 0; i < nlevels.size(); i++){
-    const std::vector<double>& carrier_freq = config.getCarrierFrequencies(i);
-    const auto& control_seg = config.getControlSegments(i);
-    const auto& control_init = config.getControlInitializations(i);
-
-    // Create oscillator 
-    oscil_vec[i] = new Oscillator(config, i, nlevels, control_seg, control_init, trans_freq[i], selfkerr[i], rot_freq[i], decay_time[i], dephase_time[i], carrier_freq, total_time, lindbladtype, rand_engine);
+    oscil_vec[i] = new Oscillator(config, i, rand_engine);
   }
+
+  // Get variables still needed for MasterEq initialization
+  const std::vector<double>& rot_freq = config.getRotFreq();
+  LindbladType lindbladtype = config.getCollapseType();
 
   // Get pi-pulses, if any
   for (size_t i=0; i<nlevels.size(); i++){

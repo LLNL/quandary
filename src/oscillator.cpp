@@ -10,22 +10,41 @@ Oscillator::Oscillator(){
   control_enforceBC = true;
 }
 
-// TODO change signature-- pass in config only? const ref
-Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlevels_all_, const std::vector<ControlSegment>& controlsegments, const std::vector<ControlSegmentInitialization>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine){
+Oscillator::Oscillator(const Config& config, size_t id, std::mt19937 rand_engine){
 
   myid = id;
+
+  // Extract parameters from config
+  const std::vector<size_t>& nlevels_all_ = config.getNLevels();
   nlevels = nlevels_all_[id];
-  Tfinal = Tfinal_;
-  ground_freq = ground_freq_*2.0*M_PI;
-  selfkerr = selfkerr_*2.0*M_PI;
-  detuning_freq = 2.0*M_PI*(ground_freq_ - rotational_freq_);
-  carrier_freq = carrier_freq_;
+
+  double dt = config.getDt();
+  size_t ntime = config.getNTime();
+  Tfinal = dt * ntime;
+
+  const std::vector<double>& trans_freq = config.getTransFreq();
+  const std::vector<double>& rot_freq = config.getRotFreq();
+  const std::vector<double>& selfkerr_config = config.getSelfKerr();
+
+  ground_freq = trans_freq[id] * 2.0 * M_PI;
+  selfkerr = selfkerr_config[id] * 2.0 * M_PI;
+  detuning_freq = 2.0 * M_PI * (trans_freq[id] - rot_freq[id]);
+
+  const std::vector<double>& carrier_freq_config = config.getCarrierFrequencies(id);
+  carrier_freq = carrier_freq_config;
   for (size_t i=0; i<carrier_freq.size(); i++) {
     carrier_freq[i] *= 2.0*M_PI;
   }
-  decay_time = decay_time_;
-  dephase_time = dephase_time_;
-  lindbladtype = lindbladtype_;
+
+  lindbladtype = config.getCollapseType();
+  const std::vector<double>& decay_time_config = config.getDecayTime();
+  const std::vector<double>& dephase_time_config = config.getDephaseTime();
+  decay_time = decay_time_config[id];
+  dephase_time = dephase_time_config[id];
+
+  // Get control segments and initializations from config
+  const auto& controlsegments = config.getControlSegments(id);
+  const auto& controlinitializations = config.getControlInitializations(id);
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);

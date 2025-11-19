@@ -68,24 +68,13 @@ class Oscillator {
     Oscillator();
 
     /**
-     * @brief Constructor with full oscillator specification.
+     * @brief Constructor with simplified configuration-based specification.
      *
-     * @param config Configuration parameters
+     * @param config Configuration parameters containing all oscillator settings
      * @param id Oscillator identifier
-     * @param nlevels_all_ Number of levels for all oscillators in system
-     * @param controlsegments Control segment specifications
-     * @param controlinitializations Control initialization specifications
-     * @param ground_freq_ Fundamental transition frequency
-     * @param selfkerr_ Self-Kerr coefficient
-     * @param rotational_freq_ Rotating frame frequency
-     * @param decay_time_ T1 decay time
-     * @param dephase_time_ T2 dephasing time
-     * @param carrier_freq_ Carrier wave frequencies
-     * @param Tfinal_ Final evolution time
-     * @param lindbladtype_ Type of Lindblad operators
      * @param rand_engine Random number generator engine
      */
-    Oscillator(Config config, size_t id, const std::vector<size_t>& nlevels_all_, const std::vector<ControlSegment>& controlsegments, const std::vector<ControlSegmentInitialization>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine);
+    Oscillator(const Config& config, size_t id, std::mt19937 rand_engine);
 
     virtual ~Oscillator();
 
