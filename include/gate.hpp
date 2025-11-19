@@ -244,7 +244,7 @@ class FromFile: public Gate {
  * Creates and returns a pointer to the appropriate Gate subclass based on
  * the target specification string.
  *
- * @param GateType target_gate Type of gate to initialize.
+ * @param target_gate target_gate Type of gate to initialize.
  * @param file Path to the file containing gate matrix data (if applicable).
  * @param nlevels Number of levels per oscillator.
  * @param nessential Number of essential levels per oscillator.

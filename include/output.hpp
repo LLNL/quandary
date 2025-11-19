@@ -54,7 +54,6 @@ class Output{
      * @param config Configuration parameters from input file
      * @param comm_petsc MPI communicator for PETSc parallelization
      * @param comm_init MPI communicator for initial condition parallelization
-     * @param noscillators Number of oscillators in the system
      * @param quietmode Flag for reduced output (default: false)
      */
     Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, bool quietmode=false);
