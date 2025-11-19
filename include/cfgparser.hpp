@@ -37,13 +37,13 @@ class CfgParser {
   const MPILogger& logger;
 
   // Configuration settings storage
-  ConfigSettings settings; ///< All configuration settings in one place
+  ParsedConfigData settings; ///< All configuration settings in one place
   std::optional<bool> optim_regul_interpolate; ///< Deprecated version of optim_regul_tik0
 
  public:
   CfgParser(const MPILogger& logger);
-  ConfigSettings parseFile(const std::string& filename);
-  ConfigSettings parseString(const std::string& config_content);
+  ParsedConfigData parseFile(const std::string& filename);
+  ParsedConfigData parseString(const std::string& config_content);
 
  private:
   std::vector<std::string> split(const std::string& str, char delimiter = ',');
@@ -148,18 +148,18 @@ class CfgParser {
 
   // Struct converters
   template <>
-  InitialConditionConfig convertFromString<InitialConditionConfig>(const std::string& str);
+  InitialConditionData convertFromString<InitialConditionData>(const std::string& str);
 
   template <>
-  OptimTargetConfig convertFromString<OptimTargetConfig>(const std::string& str);
+  OptimTargetData convertFromString<OptimTargetData>(const std::string& str);
 
   template <>
-  std::vector<PiPulseConfig> convertFromString<std::vector<PiPulseConfig>>(const std::string& str);
+  std::vector<PiPulseData> convertFromString<std::vector<PiPulseData>>(const std::string& str);
 
   template <>
-  std::vector<ControlSegmentConfig> convertFromString<std::vector<ControlSegmentConfig>>(const std::string& str);
+  std::vector<ControlSegmentData> convertFromString<std::vector<ControlSegmentData>>(const std::string& str);
 
   template <>
-  std::vector<ControlInitializationConfig> convertFromString<std::vector<ControlInitializationConfig>>(
+  std::vector<ControlInitializationData> convertFromString<std::vector<ControlInitializationData>>(
       const std::string& str);
 };

@@ -61,7 +61,7 @@ void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, 
   }
 }
 
-std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseConfig>>& pulses,
+std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseData>>& pulses,
                                                               const std::vector<size_t>& nlevels,
                                                               const MPILogger& logger) {
   auto apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
@@ -141,7 +141,7 @@ Config::Config(const MPILogger& logger, const toml::table& table) : logger(logge
     dephase_time = validators::vectorField<double>(system, "dephase_time").valueOr(std::vector<double>(num_osc, 0.0));
     copyLast(dephase_time, num_osc);
 
-    std::optional<InitialConditionConfig> init_cond_config = std::nullopt;
+    std::optional<InitialConditionData> init_cond_config = std::nullopt;
     if (system.contains("initial_condition")) {
       auto init_cond_table = *system["initial_condition"].as_table();
       std::string type_str = validators::field<std::string>(init_cond_table, "type").required().value();
@@ -286,7 +286,7 @@ Config::Config(const MPILogger& logger, const toml::table& table) : logger(logge
     control_enforceBC = validators::field<bool>(optimization, "control_enforceBC").valueOr(control_enforceBC);
 
     // optim_target
-    std::optional<OptimTargetConfig> optim_target_config;
+    std::optional<OptimTargetData> optim_target_config;
     if (optimization.contains("optim_target")) {
       auto target_table = *optimization["optim_target"].as_table();
       std::string type_str = validators::field<std::string>(target_table, "target_type").required().value();
@@ -386,7 +386,7 @@ Config::Config(const MPILogger& logger, const toml::table& table) : logger(logge
   validate();
 }
 
-Config::Config(const MPILogger& logger, const ConfigSettings& settings) : logger(logger) {
+Config::Config(const MPILogger& logger, const ParsedConfigData& settings) : logger(logger) {
   if (!settings.nlevels.has_value()) {
     logger.exitWithError("nlevels cannot be empty");
   }
@@ -588,13 +588,13 @@ Config Config::fromTomlString(const std::string& toml_content, const MPILogger& 
 
 Config Config::fromCfg(const std::string& filename, const MPILogger& logger) {
   CfgParser parser(logger);
-  ConfigSettings settings = parser.parseFile(filename);
+  ParsedConfigData settings = parser.parseFile(filename);
   return Config(logger, settings);
 }
 
 Config Config::fromCfgString(const std::string& cfg_content, const MPILogger& logger) {
   CfgParser parser(logger);
-  ConfigSettings settings = parser.parseString(cfg_content);
+  ParsedConfigData settings = parser.parseString(cfg_content);
   return Config(logger, settings);
 }
 
@@ -802,13 +802,13 @@ void Config::printConfig(std::stringstream& log) const {
   log << "# =============================================\n\n";
 }
 
-OptimTargetSettings Config::parseOptimTarget(const std::optional<OptimTargetConfig>& opt_config,
+OptimTargetSettings Config::parseOptimTarget(const std::optional<OptimTargetData>& opt_config,
                                              const std::vector<size_t>& nlevels) const {
   if (!opt_config.has_value()) {
     return PureOptimTarget{};
   }
 
-  const OptimTargetConfig& config = opt_config.value();
+  const OptimTargetData& config = opt_config.value();
 
   // Convert target type string to enum
   auto type = parseEnum(config.target_type, TARGET_TYPE_MAP);
@@ -882,7 +882,7 @@ std::vector<std::vector<T>> Config::parseIndexedWithDefaults(
   return result;
 }
 
-InitialCondition Config::parseInitialCondition(const InitialConditionConfig& config) const {
+InitialCondition Config::parseInitialCondition(const InitialConditionData& config) const {
   auto opt_type = parseEnum(config.type, INITCOND_TYPE_MAP);
 
   if (!opt_type.has_value()) {
@@ -970,7 +970,7 @@ InitialCondition Config::parseInitialCondition(const InitialConditionConfig& con
 }
 
 // Conversion helper implementations
-InitialCondition Config::parseInitialCondition(const std::optional<InitialConditionConfig>& config) const {
+InitialCondition Config::parseInitialCondition(const std::optional<InitialConditionData>& config) const {
   if (!config.has_value()) {
     // Default: BasisInitialCondition with all oscillators
     std::vector<size_t> all_oscillators;
@@ -984,7 +984,7 @@ InitialCondition Config::parseInitialCondition(const std::optional<InitialCondit
 }
 
 std::vector<std::vector<ControlSegment>> Config::parseControlSegments(
-    const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& segments_opt) const {
+    const std::optional<std::map<int, std::vector<ControlSegmentData>>>& segments_opt) const {
   std::vector<ControlSegment> default_segments = {{ControlType::BSPLINE, SplineParams{10, 0.0, ntime * dt}}};
 
   if (!segments_opt.has_value()) {
@@ -1004,7 +1004,7 @@ std::vector<std::vector<ControlSegment>> Config::parseControlSegments(
   return parsed_segments;
 }
 
-std::vector<ControlSegment> Config::parseOscControlSegments(const std::vector<ControlSegmentConfig>& segments) const {
+std::vector<ControlSegment> Config::parseOscControlSegments(const std::vector<ControlSegmentData>& segments) const {
   std::vector<ControlSegment> control_segs = std::vector<ControlSegment>();
 
   for (const auto& seg_config : segments) {
@@ -1013,7 +1013,7 @@ std::vector<ControlSegment> Config::parseOscControlSegments(const std::vector<Co
   return control_segs;
 }
 
-ControlSegment Config::parseControlSegment(const ControlSegmentConfig& seg_config) const {
+ControlSegment Config::parseControlSegment(const ControlSegmentData& seg_config) const {
   const auto& params = seg_config.parameters;
 
   // Create appropriate params variant based on type
@@ -1102,7 +1102,7 @@ ControlSegment Config::parseControlSegment(const toml::table& table) const {
 }
 
 std::vector<std::vector<ControlSegmentInitialization>> Config::parseControlInitializations(
-    const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& init_configs) const {
+    const std::optional<std::map<int, std::vector<ControlInitializationData>>>& init_configs) const {
   ControlSegmentInitialization default_init = ControlSegmentInitialization{ControlSegmentInitType::CONSTANT, 0.0, 0.0};
 
   std::vector<std::vector<ControlSegmentInitialization>> control_initializations(nlevels.size());

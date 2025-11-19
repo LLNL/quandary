@@ -14,14 +14,14 @@
  * used by CfgParser for parsing and by Config for initialization.
  */
 
-struct InitialConditionConfig {
+struct InitialConditionData {
   std::string type; ///< Type of initial condition
   std::optional<std::vector<size_t>> osc_IDs; ///< Oscillator IDs
   std::optional<std::vector<size_t>> levels; ///< Levels for each oscillator
   std::optional<std::string> filename; ///< Filename (if type is FILE)
 };
 
-struct OptimTargetConfig {
+struct OptimTargetData {
   std::string target_type; ///< Target type (gate, pure, file)
   std::optional<std::string> gate_type; ///< Gate type (for "gate, cnot")
   std::optional<std::string> filename; ///< Filename (for "file, path.dat")
@@ -29,19 +29,19 @@ struct OptimTargetConfig {
   std::optional<std::vector<size_t>> levels; ///< Pure state levels (for "pure, 0, 1")
 };
 
-struct PiPulseConfig {
+struct PiPulseData {
   size_t oscil_id; ///< Oscillator ID
   double tstart; ///< Start time
   double tstop; ///< Stop time
   double amp; ///< Amplitude
 };
 
-struct ControlSegmentConfig {
+struct ControlSegmentData {
   ControlType control_type; ///< Type of control segment
   std::vector<double> parameters; ///< Parameters for control segment
 };
 
-struct ControlInitializationConfig {
+struct ControlInitializationData {
   ControlSegmentInitType init_seg_type; ///< Type of initialization per segment
   std::optional<double> amplitude; ///< Initial amplitude
   std::optional<double> phase; ///< Initial phase (optional)
@@ -54,7 +54,7 @@ struct ControlInitializationConfig {
  * Contains all optional configuration parameters that can be provided
  * to configure a Config object. Used by CfgParser to pass settings.
  */
-struct ConfigSettings {
+struct ParsedConfigData {
   // General parameters
   std::optional<std::vector<size_t>> nlevels;
   std::optional<std::vector<size_t>> nessential;
@@ -68,18 +68,18 @@ struct ConfigSettings {
   std::optional<LindbladType> collapse_type;
   std::optional<std::vector<double>> decay_time;
   std::optional<std::vector<double>> dephase_time;
-  std::optional<InitialConditionConfig> initialcondition;
-  std::optional<std::vector<PiPulseConfig>> apply_pipulse;
+  std::optional<InitialConditionData> initialcondition;
+  std::optional<std::vector<PiPulseData>> apply_pipulse;
   std::optional<std::string> hamiltonian_file_Hsys;
   std::optional<std::string> hamiltonian_file_Hc;
 
   // Control and optimization parameters
-  std::optional<std::map<int, std::vector<ControlSegmentConfig>>> indexed_control_segments;
+  std::optional<std::map<int, std::vector<ControlSegmentData>>> indexed_control_segments;
   std::optional<bool> control_enforceBC;
-  std::optional<std::map<int, std::vector<ControlInitializationConfig>>> indexed_control_init;
+  std::optional<std::map<int, std::vector<ControlInitializationData>>> indexed_control_init;
   std::optional<std::map<int, std::vector<double>>> indexed_control_bounds;
   std::optional<std::map<int, std::vector<double>>> indexed_carrier_frequencies;
-  std::optional<OptimTargetConfig> optim_target;
+  std::optional<OptimTargetData> optim_target;
   std::optional<std::vector<double>> gate_rot_freq;
   std::optional<ObjectiveType> optim_objective;
   std::optional<std::vector<double>> optim_weights;

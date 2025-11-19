@@ -173,7 +173,7 @@ bool CfgParser::handleIndexedSetting(const std::string& key, const std::string& 
   return false;
 }
 
-ConfigSettings CfgParser::parseFile(const std::string& filename) {
+ParsedConfigData CfgParser::parseFile(const std::string& filename) {
   std::ifstream file(filename);
   if (!file.is_open()) {
     logger.exitWithError("Unable to read the file " + filename);
@@ -184,7 +184,7 @@ ConfigSettings CfgParser::parseFile(const std::string& filename) {
   return settings;
 }
 
-ConfigSettings CfgParser::parseString(const std::string& config_content) {
+ParsedConfigData CfgParser::parseString(const std::string& config_content) {
   std::istringstream stream(config_content);
   loadFromStream(stream);
   return settings;
@@ -292,13 +292,13 @@ ControlSegmentInitType CfgParser::convertFromString<ControlSegmentInitType>(cons
 
 // Struct converter implementations
 template <>
-InitialConditionConfig CfgParser::convertFromString<InitialConditionConfig>(const std::string& str) {
+InitialConditionData CfgParser::convertFromString<InitialConditionData>(const std::string& str) {
   auto parts = split(str);
   if (parts.empty()) {
     logger.exitWithError("Empty initialcondition specification");
   }
 
-  InitialConditionConfig config;
+  InitialConditionData config;
   auto type = convertFromString<InitialConditionType>(parts[0]);
   config.type = parts[0];
 
@@ -326,13 +326,13 @@ InitialConditionConfig CfgParser::convertFromString<InitialConditionConfig>(cons
 }
 
 template <>
-OptimTargetConfig CfgParser::convertFromString<OptimTargetConfig>(const std::string& str) {
+OptimTargetData CfgParser::convertFromString<OptimTargetData>(const std::string& str) {
   auto parts = split(str);
   if (parts.empty()) {
     logger.exitWithError("optim_target must have at least a target type specified.");
   }
 
-  OptimTargetConfig config;
+  OptimTargetData config;
   auto target_type = convertFromString<TargetType>(parts[0]);
   config.target_type = parts[0];
 
@@ -370,15 +370,15 @@ OptimTargetConfig CfgParser::convertFromString<OptimTargetConfig>(const std::str
 }
 
 template <>
-std::vector<PiPulseConfig> CfgParser::convertFromString<std::vector<PiPulseConfig>>(const std::string& str) {
+std::vector<PiPulseData> CfgParser::convertFromString<std::vector<PiPulseData>>(const std::string& str) {
   auto parts = split(str);
   if (parts.size() % 4 != 0) {
     logger.exitWithError("PiPulse vector requires multiples of 4 parameters: oscil_id, tstart, tstop, amp");
   }
 
-  std::vector<PiPulseConfig> configs;
+  std::vector<PiPulseData> configs;
   for (size_t i = 0; i < parts.size(); i += 4) {
-    PiPulseConfig config;
+    PiPulseData config;
     config.oscil_id = convertFromString<size_t>(parts[i]);
     config.tstart = convertFromString<double>(parts[i + 1]);
     config.tstop = convertFromString<double>(parts[i + 2]);
@@ -390,11 +390,11 @@ std::vector<PiPulseConfig> CfgParser::convertFromString<std::vector<PiPulseConfi
 }
 
 template <>
-std::vector<ControlSegmentConfig> CfgParser::convertFromString<std::vector<ControlSegmentConfig>>(
+std::vector<ControlSegmentData> CfgParser::convertFromString<std::vector<ControlSegmentData>>(
     const std::string& str) {
   const auto parts = split(str);
 
-  std::vector<ControlSegmentConfig> segments;
+  std::vector<ControlSegmentData> segments;
   size_t i = 0;
 
   while (i < parts.size()) {
@@ -402,7 +402,7 @@ std::vector<ControlSegmentConfig> CfgParser::convertFromString<std::vector<Contr
       logger.exitWithError("Expected control type, got: " + parts[i]);
     }
 
-    ControlSegmentConfig segment;
+    ControlSegmentData segment;
     segment.control_type = convertFromString<ControlType>(parts[i++]);
 
     // Parse parameters until next ControlType or end
@@ -440,11 +440,11 @@ std::vector<ControlSegmentConfig> CfgParser::convertFromString<std::vector<Contr
 }
 
 template <>
-std::vector<ControlInitializationConfig> CfgParser::convertFromString<std::vector<ControlInitializationConfig>>(
+std::vector<ControlInitializationData> CfgParser::convertFromString<std::vector<ControlInitializationData>>(
     const std::string& str) {
   const auto parts = split(str);
 
-  std::vector<ControlInitializationConfig> initializations;
+  std::vector<ControlInitializationData> initializations;
   size_t i = 0;
 
   while (i < parts.size()) {
@@ -455,7 +455,7 @@ std::vector<ControlInitializationConfig> CfgParser::convertFromString<std::vecto
       logger.exitWithError("Expected control_initialization to have a type and at least one parameter.");
     }
 
-    ControlInitializationConfig initialization;
+    ControlInitializationData initialization;
 
     auto type_enum = parseEnum(type_str, CONTROL_SEGMENT_INIT_TYPE_MAP);
     if (!type_enum.has_value()) {

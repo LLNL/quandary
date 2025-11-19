@@ -249,7 +249,7 @@ class Config {
  public:
   Config(const MPILogger& logger, const toml::table& table);
 
-  Config(const MPILogger& logger, const ConfigSettings& settings);
+  Config(const MPILogger& logger, const ParsedConfigData& settings);
 
   ~Config();
 
@@ -325,17 +325,17 @@ class Config {
   void setRandSeed(std::optional<int> rand_seed_);
 
   // Conversion helper methods
-  InitialCondition parseInitialCondition(const InitialConditionConfig& config) const;
-  InitialCondition parseInitialCondition(const std::optional<InitialConditionConfig>& config) const;
-  OptimTargetSettings parseOptimTarget(const std::optional<OptimTargetConfig>& opt_config,
+  InitialCondition parseInitialCondition(const InitialConditionData& config) const;
+  InitialCondition parseInitialCondition(const std::optional<InitialConditionData>& config) const;
+  OptimTargetSettings parseOptimTarget(const std::optional<OptimTargetData>& opt_config,
                                        const std::vector<size_t>& nlevels) const;
   std::vector<std::vector<ControlSegment>> parseControlSegments(
-      const std::optional<std::map<int, std::vector<ControlSegmentConfig>>>& segments_opt) const;
-  std::vector<ControlSegment> parseOscControlSegments(const std::vector<ControlSegmentConfig>& segments) const;
-  ControlSegment parseControlSegment(const ControlSegmentConfig& seg_config) const;
+      const std::optional<std::map<int, std::vector<ControlSegmentData>>>& segments_opt) const;
+  std::vector<ControlSegment> parseOscControlSegments(const std::vector<ControlSegmentData>& segments) const;
+  ControlSegment parseControlSegment(const ControlSegmentData& seg_config) const;
   ControlSegment parseControlSegment(const toml::table& table) const;
   std::vector<std::vector<ControlSegmentInitialization>> parseControlInitializations(
-      const std::optional<std::map<int, std::vector<ControlInitializationConfig>>>& init_configs) const;
+      const std::optional<std::map<int, std::vector<ControlInitializationData>>>& init_configs) const;
   ControlSegmentInitialization parseControlInitialization(const toml::table& table) const;
   std::vector<double> parseOptimWeights(const std::optional<std::vector<double>>& optim_weights_) const;
 
