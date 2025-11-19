@@ -1015,14 +1015,7 @@ ControlSegment Config::parseControlSegment(const toml::table& table) const {
   segment.type = *type;
 
   switch (*type) {
-    case ControlType::BSPLINE: {
-      SplineParams spline_params;
-      spline_params.nspline = validators::field<size_t>(table, "num").required().value();
-      spline_params.tstart = validators::field<double>(table, "tstart").valueOr(0.0);
-      spline_params.tstop = validators::field<double>(table, "tstop").valueOr(ntime * dt);
-      segment.params = spline_params;
-      break;
-    }
+    case ControlType::BSPLINE:
     case ControlType::BSPLINE0: {
       SplineParams spline_params;
       spline_params.nspline = validators::field<size_t>(table, "num").required().value();
