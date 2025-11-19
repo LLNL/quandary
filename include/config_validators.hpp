@@ -42,7 +42,18 @@ class ValidationError : public std::runtime_error {
 /**
  * @brief Chainable validator for scalar TOML fields.
  *
- * @tparam T Type of field to validate (int, double, string, etc.)
+ * Provides type-safe extraction and validation of scalar values from TOML configuration.
+ * Supports chaining multiple validation rules (required, range checks, etc.).
+ *
+ * Example usage:
+ * @code
+ * int value = validators::field<int>(config, "port")
+ *               .required()
+ *               .greaterThan(0)
+ *               .value();
+ * @endcode
+ *
+ * @tparam T Type of field to validate (int, double, string, bool, etc.)
  */
 template <typename T>
 class Validator {
@@ -57,32 +68,42 @@ class Validator {
   Validator(const toml::table& config_, const std::string& key_) : config(config_), key(key_) {}
 
   /**
-  * @brief Marks field as required (will error if missing).
-  */
+   * @brief Marks field as required (will error if missing).
+   *
+   * @return Reference to this validator for chaining
+   */
   Validator& required() {
     is_required = true;
     return *this;
   }
 
   /**
-  * @brief Requires value > threshold.
-  */
+   * @brief Requires value to be strictly greater than threshold.
+   *
+   * @param greater_than_ Threshold value (exclusive)
+   * @return Reference to this validator for chaining
+   */
   Validator& greaterThan(T greater_than_) {
     greater_than = greater_than_;
     return *this;
   }
 
   /**
-  * @brief Requires value >= threshold.
-  */
+   * @brief Requires value to be greater than or equal to threshold.
+   *
+   * @param greater_than_equal_ Threshold value (inclusive)
+   * @return Reference to this validator for chaining
+   */
   Validator& greaterThanEqual(T greater_than_equal_) {
     greater_than_equal = greater_than_equal_;
     return *this;
   }
 
   /**
-  * @brief Requires value > 0.
-  */
+   * @brief Requires value to be strictly positive (> 0).
+   *
+   * @return Reference to this validator for chaining
+   */
   Validator& positive() {
     greaterThan(T{0});
     return *this;
@@ -123,8 +144,14 @@ class Validator {
 
  public:
   /**
-  * @brief Extracts value, throwing if required and missing.
-  */
+   * @brief Extracts and validates the field value.
+   *
+   * Throws ValidationError if the field is required and missing,
+   * or if any validation rules fail.
+   *
+   * @return The validated field value
+   * @throws ValidationError If validation fails
+   */
   T value() {
     auto val = extractValue();
 
@@ -139,8 +166,15 @@ class Validator {
   }
 
   /**
-  * @brief Extracts value or returns default if missing.
-  */
+   * @brief Extracts field value or returns default if missing.
+   *
+   * If the field is present, validates it (may throw). If absent,
+   * returns the provided default without validation.
+   *
+   * @param default_value_ Default value to use if field is missing
+   * @return The field value or default
+   * @throws ValidationError If field exists but validation fails
+   */
   T valueOr(T default_value_) {
     auto val = extractValue();
     if (!val) return default_value_; // Key doesn't exist - use default
@@ -149,7 +183,23 @@ class Validator {
   }
 };
 
-// Vector validator specialization
+/**
+ * @brief Chainable validator for vector/array TOML fields.
+ *
+ * Provides type-safe extraction and validation of array values from TOML configuration.
+ * Supports validation of both the array itself (length) and its elements (values).
+ *
+ * Example usage:
+ * @code
+ * auto values = validators::vectorField<double>(config, "frequencies")
+ *                 .required()
+ *                 .minLength(1)
+ *                 .positive()
+ *                 .value();
+ * @endcode
+ *
+ * @tparam T Element type of the vector (int, double, string, etc.)
+ */
 template <typename T>
 class VectorValidator {
  private:
@@ -163,16 +213,32 @@ class VectorValidator {
  public:
   VectorValidator(const toml::table& config_, const std::string& key_) : config(config_), key(key_) {}
 
+  /**
+   * @brief Marks field as required (will error if missing).
+   *
+   * @return Reference to this validator for chaining
+   */
   VectorValidator& required() {
     is_required = true;
     return *this;
   }
 
+  /**
+   * @brief Requires minimum vector length.
+   *
+   * @param min_len_ Minimum number of elements (inclusive)
+   * @return Reference to this validator for chaining
+   */
   VectorValidator& minLength(size_t min_len_) {
     min_length = min_len_;
     return *this;
   }
 
+  /**
+   * @brief Requires all vector elements to be strictly positive (> 0).
+   *
+   * @return Reference to this validator for chaining
+   */
   VectorValidator& positive() {
     is_positive = true;
     return *this;
@@ -234,6 +300,12 @@ class VectorValidator {
   }
 
  public:
+  /**
+   * @brief Extracts and validates the vector field.
+   *
+   * @return The validated vector
+   * @throws ValidationError If validation fails
+   */
   std::vector<T> value() {
     auto val = extractVector();
 
@@ -247,6 +319,13 @@ class VectorValidator {
     return validateVector(*val);
   }
 
+  /**
+   * @brief Extracts vector or returns default if missing.
+   *
+   * @param default_value_ Default vector to use if field is missing
+   * @return The field vector or default
+   * @throws ValidationError If field exists but validation fails
+   */
   std::vector<T> valueOr(const std::vector<T>& default_value_) {
     auto val = extractVector();
     if (!val) return default_value_; // Key doesn't exist - use default
@@ -255,12 +334,31 @@ class VectorValidator {
   }
 };
 
-// Helper functions to start validation chains
+/**
+ * @brief Creates a scalar field validator.
+ *
+ * Helper function to start a validation chain for scalar fields.
+ *
+ * @tparam T Type of field to validate
+ * @param config_ TOML table containing the field
+ * @param key_ Name of the field to validate
+ * @return A Validator for chaining validation rules
+ */
 template <typename T>
 Validator<T> field(const toml::table& config_, const std::string& key_) {
   return Validator<T>(config_, key_);
 }
 
+/**
+ * @brief Creates a vector field validator.
+ *
+ * Helper function to start a validation chain for array/vector fields.
+ *
+ * @tparam T Element type of the vector
+ * @param config_ TOML table containing the field
+ * @param key_ Name of the field to validate
+ * @return A VectorValidator for chaining validation rules
+ */
 template <typename T>
 VectorValidator<T> vectorField(const toml::table& config_, const std::string& key_) {
   return VectorValidator<T>(config_, key_);
