@@ -1,3 +1,5 @@
+#pragma once
+
 #include <petsc.h>
 
 #include <cstddef>
@@ -9,8 +11,6 @@
 #include "defs.hpp"
 #include "mpi_logger.hpp"
 #include "util.hpp"
-
-#pragma once
 
 namespace {
 // Vector detection

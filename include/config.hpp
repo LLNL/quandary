@@ -1,3 +1,5 @@
+#pragma once
+
 #include <petsc.h>
 
 #include <cstddef>
@@ -11,8 +13,6 @@
 #include "config_types.hpp"
 #include "defs.hpp"
 #include "mpi_logger.hpp"
-
-#pragma once
 
 // Individual structs for each initial condition type
 struct FromFileInitialCondition {
