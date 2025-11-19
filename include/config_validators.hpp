@@ -390,4 +390,28 @@ std::optional<std::vector<T>> getOptionalVector(const toml::node_view<toml::node
   return result;
 }
 
+/**
+ * @brief Extracts a required table from a TOML configuration.
+ *
+ * Validates that the specified key exists and contains a table.
+ *
+ * @param config Parent TOML table
+ * @param key Name of the table field
+ * @param logger Logger for error reporting
+ * @return Reference to the table
+ * @throws Exits via logger if table is missing or wrong type
+ */
+inline const toml::table& getRequiredTable(const toml::table& config, const std::string& key) {
+  if (!config.contains(key)) {
+    throw ValidationError(key, "table is required");
+  }
+
+  auto* table = config[key].as_table();
+  if (!table) {
+    throw ValidationError(key, "must be a table");
+  }
+
+  return *table;
+}
+
 } // namespace validators
