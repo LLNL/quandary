@@ -41,8 +41,6 @@ class Validator {
   bool is_required = false;
   std::optional<T> greater_than;
   std::optional<T> greater_than_equal;
-  std::vector<std::function<bool(const T&)>> predicates;
-  std::vector<std::string> error_messages;
 
  public:
   Validator(const toml::table& config_, const std::string& key_) : config(config_), key(key_) {}
@@ -64,12 +62,6 @@ class Validator {
 
   Validator& positive() {
     greaterThan(T{0});
-    return *this;
-  }
-
-  Validator& custom(std::function<bool(const T&)> predicate_, const std::string& error_msg_) {
-    predicates.push_back(predicate_);
-    error_messages.push_back(error_msg_);
     return *this;
   }
 
@@ -101,12 +93,6 @@ class Validator {
       std::ostringstream oss;
       oss << "must be >= " << *greater_than_equal << ", got " << result;
       throw ValidationError(key, oss.str());
-    }
-
-    for (size_t i = 0; i < predicates.size(); ++i) {
-      if (!predicates[i](result)) {
-        throw ValidationError(key, error_messages[i]);
-      }
     }
 
     return result;
@@ -143,7 +129,6 @@ class VectorValidator {
   bool is_required = false;
   std::optional<size_t> min_length;
   std::optional<size_t> max_length;
-  std::optional<T> min_value;
   bool is_positive = false;
 
  public:
@@ -159,18 +144,8 @@ class VectorValidator {
     return *this;
   }
 
-  VectorValidator& maxLength(size_t max_len_) {
-    max_length = max_len_;
-    return *this;
-  }
-
   VectorValidator& positive() {
     is_positive = true;
-    return *this;
-  }
-
-  VectorValidator& minValue(T min_val_) {
-    min_value = min_val_;
     return *this;
   }
 
@@ -222,12 +197,6 @@ class VectorValidator {
       if (is_positive && element <= T{0}) {
         std::ostringstream oss;
         oss << "element [" << i << "] must be positive, got " << element;
-        throw ValidationError(key, oss.str());
-      }
-
-      if (min_value && element < *min_value) {
-        std::ostringstream oss;
-        oss << "element [" << i << "] must be >= " << *min_value << ", got " << element;
         throw ValidationError(key, oss.str());
       }
     }
