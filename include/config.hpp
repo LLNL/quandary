@@ -328,29 +328,7 @@ class Config {
   void setRandSeed(std::optional<int> rand_seed_);
 
   // Conversion helper methods
-  InitialCondition parseInitialCondition(const InitialConditionData& config) const;
-  InitialCondition parseInitialCondition(const std::optional<InitialConditionData>& config) const;
-
-  OptimTargetSettings parseOptimTarget(const std::optional<OptimTargetData>& opt_config,
-                                       const std::vector<size_t>& nlevels) const;
-
-  std::vector<std::vector<ControlSegment>> parseControlSegments(
-      const std::optional<std::map<int, std::vector<ControlSegmentData>>>& segments_opt) const;
-  std::vector<ControlSegment> parseOscControlSegments(const std::vector<ControlSegmentData>& segments) const;
-  ControlSegment parseControlSegment(const ControlSegmentData& seg_config) const;
-  ControlSegment parseControlSegment(const toml::table& table) const;
-  void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
-                       double tstop, double amp) const;
-  std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseData>>& pulses,
-                                                                const std::vector<size_t>& nlevels) const;
-
-  std::vector<std::vector<ControlSegmentInitialization>> parseControlInitializations(
-      const std::optional<std::map<int, std::vector<ControlInitializationData>>>& init_configs) const;
-  ControlSegmentInitialization parseControlInitialization(const toml::table& table) const;
-
-  std::vector<double> parseOptimWeights(const std::optional<std::vector<double>>& optim_weights_) const;
-
-  template <typename T>
+    template <typename T>
   std::vector<std::vector<T>> parseIndexedWithDefaults(const std::optional<std::map<int, std::vector<T>>>& indexed,
                                                        size_t num_entries,
                                                        const std::vector<T>& default_values = {}) const;
@@ -358,4 +336,27 @@ class Config {
   template <typename EnumType>
   std::vector<EnumType> convertStringVectorToEnum(const std::vector<std::string>& strings,
                                                   const std::map<std::string, EnumType>& type_map) const;
+
+  InitialCondition parseInitialCondition(const InitialConditionData& config) const;
+  InitialCondition parseInitialCondition(const std::optional<InitialConditionData>& config) const;
+
+  void addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
+                       double tstop, double amp) const;
+  std::vector<std::vector<PiPulseSegment>> parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseData>>& pulses,
+                                                                const std::vector<size_t>& nlevels) const;
+
+  std::vector<std::vector<ControlSegment>> parseControlSegments(
+      const std::optional<std::map<int, std::vector<ControlSegmentData>>>& segments_opt) const;
+  std::vector<ControlSegment> parseOscControlSegments(const std::vector<ControlSegmentData>& segments) const;
+  ControlSegment parseControlSegment(const ControlSegmentData& seg_config) const;
+  ControlSegment parseControlSegment(const toml::table& table) const;
+
+  std::vector<std::vector<ControlSegmentInitialization>> parseControlInitializations(
+      const std::optional<std::map<int, std::vector<ControlInitializationData>>>& init_configs) const;
+  ControlSegmentInitialization parseControlInitialization(const toml::table& table) const;
+
+  OptimTargetSettings parseOptimTarget(const std::optional<OptimTargetData>& opt_config,
+                                       const std::vector<size_t>& nlevels) const;
+
+  std::vector<double> parseOptimWeights(const std::optional<std::vector<double>>& optim_weights_) const;
 };

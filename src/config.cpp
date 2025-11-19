@@ -477,45 +477,6 @@ Config::Config(const MPILogger& logger, const ParsedConfigData& settings) : logg
 
 Config::~Config() {}
 
-void Config::finalize() {
-  // Hamiltonian file + matrix-free compatibility check
-  if ((hamiltonian_file_Hsys.has_value() || hamiltonian_file_Hc.has_value()) && usematfree) {
-    logger.log(
-        "# Warning: Matrix-free solver cannot be used when Hamiltonian is read from file. Switching to sparse-matrix "
-        "version.\n");
-    usematfree = false;
-  }
-
-  if (usematfree && nlevels.size() > 5) {
-    logger.log(
-        "Warning: Matrix free solver is only implemented for systems with 2, 3, 4, or 5 oscillators."
-        "Switching to sparse-matrix solver now.\n");
-    usematfree = false;
-  }
-}
-
-void Config::validate() const {
-  if (ntime <= 0) {
-    logger.exitWithError("ntime must be positive, got " + std::to_string(ntime));
-  }
-
-  if (dt <= 0) {
-    logger.exitWithError("dt must be positive, got " + std::to_string(dt));
-  }
-
-  // Validate essential levels don't exceed total levels
-  if (nessential.size() != nlevels.size()) {
-    logger.exitWithError("nessential size must match nlevels size");
-  }
-
-  for (size_t i = 0; i < nlevels.size(); i++) {
-    if (nessential[i] > nlevels[i]) {
-      logger.exitWithError("nessential[" + std::to_string(i) + "] = " + std::to_string(nessential[i]) +
-                           " cannot exceed nlevels[" + std::to_string(i) + "] = " + std::to_string(nlevels[i]));
-    }
-  }
-}
-
 Config Config::fromFile(const std::string& filename, const MPILogger& logger) {
   if (hasSuffix(filename, ".toml")) {
     return Config::fromToml(filename, logger);
@@ -754,68 +715,98 @@ void Config::printConfig(std::stringstream& log) const {
   log << "# =============================================\n\n";
 }
 
-OptimTargetSettings Config::parseOptimTarget(const std::optional<OptimTargetData>& opt_config,
-                                             const std::vector<size_t>& nlevels) const {
-  if (!opt_config.has_value()) {
-    return PureOptimTarget{};
+void Config::finalize() {
+  // Hamiltonian file + matrix-free compatibility check
+  if ((hamiltonian_file_Hsys.has_value() || hamiltonian_file_Hc.has_value()) && usematfree) {
+    logger.log(
+        "# Warning: Matrix-free solver cannot be used when Hamiltonian is read from file. Switching to sparse-matrix "
+        "version.\n");
+    usematfree = false;
   }
 
-  const OptimTargetData& config = opt_config.value();
+  if (usematfree && nlevels.size() > 5) {
+    logger.log(
+        "Warning: Matrix free solver is only implemented for systems with 2, 3, 4, or 5 oscillators."
+        "Switching to sparse-matrix solver now.\n");
+    usematfree = false;
+  }
+}
 
-  // Convert target type string to enum
-  auto type = parseEnum(config.target_type, TARGET_TYPE_MAP);
-  if (!type.has_value()) {
-    logger.exitWithError("Unknown optimization target type: " + config.target_type);
+void Config::validate() const {
+  if (ntime <= 0) {
+    logger.exitWithError("ntime must be positive, got " + std::to_string(ntime));
   }
 
-  switch (*type) {
-    case TargetType::GATE: {
-      GateOptimTarget gate_target;
-      gate_target.gate_type = config.gate_type.has_value()
-          ? parseEnum(config.gate_type.value(), GATE_TYPE_MAP).value_or(GateType::NONE)
-          : GateType::NONE;
-      gate_target.gate_file = config.gate_file.value_or("");
-      return gate_target;
-    }
-
-    case TargetType::PURE: {
-      PureOptimTarget pure_target;
-
-      if (!config.levels.has_value() || config.levels->empty()) {
-        logger.log(
-            "# Warning: You want to prepare a pure state, but didn't specify which one."
-            " Taking default: ground-state |0...0> \n");
-        pure_target.purestate_levels = std::vector<size_t>(nlevels.size(), 0);
-        return pure_target;
-      }
-
-      // Copy levels and validate
-      for (auto level : config.levels.value()) {
-        pure_target.purestate_levels.push_back(static_cast<size_t>(level));
-      }
-      pure_target.purestate_levels.resize(nlevels.size(), nlevels.back());
-
-      for (size_t i = 0; i < nlevels.size(); i++) {
-        if (pure_target.purestate_levels[i] >= nlevels[i]) {
-          logger.exitWithError("ERROR in config setting. The requested pure state target |" +
-                               std::to_string(pure_target.purestate_levels[i]) +
-                               "> exceeds the number of modeled levels for that oscillator (" +
-                               std::to_string(nlevels[i]) + ").\n");
-        }
-      }
-
-      return pure_target;
-    }
-
-    case TargetType::FROMFILE: {
-      FileOptimTarget file_target;
-      file_target.file = config.filename.value_or("");
-      return file_target;
-    }
+  if (dt <= 0) {
+    logger.exitWithError("dt must be positive, got " + std::to_string(dt));
   }
 
-  // Should never reach here, but satisfy compiler
-  return PureOptimTarget{};
+  // Validate essential levels don't exceed total levels
+  if (nessential.size() != nlevels.size()) {
+    logger.exitWithError("nessential size must match nlevels size");
+  }
+
+  for (size_t i = 0; i < nlevels.size(); i++) {
+    if (nessential[i] > nlevels[i]) {
+      logger.exitWithError("nessential[" + std::to_string(i) + "] = " + std::to_string(nessential[i]) +
+                           " cannot exceed nlevels[" + std::to_string(i) + "] = " + std::to_string(nlevels[i]));
+    }
+  }
+}
+
+size_t Config::computeNumInitialConditions() const {
+  size_t n_initial_conditions = 0;
+  if (std::holds_alternative<FromFileInitialCondition>(initial_condition))
+    n_initial_conditions = 1;
+  else if (std::holds_alternative<PureInitialCondition>(initial_condition))
+    n_initial_conditions = 1;
+  else if (std::holds_alternative<PerformanceInitialCondition>(initial_condition))
+    n_initial_conditions = 1;
+  else if (std::holds_alternative<EnsembleInitialCondition>(initial_condition))
+    n_initial_conditions = 1;
+  else if (std::holds_alternative<ThreeStatesInitialCondition>(initial_condition))
+    n_initial_conditions = 3;
+  else if (std::holds_alternative<NPlusOneInitialCondition>(initial_condition)) {
+    // compute system dimension N
+    n_initial_conditions = 1;
+    for (size_t i = 0; i < nlevels.size(); i++) {
+      n_initial_conditions *= nlevels[i];
+    }
+    n_initial_conditions += 1;
+  } else if (std::holds_alternative<DiagonalInitialCondition>(initial_condition)) {
+    /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
+    const auto& diag_init = std::get<DiagonalInitialCondition>(initial_condition);
+    const auto& osc_IDs = diag_init.osc_IDs;
+
+    n_initial_conditions = 1;
+    for (size_t oscilID : osc_IDs) {
+      if (oscilID < nessential.size()) n_initial_conditions *= nessential[oscilID];
+    }
+  } else if (std::holds_alternative<BasisInitialCondition>(initial_condition)) {
+    /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
+    const auto& basis_init = std::get<BasisInitialCondition>(initial_condition);
+    const auto& osc_IDs = basis_init.osc_IDs;
+
+    n_initial_conditions = 1;
+    for (size_t oscilID : osc_IDs) {
+      if (oscilID < nessential.size()) n_initial_conditions *= nessential[oscilID];
+    }
+    // if Schroedinger solver: ninit = N, do nothing.
+    // else Lindblad solver: ninit = N^2
+    if (collapse_type != LindbladType::NONE) {
+      n_initial_conditions = (int)pow(n_initial_conditions, 2.0);
+    }
+  }
+  logger.log("Number of initial conditions: " + std::to_string(n_initial_conditions) + "\n");
+  return n_initial_conditions;
+}
+
+void Config::setRandSeed(std::optional<int> rand_seed_) {
+  rand_seed = rand_seed_.value_or(-1);
+  if (rand_seed < 0) {
+    std::random_device rd;
+    rand_seed = rd(); // random non-reproducable seed
+  }
 }
 
 template <typename T>
@@ -833,6 +824,21 @@ std::vector<std::vector<T>> Config::parseIndexedWithDefaults(
         result[idx] = vals;
       }
     }
+  }
+  return result;
+}
+
+template <typename EnumType>
+std::vector<EnumType> Config::convertStringVectorToEnum(const std::vector<std::string>& strings,
+                                                const std::map<std::string, EnumType>& type_map) const {
+  std::vector<EnumType> result;
+  result.reserve(strings.size());
+  for (const auto& str : strings) {
+    auto enum_val = parseEnum(str, type_map);
+    if (!enum_val) {
+      logger.exitWithError("Unknown enum value: " + str);
+    }
+    result.push_back(*enum_val);
   }
   return result;
 }
@@ -936,6 +942,38 @@ InitialCondition Config::parseInitialCondition(const std::optional<InitialCondit
   }
 
   return parseInitialCondition(config.value());
+}
+
+void Config::addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
+                       double tstop, double amp) const {
+  if (oscilID < getNumOsc()) {
+    PiPulseSegment segment = {tstart, tstop, amp};
+    apply_pipulse[oscilID].push_back(segment);
+
+    logger.log("Applying PiPulse to oscillator " + std::to_string(oscilID) + " in [" + std::to_string(tstart) + ", " +
+               std::to_string(tstop) + "]: |p+iq|=" + std::to_string(amp) + "\n");
+
+    // Set zero control for all other oscillators during this pipulse
+    for (size_t i = 0; i < getNumOsc(); i++) {
+      if (i != oscilID) {
+        PiPulseSegment zero_segment = {tstart, tstop, 0.0};
+        apply_pipulse[i].push_back(zero_segment);
+      }
+    }
+  }
+}
+
+std::vector<std::vector<PiPulseSegment>> Config::parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseData>>& pulses,
+                                                              const std::vector<size_t>& nlevels) const {
+  auto apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
+
+  if (!pulses.has_value()) {
+    return apply_pipulse;
+  }
+  for (const auto& pulse_config : *pulses) {
+    addPiPulseSegment(apply_pipulse, pulse_config.oscil_id, pulse_config.tstart, pulse_config.tstop, pulse_config.amp);
+  }
+  return apply_pipulse;
 }
 
 std::vector<std::vector<ControlSegment>> Config::parseControlSegments(
@@ -1081,51 +1119,68 @@ ControlSegmentInitialization Config::parseControlInitialization(const toml::tabl
                                       validators::field<double>(table, "phase").valueOr(0.0)};
 }
 
-size_t Config::computeNumInitialConditions() const {
-  size_t n_initial_conditions = 0;
-  if (std::holds_alternative<FromFileInitialCondition>(initial_condition))
-    n_initial_conditions = 1;
-  else if (std::holds_alternative<PureInitialCondition>(initial_condition))
-    n_initial_conditions = 1;
-  else if (std::holds_alternative<PerformanceInitialCondition>(initial_condition))
-    n_initial_conditions = 1;
-  else if (std::holds_alternative<EnsembleInitialCondition>(initial_condition))
-    n_initial_conditions = 1;
-  else if (std::holds_alternative<ThreeStatesInitialCondition>(initial_condition))
-    n_initial_conditions = 3;
-  else if (std::holds_alternative<NPlusOneInitialCondition>(initial_condition)) {
-    // compute system dimension N
-    n_initial_conditions = 1;
-    for (size_t i = 0; i < nlevels.size(); i++) {
-      n_initial_conditions *= nlevels[i];
-    }
-    n_initial_conditions += 1;
-  } else if (std::holds_alternative<DiagonalInitialCondition>(initial_condition)) {
-    /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
-    const auto& diag_init = std::get<DiagonalInitialCondition>(initial_condition);
-    const auto& osc_IDs = diag_init.osc_IDs;
+OptimTargetSettings Config::parseOptimTarget(const std::optional<OptimTargetData>& opt_config,
+                                             const std::vector<size_t>& nlevels) const {
+  if (!opt_config.has_value()) {
+    return PureOptimTarget{};
+  }
 
-    n_initial_conditions = 1;
-    for (size_t oscilID : osc_IDs) {
-      if (oscilID < nessential.size()) n_initial_conditions *= nessential[oscilID];
-    }
-  } else if (std::holds_alternative<BasisInitialCondition>(initial_condition)) {
-    /* Compute ninit = dim(subsystem defined by list of oscil IDs) */
-    const auto& basis_init = std::get<BasisInitialCondition>(initial_condition);
-    const auto& osc_IDs = basis_init.osc_IDs;
+  const OptimTargetData& config = opt_config.value();
 
-    n_initial_conditions = 1;
-    for (size_t oscilID : osc_IDs) {
-      if (oscilID < nessential.size()) n_initial_conditions *= nessential[oscilID];
+  // Convert target type string to enum
+  auto type = parseEnum(config.target_type, TARGET_TYPE_MAP);
+  if (!type.has_value()) {
+    logger.exitWithError("Unknown optimization target type: " + config.target_type);
+  }
+
+  switch (*type) {
+    case TargetType::GATE: {
+      GateOptimTarget gate_target;
+      gate_target.gate_type = config.gate_type.has_value()
+          ? parseEnum(config.gate_type.value(), GATE_TYPE_MAP).value_or(GateType::NONE)
+          : GateType::NONE;
+      gate_target.gate_file = config.gate_file.value_or("");
+      return gate_target;
     }
-    // if Schroedinger solver: ninit = N, do nothing.
-    // else Lindblad solver: ninit = N^2
-    if (collapse_type != LindbladType::NONE) {
-      n_initial_conditions = (int)pow(n_initial_conditions, 2.0);
+
+    case TargetType::PURE: {
+      PureOptimTarget pure_target;
+
+      if (!config.levels.has_value() || config.levels->empty()) {
+        logger.log(
+            "# Warning: You want to prepare a pure state, but didn't specify which one."
+            " Taking default: ground-state |0...0> \n");
+        pure_target.purestate_levels = std::vector<size_t>(nlevels.size(), 0);
+        return pure_target;
+      }
+
+      // Copy levels and validate
+      for (auto level : config.levels.value()) {
+        pure_target.purestate_levels.push_back(static_cast<size_t>(level));
+      }
+      pure_target.purestate_levels.resize(nlevels.size(), nlevels.back());
+
+      for (size_t i = 0; i < nlevels.size(); i++) {
+        if (pure_target.purestate_levels[i] >= nlevels[i]) {
+          logger.exitWithError("ERROR in config setting. The requested pure state target |" +
+                               std::to_string(pure_target.purestate_levels[i]) +
+                               "> exceeds the number of modeled levels for that oscillator (" +
+                               std::to_string(nlevels[i]) + ").\n");
+        }
+      }
+
+      return pure_target;
+    }
+
+    case TargetType::FROMFILE: {
+      FileOptimTarget file_target;
+      file_target.file = config.filename.value_or("");
+      return file_target;
     }
   }
-  logger.log("Number of initial conditions: " + std::to_string(n_initial_conditions) + "\n");
-  return n_initial_conditions;
+
+  // Should never reach here, but satisfy compiler
+  return PureOptimTarget{};
 }
 
 std::vector<double> Config::parseOptimWeights(const std::optional<std::vector<double>>& optim_weights_) const {
@@ -1137,59 +1192,4 @@ std::vector<double> Config::parseOptimWeights(const std::optional<std::vector<do
   for (size_t i = 0; i < n_initial_conditions; i++) scaleweights += optim_weights[i];
   for (size_t i = 0; i < n_initial_conditions; i++) optim_weights[i] = optim_weights[i] / scaleweights;
   return optim_weights;
-}
-
-void Config::setRandSeed(std::optional<int> rand_seed_) {
-  rand_seed = rand_seed_.value_or(-1);
-  if (rand_seed < 0) {
-    std::random_device rd;
-    rand_seed = rd(); // random non-reproducable seed
-  }
-}
-
-void Config::addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
-                       double tstop, double amp) const {
-  if (oscilID < getNumOsc()) {
-    PiPulseSegment segment = {tstart, tstop, amp};
-    apply_pipulse[oscilID].push_back(segment);
-
-    logger.log("Applying PiPulse to oscillator " + std::to_string(oscilID) + " in [" + std::to_string(tstart) + ", " +
-               std::to_string(tstop) + "]: |p+iq|=" + std::to_string(amp) + "\n");
-
-    // Set zero control for all other oscillators during this pipulse
-    for (size_t i = 0; i < getNumOsc(); i++) {
-      if (i != oscilID) {
-        PiPulseSegment zero_segment = {tstart, tstop, 0.0};
-        apply_pipulse[i].push_back(zero_segment);
-      }
-    }
-  }
-}
-
-std::vector<std::vector<PiPulseSegment>> Config::parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseData>>& pulses,
-                                                              const std::vector<size_t>& nlevels) const {
-  auto apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
-
-  if (!pulses.has_value()) {
-    return apply_pipulse;
-  }
-  for (const auto& pulse_config : *pulses) {
-    addPiPulseSegment(apply_pipulse, pulse_config.oscil_id, pulse_config.tstart, pulse_config.tstop, pulse_config.amp);
-  }
-  return apply_pipulse;
-}
-
-template <typename EnumType>
-std::vector<EnumType> Config::convertStringVectorToEnum(const std::vector<std::string>& strings,
-                                                const std::map<std::string, EnumType>& type_map) const {
-  std::vector<EnumType> result;
-  result.reserve(strings.size());
-  for (const auto& str : strings) {
-    auto enum_val = parseEnum(str, type_map);
-    if (!enum_val) {
-      logger.exitWithError("Unknown enum value: " + str);
-    }
-    result.push_back(*enum_val);
-  }
-  return result;
 }
