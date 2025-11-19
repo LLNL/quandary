@@ -12,6 +12,7 @@
  *
  * These structs represent parsed configuration data in an intermediate form,
  * used by CfgParser for parsing and by Config for initialization.
+ * TODO cfg: delete this when .cfg format is removed.
  */
 
 struct InitialConditionData {

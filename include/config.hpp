@@ -249,6 +249,7 @@ class Config {
  public:
   Config(const MPILogger& logger, const toml::table& table);
 
+  // TODO cfg: delete this when .cfg format is removed.
   Config(const MPILogger& logger, const ParsedConfigData& settings);
 
   ~Config();
@@ -256,6 +257,8 @@ class Config {
   static Config fromFile(const std::string& filename, const MPILogger& logger);
   static Config fromToml(const std::string& toml_filename, const MPILogger& logger);
   static Config fromTomlString(const std::string& toml_content, const MPILogger& logger);
+
+  // TODO cfg: delete these when .cfg format is removed.
   static Config fromCfg(const std::string& cfg_filename, const MPILogger& logger);
   static Config fromCfgString(const std::string& cfg_content, const MPILogger& logger);
 

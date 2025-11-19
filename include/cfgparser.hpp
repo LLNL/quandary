@@ -27,6 +27,7 @@ inline constexpr bool is_vector_v = is_vector<T>::value;
  *
  * Handles the logic for applying defaults, parsing mixed-type strings,
  * and validating configuration parameters.
+ * TODO cfg: delete this class when .cfg format is removed.
  */
 class CfgParser {
  private:

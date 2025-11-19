@@ -569,6 +569,7 @@ Config Config::fromFile(const std::string& filename, const MPILogger& logger) {
   if (hasSuffix(filename, ".toml")) {
     return Config::fromToml(filename, logger);
   } else {
+    // TODO cfg: delete this when .cfg format is removed.
     logger.log(
         "# Warning: Config file does not have .toml extension. "
         "The deprecated .cfg format will be removed in future versions.\n");
