@@ -157,9 +157,6 @@ int main(int argc,char **argv)
     oscil_vec[i] = new Oscillator(config, i, rand_engine);
   }
 
-  // Get variables still needed for MasterEq initialization
-  const std::vector<double>& rot_freq = config.getRotFreq();
-  LindbladType lindbladtype = config.getCollapseType();
 
   // Get pi-pulses, if any
   for (size_t i=0; i<nlevels.size(); i++){
@@ -167,34 +164,13 @@ int main(int argc,char **argv)
   }
 
   /* --- Initialize the Master Equation  --- */
-  const std::vector<double>& crosskerr = config.getCrossKerr();
-  const std::vector<double>& Jkl = config.getJkl();
-
   // Sanity check for matrix free solver
-  bool usematfree = config.getUseMatFree();
-  if (usematfree && nlevels.size() > 5){
-        printf("Warning: Matrix free solver is only implemented for systems with 2, 3, 4, or 5 oscillators. Switching to sparse-matrix solver now.\n");
-        usematfree = false;
-  }
-  if (usematfree && mpisize_petsc > 1) {
+  if (config.getUseMatFree() && mpisize_petsc > 1) {
     if (mpirank_world == 0) printf("ERROR: No Petsc-parallel version for the matrix free solver available!");
     exit(1);
   }
-  // Compute coupling rotation frequencies eta_ij = w^r_i - w^r_j
-  std::vector<double> eta(nlevels.size()*(nlevels.size()-1)/2.);
-  int idx = 0;
-  for (size_t iosc=0; iosc<nlevels.size(); iosc++){
-    for (size_t josc=iosc+1; josc<nlevels.size(); josc++){
-      eta[idx] = rot_freq[iosc] - rot_freq[josc];
-      idx++;
-    }
-  }
-  // Check if Hamiltonian should be read from file
-  const auto& hamiltonian_file_Hsys = config.getHamiltonianFileHsys();
-  const auto& hamiltonian_file_Hc = config.getHamiltonianFileHc();
 
-  // Initialize Master equation
-  MasterEq* mastereq = new MasterEq(nlevels, nessential, oscil_vec, crosskerr, Jkl, eta, lindbladtype, usematfree, hamiltonian_file_Hsys, hamiltonian_file_Hc, quietmode);
+  MasterEq* mastereq = new MasterEq(config, oscil_vec, quietmode);
 
   /* Output */
   Output* output = new Output(config, comm_petsc, comm_init, nlevels.size(), quietmode);

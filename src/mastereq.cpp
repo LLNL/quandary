@@ -11,18 +11,31 @@ MasterEq::MasterEq(){
 }
 
 
-MasterEq::MasterEq(const std::vector<size_t>& nlevels_, const std::vector<size_t>& nessential_, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::optional<std::string>& hamiltonian_file_Hsys_, const std::optional<std::string>& hamiltonian_file_Hc_, bool quietmode_) {
-  nlevels = nlevels_;
-  nessential = nessential_;
+MasterEq::MasterEq(const Config& config, Oscillator** oscil_vec_, bool quietmode_) {
+  // Extract parameters from config
+  nlevels = config.getNLevels();
+  nessential = config.getNEssential();
   noscillators = nlevels.size();
   oscil_vec = oscil_vec_;
-  crosskerr = crosskerr_;
-  Jkl = Jkl_;
-  eta = eta_;
-  usematfree = usematfree_;
-  lindbladtype = lindbladtype_;
-  hamiltonian_file_Hsys = hamiltonian_file_Hsys_;
-  hamiltonian_file_Hc = hamiltonian_file_Hc_;
+
+  crosskerr = config.getCrossKerr();
+  Jkl = config.getJkl();
+
+  // Compute eta from rotation frequencies (eta_ij = w^r_i - w^r_j)
+  const std::vector<double>& rot_freq = config.getRotFreq();
+  eta.resize(nlevels.size() * (nlevels.size() - 1) / 2);
+  int idx = 0;
+  for (size_t iosc = 0; iosc < nlevels.size(); iosc++) {
+    for (size_t josc = iosc + 1; josc < nlevels.size(); josc++) {
+      eta[idx] = rot_freq[iosc] - rot_freq[josc];
+      idx++;
+    }
+  }
+
+  lindbladtype = config.getCollapseType();
+
+  hamiltonian_file_Hsys = config.getHamiltonianFileHsys();
+  hamiltonian_file_Hc = config.getHamiltonianFileHc();
   quietmode = quietmode_;
 
 

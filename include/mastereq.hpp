@@ -135,21 +135,13 @@ class MasterEq{
     MasterEq();
 
     /**
-     * @brief Constructor with full system specification.
+     * @brief Constructor with simplified configuration-based specification.
      *
-     * @param nlevels Number of levels per oscillator
-     * @param nessential Number of essential levels per oscillator
+     * @param config Configuration parameters containing all master equation settings
      * @param oscil_vec_ Array of pointers to oscillator objects
-     * @param crosskerr_ Cross-Kerr coupling coefficients
-     * @param Jkl_ Dipole-dipole coupling coefficients
-     * @param eta_ Frequency differences for rotating frame
-     * @param lindbladtype_ Type of Lindblad operators to include
-     * @param usematfree_ Flag to use matrix-free solver
-     * @param hamiltonian_file_Hsys Filename for system Hamiltonian data
-     * @param hamiltonian_file_Hc Filename for control Hamiltonian data
      * @param quietmode Flag for quiet operation (default: false)
      */
-    MasterEq(const std::vector<size_t>& nlevels, const std::vector<size_t>& nessential, Oscillator** oscil_vec_, const std::vector<double>& crosskerr_, const std::vector<double>& Jkl_, const std::vector<double>& eta_, LindbladType lindbladtype_, bool usematfree_, const std::optional<std::string>& hamiltonian_file_Hsys, const std::optional<std::string>& hamiltonian_file_Hc, bool quietmode=false);
+    MasterEq(const Config& config, Oscillator** oscil_vec_, bool quietmode=false);
 
     ~MasterEq();
 
