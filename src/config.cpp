@@ -384,7 +384,7 @@ Config::Config(const MPILogger& logger, const ParsedConfigData& settings) : logg
   initial_condition = parseInitialCondition(settings.initialcondition);
   n_initial_conditions = computeNumInitialConditions();
 
-  apply_pipulse = parsePiPulsesFromCfg(settings.apply_pipulse, nlevels);
+  apply_pipulse = parsePiPulsesFromCfg(settings.apply_pipulse);
 
   hamiltonian_file_Hsys = settings.hamiltonian_file_Hsys;
   hamiltonian_file_Hc = settings.hamiltonian_file_Hc;
@@ -963,8 +963,8 @@ void Config::addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_p
   }
 }
 
-std::vector<std::vector<PiPulseSegment>> Config::parsePiPulsesFromCfg(const std::optional<std::vector<PiPulseData>>& pulses,
-                                                              const std::vector<size_t>& nlevels) const {
+std::vector<std::vector<PiPulseSegment>> Config::parsePiPulsesFromCfg(
+    const std::optional<std::vector<PiPulseData>>& pulses) const {
   auto apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
 
   if (!pulses.has_value()) {
