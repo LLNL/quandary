@@ -111,7 +111,7 @@ class OptimProblem {
    * @param output_ Pointer to output handler
    * @param quietmode Flag for quiet operation (default: false)
    */
-  OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, Output* output_, bool quietmode=false);
+  OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, Output* output_, bool quietmode=false);
 
   ~OptimProblem();
 
