@@ -905,6 +905,10 @@ InitialCondition Config::parseInitialCondition(const InitialConditionData& confi
     case InitialConditionType::PERFORMANCE:
       return PerformanceInitialCondition{};
   }
+
+  // Should not happen, but make compiler happy
+  logger.exitWithError("Internal error: parseInitialCondition reached end of function.");
+  return BasisInitialCondition({});
 }
 
 void Config::addPiPulseSegment(std::vector<std::vector<PiPulseSegment>>& apply_pipulse, size_t oscilID, double tstart,
