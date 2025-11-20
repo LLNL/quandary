@@ -1,5 +1,4 @@
 #include <gtest/gtest.h>
-#include <mpi.h>
 
 #include <cstdio>
 
@@ -7,18 +6,7 @@
 
 class CfgParserTest : public ::testing::Test {
  protected:
-  void SetUp() override {
-    // Initialize MPI if not already done (for tests)
-    int initialized;
-    MPI_Initialized(&initialized);
-    if (!initialized) {
-      MPI_Init(nullptr, nullptr);
-    }
-    MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
-  }
-
   MPILogger logger = MPILogger(0, false);
-  int mpi_rank = 0;
 };
 
 TEST_F(CfgParserTest, ParseBasicSettings) {
