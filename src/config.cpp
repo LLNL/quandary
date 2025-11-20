@@ -778,7 +778,7 @@ size_t Config::computeNumInitialConditions() const {
     // if Schroedinger solver: ninit = N, do nothing.
     // else Lindblad solver: ninit = N^2
     if (collapse_type != LindbladType::NONE) {
-      n_initial_conditions = (int)pow(n_initial_conditions, 2.0);
+      n_initial_conditions = (size_t)pow(n_initial_conditions, 2.0);
     }
   }
   logger.log("Number of initial conditions: " + std::to_string(n_initial_conditions) + "\n");
