@@ -58,11 +58,21 @@ Output::Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, bo
   for (size_t i=0; i<noscillators; i++) { // iterates over oscillators
     for (auto output_type : output[i]) { // iterates over output types for this oscillator
       switch (output_type) {
-        case OutputType::EXPECTED_ENERGY: writeExpectedEnergy[i] = true;
-        case OutputType::EXPECTED_ENERGY_COMPOSITE: writeExpectedEnergy_comp = true;
-        case OutputType::POPULATION: writePopulation[i] = true;
-        case OutputType::POPULATION_COMPOSITE: writePopulation_comp = true;
-        case OutputType::FULLSTATE: writeFullState = true;
+        case OutputType::EXPECTED_ENERGY:
+          writeExpectedEnergy[i] = true;
+          break;
+        case OutputType::EXPECTED_ENERGY_COMPOSITE:
+          writeExpectedEnergy_comp = true;
+          break;
+        case OutputType::POPULATION:
+          writePopulation[i] = true;
+          break;
+        case OutputType::POPULATION_COMPOSITE:
+          writePopulation_comp = true;
+          break;
+        case OutputType::FULLSTATE:
+          writeFullState = true;
+          break;
       }
     }
   }
