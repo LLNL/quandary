@@ -1,6 +1,10 @@
 #include <petscmat.h>
-#include <iostream>
+
+#include <cctype>
+#include <cstring>
 #include <map>
+#include <optional>
+#include <string>
 #include <vector>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
