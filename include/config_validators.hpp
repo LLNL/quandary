@@ -414,4 +414,21 @@ inline const toml::table& getRequiredTable(const toml::table& config, const std:
   return *table;
 }
 
+/**
+ * @brief Extracts an optional array of tables from a TOML configuration.
+ *
+ * Returns an empty array if the key doesn't exist or isn't a array of tables.
+ *
+ * @param config Parent TOML table
+ * @param key Name of the array of tables field
+ * @return The array of tables if it exists, otherwise an empty array
+ */
+inline toml::array getOptionalArrayOfTables(const toml::table& config, const std::string& key) {
+  if (!config.contains(key) || !config[key].is_array_of_tables()) {
+    return toml::array{};
+  }
+
+  return *config[key].as_array();
+}
+
 } // namespace validators

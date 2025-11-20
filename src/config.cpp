@@ -85,17 +85,15 @@ Config::Config(const MPILogger& logger, const toml::table& table) : logger(logge
     n_initial_conditions = computeNumInitialConditions();
 
     apply_pipulse = std::vector<std::vector<PiPulseSegment>>(nlevels.size());
-    auto apply_pipulse_node = system["apply_pipulse"];
-    if (apply_pipulse_node.is_array_of_tables()) {
-      for (auto& elem : *apply_pipulse_node.as_array()) {
-        auto table = *elem.as_table();
-        size_t oscilID = validators::field<size_t>(table, "oscID").required().value();
-        double tstart = validators::field<double>(table, "tstart").required().value();
-        double tstop = validators::field<double>(table, "tstop").required().value();
-        double amp = validators::field<double>(table, "amp").required().value();
+    auto apply_pipulse_array_of_tables = validators::getOptionalArrayOfTables(system, "apply_pipulse");
+    for (auto& elem : apply_pipulse_array_of_tables) {
+      auto table = *elem.as_table();
+      size_t oscilID = validators::field<size_t>(table, "oscID").required().value();
+      double tstart = validators::field<double>(table, "tstart").required().value();
+      double tstop = validators::field<double>(table, "tstop").required().value();
+      double amp = validators::field<double>(table, "amp").required().value();
 
-        addPiPulseSegment(apply_pipulse, oscilID, tstart, tstop, amp);
-      }
+      addPiPulseSegment(apply_pipulse, oscilID, tstart, tstop, amp);
     }
 
     hamiltonian_file_Hsys = system["hamiltonian_file_Hsys"].value<std::string>();
