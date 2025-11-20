@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <set>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #include "config_types.hpp"
