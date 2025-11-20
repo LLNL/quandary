@@ -63,6 +63,7 @@ class Validator {
   bool is_required = false;
   std::optional<T> greater_than;
   std::optional<T> greater_than_equal;
+  std::optional<T> less_than;
 
  public:
   Validator(const toml::table& config_, const std::string& key_) : config(config_), key(key_) {}
@@ -96,6 +97,17 @@ class Validator {
    */
   Validator& greaterThanEqual(T greater_than_equal_) {
     greater_than_equal = greater_than_equal_;
+    return *this;
+  }
+
+  /**
+   * @brief Requires value to be strictly less than threshold.
+   *
+   * @param lessThan_ Threshold value (exclusive)
+   * @return Reference to this validator for chaining
+   */
+  Validator& lessThan(T less_than_) {
+    less_than = less_than_;
     return *this;
   }
 
@@ -136,6 +148,12 @@ class Validator {
     if (greater_than_equal && result < *greater_than_equal) {
       std::ostringstream oss;
       oss << "must be >= " << *greater_than_equal << ", got " << result;
+      throw ValidationError(key, oss.str());
+    }
+
+    if (less_than && result >= *less_than) {
+      std::ostringstream oss;
+      oss << "must be > " << *less_than << ", got " << result;
       throw ValidationError(key, oss.str());
     }
 
