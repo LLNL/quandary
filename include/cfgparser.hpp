@@ -11,6 +11,7 @@
 #include "config_types.hpp"
 #include "defs.hpp"
 #include "mpi_logger.hpp"
+#include "util.hpp"
 
 namespace {
 // Vector detection
@@ -85,8 +86,7 @@ class CfgParser {
       return str;
     } else if constexpr (std::is_same_v<T, bool>) {
       const std::set<std::string> trueValues = {"true", "yes", "1"};
-      std::string lowerStr = str;
-      std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
+      std::string lowerStr = toLower(str);
       return trueValues.find(lowerStr) != trueValues.end();
     } else if constexpr (std::is_same_v<T, int>) {
       return std::stoi(str);
