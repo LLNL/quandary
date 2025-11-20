@@ -2,6 +2,7 @@
 
 #include <petsc.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <optional>
 #include <sstream>
