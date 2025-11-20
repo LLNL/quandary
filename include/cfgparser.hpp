@@ -3,6 +3,7 @@
 #include <petsc.h>
 
 #include <cstddef>
+#include <functional>
 #include <set>
 #include <type_traits>
 #include <unordered_map>
