@@ -1,4 +1,5 @@
 #include <map>
+#include <string>
 
 /**
  * @file defs.hpp

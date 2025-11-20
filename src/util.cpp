@@ -1,5 +1,6 @@
 #include "util.hpp"
-#include <sstream>
+
+#include <algorithm>
 
 // Suppress compiler warnings about unused parameters in code with #ifdef
 #define UNUSED(expr) (void)(expr)
