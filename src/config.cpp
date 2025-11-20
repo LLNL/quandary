@@ -276,11 +276,7 @@ Config::Config(const MPILogger& logger, const toml::table& table) : logger(logge
     auto write_array = validators::getOptionalArrayOfTables(output, "write");
     for (auto& elem : write_array) {
       auto table = *elem.as_table();
-      size_t oscilID = validators::field<size_t>(table, "oscID").required().value();
-
-      if (oscilID >= num_osc) {
-        logger.exitWithError("output write oscID exceeds number of oscillators");
-      }
+      size_t oscilID = validators::field<size_t>(table, "oscID").required().lessThan(num_osc).value();
 
       std::vector<std::string> types_str = validators::vectorField<std::string>(table, "type").required().value();
       output_to_write[oscilID] = convertStringVectorToEnum(types_str, OUTPUT_TYPE_MAP);
