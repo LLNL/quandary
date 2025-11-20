@@ -22,6 +22,10 @@ template <typename T>
 struct is_vector<std::vector<T>> : std::true_type {};
 template <typename T>
 inline constexpr bool is_vector_v = is_vector<T>::value;
+
+// Helper for static_assert(false) in dependent contexts
+template <typename>
+inline constexpr bool always_false_v = false;
 } // namespace
 
 /**
@@ -98,7 +102,7 @@ class CfgParser {
     } else if constexpr (is_vector_v<T>) {
       return parseVector<T>(str);
     } else {
-      static_assert(false, "Unsupported type for convertFromString");
+      static_assert(always_false_v<T>, "Unsupported type for convertFromString");
     }
   }
 
