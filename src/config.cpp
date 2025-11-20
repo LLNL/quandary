@@ -272,19 +272,19 @@ Config::Config(const MPILogger& logger, const toml::table& table) : logger(logge
 
     datadir = validators::field<std::string>(output, "datadir").valueOr(datadir);
 
-    std::optional<std::map<int, std::vector<OutputType>>> output_to_write_opt = std::nullopt;
-    auto write_node = output["write"];
-    if (write_node.is_array_of_tables()) {
-      output_to_write_opt = std::map<int, std::vector<OutputType>>();
-      for (auto& elem : *write_node.as_array()) {
-        auto table = *elem.as_table();
-        size_t oscilID = validators::field<size_t>(table, "oscID").required().value();
-        std::vector<std::string> types_str = validators::vectorField<std::string>(table, "type").required().value();
-        std::vector<OutputType> types = convertStringVectorToEnum(types_str, OUTPUT_TYPE_MAP);
-        (*output_to_write_opt)[oscilID] = types;
+    output_to_write.resize(num_osc); // Empty vectors by default
+    auto write_array = validators::getOptionalArrayOfTables(output, "write");
+    for (auto& elem : write_array) {
+      auto table = *elem.as_table();
+      size_t oscilID = validators::field<size_t>(table, "oscID").required().value();
+
+      if (oscilID >= num_osc) {
+        logger.exitWithError("output write oscID exceeds number of oscillators");
       }
+
+      std::vector<std::string> types_str = validators::vectorField<std::string>(table, "type").required().value();
+      output_to_write[oscilID] = convertStringVectorToEnum(types_str, OUTPUT_TYPE_MAP);
     }
-    output_to_write = parseIndexedWithDefaults<OutputType>(output_to_write_opt, num_osc);
 
     output_frequency = validators::field<size_t>(output, "output_frequency").positive().valueOr(output_frequency);
     optim_monitor_frequency =
