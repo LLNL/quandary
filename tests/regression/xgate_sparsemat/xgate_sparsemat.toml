@@ -62,7 +62,3 @@ rand_seed = 1234
 [[output.write]]
 oscID = 0
 type = ["population", "expectedEnergy", "fullstate"]
-
-[[output.write]]
-oscID = 1
-type = ["population", "expectedEnergy", "fullstate"]
