@@ -546,43 +546,31 @@ FromFile::~FromFile(){}
 
 Gate* initTargetGate(GateType target_gate, const std::string& file, const std::vector<size_t>& nlevels, const std::vector<size_t>& nessential, double total_time, LindbladType lindbladtype, const std::vector<double>& gate_rot_freq, bool quietmode){
 
-  Gate* mygate;
-  
   switch (target_gate) {
     case GateType::NONE:
-      mygate = new Gate();
-      break;
+      return new Gate();
     case GateType::XGATE:
-      mygate = new XGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-      break;
+      return new XGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
     case GateType::YGATE:
-      mygate = new YGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-      break;
+      return new YGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
     case GateType::ZGATE:
-      mygate = new ZGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-      break;
+      return new ZGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
     case GateType::HADAMARD:
-      mygate = new HadamardGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-      break;
+      return new HadamardGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
     case GateType::CNOT:
-      mygate = new CNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-      break;
+      return new CNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
     case GateType::SWAP:
-      mygate = new SWAP(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-      break;
+      return new SWAP(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
     case GateType::SWAP_0Q:
-      mygate = new SWAP_0Q(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-      break;
+      return new SWAP_0Q(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
     case GateType::CQNOT:
-      mygate = new CQNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-      break;
+      return new CQNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
     case GateType::QFT:
-      mygate = new QFT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-      break;
+      return new QFT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
     case GateType::FILE:
-      mygate = new FromFile(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, file, quietmode);
-      break;
+      return new FromFile(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, file, quietmode);
   }
 
-  return mygate;
+  // should not happen, but make compiler happy
+  return new Gate();
 }
