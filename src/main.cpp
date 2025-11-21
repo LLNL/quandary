@@ -200,7 +200,7 @@ int main(int argc,char **argv)
      (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
 
   TimeStepperType timesteppertype = config.getTimestepperType();
-  TimeStepper* mytimestepper;
+  TimeStepper* mytimestepper = nullptr;
   switch (timesteppertype) {
     case TimeStepperType::IMR:
       mytimestepper = new ImplMidpoint(mastereq, ntime, total_time, linsolvetype, linsolve_maxiter, output, storeFWD);
@@ -214,6 +214,8 @@ int main(int argc,char **argv)
     case TimeStepperType::EE:
       mytimestepper = new ExplEuler(mastereq, ntime, total_time, output, storeFWD);
       break;
+    default:
+      logger.exitWithError("Unknown timestepper type\n");
   }
 
   /* --- Initialize optimization --- */
