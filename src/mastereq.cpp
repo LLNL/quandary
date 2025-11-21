@@ -33,6 +33,7 @@ MasterEq::MasterEq(const Config& config, Oscillator** oscil_vec_, bool quietmode
   }
 
   lindbladtype = config.getCollapseType();
+  usematfree = config.getUseMatFree();
 
   hamiltonian_file_Hsys = config.getHamiltonianFileHsys();
   hamiltonian_file_Hc = config.getHamiltonianFileHc();
