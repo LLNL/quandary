@@ -103,7 +103,7 @@ class Validator {
   /**
    * @brief Requires value to be strictly less than threshold.
    *
-   * @param lessThan_ Threshold value (exclusive)
+   * @param less_than_ Threshold value (exclusive)
    * @return Reference to this validator for chaining
    */
   Validator& lessThan(T less_than_) {
@@ -415,7 +415,6 @@ std::optional<std::vector<T>> getOptionalVector(const toml::node_view<toml::node
  *
  * @param config Parent TOML table
  * @param key Name of the table field
- * @param logger Logger for error reporting
  * @return Reference to the table
  * @throws Exits via logger if table is missing or wrong type
  */
