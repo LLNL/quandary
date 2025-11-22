@@ -269,8 +269,10 @@ then
     mpi_exe=$(grep 'MPIEXEC_EXECUTABLE' "${hostconfig_path}" | cut -d'"' -f2 | sed 's/;/ /g')
     pytest -v -s -m "not performance" --mpi-exec="${mpi_exe}"
 
+    # TODO cfg: remove this later
     timed_message "Run regression tests with deprecated cfg config (excluding python tests which are run above)"
-    pytest -v -s --mpi-exec="${mpi_exe}" --config-format=cfg tests/regression
+    cd tests/regression && pytest -v -s --mpi-exec="${mpi_exe}" --config-format=cfg .
+    cd ${project_dir}
 
     timed_message "Quandary tests completed"
 fi
