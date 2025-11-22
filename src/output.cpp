@@ -1,4 +1,6 @@
 #include "output.hpp"
+#include "defs.hpp"
+#include <vector>
 
 Output::Output(){
   mpirank_world = -1;
@@ -8,7 +10,9 @@ Output::Output(){
   quietmode = false;
 }
 
-Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int noscillators, bool quietmode_) : Output() {
+Output::Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, bool quietmode_) : Output() {
+
+  size_t noscillators = config.getNumOsc();
 
   /* Get communicator ranks */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
@@ -21,14 +25,14 @@ Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nosc
 
 
   /* Create Data directory */
-  datadir = config.GetStrParam("datadir", "./data_out");
+  datadir = config.getDataDir();
   if (mpirank_world == 0) {
     mkdir(datadir.c_str(), 0777);
   }
 
   /* Prepare output for optimizer */
-  optim_monitor_freq = config.GetIntParam("optim_monitor_frequency", 10);
-  output_frequency = config.GetIntParam("output_frequency", 1);
+  optim_monitor_freq = config.getOptimMonitorFrequency();
+  output_frequency = config.getOutputFrequency();
   if (mpirank_world == 0) {
     char filename[255];
     snprintf(filename, 254, "%s/optim_history.dat", datadir.c_str());
@@ -39,31 +43,37 @@ Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nosc
   /* Reset flags and data file pointers */
   ufile = NULL;
   vfile = NULL;
-  for (int i=0; i< noscillators; i++) expectedfile.push_back (NULL);
-  for (int i=0; i< noscillators; i++) populationfile.push_back (NULL);
+  for (size_t i=0; i< noscillators; i++) expectedfile.push_back (NULL);
+  for (size_t i=0; i< noscillators; i++) populationfile.push_back (NULL);
   expectedfile_comp=NULL;
   populationfile_comp=NULL;
   writeFullState = false;
   writeExpectedEnergy_comp = false;
   writePopulation_comp = false;
-  for (int i=0; i<noscillators; i++) writeExpectedEnergy.push_back(false);
-  for (int i=0; i<noscillators; i++) writePopulation.push_back(false);
-
-  /* Parse configuration output strings for each oscillator and set defaults. */
-  for (int i = 0; i < noscillators; i++){
-    std::vector<std::string> fillme;
-    config.GetVecStrParam("output" + std::to_string(i), fillme, "none");
-    outputstr.push_back(fillme);
-  }
+  for (size_t i=0; i<noscillators; i++) writeExpectedEnergy.push_back(false);
+  for (size_t i=0; i<noscillators; i++) writePopulation.push_back(false);
 
   /* Check the output strings for each oscillator to determine which files should be written */
-  for (int i=0; i<noscillators; i++) { // iterates over oscillators
-    for (size_t j=0; j<outputstr[i].size(); j++) { // iterates over output stings for this oscillator
-      if (outputstr[i][j].compare("expectedEnergy") == 0) writeExpectedEnergy[i] = true;
-      if (outputstr[i][j].compare("expectedEnergyComposite") == 0) writeExpectedEnergy_comp = true;
-      if (outputstr[i][j].compare("population") == 0) writePopulation[i] = true;
-      if (outputstr[i][j].compare("populationComposite") == 0) writePopulation_comp = true;
-      if (outputstr[i][j].compare("fullstate") == 0 ) writeFullState = true;
+  output = config.getOutput();
+  for (size_t i=0; i<noscillators; i++) { // iterates over oscillators
+    for (auto output_type : output[i]) { // iterates over output types for this oscillator
+      switch (output_type) {
+        case OutputType::EXPECTED_ENERGY:
+          writeExpectedEnergy[i] = true;
+          break;
+        case OutputType::EXPECTED_ENERGY_COMPOSITE:
+          writeExpectedEnergy_comp = true;
+          break;
+        case OutputType::POPULATION:
+          writePopulation[i] = true;
+          break;
+        case OutputType::POPULATION_COMPOSITE:
+          writePopulation_comp = true;
+          break;
+        case OutputType::FULLSTATE:
+          writeFullState = true;
+          break;
+      }
     }
   }
 }
@@ -163,7 +173,7 @@ void Output::openTrajectoryDataFiles(std::string prefix, int initid){
   if (mpirank_petsc == 0) {
 
     // Expected energy per oscillator  
-    for (size_t i=0; i<outputstr.size(); i++) { // iterates over oscillators
+    for (size_t i=0; i<output.size(); i++) { // iterates over oscillators
       if (writeExpectedEnergy[i]) {
         snprintf(filename, 254, "%s/expected%zu.iinit%04d.dat", datadir.c_str(), i, initid);
         expectedfile[i] = fopen(filename, "w");
@@ -177,7 +187,7 @@ void Output::openTrajectoryDataFiles(std::string prefix, int initid){
       fprintf(expectedfile_comp, "#\"time\"      \"expected energy level\"\n");
     }
     // Populations per oscillator
-    for (size_t i=0; i<outputstr.size(); i++) { // iterates over oscillators
+    for (size_t i=0; i<output.size(); i++) { // iterates over oscillators
       if (writePopulation[i]) {
         snprintf(filename, 254, "%s/population%zu.iinit%04d.dat", datadir.c_str(), i, initid);
         populationfile[i] = fopen(filename, "w");

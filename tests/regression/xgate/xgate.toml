@@ -1,0 +1,65 @@
+[system]
+nlevels = [2]
+nessential = [2]
+ntime = 700
+dt = 0.1
+transfreq = [4.1]
+rotfreq = [4.0]
+selfkerr = [0.2198]
+crosskerr = [0.0]
+Jkl = [0.0]
+collapse_type = "both"
+decay_time = [56000.0]
+dephase_time = [28000.0]
+initial_condition = {type = "3states"}
+
+[optimization]
+control_enforceBC = true
+optim_target = {target_type = "gate", gate_type = "xgate"}
+optim_objective = "Jfrobenius"
+optim_weights = 1.0
+optim_ftol = 1e-05
+optim_inftol = 1e-05
+optim_atol = 0.0001
+optim_rtol = 1e-05
+optim_maxiter = 100
+optim_regul = 1e-05
+optim_penalty = 0.0
+optim_penalty_param = 0.5
+optim_penalty_dpdm = 0.0
+optim_penalty_energy = 0.0
+optim_penalty_variation = 0.0
+
+[[optimization.control_segments]]
+oscID = 0
+type = "spline"
+num = 150
+
+[[optimization.control_bounds]]
+oscID = 0
+values = [0.05]
+
+[[optimization.control_initialization]]
+oscID = 0
+type = "constant"
+amplitude = 0.01
+
+[[optimization.carrier_frequency]]
+oscID = 0
+values = [0.1]
+
+[output]
+datadir = "./data_out"
+output_frequency = 1
+optim_monitor_frequency = 1
+runtype = "optimization"
+usematfree = true
+linearsolver_type = "gmres"
+linearsolver_maxiter = 20
+timestepper = "IMR"
+rand_seed = 1234
+
+[[output.write]]
+oscID = 0
+type = ["population", "expectedEnergy", "fullstate"]
+

@@ -34,8 +34,7 @@ class OptimTarget{
     PetscInt purestateID; ///< For pure state preparation: integer m for preparing the target state \f$ e_m e_m^{\dagger}\f$
     std::string target_filename; ///< Filename if target state is read from file
     Vec targetstate; ///< Storage for the target state vector (NULL for pure states, \f$V\rho V^\dagger\f$ for gates, density matrix from file)
-    InitialConditionType initcond_type; ///< Type of initial conditions
-    std::vector<size_t> initcond_IDs; ///< Integer list for pure-state initialization
+    InitialCondition initcond; ///< Initial conditions
     LindbladType lindbladtype; ///< Type of Lindblad decoherence operators, or NONE for Schroedinger solver
     int mpisize_petsc; ///< Size of PETSc communicator
     int mpirank_petsc; ///< Rank of PETSc communicator
@@ -52,16 +51,13 @@ class OptimTarget{
     /**
      * @brief Constructor with full target specification.
      *
-     * @param target_str Vector of strings specifying the target
-     * @param objective_str String specifying the objective function type
-     * @param initcond_str Vector of strings specifying initial conditions
+     * @param config Configuration parameters
      * @param mastereq Pointer to master equation solver
      * @param total_time Total evolution time
-     * @param read_gate_rot Gate rotation parameters
      * @param rho_t0 Initial state vector
      * @param quietmode_ Flag for quiet operation
      */
-    OptimTarget(std::vector<std::string> target_str, const std::string& objective_str, std::vector<std::string> initcond_str, MasterEq* mastereq, double total_time, std::vector<double> read_gate_rot, Vec rho_t0, bool quietmode_);
+    OptimTarget(const Config& config, MasterEq* mastereq, double total_time, Vec rho_t0, bool quietmode_);
 
     ~OptimTarget();
 

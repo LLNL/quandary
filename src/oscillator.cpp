@@ -1,4 +1,8 @@
 #include "oscillator.hpp"
+#include "config.hpp"
+#include "defs.hpp"
+#include "mpi_logger.hpp"
+#include <stdexcept>
 
 Oscillator::Oscillator(){
   nlevels = 0;
@@ -7,25 +11,47 @@ Oscillator::Oscillator(){
   control_enforceBC = true;
 }
 
-Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine){
+Oscillator::Oscillator(const Config& config, size_t id, std::mt19937 rand_engine){
 
   myid = id;
+
+  // Extract parameters from config
+  const std::vector<size_t>& nlevels_all_ = config.getNLevels();
   nlevels = nlevels_all_[id];
-  Tfinal = Tfinal_;
-  ground_freq = ground_freq_*2.0*M_PI;
-  selfkerr = selfkerr_*2.0*M_PI;
-  detuning_freq = 2.0*M_PI*(ground_freq_ - rotational_freq_);
-  carrier_freq = carrier_freq_;
+
+  double dt = config.getDt();
+  size_t ntime = config.getNTime();
+  Tfinal = dt * ntime;
+
+  const std::vector<double>& trans_freq = config.getTransFreq();
+  const std::vector<double>& rot_freq = config.getRotFreq();
+  const std::vector<double>& selfkerr_config = config.getSelfKerr();
+
+  ground_freq = trans_freq[id] * 2.0 * M_PI;
+  selfkerr = selfkerr_config[id] * 2.0 * M_PI;
+  detuning_freq = 2.0 * M_PI * (trans_freq[id] - rot_freq[id]);
+
+  const std::vector<double>& carrier_freq_config = config.getCarrierFrequencies(id);
+  carrier_freq = carrier_freq_config;
   for (size_t i=0; i<carrier_freq.size(); i++) {
     carrier_freq[i] *= 2.0*M_PI;
   }
-  decay_time = decay_time_;
-  dephase_time = dephase_time_;
-  lindbladtype = lindbladtype_;
+
+  lindbladtype = config.getCollapseType();
+  const std::vector<double>& decay_time_config = config.getDecayTime();
+  const std::vector<double>& dephase_time_config = config.getDephaseTime();
+  decay_time = decay_time_config[id];
+  dephase_time = dephase_time_config[id];
+
+  // Get control segments and initializations from config
+  const auto& controlsegments = config.getControlSegments(id);
+  const auto& controlinitializations = config.getControlInitializations(id);
 
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+
+  MPILogger logger(mpirank_world);
 
   // Get system dimension N (Schroedinger) or N^2 (Lindblad)
   PetscInt dim = 1;
@@ -40,112 +66,68 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
   iupp = ilow + localsize_u;         
 
   /* Check if boundary conditions for controls should be enfored (default: yes). */
-  control_enforceBC = config.GetBoolParam("control_enforceBC", true);
+  control_enforceBC = config.getControlEnforceBC();
 
   // Parse for control segments
-  size_t idstr = 0;
   int nparams_per_seg = 0;
-  while (idstr < controlsegments.size()) {
 
-    if (controlsegments[idstr].compare("step") == 0) {
-      idstr++;
-      if (controlsegments.size() <= idstr+2){
-        printf("ERROR: Wrong setting for control segments: Step Amplitudes or tramp not found.\n");
-        exit(1);
-      }
-      double step_amp1 = atof(controlsegments[idstr].c_str()); idstr++;
-      double step_amp2 = atof(controlsegments[idstr].c_str()); idstr++;
-      double tramp = atof(controlsegments[idstr].c_str()); idstr++;
+  for (auto controlsegment : controlsegments) {
 
-      double tstart = 0.0;
-      double tstop = Tfinal;
-      if (controlsegments.size()>=idstr+2){
-        tstart = atof(controlsegments[idstr].c_str()); idstr++;
-        tstop = atof(controlsegments[idstr].c_str()); idstr++;
-      }
+    switch (controlsegment.type) {
+    case ControlType::STEP: {
+      StepParams params = std::get<StepParams>(controlsegment.params);
+
       // if (mpirank_world == 0) printf("%d: Creating step basis with amplitude (%f, %f) (tramp %f) in control segment [%f, %f]\n", myid, step_amp1, step_amp2, tramp, tstart, tstop);
-      ControlBasis* mystep = new Step(step_amp1, step_amp2, tstart, tstop, tramp, control_enforceBC);
+      ControlBasis* mystep = new Step(params.step_amp1, params.step_amp2, params.tstart, params.tstop, params.tramp, control_enforceBC);
       mystep->setSkip(nparams_per_seg);
       nparams_per_seg += mystep->getNparams() * carrier_freq.size();
       basisfunctions.push_back(mystep);
-      
-    } else if (controlsegments[idstr].compare("spline") == 0) { // Default: splines. Format in string: spline, nsplines, tstart, tstop
-      idstr++;
-      if (controlsegments.size() <= idstr){
-        printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
-        exit(1);
-      }
-      int nspline = atoi(controlsegments[idstr].c_str()); idstr++;
-      double tstart = 0.0;
-      double tstop = Tfinal;
-      if (controlsegments.size()>=idstr+2){
-        tstart = atof(controlsegments[idstr].c_str()); idstr++;
-        tstop = atof(controlsegments[idstr].c_str()); idstr++;
-      }
-      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
-      ControlBasis* mysplinebasis = new BSpline2nd(nspline, tstart, tstop, control_enforceBC);
-      mysplinebasis->setSkip(nparams_per_seg);
-      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
-      basisfunctions.push_back(mysplinebasis);
-      //
-    } else if (controlsegments[idstr].compare("spline0") == 0) { // Format in string: bs0, nsplines, tstart, tstop
-      idstr++;
-      if (controlsegments.size() <= idstr){
-        printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
-        exit(1);
-      }
-      int nspline = atoi(controlsegments[idstr].c_str()); idstr++;
-      double tstart = 0.0;
-      double tstop = Tfinal;
-      if (controlsegments.size()>=idstr+2){
-        tstart = atof(controlsegments[idstr].c_str()); idstr++;
-        tstop = atof(controlsegments[idstr].c_str()); idstr++;
-      }
-      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
-      ControlBasis* mysplinebasis = new BSpline0(nspline, tstart, tstop, control_enforceBC);
-      mysplinebasis->setSkip(nparams_per_seg);
-      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
-      basisfunctions.push_back(mysplinebasis);
-    } else if (controlsegments[idstr].compare("spline_amplitude") == 0) { // Spline on amplitude only. Format in string: spline_amplitude, nsplines, tstart, tstop
-      idstr++;
-      if (controlsegments.size() <= idstr){
-        printf("ERROR: Wrong setting for control segments: Number of splines not found.\n");
-        exit(1);
-      }
-      int nspline = atoi(controlsegments[idstr].c_str()); idstr++;
-      double scaling = atof(controlsegments[idstr].c_str()); idstr++;
-      double tstart = 0.0;
-      double tstop = Tfinal;
-      if (controlsegments.size()>=idstr+2){
-        tstart = atof(controlsegments[idstr].c_str()); idstr++;
-        tstop = atof(controlsegments[idstr].c_str()); idstr++;
-      }
-      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
-      ControlBasis* mysplinebasis = new BSpline2ndAmplitude(nspline, scaling, tstart, tstop, control_enforceBC);
-      mysplinebasis->setSkip(nparams_per_seg);
-      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
-      basisfunctions.push_back(mysplinebasis);
-    } else {
-      // if (mpirank_world==0) printf("%d: Non-controllable.\n", myid);
-      idstr++;
+      break;
     }
+    case ControlType::BSPLINE: {
+      SplineParams params = std::get<SplineParams>(controlsegment.params);
+
+      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
+      ControlBasis* mysplinebasis = new BSpline2nd(params.nspline, params.tstart, params.tstop, control_enforceBC);
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
+      basisfunctions.push_back(mysplinebasis);
+      break;
+    }
+    case ControlType::BSPLINE0: {
+      SplineParams params = std::get<SplineParams>(controlsegment.params);
+
+      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
+      ControlBasis* mysplinebasis = new BSpline0(params.nspline, params.tstart, params.tstop, control_enforceBC);
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
+      basisfunctions.push_back(mysplinebasis);
+      break;
+    }
+    case ControlType::BSPLINEAMP: {
+      SplineAmpParams params = std::get<SplineAmpParams>(controlsegment.params);
+
+      // if (mpirank_world==0) printf("%d: Creating %d-spline basis in control segment [%f, %f]\n", myid, nspline,tstart, tstop);
+      ControlBasis* mysplinebasis = new BSpline2ndAmplitude(params.nspline, params.scaling, params.tstart, params.tstop, control_enforceBC);
+      mysplinebasis->setSkip(nparams_per_seg);
+      nparams_per_seg += mysplinebasis->getNparams() * carrier_freq.size();
+      basisfunctions.push_back(mysplinebasis);
+      break;
+    }
+    case ControlType::NONE: {
+      logger.exitWithError("Control type 'none' not supported.");
+    }
+    } // end switch
   }
 
   //Initialization of the control parameters for each segment
-  size_t idini = 0;
   for (size_t seg = 0; seg < basisfunctions.size(); seg++) {
-    // Set a default if initialization string is not given for this segment
-    if (controlinitializations.size() < idini+2) {
-      controlinitializations.push_back("constant");
-      if (basisfunctions[seg]->getType() == ControlType::STEP)
-        controlinitializations.push_back("1.0");
-      else 
-        controlinitializations.push_back("0.0");
-    }
+    const auto& controlinitialization = controlinitializations[seg];
+
     // Check config option for 'constant' or 'random' initialization
     // Note, the config amplitude is multiplied by 2pi here!!
-    double initval = atof(controlinitializations[idini+1].c_str())*2.0*M_PI;
-    if (controlinitializations[idini].compare("constant") == 0 ) {
+    if (controlinitialization.type == ControlSegmentInitType::CONSTANT) {
+      double initval = controlinitialization.amplitude*2.0*M_PI;
       // If STEP: scale to [0,1]
       if (basisfunctions[seg]->getType() == ControlType::STEP){
         initval = std::max(0.0, initval);  
@@ -157,11 +139,11 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
         }
         // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
         if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
-          if (controlinitializations.size() > idini+2) params[params.size()-1] = atof(controlinitializations[idini+2].c_str());
-          else params[params.size()-1] = 0.0;
+          params[params.size()-1] = controlinitialization.phase;
         }
       }
-    } else if (controlinitializations[idini].compare("random") == 0) {
+    } else if (controlinitialization.type == ControlSegmentInitType::RANDOM) {
+      double initval = controlinitialization.amplitude*2.0*M_PI;
 
       // Uniform distribution [0,1)
       std::uniform_real_distribution<double> unit_dist(0.0, 1.0);
@@ -183,8 +165,7 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
         }
         // if BSPLINEAMP: Two values can be provided: First one for the amplitude (set above), second one for the phase which otherwise is set to 0.0 (overwrite here)
         if (basisfunctions[seg]->getType() == ControlType::BSPLINEAMP) {
-          if (controlinitializations.size() > idini+2) params[params.size()-1] = atof(controlinitializations[idini+2].c_str());
-          else params[params.size()-1] = 0.0;
+          params[params.size()-1] = controlinitialization.phase;
         }
       }
     } else {
@@ -192,7 +173,6 @@ Oscillator::Oscillator(Config config, size_t id, const std::vector<size_t>& nlev
         params.push_back(0.0);
       }
     }
-    idini += 2; 
   }
 
   /* Make sure the initial guess satisfies the boundary conditions, if needed */
@@ -325,9 +305,9 @@ int Oscillator::evalControl(const double t, double* Re_ptr, double* Im_ptr){
   } 
 
   /* If pipulse: Overwrite controls by constant amplitude */
-  for (size_t ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
-    if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
-      double amp_pq =  pipulse.amp[ipulse] / sqrt(2.0);
+  for (const auto& pipulse_segment : pipulse){
+    if (pipulse_segment.tstart <= t && t <= pipulse_segment.tstop) {
+      double amp_pq =  pipulse_segment.amp / sqrt(2.0);
       *Re_ptr = amp_pq;
       *Im_ptr = amp_pq;
     }
@@ -370,8 +350,8 @@ int Oscillator::evalControl_diff(const double t, double* grad, const double pbar
   } 
 
   /* TODO: Derivative of pipulse? */
-  for (size_t ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
-    if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
+  for (const auto& pipulse_segment : pipulse){
+    if (pipulse_segment.tstart <= t && t <= pipulse_segment.tstop) {
       printf("ERROR: Derivative of pipulse not implemented. Sorry! But also, this should never happen!\n");
       exit(1);
     }
@@ -416,10 +396,10 @@ int Oscillator::evalControl_Labframe(const double t, double* f){
 
 
   /* If inside a pipulse, overwrite lab control */
-  for (size_t ipulse=0; ipulse< pipulse.tstart.size(); ipulse++){
-    if (pipulse.tstart[ipulse] <= t && t <= pipulse.tstop[ipulse]) {
-      double p = pipulse.amp[ipulse] / sqrt(2.0);
-      double q = pipulse.amp[ipulse] / sqrt(2.0);
+  for (const auto& pipulse_segment : pipulse){
+    if (pipulse_segment.tstart <= t && t <= pipulse_segment.tstop) {
+      double p = pipulse_segment.amp / sqrt(2.0);
+      double q = pipulse_segment.amp / sqrt(2.0);
       *f = 2.0 * p * cos(ground_freq*t) - 2.0 * q * sin(ground_freq*t);
     }
   }
