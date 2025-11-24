@@ -107,6 +107,7 @@ class OptimProblem {
     Mat Hessian; ///< Hessian matrix for second-order derivative information
     PetscInt ncut; ///< Number of eigenvalues to be used for Hessian Range Space Finder
     PetscInt nextra; ///< Oversampling Hessian Range Space Finder. Hardcoded 10.
+    bool use_positive_evals; ///< Only use positive eigenvalues for Hessian projection
 
   /**
    * @brief Constructor for optimization problem.

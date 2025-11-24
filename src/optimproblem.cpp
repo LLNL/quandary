@@ -175,6 +175,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   bool use_hessian = config.GetBoolParam("optim_use_hessian", false, false);
   ncut = config.GetIntParam("optim_hessian_ncut", -1, false, true);
   nextra = config.GetIntParam("optim_hessian_nextra", 10, false, true);
+  use_positive_evals = config.GetBoolParam("optim_hessian_use_positive", false, false);
 
   if (use_hessian) {
     // Create Hessian matrix
@@ -1006,7 +1007,7 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_o
   // Find basis with economy SVD and take top-k left singular vectors
   //   -> U,S,V = SVD(Y), Q = U[:,1:k]
   // Solve B * (Q' * Omega) = (Q' * Y) for B: least squares problem 
-  //   -> B = lstsq( (Q.T*Omega).T, (W.T*Y).T ).T
+  //   -> B = lstsq( (Q.T*Omega).T, (Q.T*Y).T ).T
   // Eigenvalue decomposition of B -> B = V Lambda V'
   // Project: U = Q * V
   //  -> Hessian \approx U * Lambda * U'
@@ -1106,15 +1107,12 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_o
   // Compute Gram = QtOmega * QtOmega^T
   Mat Gram;
   MatMatTransposeMult(QtOmega, QtOmega, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Gram);
-
   // Compute RHS = QtOmega * QtY^T
   Mat RHS;
   MatMatTransposeMult(QtOmega, QtY, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &RHS);
-
   // Set up the solution matrix
   Mat X;
   MatDuplicate(Gram, MAT_DO_NOT_COPY_VALUES, &X);
-
   // Solve Gram * X = RHS for X (=B^T) using Petsc KSP solver
   KSP ksp;
   KSPCreate(PETSC_COMM_WORLD, &ksp);
@@ -1132,6 +1130,7 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_o
   EPSCreate(PETSC_COMM_WORLD, &eps);
   EPSSetOperators(eps, B, NULL);
   EPSSetProblemType(eps, EPS_NHEP); // Symmetric system matrix??
+  // EPSSetProblemType(eps, EPS_HEP); // Symmetric system matrix??
 
   // Get ncut eigenvalues
   EPSSetDimensions(eps, ncut, PETSC_DEFAULT, PETSC_DEFAULT);  
@@ -1149,34 +1148,60 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_o
   if (nconv < ncut) {
     printf("ERROR: EPS converged to %D eigenvalues, needed %D", nconv, ncut);
   }
+
+  // Find number of positive eigenvalues
+  int npos = ncut;
+  if (use_positive_evals){
+    PetscScalar ev;
+    npos=0;
+    for (int i = 0; i < ncut; i++) {
+      EPSGetEigenpair(eps, i, &ev, NULL, NULL, NULL);
+      if (ev > 1e-12) {
+        npos++;
+      }
+    }
+  }
   
   // Extract eigenvectors V and eigenvalues Lambda
-  MatCreateDense(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, ncut, ncut, NULL, &U); // This will be U from B = U*Lambda*V'
-  PetscMalloc1(ncut, &lambda);
+  MatCreateDense(PETSC_COMM_WORLD, PETSC_DECIDE, PETSC_DECIDE, ncut, npos, NULL, &U); // This will be U from B = U*Lambda*V'
+  PetscMalloc1(npos, &lambda);
   
   PetscScalar eigval;
+  int id_pos = 0;
   for (int i = 0; i < ncut; i++) {
-    MatDenseGetColumnVecWrite(U, i, &u_col);
-    EPSGetEigenpair(eps, i, &eigval, NULL, u_col, NULL);
-    lambda[i] = eigval;  
-    MatDenseRestoreColumnVecWrite(U, i, &u_col);
+    EPSGetEigenpair(eps, i, &eigval, NULL, NULL, NULL);
+    if (use_positive_evals) {
+      if (eigval > 1e-12) {
+        MatDenseGetColumnVecWrite(U, id_pos, &u_col);
+        EPSGetEigenpair(eps, i, &eigval, NULL, u_col, NULL);
+        lambda[id_pos] = eigval;  
+        MatDenseRestoreColumnVecWrite(U, id_pos, &u_col);
+        id_pos++;
+      }
+    } else {
+      MatDenseGetColumnVecWrite(U, i, &u_col);
+      EPSGetEigenpair(eps, i, &eigval, NULL, u_col, NULL);
+      lambda[i] = eigval;  
+      MatDenseRestoreColumnVecWrite(U, i, &u_col);
+    }
   }
   // print the eigenvalues
   if (mpirank_world==0 && !quietmode) {
     printf("Dominant eigenvalues of the Hessian approximation:\n");
-    for (int i = 0; i < ncut; i++) {
+    printf("Use pos? %d, npos=%d\n", use_positive_evals, npos);
+    for (int i = 0; i < npos; i++) {
       printf("%1.14e\n", lambda[i]);
     }
   }
   
-  /* Project and store U_out = Q * V */
+  /* Project and store U_out = Q * U */
   MatMatMult(Q, U, MAT_INITIAL_MATRIX, PETSC_DEFAULT, U_out); 
 
   /* Store lambda*/
   MatCreateVecs(*U_out, lambda_out, NULL);
   PetscScalar *lambda_ptr;
   VecGetArrayWrite(*lambda_out, &lambda_ptr);
-  for (int i = 0; i < ncut; i++) {
+  for (int i = 0; i < npos; i++) {
     lambda_ptr[i] = lambda[i];
   }
   VecRestoreArrayWrite(*lambda_out, &lambda_ptr);
@@ -1243,10 +1268,12 @@ void OptimProblem::ProjectGradient(const Vec x, const Vec grad, Vec grad_proj){
 
   // Scale rows of tmp by Lambda^{-1}
   PetscScalar *tmp_ptr;
+  int ncols;
+  VecGetSize(lambda, &ncols);
   VecGetArrayWrite(tmp, &tmp_ptr);
   const PetscScalar *lambda_ptr;
   VecGetArrayRead(lambda, &lambda_ptr);
-  for (int i = 0; i < ncut; i++) {
+  for (int i = 0; i < ncols; i++) {
     tmp_ptr[i] = 1.0 / lambda_ptr[i] * tmp_ptr[i];  // tmp = Lambda^{-1} * U^T * grad
   }
   VecRestoreArrayWrite(tmp, &tmp_ptr);

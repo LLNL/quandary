@@ -162,6 +162,7 @@ class Quandary:
     use_hessian            : bool = False
     ncut                   : int = -1
     nextra                 : int = 10
+    use_positive_evals     : bool = False
     rol_xml                : str  = "./rolinput.xml"
     # Internal configuration. Should not be changed by user.
     _ninit                : int         = -1
@@ -712,6 +713,7 @@ class Quandary:
         mystring += "optim_use_hessian = " + str(self.use_hessian)+ "\n"
         mystring += "optim_hessian_ncut = " + str(self.ncut)+ "\n"
         mystring += "optim_hessian_nextra= " + str(self.nextra)+ "\n"
+        mystring += "optim_hessian_use_positive= " + str(self.use_positive_evals)+ "\n"
         mystring += "rol_xml = " + self.rol_xml+ "\n"
         mystring += "runtype = " + runtype + "\n"
         if len(self.Ne) < 6:
