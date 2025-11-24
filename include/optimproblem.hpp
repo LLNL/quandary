@@ -400,6 +400,7 @@ class myVec : public ROL::Vector<double> {
 class myObjective : public ROL::Objective<double> {
   private:
   OptimProblem* optimctx_;
+  int mpirank_world;
   int myAcceptIter;       // Counter for accepted iterations
 
   // ROL::Ptr<Objective_SimOpt<Real>> obj_; // Full-space objective
@@ -418,5 +419,7 @@ class myObjective : public ROL::Objective<double> {
   void update(const ROL::Vector<double> &x, ROL::UpdateType type, int /*iter*/) override;
 
   void hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ ) override;
+
+  void invHessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ ) override;
 
 };

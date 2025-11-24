@@ -956,6 +956,19 @@ void myObjective::hessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v
   optimctx_->evalHessVec(ex.getVector(), ev.getVector(), ehv.getVector());
 }
 
+
+void myObjective::invHessVec( ROL::Vector<double> &hv, const ROL::Vector<double> &v, const ROL::Vector<double> &x, double& /*tol*/ ) {
+
+  if (mpirank_world==0) printf("Eval INVERSE HESSVEC NOW\n");
+
+  // Cast the input and evalHessVec on the petsc vectors 
+  const myVec& ev = dynamic_cast<const myVec&>(v); 
+  const myVec& ex = dynamic_cast<const myVec&>(x); 
+  myVec& ehv = dynamic_cast<myVec&>(hv); 
+
+  optimctx_->ProjectGradient(ex.getVector(), ev.getVector(), ehv.getVector());
+}
+
 void myObjective::update(const ROL::Vector<double> &x, ROL::UpdateType type, int /*iter*/){
   std::string out; 
   if (type == ROL::UpdateType::Initial)  {
@@ -1118,8 +1131,18 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_o
   /* Eigenvalue decomposition of B */
   EPSCreate(PETSC_COMM_WORLD, &eps);
   EPSSetOperators(eps, B, NULL);
-  EPSSetProblemType(eps, EPS_NHEP); // Symmetric system matrix?
-  EPSSetDimensions(eps, ncut, PETSC_DEFAULT, PETSC_DEFAULT);
+  EPSSetProblemType(eps, EPS_NHEP); // Symmetric system matrix??
+
+  // Get ncut eigenvalues
+  EPSSetDimensions(eps, ncut, PETSC_DEFAULT, PETSC_DEFAULT);  
+  // EPSSetThreshold(EPS eps,PetscReal thres,PetscBool rel); // Alternatively, specify a threshold
+  // OrderingL: get the largest real eigenvalues first
+  EPSSetWhichEigenpairs(eps, EPS_LARGEST_REAL); 
+
+  // Alternatively: Get all eigenvalues in a given interval [a,b]. This only works for the symmetric EPS solver! 
+  // EPSSetWhichEigenpairs(eps, EPS_ALL); 
+  // EPSSetInterval(eps, 0.0, 1e5);
+
   EPSSetFromOptions(eps);
   EPSSolve(eps);
   EPSGetConverged(eps, &nconv); 
@@ -1183,17 +1206,17 @@ void OptimProblem::evalHessian(const Vec x, Mat H){
   Vec lambda;
   HessianRandRangeFinder(x, &U, &lambda);
 
-  // Write lambda and U to file
-  if (mpirank_world==0) {
-    PetscViewer viewer;
-    PetscViewerASCIIOpen(PETSC_COMM_WORLD, (output->datadir+"/RRF_eigenvalues.dat").c_str(), &viewer);
-    PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_SYMMODU);
-    VecView(lambda, viewer);
-    PetscViewerDestroy(&viewer);
-    PetscViewerASCIIOpen(PETSC_COMM_WORLD, (output->datadir+"/RRF_eigenvectors.dat").c_str(), &viewer);
-    MatView(U, viewer);
-    PetscViewerDestroy(&viewer);
-  }
+  // // Write lambda and U to file
+  // if (mpirank_world==0) {
+  //   PetscViewer viewer;
+  //   PetscViewerASCIIOpen(PETSC_COMM_WORLD, (output->datadir+"/RRF_eigenvalues.dat").c_str(), &viewer);
+  //   PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_SYMMODU);
+  //   VecView(lambda, viewer);
+  //   PetscViewerDestroy(&viewer);
+  //   PetscViewerASCIIOpen(PETSC_COMM_WORLD, (output->datadir+"/RRF_eigenvectors.dat").c_str(), &viewer);
+  //   MatView(U, viewer);
+  //   PetscViewerDestroy(&viewer);
+  // }
 
   /* Assemble H = U lambda U^T */
   Mat U_scaled;
