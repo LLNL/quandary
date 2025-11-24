@@ -487,7 +487,9 @@ class Quandary:
         ncores_petsc = 1
         # if maxcores > ncores_init and maxcores % ncores_init == 0:
             # ncores_petsc = int(maxcores / ncores_init)
-        ncores = ncores_init * ncores_petsc
+        # Number of cores for parallel optimization
+        ncores_optim = int(maxcores / ncores_init)
+        ncores = ncores_init * ncores_petsc * ncores_optim
 
         # Execute subprocess to run Quandary
         err = execute(runtype=runtype, ncores=ncores, config_filename=config_filename, datadir=datadir, quandary_exec=quandary_exec, verbose=self.verbose, cygwinbash=cygwinbash, mpi_exec=mpi_exec, batchargs=batchargs)

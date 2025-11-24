@@ -920,6 +920,8 @@ void myVec::view() {
 
 myObjective::myObjective(OptimProblem* optimctx) : optimctx_(optimctx) {
   myAcceptIter=0;
+
+  MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
 }
 myObjective::~myObjective() {}
 
