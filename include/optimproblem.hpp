@@ -105,6 +105,8 @@ class OptimProblem {
     Vec xprev; ///< Design vector at previous iteration
     Vec xinit; ///< Initial design vector
     Mat Hessian; ///< Hessian matrix for second-order derivative information
+    PetscInt ncut; ///< Number of eigenvalues to be used for Hessian Range Space Finder
+    PetscInt nextra; ///< Oversampling Hessian Range Space Finder. Hardcoded 10.
 
   /**
    * @brief Constructor for optimization problem.
@@ -253,12 +255,10 @@ class OptimProblem {
    * @brief Computes a low-rank approximation of the Hessian using randomized range finding.
    * 
    * @param[in] x Point of Hessian evaluation
-   * @param[in] ncut Number of random samples for subspace approximation
-   * @param[in] nextra Number of oversampling vectors
    * @param[out] U_out Matrix to store dominant Hessian eigenvectors. Will be allocated in here, needs to be destroyed afterwards
    * @param[out] lambda_out Vector to store dominant Hessian eigenvalues. Will be allocated in here, needs to be destroyed afterwards.
    */
-  void HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt nextra, Mat* U_out, Vec* lambda_out);
+  void HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_out);
 
 
   /**
@@ -268,11 +268,9 @@ class OptimProblem {
    * -> Hessian \approx U * Lambda * U^T
    * 
    * @param[in] x Point of evaluation
-   * @param[in] ncut Number of random samples for subspace approximation
-   * @param[in] nextra Number of oversampling vectors
    * @param[out] H Hessian matrix
    */
-  void evalHessian(const Vec x, PetscInt ncut, PetscInt nextra, Mat H);
+  void evalHessian(const Vec x, Mat H);
 
   /** 
   * @brief Projects the gradient onto the dominant subspace of the Hessian.
@@ -282,10 +280,8 @@ class OptimProblem {
   * 
   * @param[in] grad Input gradient vector 
   * @param[out] grad_proj Output projected gradient vector
-  * @param[in] ncut Number of random samples for subspace approximation
-  * @param[in] nextra Number of oversampling vectors
   */
-  void ProjectGradient(const Vec x, const Vec grad, Vec grad_proj, PetscInt ncut, PetscInt nextra);
+  void ProjectGradient(const Vec x, const Vec grad, Vec grad_proj);
 
   /**
    * @brief Runs the optimization solver.

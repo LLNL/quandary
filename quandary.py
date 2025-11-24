@@ -160,6 +160,8 @@ class Quandary:
 
     optimsolver            : str  = "TAO"
     use_hessian            : bool = False
+    ncut                   : int = -1
+    nextra                 : int = 10
     rol_xml                : str  = "./rolinput.xml"
     # Internal configuration. Should not be changed by user.
     _ninit                : int         = -1
@@ -706,6 +708,8 @@ class Quandary:
         mystring += "optim_monitor_frequency = " + str(self.print_frequency_iter) + "\n"
         mystring += "optimsolver = " + self.optimsolver + "\n"
         mystring += "optim_use_hessian = " + str(self.use_hessian)+ "\n"
+        mystring += "optim_hessian_ncut = " + str(self.ncut)+ "\n"
+        mystring += "optim_hessian_nextra= " + str(self.nextra)+ "\n"
         mystring += "rol_xml = " + self.rol_xml+ "\n"
         mystring += "runtype = " + runtype + "\n"
         if len(self.Ne) < 6:

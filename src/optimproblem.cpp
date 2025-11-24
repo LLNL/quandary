@@ -173,6 +173,8 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   TaoSetGradient(tao, NULL, TaoEvalGradient,(void *)this);
   TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient, (void*) this);
   bool use_hessian = config.GetBoolParam("optim_use_hessian", false, false);
+  ncut = config.GetIntParam("optim_hessian_ncut", -1, false, true);
+  nextra = config.GetIntParam("optim_hessian_nextra", 10, false, true);
 
   if (use_hessian) {
     // Create Hessian matrix
@@ -767,11 +769,9 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
   *f = ctx->getObjective();
 
   // /* Project gradient onto dominant subspace */
-  // PetscInt ncut = 25;    // Number of dominant eigenvalues/vectors to compute TODO: READ FROM CONFIG
-  // PetscInt nextra = 10;  // Oversampling
   // Vec grad_proj;
   // VecDuplicate(G, &grad_proj);
-  // ctx->ProjectGradient(x, G, grad_proj, ncut, nextra);
+  // ctx->ProjectGradient(x, G, grad_proj);
   // VecCopy(grad_proj, G);
   // VecDestroy(&grad_proj);
  
@@ -789,13 +789,8 @@ PetscErrorCode TaoEvalObjective(Tao /*tao*/, Vec x, PetscReal *f, void*ptr){
 
 PetscErrorCode TaoEvalHessian(Tao /* tao */, Vec x, Mat H, Mat /* Hpre */, void*ptr){
 
-  PetscInt ncut = 25;    // Number of dominant eigenvalues/vectors to compute
-  PetscInt nextra = 10;  // Oversampling
-  // PetscInt ncut = 2; 
-  // PetscInt nextra = 1; 
-
   OptimProblem* ctx = (OptimProblem*) ptr;
-  ctx->evalHessian(x, ncut, nextra, H);
+  ctx->evalHessian(x, H);
 
   return 0;
 }
@@ -806,11 +801,9 @@ PetscErrorCode TaoEvalGradient(Tao /*tao*/, Vec x, Vec G, void*ptr){
   ctx->evalGradF(x, G);
 
   // /* Project gradient onto dominant subspace */
-  // PetscInt ncut = 25;    // Number of dominant eigenvalues/vectors to compute TODO: READ FROM CONFIG
-  // PetscInt nextra = 10;  // Oversampling
   // Vec grad_proj;
   // VecDuplicate(G, &grad_proj);
-  // ctx->ProjectGradient(x, G, grad_proj, ncut, nextra);
+  // ctx->ProjectGradient(x, G, grad_proj);
   // VecCopy(grad_proj, G);
   // VecDestroy(&grad_proj);
   
@@ -992,7 +985,7 @@ void myObjective::update(const ROL::Vector<double> &x, ROL::UpdateType type, int
   }
 }
 
-void OptimProblem::HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt nextra, Mat* U_out, Vec* lambda_out){
+void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_out){
   // Sample a random matrix Omega
   // Apply Hessian-vector product on each column of Q -> Y = H * Omega
   // Find basis with economy SVD and take top-k left singular vectors
@@ -1045,7 +1038,7 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt n
     MatDenseGetColumnVecWrite(Y, i_global, &y_col);
 
     // Apply hessian vector products, if this sample belongs to this processor
-    if (mpirank_init ==0) printf("%d Applying Hessian-vector product %d / %d\n", mpirank_optim, i_global, nsample);
+    if (mpirank_init ==0 && !quietmode) printf("%d Applying Hessian-vector product %d / %d\n", mpirank_optim, i_global, nsample);
     evalHessVec(x, omega_col, y_col);
 
     MatDenseRestoreColumnVecRead(Omega, i_global, &omega_col);
@@ -1140,11 +1133,11 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt n
   for (int i = 0; i < ncut; i++) {
     MatDenseGetColumnVecWrite(U, i, &u_col);
     EPSGetEigenpair(eps, i, &eigval, NULL, u_col, NULL);
-    lambda[i] = eigval;  // Store inverse eigenvalue
+    lambda[i] = eigval;  
     MatDenseRestoreColumnVecWrite(U, i, &u_col);
   }
   // print the eigenvalues
-  if (mpirank_world==0) {
+  if (mpirank_world==0 && !quietmode) {
     printf("Dominant eigenvalues of the Hessian approximation:\n");
     for (int i = 0; i < ncut; i++) {
       printf("%1.14e\n", lambda[i]);
@@ -1181,24 +1174,24 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, PetscInt ncut, PetscInt n
   PetscRandomDestroy(&rctx);
 }
 
-void OptimProblem::evalHessian(const Vec x, PetscInt ncut, PetscInt nextra, Mat H){
+void OptimProblem::evalHessian(const Vec x, Mat H){
 
   // Get U, Lambda s.t. H \approx U * Lambda * U^T
   Mat U;
   Vec lambda;
-  HessianRandRangeFinder(x, ncut, nextra, &U, &lambda);
+  HessianRandRangeFinder(x, &U, &lambda);
 
-  // // Write lambda and U to file
-  // if (mpirank_world==0) {
-  //   PetscViewer viewer;
-  //   PetscViewerASCIIOpen(PETSC_COMM_WORLD, (output->datadir+"/eigenvalues.dat").c_str(), &viewer);
-  //   PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_SYMMODU);
-  //   VecView(lambda, viewer);
-  //   PetscViewerDestroy(&viewer);
-  //   PetscViewerASCIIOpen(PETSC_COMM_WORLD, (output->datadir+"/eigenvectors.dat").c_str(), &viewer);
-  //   MatView(U, viewer);
-  //   PetscViewerDestroy(&viewer);
-  // }
+  // Write lambda and U to file
+  if (mpirank_world==0) {
+    PetscViewer viewer;
+    PetscViewerASCIIOpen(PETSC_COMM_WORLD, (output->datadir+"/RRF_eigenvalues.dat").c_str(), &viewer);
+    PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_SYMMODU);
+    VecView(lambda, viewer);
+    PetscViewerDestroy(&viewer);
+    PetscViewerASCIIOpen(PETSC_COMM_WORLD, (output->datadir+"/RRF_eigenvectors.dat").c_str(), &viewer);
+    MatView(U, viewer);
+    PetscViewerDestroy(&viewer);
+  }
 
   /* Assemble H = U lambda U^T */
   Mat U_scaled;
@@ -1211,30 +1204,30 @@ void OptimProblem::evalHessian(const Vec x, PetscInt ncut, PetscInt nextra, Mat 
   MatDestroy(&U_scaled);
 }
   
-void OptimProblem::ProjectGradient(const Vec x, const Vec grad, Vec grad_proj, PetscInt ncut, PetscInt nextra){
+void OptimProblem::ProjectGradient(const Vec x, const Vec grad, Vec grad_proj){
 
   // Get U, Lambda s.t. H \approx U * Lambda * U^T
   Mat U;
   Vec lambda;
-  HessianRandRangeFinder(x, ncut, nextra, &U, &lambda);
+  HessianRandRangeFinder(x, &U, &lambda);
 
   /* Gradient projection: grad_proj = U*Lambda^{-1}*U^T * grad */
-  
   Vec tmp;
-  VecDuplicate(lambda, &tmp);
-  MatMultTranspose(U, grad, tmp); // grad_proj = U^T * grad
-  // Scale rows by Lambda^{-1}
+  MatCreateVecs(U, &tmp, NULL);
+  MatMultTranspose(U, grad, tmp); // tmp = U^T * grad
+
+  // Scale rows of tmp by Lambda^{-1}
   PetscScalar *tmp_ptr;
+  VecGetArrayWrite(tmp, &tmp_ptr);
   const PetscScalar *lambda_ptr;
-  VecGetArrayWrite(grad_proj, &tmp_ptr);
   VecGetArrayRead(lambda, &lambda_ptr);
   for (int i = 0; i < ncut; i++) {
-    tmp_ptr[i] = 1.0 / lambda_ptr[i] * tmp_ptr[i];
+    tmp_ptr[i] = 1.0 / lambda_ptr[i] * tmp_ptr[i];  // tmp = Lambda^{-1} * U^T * grad
   }
-  VecRestoreArrayWrite(grad_proj, &tmp_ptr);
+  VecRestoreArrayWrite(tmp, &tmp_ptr);
   VecRestoreArrayRead(lambda, &lambda_ptr);
-  
-  // Project graident: grad_proj = U * tmp
+
+  // Project gradient: grad_proj = U * tmp
   MatMult(U, tmp, grad_proj);
   
   MatDestroy(&U);
