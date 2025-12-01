@@ -509,7 +509,7 @@ int main(int argc,char **argv)
       optimctx->output->writeGradient(grad);
 
       // TEST HESSIAN FUNCTION
-      optimctx->evalHessian(xinit, optimctx->Hessian);
+      optimctx->evalHessian(xinit, optimctx->Hessian, NULL);
     } else {
       g->zero();
       double tol = 0.0;

@@ -104,10 +104,14 @@ class OptimProblem {
     Vec xlower, xupper; ///< Lower and upper bounds for optimization variables
     Vec xprev; ///< Design vector at previous iteration
     Vec xinit; ///< Initial design vector
+    bool use_hessian; ///< Flag to switch on Hessian computation
     Mat Hessian; ///< Hessian matrix for second-order derivative information
+    Mat Hessian_inv; ///< inverse Hessian matrix for second-order derivative information
+    // Mat Utest;
     PetscInt ncut; ///< Number of eigenvalues to be used for Hessian Range Space Finder
     PetscInt nextra; ///< Oversampling Hessian Range Space Finder. Hardcoded 10.
     bool use_positive_evals; ///< Only use positive eigenvalues for Hessian projection
+    KSP taoksp;  ///< Linear solver context within TAO.
 
   /**
    * @brief Constructor for optimization problem.
@@ -123,6 +127,8 @@ class OptimProblem {
   OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, int ninit_, Output* output_, bool quietmode=false);
 
   ~OptimProblem();
+
+  int getMPIRankWorld(){return mpirank_world;};
 
   /**
    * @brief Retrieves the number of design variables.
@@ -263,15 +269,17 @@ class OptimProblem {
 
 
   /**
-   * @brief Evaluate a row-rank Hessian matrix at point x.
+   * @brief Evaluate a row-rank Hessian matrix at point x, or its inverse
    * 
    * Performs Randomized RangeSpaceFinder to compute a low-rank approximation of the Hessian
    * -> Hessian \approx U * Lambda * U^T
+   * and optionally also the inverse U Lambda^-1U^T
    * 
    * @param[in] x Point of evaluation
    * @param[out] H Hessian matrix
+   * @param[out] Hinv inverse Hessian matrix, if not NULL
    */
-  void evalHessian(const Vec x, Mat H);
+  void evalHessian(const Vec x, Mat H, Mat Hinv);
 
   /** 
   * @brief Projects the gradient onto the dominant subspace of the Hessian.
@@ -368,6 +376,20 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
  * @return PetscErrorCode Error code
  */
 PetscErrorCode TaoEvalHessian(Tao tao, Vec x, Mat H, Mat Hpre, void*ptr);
+
+/**
+ * @brief Petsc Tao interface for Hessian Preconditioner. Applies US^-1U^T to a vector. 
+ * 
+ * @param pc Preconditioner context from tao
+ * @param[in] x point to which the preconditioner is applied
+ * @param[out] y Resulting output vector
+ */
+PetscErrorCode TaoPreconditioner(PC pc, Vec x, Vec y);
+
+/* Context for preconditioner */
+typedef struct {
+  OptimProblem* optimctx_;
+} PCShellCtx;
 
 
 /*** ROL Optimization interface ***/

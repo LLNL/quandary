@@ -172,7 +172,7 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   TaoSetObjective(tao, TaoEvalObjective, (void *)this);
   TaoSetGradient(tao, NULL, TaoEvalGradient,(void *)this);
   TaoSetObjectiveAndGradient(tao, NULL, TaoEvalObjectiveAndGradient, (void*) this);
-  bool use_hessian = config.GetBoolParam("optim_use_hessian", false, false);
+  use_hessian = config.GetBoolParam("optim_use_hessian", false, false);
   ncut = config.GetIntParam("optim_hessian_ncut", -1, false, true);
   nextra = config.GetIntParam("optim_hessian_nextra", 10, false, true);
   use_positive_evals = config.GetBoolParam("optim_hessian_use_positive", false, false);
@@ -181,10 +181,40 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
     // Create Hessian matrix
     MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, NULL, &Hessian);
     MatSetFromOptions(Hessian);
+    
+    // Create preconditione
+    MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, NULL, &Hessian_inv);
+    MatSetFromOptions(Hessian_inv);
 
     // TaoSetType(tao, TAONLS);     // Newton line search, unconstrained. TODO: Check Bounds!
     TaoSetType(tao, TAOBNLS);     // Bounded Newton with line search
-    TaoSetHessian(tao, Hessian, Hessian, TaoEvalHessian, (void*) this);
+    TaoSetHessian(tao, Hessian, Hessian_inv, TaoEvalHessian, (void*) this);
+
+    // Define and store linear system solver
+    TaoGetKSP(tao, &taoksp);
+    // Type: Direct solve of the Hessian system: Use the preconditioner on the RHS directly, rather than solving a linear system.
+    // KSPSetType(taoksp, KSPPREONLY);
+
+    // Type: MINRES
+    KSPSetType(taoksp, KSPMINRES);
+
+    // // FOR TESTING: Get information about eigenvalues. NOT WORKING.
+    // KSPSetComputeEigenvalues(taoksp, PETSC_TRUE);
+
+    // Set a Hessian preconditioner
+    PC pc; 
+    KSPGetPC(taoksp, &pc);
+    // // NO preconditioner
+    // PCSetType(pc, PCNONE);
+    // Custom preconditioner (this one could be indefinite!)
+    PCSetType(pc, PCSHELL);
+    PCShellSetApply(pc, TaoPreconditioner);
+    PCShellSetName(pc, "MyPreconditioner") ;
+    // Context shell for preconditioner stores the optimproblem instance.
+    PCShellCtx* pcctx = new PCShellCtx;
+    pcctx->optimctx_ = this;
+    PCShellSetContext(pc, pcctx);
+
 
     // TaoSetType(tao,TAOBQNLS);   // Bounded LBFGS with line search  
     // // Disable LBFGS history to use just the (projected!) gradient
@@ -738,7 +768,102 @@ bool OptimProblem::monitor(int iter, double deltax, Vec params){
     if (getMPIrank_world() == 0){
       std::cout<< finalReason_str << std::endl;
     }
+
+    // print summary of tao to screen
+    if (mpirank_world == 0){
+      TaoView(tao, NULL);
+    }
   }
+
+  if (use_hessian) {
+    // Inspect TAO linear solver
+    // int liters;
+    // TaoGetLinearSolveIterations(tao, &liters);
+    // if (mpirank_world==0) printf("Linear solver iterations at optimiter %d: %d\n", iter, liters);
+    const char *strreason;
+    KSPGetConvergedReasonString(taoksp, &strreason);
+    KSPConvergedReason reason;
+    KSPGetConvergedReason(taoksp, &reason);
+    int its;
+    KSPGetIterationNumber(taoksp, &its);
+    if (mpirank_world==0) printf("KSP converged: %d - %s. Iters=%d\n", reason, strreason, its);
+    // if (mpirank_world==0) KSPView(taoksp, NULL);
+
+    // // Inspect eigenvaluse. NOT WORKING.
+    // int n = ncut;
+    // double *eigs_real = new double[n];
+    // double *eigs_imag = new double[n];
+    // int neigs;
+    // KSPComputeEigenvalues(taoksp, n, eigs_real, eigs_imag, &neigs);
+    // if (mpirank_world==0){
+    //   printf("KSP eigenvalue approximation:\n");
+    //   for (int i=0; i<neigs; i++){
+    //     printf("%1.14e\n", eigs_real[i]);
+    //   }
+    // }
+    // delete [] eigs_real;
+    // delete [] eigs_imag;
+  }
+  
+  // // Test whether the KSP preconditioner uses the inverse Hessian:
+  // if (iter > 0){
+
+  //   // PC pc;
+  //   // KSPGetPC(taoksp, &pc);
+  //   Mat H, Hpre, Diff;
+  //   KSPGetOperators(taoksp, &H, &Hpre);
+  //   MatDuplicate(H, MAT_SHARE_NONZERO_PATTERN, &Diff);
+
+  //   Mat HHpre, HpreH;
+  //   MatMatMult(H, Hpre, MAT_INITIAL_MATRIX, PETSC_DETERMINE, &HHpre);
+  //   MatMatMult(Hpre, H, MAT_INITIAL_MATRIX, PETSC_DETERMINE, &HpreH);
+  //   MatCopy(HpreH, Diff, SAME_NONZERO_PATTERN);
+  //   MatAXPY(Diff, -1.0, HHpre, DIFFERENT_NONZERO_PATTERN);
+  //   double normdenom, normnom;
+  //   MatNorm(Diff, NORM_FROBENIUS, &normdenom);
+  //   MatNorm(H, NORM_FROBENIUS, &normnom);
+  //   printf("PC Error H*Hpre - Hpre*H: %1.8e\n", normdenom/normnom);
+
+  //   // test if H*Hpre = UU^T
+  //   // int rows, cols;
+  //   // MatGetSize(Utest, &rows, &cols);
+  //   // printf("U rows %d cols %d\n", rows, cols);
+  //   // MatGetSize(H, &rows, &cols);
+  //   // printf("H rows %d cols %d\n", rows, cols);
+  //   // MatGetSize(Hpre, &rows, &cols);
+  //   // printf("Hpre rows %d cols %d\n", rows, cols);
+  //   // MatGetSize(Hessian, &rows, &cols);
+  //   // printf("Hessian rows %d cols %d\n", rows, cols);
+  //   // MatGetSize(Hessian_inv, &rows, &cols);
+  //   // printf("Hessian_inv rows %d cols %d\n", rows, cols);
+
+  //   Mat UUT;
+  //   MatMatTransposeMult(Utest, Utest, MAT_INITIAL_MATRIX, PETSC_DETERMINE, &UUT);
+  //   MatCopy(HpreH, Diff, SAME_NONZERO_PATTERN);
+  //   MatAXPY(Diff, -1.0, UUT, DIFFERENT_NONZERO_PATTERN);
+  //   MatNorm(Diff, NORM_FROBENIUS, &normdenom);
+  //   MatNorm(UUT, NORM_FROBENIUS, &normnom);
+  //   printf("PC Error H*Hpre - UU^T: %1.8e\n", normdenom/normnom);
+  //   MatCopy(HHpre, Diff, SAME_NONZERO_PATTERN);
+  //   MatAXPY(Diff, -1.0, UUT, DIFFERENT_NONZERO_PATTERN);
+  //   MatNorm(Diff, NORM_FROBENIUS, &normdenom);
+  //   MatNorm(UUT, NORM_FROBENIUS, &normnom);
+  //   printf("PC Error Hpre*H - UU^T: %1.8e\n", normdenom/normnom);
+
+  //   MatCopy(Hessian_inv, Diff, SAME_NONZERO_PATTERN);
+  //   MatAXPY(Diff, -1.0, Hpre, DIFFERENT_NONZERO_PATTERN);
+  //   MatNorm(Diff, NORM_FROBENIUS, &normdenom);
+  //   MatNorm(Hessian_inv, NORM_FROBENIUS, &normnom);
+  //   printf("PC Error Hinv - Hpre: %1.8e\n", normdenom/normnom);
+
+  //   MatDestroy(&HHpre);
+  //   MatDestroy(&HpreH);
+  //   MatDestroy(&Diff);
+  //   MatDestroy(&UUT);
+  //   MatDestroy(&Utest);
+
+  //   // exit(1);
+  // }
 
   return TAOCONVERGED;
 }
@@ -788,10 +913,30 @@ PetscErrorCode TaoEvalObjective(Tao /*tao*/, Vec x, PetscReal *f, void*ptr){
   return 0;
 }
 
-PetscErrorCode TaoEvalHessian(Tao /* tao */, Vec x, Mat H, Mat /* Hpre */, void*ptr){
+PetscErrorCode TaoEvalHessian(Tao /* tao */, Vec x, Mat H, Mat Hpre, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
-  ctx->evalHessian(x, H);
+  // Set the inverse Hessian as preconditioner. Works together with KSPSetType KSPPREONLY, which applies the preconditioner to the RHS rather than solving a linear system.
+  if (ctx->getMPIRankWorld() == 0) printf("Eval Hessian.\n");
+  ctx->evalHessian(x, H, Hpre); 
+
+  return 0;
+}
+
+
+PetscErrorCode TaoPreconditioner(PC pc, Vec x, Vec y){
+
+
+  // PCShellCtx pcctx;
+  // PCShellGetContext(pc, &pcctx);
+
+  void* ctx_void;
+  PCShellGetContext(pc, &ctx_void);
+  auto* ctx = static_cast<PCShellCtx*>(ctx_void);
+  OptimProblem* optim = ctx->optimctx_;
+
+  if (optim->getMPIRankWorld() == 0) printf("Applying preconditioner.\n");
+  MatMult(optim->Hessian_inv, x, y);
 
   return 0;
 }
@@ -1054,7 +1199,7 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_o
     MatDenseGetColumnVecWrite(Y, i_global, &y_col);
 
     // Apply hessian vector products, if this sample belongs to this processor
-    if (mpirank_init ==0 && !quietmode) printf("%d Applying Hessian-vector product %d / %d\n", mpirank_optim, i_global, nsample);
+    // if (mpirank_init ==0 && !quietmode) printf("%d Applying Hessian-vector product %d / %d\n", mpirank_optim, i_global, nsample);
     evalHessVec(x, omega_col, y_col);
 
     MatDenseRestoreColumnVecRead(Omega, i_global, &omega_col);
@@ -1079,7 +1224,7 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_o
   SVDCreate(PETSC_COMM_WORLD, &svd); 
   SVDSetOperators(svd, Y, NULL); 
   SVDSetType(svd, SVDTRLANCZOS);  // or SVDCROSS, SVDLAPACK
-  SVDSetDimensions(svd, ncut, PETSC_DEFAULT, PETSC_DEFAULT); 
+  SVDSetDimensions(svd, ncut, 2*ncut, PETSC_DEFAULT); 
   SVDSetFromOptions(svd); 
   SVDSolve(svd); 
   SVDGetConverged(svd, &nconv); 
@@ -1129,8 +1274,8 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_o
   /* Eigenvalue decomposition of B */
   EPSCreate(PETSC_COMM_WORLD, &eps);
   EPSSetOperators(eps, B, NULL);
-  EPSSetProblemType(eps, EPS_NHEP); // Symmetric system matrix??
-  // EPSSetProblemType(eps, EPS_HEP); // Symmetric system matrix??
+  // EPSSetProblemType(eps, EPS_NHEP); // Non-Symmetric system matrix??
+  EPSSetProblemType(eps, EPS_HEP); // Symmetric system matrix??
 
   // Get ncut eigenvalues
   EPSSetDimensions(eps, ncut, PETSC_DEFAULT, PETSC_DEFAULT);  
@@ -1224,12 +1369,14 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_o
   PetscRandomDestroy(&rctx);
 }
 
-void OptimProblem::evalHessian(const Vec x, Mat H){
+void OptimProblem::evalHessian(const Vec x, Mat H, Mat Hinv){
 
   // Get U, Lambda s.t. H \approx U * Lambda * U^T
   Mat U;
   Vec lambda;
   HessianRandRangeFinder(x, &U, &lambda);
+
+  // MatDuplicate(U, MAT_COPY_VALUES, &Utest);
 
   // // Write lambda and U to file
   // if (mpirank_world==0) {
@@ -1248,6 +1395,27 @@ void OptimProblem::evalHessian(const Vec x, Mat H){
   MatDuplicate(U, MAT_COPY_VALUES, &U_scaled);  // U_scaled = U
   MatDiagonalScale(U_scaled, NULL, lambda);  // Right scaling U_scaled = U * diag(lambda)
   MatMatTransposeMult(U_scaled, U, MAT_REUSE_MATRIX, PETSC_DEFAULT, &H); // H= U_scaled * U^T
+
+  // invert Lambda if requested
+  if (Hinv != NULL){
+    int nelem;
+    VecGetSize(lambda, &nelem);
+    Vec lambdainv;
+    VecDuplicate(lambda, &lambdainv);
+    PetscScalar *linvptr;
+    const PetscScalar *lptr;
+    VecGetArrayRead(lambda, &lptr);
+    VecGetArrayWrite(lambdainv, &linvptr);
+    for (int i=0; i<nelem; i++){
+      linvptr[i] = 1.0 / lptr[i];
+    }
+    VecRestoreArrayWrite(lambdainv, &linvptr);
+    VecRestoreArrayRead(lambda, &lptr);
+    MatCopy(U, U_scaled, SAME_NONZERO_PATTERN);
+    MatDiagonalScale(U_scaled, NULL, lambdainv);  // U_scaled = U * diag(lambda^-1)
+    MatMatTransposeMult(U_scaled, U, MAT_REUSE_MATRIX, PETSC_DEFAULT, &Hinv);
+    VecDestroy(&lambdainv);
+  }
 
   VecDestroy(&lambda);
   MatDestroy(&U);
