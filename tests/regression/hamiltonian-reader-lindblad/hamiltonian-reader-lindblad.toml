@@ -33,7 +33,6 @@ optim_penalty_param = 0.0
 optim_penalty_dpdm = 0.0
 optim_penalty_variation = 0.0
 optim_penalty_energy = 0.0
-optim_monitor_frequency = 1
 
 [[optimization.control_segments]]
 oscID = 0
@@ -74,6 +73,7 @@ values = [0.0]
 [output]
 datadir = "./data_out"
 output_frequency = 1
+optim_monitor_frequency = 1
 runtype = "simulation"
 usematfree = false
 linearsolver_type = "gmres"
