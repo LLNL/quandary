@@ -1,6 +1,9 @@
 #include "timestepper.hpp"
 #include "defs.hpp"
 #include <string>
+#include <sstream>
+#include <vector>
+#include <fstream>
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
 #include "config.hpp"
@@ -21,8 +24,96 @@
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-5          // Epsilon for Finite Differences
 
+struct ParsedArgs {
+  bool quietmode = false;
+  std::string config_filename;
+  int petsc_argc = 0;
+  std::vector<std::string> petsc_tokens;
+  std::vector<char*> petsc_argv;
+};
+
+void printHelp() {
+  printf("\nQuandary - Optimal control for open quantum systems\n");
+  printf("\nUSAGE:\n");
+  printf("  quandary <config_file> [--quiet] [--petsc-options \"options\"]\n");
+  printf("  quandary --version\n");
+  printf("  quandary --help\n");
+  printf("\nOPTIONS:\n");
+  printf("  <config_file>     Configuration file (.cfg) specifying system parameters\n");
+  printf("  --quiet           Reduce output verbosity\n");
+  printf("  --petsc-options   Pass options directly to PETSc/SLEPc (in quotes)\n");
+  printf("  --version         Show version information\n");
+  printf("  --help            Show this help message\n");
+  printf("\nEXAMPLES:\n");
+  printf("  quandary config.cfg\n");
+  printf("  mpirun -np 4 quandary config.cfg --quiet\n");
+  printf("  quandary config.cfg --petsc-options \"-log_view -tao_view\"\n");
+  printf("  mpirun -np 4 quandary config.cfg --quiet --petsc-options \"-log_view -tao_view\"\n");
+  printf("\n");
+}
+
+ParsedArgs parseArguments(int argc, char** argv) {
+  ParsedArgs args;
+
+  if (argc < 2 || std::string(argv[1]) == "--help") {
+    printHelp();
+    exit(0);
+  }
+
+  if (std::string(argv[1]) == "--version") {
+    printf("Quandary %s %s\n", QUANDARY_FULL_VERSION_STRING, QUANDARY_GIT_SHA);
+    exit(0);
+  }
+
+  args.config_filename = argv[1];
+
+  // Validate config file exists and is readable
+  std::ifstream test_file(args.config_filename);
+  if (!test_file.good()) {
+    printf("\nERROR: Cannot open config file '%s'\n", args.config_filename.c_str());
+    printf("Please check that the file exists and is readable.\n\n");
+    exit(1);
+  }
+  test_file.close();
+
+  // Parse quiet mode and PETSc options flags
+  std::string petsc_options;
+  for (int i=2; i<argc; i++) {
+    std::string arg = argv[i];
+    if (arg == "--quiet") {
+      args.quietmode = true;
+    } else if (arg == "--petsc-options" && i + 1 < argc) {
+      petsc_options = argv[++i];
+    }
+  }
+
+  // Build PETSc argc/argv
+  // Always include program name
+  args.petsc_argv.push_back(argv[0]);
+
+  // Parse PETSc options string into individual tokens
+  if (!petsc_options.empty()) {
+    std::istringstream iss(petsc_options);
+    std::string token;
+    while (iss >> token) {
+      args.petsc_tokens.push_back(token);
+    }
+
+    for (const auto& token : args.petsc_tokens) {
+      args.petsc_argv.push_back(const_cast<char*>(token.c_str()));
+    }
+  }
+
+  args.petsc_argc = args.petsc_argv.size();
+
+  return args;
+}
+
 int main(int argc,char **argv)
 {
+  /* Parse command line arguments */
+  ParsedArgs args = parseArguments(argc, argv);
+
   char filename[255];
   PetscErrorCode ierr;
 
@@ -32,49 +123,12 @@ int main(int argc,char **argv)
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
 
-  if (argc > 1 && std::string(argv[1]) == "--version") {
-    if (mpirank_world == 0) {
-      printf("Quandary %s %s\n", QUANDARY_FULL_VERSION_STRING, QUANDARY_GIT_SHA);
-    }
-    MPI_Finalize();
-    return 0;
-  }
-
-  bool quietmode = false;
-  if (argc > 2){
-    for (int i=2; i<argc; i++) {
-      std::string quietstring = argv[i];
-      if (quietstring.substr(2,5).compare("quiet") == 0) {
-        quietmode = true;
-        // printf("quietmode =  %d\n", quietmode);
-      }
-    }
-  }
-
+  bool quietmode = args.quietmode;
   if (mpirank_world == 0 && !quietmode) printf("Running on %d cores.\n", mpisize_world);
 
-  /* Read config file */
-  if (argc < 2) {
-    if (mpirank_world == 0) {
-      printf("\nQuandary - Optimal control for open quantum systems\n");
-      printf("\nUSAGE:\n");
-      printf("  quandary <config_file> [--quiet]\n");
-      printf("  quandary --version\n");
-      printf("\nOPTIONS:\n");
-      printf("  <config_file>    Configuration file (.cfg) specifying system parameters\n");
-      printf("  --quiet          Reduce output verbosity\n");
-      printf("  --version        Show version information\n");
-      printf("\nEXAMPLES:\n");
-      printf("  quandary config.cfg\n");
-      printf("  mpirun -np 4 quandary config.cfg --quiet\n");
-      printf("\n");
-    }
-    MPI_Finalize();
-    return 0;
-  }
   std::stringstream log;
   Config config(MPI_COMM_WORLD, log, quietmode);
-  config.ReadFile(argv[1]);
+  config.ReadFile(args.config_filename);
 
   /* Initialize random number generator: Check if rand_seed is provided from config file, otherwise set random. */
   int rand_seed = config.GetIntParam("rand_seed", -1, false, false);
@@ -210,10 +264,11 @@ int main(int argc,char **argv)
 
   if (mpirank_world == 0 && !quietmode)  std::cout<< "Parallel distribution: " << mpisize_init << " np_init  X  " << mpisize_petsc<< " np_petsc  " << std::endl;
 
+  char** petsc_argv = args.petsc_argv.data();
 #ifdef WITH_SLEPC
-  ierr = SlepcInitialize(&argc, &argv, (char*)0, NULL);if (ierr) return ierr;
+  ierr = SlepcInitialize(&args.petsc_argc, &petsc_argv, (char*)0, NULL);if (ierr) return ierr;
 #else
-  ierr = PetscInitialize(&argc,&argv,(char*)0,NULL);if (ierr) return ierr;
+  ierr = PetscInitialize(&args.petsc_argc, &petsc_argv, (char*)0, NULL);if (ierr) return ierr;
 #endif
   PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, 	PETSC_VIEWER_ASCII_MATLAB );
 
