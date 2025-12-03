@@ -1154,6 +1154,11 @@ std::vector<double> Config::parseOptimWeights(const std::optional<std::vector<do
   // Set optimization weights, default to uniform weights summing to one
   std::vector<double> optim_weights = optim_weights_.value_or(std::vector<double>{1.0});
   copyLast(optim_weights, n_initial_conditions);
+
+  if (optim_weights.size() != n_initial_conditions) {
+    logger.log("Warning: optim_weights size must be less than or equal to number of initial conditions");
+    optim_weights.resize(n_initial_conditions);
+  }
   // Scale the weights such that they sum up to one: beta_i <- beta_i / (\sum_i beta_i)
   double scaleweights = 0.0;
   for (size_t i = 0; i < n_initial_conditions; i++) scaleweights += optim_weights[i];
