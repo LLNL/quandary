@@ -70,8 +70,9 @@ def run_test(simulation_dir, number_of_processes, config_file, files_to_compare,
         quandary_path=QUANDARY_PATH,
         config_file=config_file)
     print(f"Running command: \"{' '.join(command)}\"")
-    result = subprocess.run(command, capture_output=True, text=True, check=True)
-    print(result.stdout)
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    print("STDOUT:\n", result.stdout)
+    print("STDERR:\n", result.stderr)
     assert result.returncode == 0
 
     matching_files = [file for pattern in files_to_compare
