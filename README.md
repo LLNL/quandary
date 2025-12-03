@@ -145,6 +145,10 @@ Performance regression tests are defined in `tests/performance`.
 The latest results from `main` are shown on this [performance dashboard](https://software.llnl.gov/quandary/dev/bench/).
 See `tests/performance/README.md` for more information.
 
+## Unit tests
+Unit tests using google test are defined in `tests/unit`.
+They can be run with `make test` in the build folder.
+
 # Community and Contributing
 
 Quandary is an open source project that is under heavy development. Contributions in all forms are very welcome, and can be anything from new features to bugfixes, documentation, or even discussions. Contributing is easy, work on your branch, create a pull request to `main` when you're good to go and the regression tests pass.

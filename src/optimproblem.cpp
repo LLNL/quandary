@@ -1,9 +1,9 @@
 #include "optimproblem.hpp"
 
-OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, int ninit_, Output* output_, bool quietmode_){
+OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, Output* output_, bool quietmode_){
 
   timestepper = timestepper_;
-  ninit = ninit_;
+  ninit = config.getNInitialConditions();
   output = output_;
   quietmode = quietmode_;
   /* Reset */
@@ -59,62 +59,31 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
 
   /* Initialize the optimization target, including setting of initial state rho_t0 if read from file or pure state or ensemble */
-  std::vector<std::string> target_str;
-  config.GetVecStrParam("optim_target", target_str, "pure");
-  std::string objective_str = config.GetStrParam("optim_objective", "Jfrobenius");
-  std::vector<double> read_gate_rot;
-  config.GetVecDoubleParam("gate_rot_freq", read_gate_rot, 1e20, true, false); 
-  std::vector<std::string> initcond_str;
-  config.GetVecStrParam("initialcondition", initcond_str, "none", false);
-  optim_target = new OptimTarget(target_str, objective_str, initcond_str, timestepper->mastereq, timestepper->total_time, read_gate_rot, rho_t0, quietmode);
+  optim_target = new OptimTarget(config, timestepper->mastereq, timestepper->total_time, rho_t0, quietmode);
 
   /* Get weights for the objective function (weighting the different initial conditions */
-  config.GetVecDoubleParam("optim_weights", obj_weights, 1.0);
-  int nfill = 0;
-  if (obj_weights.size() < ninit) nfill = ninit - obj_weights.size();
-  double val = obj_weights[obj_weights.size()-1];
-  if (obj_weights.size() < ninit){
-    for (int i = 0; i < nfill; i++) 
-      obj_weights.push_back(val);
-  }
-  assert(obj_weights.size() >= ninit);
-  // Scale the weights such that they sum up to one: beta_i <- beta_i / (\sum_i beta_i)
-  double scaleweights = 0.0;
-  for (size_t i=0; i<ninit; i++) scaleweights += obj_weights[i];
-  for (size_t i=0; i<ninit; i++) obj_weights[i] = obj_weights[i] / scaleweights;
-  // Distribute over mpi_init processes 
-  std::vector<double> sendbuf = obj_weights;
-  std::vector<double> recvbuf = obj_weights;
-  int nscatter = ninit_local;
-  MPI_Scatter(sendbuf.data(), nscatter, MPI_DOUBLE, recvbuf.data(), nscatter,  MPI_DOUBLE, 0, comm_init);
-  for (int i = 0; i < nscatter; i++) obj_weights[i] = recvbuf[i];
-  for (size_t i=nscatter; i < obj_weights.size(); i++) obj_weights[i] = 0.0;
-
+  obj_weights = config.getOptimWeights();
 
   /* Store other optimization parameters */
-  gamma_tik = config.GetDoubleParam("optim_regul", 1e-4);
-  gatol = config.GetDoubleParam("optim_atol", 1e-8);
-  fatol = config.GetDoubleParam("optim_ftol", 1e-8);
-  inftol = config.GetDoubleParam("optim_inftol", 1e-5);
-  grtol = config.GetDoubleParam("optim_rtol", 1e-4);
-  maxiter = config.GetIntParam("optim_maxiter", 200);
-  gamma_penalty = config.GetDoubleParam("optim_penalty", 0.0);
-  penalty_param = config.GetDoubleParam("optim_penalty_param", 0.5);
-  gamma_penalty_energy = config.GetDoubleParam("optim_penalty_energy", 0.0);
-  // Check for new parameter name first, then old name for backward compatibility
-  if (config.count("optim_regul_tik0") > 0) {
-    gamma_tik_interpolate = config.GetBoolParam("optim_regul_tik0", false, false);
-  } else if (config.count("optim_regul_interpolate") > 0) {
-    gamma_tik_interpolate = config.GetBoolParam("optim_regul_interpolate", false, false);
-    if (mpirank_world == 0 && !quietmode) {
-      printf("Warning: Parameter 'optim_regul_interpolate' is deprecated. Please use 'optim_regul_tik0' instead.\n");
-    }
-  } else {
-    gamma_tik_interpolate = false;
-  }
-  gamma_penalty_dpdm = config.GetDoubleParam("optim_penalty_dpdm", 0.0);
-  gamma_penalty_variation = config.GetDoubleParam("optim_penalty_variation", 0.01); 
-  
+  gamma_tik = config.getOptimRegul();
+
+  // Get tolerance settings as a group
+  const auto& tolerance = config.getOptimTolerance();
+  gatol = tolerance.atol;
+  fatol = tolerance.ftol;
+  inftol = tolerance.inftol;
+  grtol = tolerance.rtol;
+  maxiter = tolerance.maxiter;
+
+  // Get penalty settings as a group
+  const auto& penalty_config = config.getOptimPenalty();
+  gamma_penalty = penalty_config.penalty;
+  penalty_param = penalty_config.penalty_param;
+  gamma_penalty_energy = penalty_config.penalty_energy;
+  gamma_penalty_dpdm = penalty_config.penalty_dpdm;
+  gamma_penalty_variation = penalty_config.penalty_variation;
+
+  gamma_tik_interpolate = config.getOptimRegulTik0();
 
   if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->lindbladtype != LindbladType::NONE){
     if (mpirank_world == 0 && !quietmode) {
@@ -136,12 +105,8 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   VecDuplicate(xlower, &xupper);
   int col = 0;
   for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    std::vector<std::string> bound_str;
-    config.GetVecStrParam("control_bounds" + std::to_string(iosc), bound_str, "10000.0");
     for (size_t iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNSegments(); iseg++){
-      double boundval = 0.0;
-      if (bound_str.size() <= iseg) boundval =  atof(bound_str[bound_str.size()-1].c_str());
-      else boundval = atof(bound_str[iseg].c_str());
+      double boundval = config.getControlBound(iosc, iseg);
       // Scale bounds by the number of carrier waves, and convert to radians */
       boundval = boundval / (sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies());
       boundval = boundval * 2.0*M_PI;
@@ -165,12 +130,10 @@ OptimProblem::OptimProblem(Config config, TimeStepper* timestepper_, MPI_Comm co
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
 
   /* Store the initial guess if read from file */
-  std::vector<std::string> controlinit_str;
-  config.GetVecStrParam("control_initialization0", controlinit_str, "constant, 0.0");
-  if ( controlinit_str.size() > 0 && controlinit_str[0].compare("file") == 0 ) {
-    assert(controlinit_str.size() >=2);
+  auto control_initialization_file = config.getControlInitializationFile();
+  if (control_initialization_file.has_value()) {
     for (int i=0; i<ndesign; i++) initguess_fromfile.push_back(0.0);
-    if (mpirank_world == 0) read_vector(controlinit_str[1].c_str(), initguess_fromfile.data(), ndesign, quietmode);
+    if (mpirank_world == 0) read_vector(control_initialization_file.value().c_str(), initguess_fromfile.data(), ndesign, quietmode);
     MPI_Bcast(initguess_fromfile.data(), ndesign, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   }
  

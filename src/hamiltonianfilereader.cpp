@@ -1,10 +1,11 @@
 #include "hamiltonianfilereader.hpp"
+#include <optional>
 
 HamiltonianFileReader::HamiltonianFileReader(){
 }
 
 
-HamiltonianFileReader::HamiltonianFileReader(std::string hamiltonian_file_Hsys_, std::string hamiltonian_file_Hc_, LindbladType lindbladtype_, PetscInt dim_rho_, bool quietmode_) {
+HamiltonianFileReader::HamiltonianFileReader(std::optional<std::string> hamiltonian_file_Hsys_, std::optional<std::string> hamiltonian_file_Hc_, LindbladType lindbladtype_, PetscInt dim_rho_, bool quietmode_) {
 
   lindbladtype = lindbladtype_;
   dim_rho = dim_rho_;
@@ -19,6 +20,9 @@ HamiltonianFileReader::~HamiltonianFileReader(){
 }
 
 void HamiltonianFileReader::receiveHsys(Mat& Ad, Mat& Bd){
+
+  if (!hamiltonian_file_Hsys.has_value()) return;
+
   MatSetOption(Bd, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
 
 
@@ -28,9 +32,9 @@ void HamiltonianFileReader::receiveHsys(Mat& Ad, Mat& Bd){
 
   // Only rank 0 reads the file 
   if (mpirank_world == 0) {
-    std::ifstream infile(hamiltonian_file_Hsys);
+    std::ifstream infile(hamiltonian_file_Hsys.value());
     if (!infile.is_open()) {
-        std::cerr << "Could not open " << hamiltonian_file_Hsys << std::endl;
+        std::cerr << "Could not open " << hamiltonian_file_Hsys.value() << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
     std::string line;
@@ -104,7 +108,7 @@ void HamiltonianFileReader::receiveHsys(Mat& Ad, Mat& Bd){
 
 void HamiltonianFileReader::receiveHc(std::vector<Mat>& Ac_vec, std::vector<Mat>& Bc_vec){
 
-  if (hamiltonian_file_Hc.compare("none") == 0 ) return;
+  if (!hamiltonian_file_Hc.has_value()) return;
 
   for (size_t i=0; i<Ac_vec.size(); ++i) {
     MatSetOption(Ac_vec[i], MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
@@ -117,9 +121,9 @@ void HamiltonianFileReader::receiveHc(std::vector<Mat>& Ac_vec, std::vector<Mat>
 
   // Only rank 0 reads the file
   if (mpirank_world == 0) {
-    std::ifstream infile(hamiltonian_file_Hc);
+    std::ifstream infile(hamiltonian_file_Hc.value());
     if (!infile.is_open()) {
-        std::cerr << "Could not open " << hamiltonian_file_Hc<< std::endl;
+        std::cerr << "Could not open " << hamiltonian_file_Hc.value() << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
     std::string line;

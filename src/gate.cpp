@@ -1,4 +1,5 @@
 #include "gate.hpp"
+#include "defs.hpp"
 
 Gate::Gate(){
   dim_ess = 0;
@@ -543,29 +544,33 @@ FromFile::FromFile(const std::vector<size_t>& nlevels_, const std::vector<size_t
 FromFile::~FromFile(){}
 
 
-Gate* initTargetGate(const std::vector<std::string>& target_str, const std::vector<size_t>& nlevels, const std::vector<size_t>& nessential, double total_time, LindbladType lindbladtype, const std::vector<double>& gate_rot_freq, bool quietmode){
+Gate* initTargetGate(GateType target_gate, const std::string& file, const std::vector<size_t>& nlevels, const std::vector<size_t>& nessential, double total_time, LindbladType lindbladtype, const std::vector<double>& gate_rot_freq, bool quietmode){
 
-  if ( target_str.size() < 2 ) {
-    printf("ERROR: You want to optimize for a gate, but didn't specify which one. Check your config for 'optim_target'!\n");
-    exit(1);
-  };
-
-  Gate* mygate;
-  if      (target_str[1].compare("none")  == 0 )    mygate = new Gate();
-  else if (target_str[1].compare("xgate") == 0 )    mygate = new XGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-  else if (target_str[1].compare("ygate") == 0 )    mygate = new YGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-  else if (target_str[1].compare("zgate") == 0 )    mygate = new ZGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-  else if (target_str[1].compare("hadamard") == 0 ) mygate = new HadamardGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-  else if (target_str[1].compare("cnot") == 0 )     mygate = new CNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-  else if (target_str[1].compare("swap") == 0 )     mygate = new SWAP(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-  else if (target_str[1].compare("swap0q") == 0 )   mygate = new SWAP_0Q(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-  else if (target_str[1].compare("cqnot") == 0 )    mygate = new CQNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-  else if (target_str[1].compare("qft") == 0 )    mygate = new QFT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
-  else if (target_str[1].compare("file") == 0 ) mygate = new FromFile(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, target_str[2], quietmode);
-  else {
-    printf("ERROR. Could not find target gate. Exiting now.\n");
-    exit(1);
+  switch (target_gate) {
+    case GateType::NONE:
+      return new Gate();
+    case GateType::XGATE:
+      return new XGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+    case GateType::YGATE:
+      return new YGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+    case GateType::ZGATE:
+      return new ZGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+    case GateType::HADAMARD:
+      return new HadamardGate(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+    case GateType::CNOT:
+      return new CNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+    case GateType::SWAP:
+      return new SWAP(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+    case GateType::SWAP_0Q:
+      return new SWAP_0Q(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+    case GateType::CQNOT:
+      return new CQNOT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+    case GateType::QFT:
+      return new QFT(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, quietmode);
+    case GateType::FILE:
+      return new FromFile(nlevels, nessential, total_time, gate_rot_freq, lindbladtype, file, quietmode);
   }
 
-  return mygate;
+  // should not happen, but make compiler happy
+  return new Gate();
 }

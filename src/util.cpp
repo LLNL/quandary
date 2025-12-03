@@ -1,5 +1,7 @@
 #include "util.hpp"
 
+#include <algorithm>
+
 // Suppress compiler warnings about unused parameters in code with #ifdef
 #define UNUSED(expr) (void)(expr)
 
@@ -651,4 +653,15 @@ bool isUnitary(const Mat V_re, const Mat V_im){
   MatDestroy(&D);
 
   return isunitary;
+}
+
+
+std::string toLower(std::string str) {
+  std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+  return str;
+}
+
+bool hasSuffix(const std::string& str, const std::string& suffix) {
+  return str.size() >= suffix.size() &&
+    str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }

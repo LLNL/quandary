@@ -15,17 +15,6 @@
 #pragma once
 
 /**
- * @brief Structure for storing pi-pulse parameters.
- *
- * Stores timing and amplitude information for pi-pulse sequences.
- */
-struct PiPulse {
-  std::vector<double> tstart; ///< Start times for each pulse segment
-  std::vector<double> tstop; ///< Stop times for each pulse segment
-  std::vector<double> amp; ///< Amplitudes for each pulse segment
-};
-
-/**
  * @brief Quantum oscillator (multi-level qubit) with control capabilities.
  *
  * This class represents a single quantum oscillator that is controlled by external 
@@ -72,31 +61,20 @@ class Oscillator {
     bool control_enforceBC; ///< Flag to enforce boundary conditions on controls
 
   public:
-    PiPulse pipulse; ///< Pi-pulse storage (dummy for compatibility)
+    std::vector<PiPulseSegment> pipulse; ///< Pi-pulse segments for this oscillator
     PetscInt dim_preOsc; ///< Dimension of coupled subsystems preceding this oscillator
     PetscInt dim_postOsc; ///< Dimension of coupled subsystems following this oscillator
 
     Oscillator();
 
     /**
-     * @brief Constructor with full oscillator specification.
+     * @brief Constructor with simplified configuration-based specification.
      *
-     * @param config Configuration parameters
+     * @param config Configuration parameters containing all oscillator settings
      * @param id Oscillator identifier
-     * @param nlevels_all_ Number of levels for all oscillators in system
-     * @param controlsegments Control segment specifications
-     * @param controlinitializations Control initialization specifications
-     * @param ground_freq_ Fundamental transition frequency
-     * @param selfkerr_ Self-Kerr coefficient
-     * @param rotational_freq_ Rotating frame frequency
-     * @param decay_time_ T1 decay time
-     * @param dephase_time_ T2 dephasing time
-     * @param carrier_freq_ Carrier wave frequencies
-     * @param Tfinal_ Final evolution time
-     * @param lindbladtype_ Type of Lindblad operators
      * @param rand_engine Random number generator engine
      */
-    Oscillator(Config config, size_t id, const std::vector<size_t>& nlevels_all_, std::vector<std::string>& controlsegments, std::vector<std::string>& controlinitializations, double ground_freq_, double selfkerr_, double rotational_freq_, double decay_time_, double dephase_time_, const std::vector<double>& carrier_freq_, double Tfinal_, LindbladType lindbladtype_, std::mt19937 rand_engine);
+    Oscillator(const Config& config, size_t id, std::mt19937 rand_engine);
 
     virtual ~Oscillator();
 

@@ -1,5 +1,10 @@
 #include <petscmat.h>
-#include <iostream>
+
+#include <cctype>
+#include <cstring>
+#include <map>
+#include <optional>
+#include <string>
 #include <vector>
 #ifdef WITH_SLEPC
 #include <slepceps.h>
@@ -251,3 +256,39 @@ void copyLast(std::vector<Tval>& fillme, int tosize){
       // std::cout<<std::endl;
     // }
 };
+
+
+/**
+ * @brief Returns a lowercase version of the input string.
+ *
+ * @param str String to convert to lowercase.
+ * @return std::string Lowercase string
+ */
+std::string toLower(std::string str);
+
+/**
+ * @brief Checks if string ends with specified suffix.
+ *
+ * @param str Input string to check.
+ * @param suffix Suffix to look for.
+ * @return bool True if string ends with suffix, false otherwise.
+ */
+bool hasSuffix(const std::string& str, const std::string& suffix);
+
+
+/**
+ * @brief Generic enum parsing utility with case-insensitive lookup.
+ *
+ * @param str String value to parse into enum
+ * @param enum_map Map from string to enum values
+ * @return std::optional<T> Parsed enum value or nullopt if not found
+ */
+template<typename T>
+std::optional<T> parseEnum(const std::string& str, const std::map<std::string, T>& enum_map) {
+  auto it = enum_map.find(toLower(str));
+  if (it != enum_map.end()) {
+    return it->second;
+  } else {
+    return std::nullopt;
+  }
+}
