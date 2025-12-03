@@ -1,11 +1,25 @@
 #include <petscmat.h>
+#include <fstream>
 #include <iostream>
 #include <vector>
+#include "version.hpp"
 #ifdef WITH_SLEPC
 #include <slepceps.h>
 #endif
 
 #pragma once
+
+struct ParsedArgs {
+  bool quietmode = false;
+  std::string config_filename;
+  int petsc_argc = 0;
+  std::vector<std::string> petsc_tokens;
+  std::vector<char*> petsc_argv;
+};
+
+void printHelp();
+
+ParsedArgs parseArguments(int argc, char** argv);
 
 
 /**
