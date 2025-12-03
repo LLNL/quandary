@@ -16,7 +16,7 @@ initial_condition = {type = "pure", levels = [2, 0]}
 control_enforceBC = true
 optim_target = {target_type = "pure", levels = [0, 0]}
 optim_objective = "Jmeasure"
-optim_weights = [1.0, 1.0]
+optim_weights = [1.0]
 optim_ftol = 1e-05
 optim_inftol = 1e-05
 optim_atol = 1e-07
