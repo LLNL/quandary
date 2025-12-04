@@ -24,7 +24,6 @@
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-5          // Epsilon for Finite Differences
 
-
 int main(int argc,char **argv)
 {
   /* Parse command line arguments */
