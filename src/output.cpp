@@ -25,6 +25,7 @@ Output::Output(Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, int nosc
   if (mpirank_world == 0) {
     mkdir(datadir.c_str(), 0777);
   }
+  MPI_Barrier(MPI_COMM_WORLD);
 
   /* Prepare output for optimizer */
   optim_monitor_freq = config.GetIntParam("optim_monitor_frequency", 10);
