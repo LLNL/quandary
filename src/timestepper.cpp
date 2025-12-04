@@ -94,57 +94,57 @@ Vec TimeStepper::getState(size_t tindex){
 }
 
 Vec TimeStepper::solveODE(int initid, Vec rho_t0){
-  printf("DEBUG solveODE: Starting with initid=%d, writeTrajectoryDataFiles=%s\n", initid, writeTrajectoryDataFiles ? "true" : "false");
+  printf("[%d,%d] DEBUG solveODE: Starting with initid=%d, writeTrajectoryDataFiles=%s\n", mpirank_world, mpirank_petsc, initid, writeTrajectoryDataFiles ? "true" : "false");
 
   /* Open output files */
   if (writeTrajectoryDataFiles) {
-    printf("DEBUG solveODE: About to call openTrajectoryDataFiles with initid=%d\n", initid);
+    printf("[%d,%d] DEBUG solveODE: About to call openTrajectoryDataFiles with initid=%d\n", mpirank_world, mpirank_petsc, initid);
     output->openTrajectoryDataFiles("rho", initid);
-    printf("DEBUG solveODE: Successfully opened trajectory data files\n");
+    printf("[%d,%d] DEBUG solveODE: Successfully opened trajectory data files\n", mpirank_world, mpirank_petsc);
   }
 
   /* Set initial condition  */
-  printf("DEBUG solveODE: About to copy rho_t0 to x\n");
+  printf("[%d,%d] DEBUG solveODE: About to copy rho_t0 to x\n", mpirank_world, mpirank_petsc);
   VecCopy(rho_t0, x);
-  printf("DEBUG solveODE: Successfully copied rho_t0 to x\n");
+  printf("[%d,%d] DEBUG solveODE: Successfully copied rho_t0 to x\n", mpirank_world, mpirank_petsc);
 
-  printf("DEBUG solveODE: Checking gamma_penalty_dpdm = %e\n", gamma_penalty_dpdm);
+  printf("[%d,%d] DEBUG solveODE: Checking gamma_penalty_dpdm = %e\n", mpirank_world, mpirank_petsc, gamma_penalty_dpdm);
   /* Store initial state for dpdm penalty */
   if (gamma_penalty_dpdm > 1e-13){
-    printf("DEBUG solveODE: Entering dpdm penalty setup\n");
+    printf("[%d,%d] DEBUG solveODE: Entering dpdm penalty setup\n", mpirank_world, mpirank_petsc);
     for (int i = 0; i < 2; i++) {
-      printf("DEBUG solveODE: Creating dpdm_state %d\n", i);
+      printf("[%d,%d] DEBUG solveODE: Creating dpdm_state %d\n", mpirank_world, mpirank_petsc, i);
       Vec state;
       VecCreate(PETSC_COMM_WORLD, &state);
       PetscInt globalsize = 2 * mastereq->getDim(); 
-      printf("DEBUG solveODE: globalsize=%d, mpisize_petsc=%d\n", globalsize, mpisize_petsc);
+      printf("[%d,%d] DEBUG solveODE: globalsize=%d, mpisize_petsc=%d\n", mpirank_world, mpirank_petsc, globalsize, mpisize_petsc);
       PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
-      printf("DEBUG solveODE: localsize=%d\n", localsize);
+      printf("[%d,%d] DEBUG solveODE: localsize=%d\n", mpirank_world, mpirank_petsc, localsize);
       VecSetSizes(state,localsize,globalsize);
       VecSetFromOptions(state);
       dpdm_states.push_back(state);
-      printf("DEBUG solveODE: Successfully created dpdm_state %d\n", i);
+      printf("[%d,%d] DEBUG solveODE: Successfully created dpdm_state %d\n", mpirank_world, mpirank_petsc, i);
     }
-    printf("DEBUG solveODE: About to copy x to dpdm_states[0]\n");
+    printf("[%d,%d] DEBUG solveODE: About to copy x to dpdm_states[0]\n", mpirank_world, mpirank_petsc);
     VecCopy(x, dpdm_states[0]);
-    printf("DEBUG solveODE: Successfully copied x to dpdm_states[0]\n");
+    printf("[%d,%d] DEBUG solveODE: Successfully copied x to dpdm_states[0]\n", mpirank_world, mpirank_petsc);
   }
 
   /* --- Loop over time interval --- */
-  printf("DEBUG solveODE: Initializing time loop variables\n");
+  printf("[%d,%d] DEBUG solveODE: Initializing time loop variables\n", mpirank_world, mpirank_petsc);
   penalty_integral = 0.0;
   penalty_dpdm = 0.0;
-  printf("DEBUG solveODE: penalty_integral=%f, penalty_dpdm=%f\n", penalty_integral, penalty_dpdm);
-  printf("DEBUG solveODE: About to initialize energy_penalty_integral\n");
+  printf("[%d,%d] DEBUG solveODE: penalty_integral=%f, penalty_dpdm=%f\n", mpirank_world, mpirank_petsc, penalty_integral, penalty_dpdm);
+  printf("[%d,%d] DEBUG solveODE: About to initialize energy_penalty_integral\n", mpirank_world, mpirank_petsc);
   energy_penalty_integral = 0.0;
-  printf("DEBUG solveODE: energy_penalty_integral=%f\n", energy_penalty_integral);
+  printf("[%d,%d] DEBUG solveODE: energy_penalty_integral=%f\n", mpirank_world, mpirank_petsc, energy_penalty_integral);
   
-  printf("DEBUG solveODE: About to start time loop, ntime=%d\n", ntime);
-  printf("DEBUG solveODE: Critical variables check:\n");
-  printf("DEBUG solveODE:   storeFWD = %s\n", storeFWD ? "true" : "false");
-  printf("DEBUG solveODE:   store_states.size() = %zu\n", store_states.size());
-  printf("DEBUG solveODE:   mpirank_petsc = %d\n", mpirank_petsc);
-  printf("DEBUG solveODE:   mpisize_petsc = %d\n", mpisize_petsc);
+  printf("[%d,%d] DEBUG solveODE: About to start time loop, ntime=%d\n", mpirank_world, mpirank_petsc, ntime);
+  printf("[%d,%d] DEBUG solveODE: Critical variables check:\n", mpirank_world, mpirank_petsc);
+  printf("[%d,%d] DEBUG solveODE:   storeFWD = %s\n", mpirank_world, mpirank_petsc, storeFWD ? "true" : "false");
+  printf("[%d,%d] DEBUG solveODE:   store_states.size() = %zu\n", mpirank_world, mpirank_petsc, store_states.size());
+  printf("[%d,%d] DEBUG solveODE:   mpirank_petsc = %d\n", mpirank_world, mpirank_petsc, mpirank_petsc);
+  printf("[%d,%d] DEBUG solveODE:   mpisize_petsc = %d\n", mpirank_world, mpirank_petsc, mpisize_petsc);
   
   if (storeFWD && store_states.size() <= 0) {
     printf("ERROR: storeFWD=true but store_states is empty!\n");
@@ -156,34 +156,34 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   }
   
   for (int n = 0; n < ntime; n++){
-    if (n == 0) printf("DEBUG solveODE: Starting first iteration n=0\n");
+    if (n == 0) printf("[%d,%d] DEBUG solveODE: Starting first iteration n=0\n", mpirank_world, mpirank_petsc);
 
     /* current time */
     double tstart = n * dt;
     double tstop  = (n+1) * dt;
-    if (n == 0) printf("DEBUG solveODE: Computed times: tstart=%f, tstop=%f\n", tstart, tstop);
+    if (n == 0) printf("[%d,%d] DEBUG solveODE: Computed times: tstart=%f, tstop=%f\n", mpirank_world, mpirank_petsc, tstart, tstop);
 
     /* store and write current state. */
-    if (n == 0) printf("DEBUG solveODE: About to check storeFWD\n");
+    if (n == 0) printf("[%d,%d] DEBUG solveODE: About to check storeFWD\n", mpirank_world, mpirank_petsc);
     if (storeFWD) {
       if (n >= store_states.size()) {
         printf("FATAL: n=%d >= store_states.size()=%zu\n", n, store_states.size());
         exit(1);
       }
       VecCopy(x, store_states[n]);
-      if (n == 0) printf("DEBUG solveODE: Stored state successfully\n");
+      if (n == 0) printf("[%d,%d] DEBUG solveODE: Stored state successfully\n", mpirank_world, mpirank_petsc);
     }
-    if (n == 0) printf("DEBUG solveODE: About to check writeTrajectoryDataFiles\n");
+    if (n == 0) printf("[%d,%d] DEBUG solveODE: About to check writeTrajectoryDataFiles\n", mpirank_world, mpirank_petsc);
     if (writeTrajectoryDataFiles) {
-      if (n == 0) printf("DEBUG solveODE: About to write first timestep data\n");
+      if (n == 0) printf("[%d,%d] DEBUG solveODE: About to write first timestep data\n", mpirank_world, mpirank_petsc );
       output->writeTrajectoryDataFiles(n, tstart, x, mastereq);
-      if (n == 0) printf("DEBUG solveODE: Successfully wrote first timestep data\n");
+      if (n == 0) printf("[%d,%d] DEBUG solveODE: Successfully wrote first timestep data\n", mpirank_world, mpirank_petsc);
     }
 
-    if (n == 0) printf("DEBUG solveODE: About to call evolveFWD\n");
+    if (n == 0) printf("[%d,%d] DEBUG solveODE: About to call evolveFWD\n", mpirank_world, mpirank_petsc);
     /* Take one time step */
     evolveFWD(tstart, tstop, x);
-    if (n == 0) printf("DEBUG solveODE: Successfully completed evolveFWD\n");
+    if (n == 0) printf("[%d,%d] DEBUG solveODE: Successfully completed evolveFWD\n", mpirank_world, mpirank_petsc);
 
     /* Add to penalty objective term */
     if (gamma_penalty > 1e-13) penalty_integral += penaltyIntegral(tstop, x);
@@ -207,35 +207,35 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   }
   penalty_dpdm = penalty_dpdm/ntime;
 
-  printf("DEBUG solveODE: Finished time loop after %d steps\n", ntime);
+  printf("[%d,%d] DEBUG solveODE: Finished time loop after %d steps\n", mpirank_world, mpirank_petsc, ntime);
 
   /* Store last time step */
-  printf("DEBUG solveODE: About to store final state, storeFWD=%s\n", storeFWD ? "true" : "false");
+  printf("[%d,%d] DEBUG solveODE: About to store final state, storeFWD=%s\n", mpirank_world, mpirank_petsc, storeFWD ? "true" : "false");
   if (storeFWD) VecCopy(x, store_states[ntime]);
-  printf("DEBUG solveODE: Stored final state\n");
+  printf("[%d,%d] DEBUG solveODE: Stored final state\n", mpirank_world, mpirank_petsc);
 
   /* Clear out dpdm storage */
-  printf("DEBUG solveODE: Completed time loop, cleaning up\n");
+  printf("[%d,%d] DEBUG solveODE: Completed time loop, cleaning up\n", mpirank_world, mpirank_petsc);
   if (gamma_penalty_dpdm > 1e-13) {
-    printf("DEBUG solveODE: Destroying dpdm_states, size=%zu\n", dpdm_states.size());
+    printf("[%d,%d] DEBUG solveODE: Destroying dpdm_states, size=%zu\n", mpirank_world, mpirank_petsc, dpdm_states.size());
     for (size_t i=0; i<dpdm_states.size(); i++) {
       VecDestroy(&(dpdm_states[i]));
     }
     dpdm_states.clear();
-    printf("DEBUG solveODE: Successfully destroyed dpdm_states\n");
+    printf("[%d,%d] DEBUG solveODE: Successfully destroyed dpdm_states\n", mpirank_world, mpirank_petsc);
   }
 
   /* Write last time step and close files */
-  printf("DEBUG solveODE: About to write final timestep and close files\n");
+  printf("[%d,%d] DEBUG solveODE: About to write final timestep and close files\n", mpirank_world, mpirank_petsc);
   if (writeTrajectoryDataFiles) {
-    printf("DEBUG solveODE: Writing final timestep\n");
+    printf("[%d,%d] DEBUG solveODE: Writing final timestep\n", mpirank_world, mpirank_petsc);
     output->writeTrajectoryDataFiles(ntime, ntime*dt, x, mastereq);
-    printf("DEBUG solveODE: Closing trajectory files\n");
+    printf("[%d,%d] DEBUG solveODE: Closing trajectory files\n", mpirank_world, mpirank_petsc);
     output->closeTrajectoryDataFiles();
-    printf("DEBUG solveODE: Successfully closed trajectory files\n");
+    printf("[%d,%d] DEBUG solveODE: Successfully closed trajectory files\n", mpirank_world, mpirank_petsc);
   }
   
-  printf("DEBUG solveODE: About to return x\n");
+  printf("[%d,%d] DEBUG solveODE: About to return x\n", mpirank_world, mpirank_petsc);
   return x;
 }
 
