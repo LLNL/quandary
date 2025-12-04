@@ -214,24 +214,34 @@ void Output::writeTrajectoryDataFiles(int timestep, double time, const Vec state
 
   /* Write output only every <num> time-steps */
   if (timestep % output_frequency == 0) {
+    if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: Starting timestep=0, mpirank_petsc=%d\n", mpirank_petsc);
 
     /* Write expected energy levels to file */
+    if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: About to loop through expectedfile.size()=%zu\n", expectedfile.size());
     for (size_t iosc = 0; iosc < expectedfile.size(); iosc++) {
       if (writeExpectedEnergy[iosc]) {
+        if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: About to call expectedEnergy for iosc=%zu\n", iosc);
         double expected = mastereq->getOscillator(iosc)->expectedEnergy(state);
+        if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: Completed expectedEnergy for iosc=%zu, expected=%f\n", iosc, expected);
         if (mpirank_petsc==0) fprintf(expectedfile[iosc], "%.8f %1.14e\n", time, expected);
       }
     }
     if (writeExpectedEnergy_comp) {
+      if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: About to call mastereq->expectedEnergy\n");
       double expected_comp = mastereq->expectedEnergy(state);
+      if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: Completed mastereq->expectedEnergy, expected_comp=%f\n", expected_comp);
       if (mpirank_petsc==0) fprintf(expectedfile_comp, "%.8f %1.14e\n", time, expected_comp);
     }
 
     /* Write population to file */
+    if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: About to loop through populationfile.size()=%zu\n", populationfile.size());
     for (size_t iosc = 0; iosc < populationfile.size(); iosc++) {
       if (writePopulation[iosc]) {
+        if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: About to create pop vector for iosc=%zu\n", iosc);
         std::vector<double> pop (mastereq->getOscillator(iosc)->getNLevels(), 0.0);
+        if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: About to call population for iosc=%zu\n", iosc);
         mastereq->getOscillator(iosc)->population(state, pop);
+        if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: Completed population for iosc=%zu\n", iosc);
         if (mpirank_petsc == 0) {
           fprintf(populationfile[iosc], "%.8f ", time);
           for (size_t i = 0; i<pop.size(); i++) {
@@ -242,8 +252,10 @@ void Output::writeTrajectoryDataFiles(int timestep, double time, const Vec state
       }
     }
     if (writePopulation_comp) {
+      if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: About to call mastereq->population composite\n");
       std::vector<double> population_comp; 
       mastereq->population(state, population_comp);
+      if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: Completed mastereq->population composite\n");
       if (mpirank_petsc == 0) {
         fprintf(populationfile_comp, "%.8f  ", time);
         for (size_t i=0; i<population_comp.size(); i++){
@@ -254,6 +266,7 @@ void Output::writeTrajectoryDataFiles(int timestep, double time, const Vec state
     }
 
     /* Write full state to file. Currently not available if Petsc-parallel */
+    if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: About to check writeFullState=%s, mpisize_petsc=%d\n", writeFullState ? "true" : "false", mpisize_petsc);
     if (writeFullState && mpisize_petsc == 1) {
       /* TODO: Make this work in parallel! */
       /* Gather the vector from all petsc processors onto the first one */
@@ -263,22 +276,28 @@ void Output::writeTrajectoryDataFiles(int timestep, double time, const Vec state
 
       /* On first petsc rank, write full state vector to file */
       if (mpirank_petsc == 0) {
+        if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: About to write full state\n");
         fprintf(ufile,  "%.8f  ", time);
         fprintf(vfile,  "%.8f  ", time);
         const PetscScalar *x;
+        if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: About to call VecGetArrayRead\n");
         VecGetArrayRead(state, &x);
+        if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: Completed VecGetArrayRead\n");
         for (int i=0; i<mastereq->getDim(); i++) {
           fprintf(ufile, "%1.10e  ", x[i]);  
           fprintf(vfile, "%1.10e  ", x[i + mastereq->getDim()]);  
         }
         fprintf(ufile, "\n");
         fprintf(vfile, "\n");
+        if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: About to call VecRestoreArrayRead\n");
         VecRestoreArrayRead(state, &x);
+        if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: Completed VecRestoreArrayRead\n");
       }
       /* Destroy scatter context and vector */
       // VecScatterDestroy(&scat);
       // VecDestroy(&xseq); // TODO create and destroy scatter and xseq in contructor/destructor
     }
+    if (timestep == 0) printf("DEBUG writeTrajectoryDataFiles: Completed function for timestep=0\n");
   }
 }
 
