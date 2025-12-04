@@ -1,9 +1,6 @@
 #include "timestepper.hpp"
 #include "defs.hpp"
 #include <string>
-#include <sstream>
-#include <vector>
-#include <fstream>
 #include "oscillator.hpp" 
 #include "mastereq.hpp"
 #include "config.hpp"
