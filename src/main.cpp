@@ -14,7 +14,6 @@
 #include "output.hpp"
 #include "petsc.h"
 #include <random>
-#include "version.hpp"
 #include "util.hpp"
 #ifdef WITH_SLEPC
 #include <slepceps.h>
