@@ -45,16 +45,16 @@ generate-job-lists:
 ###
 
 # DANE
-dane-up-check:
-  variables:
-    CI_MACHINE: "dane"
-  extends: [.machine-check]
+# dane-up-check:
+#   variables:
+#     CI_MACHINE: "dane"
+#   extends: [.machine-check]
 
-dane-build-and-test:
-  variables:
-    CI_MACHINE: "dane"
-  needs: [dane-up-check, generate-job-lists]
-  extends: [.build-and-test]
+# dane-build-and-test:
+#   variables:
+#     CI_MACHINE: "dane"
+#   needs: [dane-up-check, generate-job-lists]
+#   extends: [.build-and-test]
 
 # TIOGA
 tioga-up-check:
@@ -69,7 +69,7 @@ tioga-build-and-test:
   extends: [.build-and-test]
 
 # PERFORMANCE
-dane-performance-test:
-  variables:
-    CI_MACHINE: "dane"
-  extends: [.performance-test]
+# dane-performance-test:
+#   variables:
+#     CI_MACHINE: "dane"
+#   extends: [.performance-test]
