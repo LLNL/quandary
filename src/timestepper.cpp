@@ -94,48 +94,96 @@ Vec TimeStepper::getState(size_t tindex){
 }
 
 Vec TimeStepper::solveODE(int initid, Vec rho_t0){
+  printf("DEBUG solveODE: Starting with initid=%d, writeTrajectoryDataFiles=%s\n", initid, writeTrajectoryDataFiles ? "true" : "false");
 
   /* Open output files */
   if (writeTrajectoryDataFiles) {
+    printf("DEBUG solveODE: About to call openTrajectoryDataFiles with initid=%d\n", initid);
     output->openTrajectoryDataFiles("rho", initid);
+    printf("DEBUG solveODE: Successfully opened trajectory data files\n");
   }
 
   /* Set initial condition  */
+  printf("DEBUG solveODE: About to copy rho_t0 to x\n");
   VecCopy(rho_t0, x);
+  printf("DEBUG solveODE: Successfully copied rho_t0 to x\n");
 
-
+  printf("DEBUG solveODE: Checking gamma_penalty_dpdm = %e\n", gamma_penalty_dpdm);
   /* Store initial state for dpdm penalty */
   if (gamma_penalty_dpdm > 1e-13){
+    printf("DEBUG solveODE: Entering dpdm penalty setup\n");
     for (int i = 0; i < 2; i++) {
+      printf("DEBUG solveODE: Creating dpdm_state %d\n", i);
       Vec state;
       VecCreate(PETSC_COMM_WORLD, &state);
       PetscInt globalsize = 2 * mastereq->getDim(); 
+      printf("DEBUG solveODE: globalsize=%d, mpisize_petsc=%d\n", globalsize, mpisize_petsc);
       PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
+      printf("DEBUG solveODE: localsize=%d\n", localsize);
       VecSetSizes(state,localsize,globalsize);
       VecSetFromOptions(state);
       dpdm_states.push_back(state);
+      printf("DEBUG solveODE: Successfully created dpdm_state %d\n", i);
     }
+    printf("DEBUG solveODE: About to copy x to dpdm_states[0]\n");
     VecCopy(x, dpdm_states[0]);
+    printf("DEBUG solveODE: Successfully copied x to dpdm_states[0]\n");
   }
 
   /* --- Loop over time interval --- */
+  printf("DEBUG solveODE: Initializing time loop variables\n");
   penalty_integral = 0.0;
   penalty_dpdm = 0.0;
+  printf("DEBUG solveODE: penalty_integral=%f, penalty_dpdm=%f\n", penalty_integral, penalty_dpdm);
+  printf("DEBUG solveODE: About to initialize energy_penalty_integral\n");
   energy_penalty_integral = 0.0;
+  printf("DEBUG solveODE: energy_penalty_integral=%f\n", energy_penalty_integral);
+  
+  printf("DEBUG solveODE: About to start time loop, ntime=%d\n", ntime);
+  printf("DEBUG solveODE: Critical variables check:\n");
+  printf("DEBUG solveODE:   storeFWD = %s\n", storeFWD ? "true" : "false");
+  printf("DEBUG solveODE:   store_states.size() = %zu\n", store_states.size());
+  printf("DEBUG solveODE:   mpirank_petsc = %d\n", mpirank_petsc);
+  printf("DEBUG solveODE:   mpisize_petsc = %d\n", mpisize_petsc);
+  
+  if (storeFWD && store_states.size() <= 0) {
+    printf("ERROR: storeFWD=true but store_states is empty!\n");
+    exit(1);
+  }
+  if (storeFWD && store_states.size() <= ntime) {
+    printf("ERROR: storeFWD=true but store_states.size()=%zu <= ntime=%d\n", store_states.size(), ntime);
+    exit(1);
+  }
+  
   for (int n = 0; n < ntime; n++){
+    if (n == 0) printf("DEBUG solveODE: Starting first iteration n=0\n");
 
     /* current time */
     double tstart = n * dt;
     double tstop  = (n+1) * dt;
+    if (n == 0) printf("DEBUG solveODE: Computed times: tstart=%f, tstop=%f\n", tstart, tstop);
 
     /* store and write current state. */
-    if (storeFWD) VecCopy(x, store_states[n]);
+    if (n == 0) printf("DEBUG solveODE: About to check storeFWD\n");
+    if (storeFWD) {
+      if (n >= store_states.size()) {
+        printf("FATAL: n=%d >= store_states.size()=%zu\n", n, store_states.size());
+        exit(1);
+      }
+      VecCopy(x, store_states[n]);
+      if (n == 0) printf("DEBUG solveODE: Stored state successfully\n");
+    }
+    if (n == 0) printf("DEBUG solveODE: About to check writeTrajectoryDataFiles\n");
     if (writeTrajectoryDataFiles) {
+      if (n == 0) printf("DEBUG solveODE: About to write first timestep data\n");
       output->writeTrajectoryDataFiles(n, tstart, x, mastereq);
+      if (n == 0) printf("DEBUG solveODE: Successfully wrote first timestep data\n");
     }
 
+    if (n == 0) printf("DEBUG solveODE: About to call evolveFWD\n");
     /* Take one time step */
     evolveFWD(tstart, tstop, x);
+    if (n == 0) printf("DEBUG solveODE: Successfully completed evolveFWD\n");
 
     /* Add to penalty objective term */
     if (gamma_penalty > 1e-13) penalty_integral += penaltyIntegral(tstop, x);
@@ -159,24 +207,35 @@ Vec TimeStepper::solveODE(int initid, Vec rho_t0){
   }
   penalty_dpdm = penalty_dpdm/ntime;
 
+  printf("DEBUG solveODE: Finished time loop after %d steps\n", ntime);
+
   /* Store last time step */
+  printf("DEBUG solveODE: About to store final state, storeFWD=%s\n", storeFWD ? "true" : "false");
   if (storeFWD) VecCopy(x, store_states[ntime]);
+  printf("DEBUG solveODE: Stored final state\n");
 
   /* Clear out dpdm storage */
+  printf("DEBUG solveODE: Completed time loop, cleaning up\n");
   if (gamma_penalty_dpdm > 1e-13) {
+    printf("DEBUG solveODE: Destroying dpdm_states, size=%zu\n", dpdm_states.size());
     for (size_t i=0; i<dpdm_states.size(); i++) {
       VecDestroy(&(dpdm_states[i]));
     }
     dpdm_states.clear();
+    printf("DEBUG solveODE: Successfully destroyed dpdm_states\n");
   }
 
   /* Write last time step and close files */
+  printf("DEBUG solveODE: About to write final timestep and close files\n");
   if (writeTrajectoryDataFiles) {
+    printf("DEBUG solveODE: Writing final timestep\n");
     output->writeTrajectoryDataFiles(ntime, ntime*dt, x, mastereq);
+    printf("DEBUG solveODE: Closing trajectory files\n");
     output->closeTrajectoryDataFiles();
+    printf("DEBUG solveODE: Successfully closed trajectory files\n");
   }
   
-
+  printf("DEBUG solveODE: About to return x\n");
   return x;
 }
 

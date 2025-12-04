@@ -199,6 +199,7 @@ int main(int argc,char **argv)
   if (mastereq->lindbladtype != LindbladType::NONE &&   
      (runtype == RunType::GRADIENT || runtype == RunType::OPTIMIZATION) ) storeFWD = true;  // if NOT Schroedinger solver and running gradient optim: store forward states. Otherwise, they will be recomputed during gradient. 
 
+  printf("Store forward states during primal solve: %s\n", storeFWD ? "true" : "false");
   TimeStepperType timesteppertype = config.getTimestepperType();
   TimeStepper* mytimestepper = nullptr;
   switch (timesteppertype) {

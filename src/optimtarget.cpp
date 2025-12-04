@@ -31,10 +31,12 @@ OptimTarget::OptimTarget(const Config& config, MasterEq* mastereq, double total_
   lindbladtype = mastereq->lindbladtype;
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
+  printf("DEBUG OptimTarget constructor: After initial MPI calls: mpisize_petsc=%d, mpirank_petsc=%d\n", mpisize_petsc, mpirank_petsc);
   int mpirank_world;
-  int mpisize_petsc;
+  int mpisize_petsc_local;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
-  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
+  MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc_local);
+  printf("DEBUG OptimTarget constructor: After redundant MPI calls: mpisize_petsc=%d (member), mpisize_petsc_local=%d, mpirank_petsc=%d, mpirank_world=%d\n", mpisize_petsc, mpisize_petsc_local, mpirank_petsc, mpirank_world);
   // Set local sizes of subvectors u,v in state x=[u,v]
   localsize_u = dim / mpisize_petsc; 
   ilow = mpirank_petsc * localsize_u;
@@ -491,8 +493,15 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
     PetscInt diagelem;
     VecZeroEntries(rho0);
 
+    printf("DEBUG Diagonal: initcond_IDs.size()=%zu, iinit=%d, ninit=%d\n", initcond_IDs.size(), iinit, ninit);
+    if (initcond_IDs.size() == 0) {
+      printf("ERROR: initcond_IDs is empty!\n");
+      exit(1);
+    }
+
     /* Get dimension of partial system behind last oscillator ID (essential levels only) */
     dim_post = 1;
+    printf("DEBUG Diagonal: last_osc_ID=%zu, nessential.size()=%zu\n", initcond_IDs[initcond_IDs.size()-1], nessential.size());
     for (size_t k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
       // dim_post *= getOscillator(k)->getNLevels();
       dim_post *= nessential[k];
@@ -500,14 +509,18 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
 
     /* Compute index of the nonzero element in rho_m(0) = E_pre \otimes |m><m| \otimes E_post */
     diagelem = iinit * dim_post;
+    printf("DEBUG Diagonal: dim_post=%d, diagelem_before=%d, dim_ess=%d, dim_rho=%d\n", dim_post, diagelem, dim_ess, dim_rho);
     if (dim_ess < dim_rho)  diagelem = mapEssToFull(diagelem, nlevels, nessential);
+    printf("DEBUG Diagonal: diagelem_after=%d\n", diagelem);
 
     // Vectorize if Lindblad
     elemID = diagelem;
-    if (lindbladtype != LindbladType::NONE) elemID = getVecID(diagelem, diagelem, dim_rho); 
+    if (lindbladtype != LindbladType::NONE) elemID = getVecID(diagelem, diagelem, dim_rho);
+    printf("DEBUG Diagonal: elemID=%d, ilow=%d, iupp=%d\n", elemID, ilow, iupp); 
     val = 1.0;
     if (ilow <= elemID && elemID < iupp) {
       PetscInt id_global_x =  elemID + mpirank_petsc*localsize_u; 
+      printf("DEBUG Diagonal: id_global_x=%d, localsize_u=%d\n", id_global_x, localsize_u);
       VecSetValues(rho0, 1, &id_global_x, &val, INSERT_VALUES);
     }
     VecAssemblyBegin(rho0); VecAssemblyEnd(rho0);
@@ -522,37 +535,51 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
 
     assert(lindbladtype != LindbladType::NONE); // should never happen. For Schroedinger: BASIS equals DIAGONAL, and should go into the above switch case. 
 
+    printf("DEBUG Basis: initcond_IDs.size()=%zu, iinit=%d, ninit=%d\n", initcond_IDs.size(), iinit, ninit);
+    if (initcond_IDs.size() == 0) {
+      printf("ERROR: initcond_IDs is empty!\n");
+      exit(1);
+    }
+
     /* Reset the initial conditions */
     VecZeroEntries(rho0);
 
     /* Get dimension of partial system behind last oscillator ID (essential levels only) */
     dim_post = 1;
+    printf("DEBUG Basis: last_osc_ID=%zu, nessential.size()=%zu\n", initcond_IDs[initcond_IDs.size()-1], nessential.size());
     for (size_t k = initcond_IDs[initcond_IDs.size()-1] + 1; k < nessential.size(); k++) {
       dim_post *= nessential[k];
     }
 
     /* Get index (k,j) of basis element B_{k,j} for this initial condition index iinit */
     PetscInt k, j;
-    k = iinit % ( (int) sqrt(ninit) );
-    j = iinit / ( (int) sqrt(ninit) );
+    int sqrt_ninit = (int) sqrt(ninit);
+    printf("DEBUG Basis: ninit=%d, sqrt_ninit=%d, dim_post=%d\n", ninit, sqrt_ninit, dim_post);
+    k = iinit % sqrt_ninit;
+    j = iinit / sqrt_ninit;
+    printf("DEBUG Basis: k_orig=%d, j_orig=%d\n", k, j);
 
     /* Set initial condition ID */
-    initID = j * ( (int) sqrt(ninit)) + k;
+    initID = j * sqrt_ninit + k;
 
     /* Set position in rho */
     k = k*dim_post;
     j = j*dim_post;
+    printf("DEBUG Basis: k_scaled=%d, j_scaled=%d, dim_ess=%d, dim_rho=%d\n", k, j, dim_ess, dim_rho);
     if (dim_ess < dim_rho) { 
       k = mapEssToFull(k, nlevels, nessential);
       j = mapEssToFull(j, nlevels, nessential);
+      printf("DEBUG Basis: k_mapped=%d, j_mapped=%d\n", k, j);
     }
 
     if (k == j) {
       /* B_{kk} = E_{kk} -> set only one element at (k,k) */
-      elemID = getVecID(k, k, dim_rho); 
+      elemID = getVecID(k, k, dim_rho);
+      printf("DEBUG Basis diagonal: k=%d, elemID=%d, ilow=%d, iupp=%d\n", k, elemID, ilow, iupp); 
       double val = 1.0;
       if (ilow <= elemID && elemID < iupp) {
         PetscInt id_global_x =  elemID + mpirank_petsc*localsize_u; 
+        printf("DEBUG Basis diagonal: id_global_x=%d\n", id_global_x);
         VecSetValues(rho0, 1, &id_global_x, &val, INSERT_VALUES);
       }
     } else {
@@ -565,6 +592,7 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
       rows[1] = getVecID(j, j, dim_rho); // (j,j)
       rows[2] = getVecID(k, j, dim_rho); // (k,j)
       rows[3] = getVecID(j, k, dim_rho); // (j,k)
+      printf("DEBUG Basis offdiag: k=%d, j=%d, rows=[%d,%d,%d,%d]\n", k, j, rows[0], rows[1], rows[2], rows[3]);
 
       if (k < j) { // B_{kj} = 1/2(E_kk + E_jj) + 1/2(E_kj + E_jk)
         vals[0] = 0.5;
@@ -613,12 +641,19 @@ int OptimTarget::prepareInitialState(const int iinit, const int ninit, const std
 
 
 void OptimTarget::prepareTargetState(const Vec rho_t0){
+  printf("DEBUG prepareTargetState: Starting, target_type=%d\n", (int)target_type);
   // If gate optimization, apply the gate and store targetstate for later use. Else, do nothing.
-  if (target_type == TargetType::GATE) targetgate->applyGate(rho_t0, targetstate);
+  if (target_type == TargetType::GATE) {
+    printf("DEBUG prepareTargetState: Applying gate\n");
+    targetgate->applyGate(rho_t0, targetstate);
+    printf("DEBUG prepareTargetState: Applied gate\n");
+  }
 
   /* Compute and store the purity of rho(0), Tr(rho(0)^2), so that it can be used by JTrace (HS overlap) */
+  printf("DEBUG prepareTargetState: Computing purity\n");
   VecNorm(rho_t0, NORM_2, &purity_rho0);
   purity_rho0 = purity_rho0 * purity_rho0;
+  printf("DEBUG prepareTargetState: Computed purity=%f\n", purity_rho0);
 }
 
 

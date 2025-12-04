@@ -167,10 +167,13 @@ void Output::writeControls(Vec params, MasterEq* mastereq, int ntime, double dt)
 
 
 void Output::openTrajectoryDataFiles(std::string prefix, int initid){
+  printf("DEBUG openTrajectoryDataFiles: Starting with prefix='%s', initid=%d, mpirank_petsc=%d\n", prefix.c_str(), initid, mpirank_petsc);
   char filename[255];
 
   // On the first petsc rank, open required files and print header information
+  printf("DEBUG openTrajectoryDataFiles: About to check mpirank_petsc == 0\n");
   if (mpirank_petsc == 0) {
+    printf("DEBUG openTrajectoryDataFiles: Inside mpirank_petsc == 0 block\n");
 
     // Expected energy per oscillator  
     for (size_t i=0; i<output.size(); i++) { // iterates over oscillators

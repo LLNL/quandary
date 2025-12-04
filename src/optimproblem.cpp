@@ -213,12 +213,32 @@ double OptimProblem::evalF(const Vec x) {
     if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
 
     /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
+    printf("DEBUG evalGradF: About to call prepareTargetState for iinit=%d, initid=%d\n", iinit, initid);
     optim_target->prepareTargetState(rho_t0);
+    printf("DEBUG evalGradF: Completed prepareTargetState for iinit=%d, initid=%d\n", iinit, initid);
 
     /* Run forward with initial condition initid */
+    printf("DEBUG evalGradF: About to call solveODE for iinit=%d, initid=%d\n", iinit, initid);
+    
+    // Check vector integrity before solveODE
+    double rho_norm;
+    VecNorm(rho_t0, NORM_2, &rho_norm);
+    printf("DEBUG evalGradF: rho_t0 norm before solveODE = %f\n", rho_norm);
+    
+    // Check if vector is valid
+    PetscInt rho_size;
+    VecGetSize(rho_t0, &rho_size);
+    printf("DEBUG evalGradF: rho_t0 global size = %d\n", rho_size);
+    
     Vec finalstate = timestepper->solveODE(initid, rho_t0);
+    printf("DEBUG evalGradF: Completed solveODE for iinit=%d, initid=%d\n", iinit, initid);
 
     /* Add to integral penalty term */
+    printf("DEBUG evalGradF: About to access obj_weights[%d], obj_weights.size()=%zu, ninit_local=%d\n", iinit, obj_weights.size(), ninit_local);
+    if (iinit >= (int)obj_weights.size()) {
+        printf("ERROR: iinit=%d >= obj_weights.size()=%zu\n", iinit, obj_weights.size());
+        exit(1);
+    }
     obj_penal += obj_weights[iinit] * gamma_penalty * timestepper->penalty_integral;
 
     /* Add to second derivative penalty term */
@@ -304,15 +324,21 @@ double OptimProblem::evalF(const Vec x) {
 
 void OptimProblem::evalGradF(const Vec x, Vec G){
 
+  printf("DEBUG evalGradF: Starting\n");
   MasterEq* mastereq = timestepper->mastereq;
+  printf("DEBUG evalGradF: Got mastereq pointer\n");
 
   if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
 
   /* Pass design vector x to oscillators */
-  mastereq->setControlAmplitudes(x); 
+  printf("DEBUG evalGradF: Setting control amplitudes\n");
+  mastereq->setControlAmplitudes(x);
+  printf("DEBUG evalGradF: Set control amplitudes\n"); 
 
   /* Reset Gradient */
+  printf("DEBUG evalGradF: Zeroing gradient entries\n");
   VecZeroEntries(G);
+  printf("DEBUG evalGradF: Zeroed gradient entries\n");
 
   /* Derivative of regulatization terms (ADD ON ONE PROC ONLY!) */
   // if (mpirank_init == 0 && mpirank_optim == 0) { // TODO: Which one?? 
