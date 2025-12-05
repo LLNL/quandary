@@ -4,9 +4,10 @@ var searchData=
   ['comm_1',['comm',['../classConfig.html#a114f9fc48ff32c7ff0a88a33214f5356',1,'Config']]],
   ['comm_5finit_2',['comm_init',['../classOptimProblem.html#a721a317cb5f00ccec5b03ff0608e0ac8',1,'OptimProblem']]],
   ['comm_5foptim_3',['comm_optim',['../classOptimProblem.html#a3c909a708d205ea7f7cc2db472c10723',1,'OptimProblem']]],
-  ['control_5fenforcebc_4',['control_enforceBC',['../classOscillator.html#a89b64697e0c5454fa68c1cab1bc74d57',1,'Oscillator']]],
-  ['control_5fim_5',['control_Im',['../structMatShellCtx.html#a905421e3d386aeb7dbf2d33f29b4faca',1,'MatShellCtx']]],
-  ['control_5fre_6',['control_Re',['../structMatShellCtx.html#a9ba1788479840f371c24f631cc988f87',1,'MatShellCtx']]],
-  ['controltype_7',['controltype',['../classControlBasis.html#aa47f10d7033e83b174a97d6cc7e91d89',1,'ControlBasis']]],
-  ['crosskerr_8',['crosskerr',['../structMatShellCtx.html#a6d70c2aeb5c6016d867aab74747d0125',1,'MatShellCtx::crosskerr'],['../classMasterEq.html#a3d861dd8d9ad6f4e9b04e0109d3ee128',1,'MasterEq::crosskerr']]]
+  ['config_5ffilename_4',['config_filename',['../structParsedArgs.html#a13be1efa1af49ce57ffd4e3a136bac27',1,'ParsedArgs']]],
+  ['control_5fenforcebc_5',['control_enforceBC',['../classOscillator.html#a89b64697e0c5454fa68c1cab1bc74d57',1,'Oscillator']]],
+  ['control_5fim_6',['control_Im',['../structMatShellCtx.html#a905421e3d386aeb7dbf2d33f29b4faca',1,'MatShellCtx']]],
+  ['control_5fre_7',['control_Re',['../structMatShellCtx.html#a9ba1788479840f371c24f631cc988f87',1,'MatShellCtx']]],
+  ['controltype_8',['controltype',['../classControlBasis.html#aa47f10d7033e83b174a97d6cc7e91d89',1,'ControlBasis']]],
+  ['crosskerr_9',['crosskerr',['../structMatShellCtx.html#a6d70c2aeb5c6016d867aab74747d0125',1,'MatShellCtx::crosskerr'],['../classMasterEq.html#a3d861dd8d9ad6f4e9b04e0109d3ee128',1,'MasterEq::crosskerr']]]
 ];

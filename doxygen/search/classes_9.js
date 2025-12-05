@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['pipulse_0',['PiPulse',['../structPiPulse.html',1,'']]]
+  ['parsedargs_0',['ParsedArgs',['../structParsedArgs.html',1,'']]],
+  ['pipulse_1',['PiPulse',['../structPiPulse.html',1,'']]]
 ];
