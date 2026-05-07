@@ -67,6 +67,8 @@ struct ParsedConfigData {
   std::optional<double> optim_penalty_dpdm;
   std::optional<double> optim_penalty_energy;
   std::optional<double> optim_penalty_variation;
+  std::optional<bool> optim_hessian_use_ksp_solve;
+  std::optional<int> optim_hessian_ksp_maxiter;
   std::optional<bool> optim_regul_tik0;
   std::optional<bool> optim_regul_interpolate; // deprecated
 

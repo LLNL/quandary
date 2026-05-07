@@ -159,7 +159,12 @@ solver_type = "rol"
 # If ROL solver, specify path to ROL input file (XML format)
 rol_input = "./rolinput.xml" 
 # Specify parameters for Hessian Randomized Range Space Finder (RRF)
-hessian_rff = { ncut = 15, nextra = 5, positive_evals_only = true}
+hessian_rff = { ncut = 15,
+                nextra = 5,
+                positive_evals_only = true,
+                ksp_solve = false,   
+                ksp_maxiter = 5     
+              }
 
 [output]
 # Directory for output files

@@ -275,6 +275,8 @@ Config::Config(const MPILogger& logger, const toml::table& toml) : logger(logger
       optim_hessian_ncut = ConfigDefaults::OPTIM_HESSIAN_NCUT;
       optim_hessian_nextra = ConfigDefaults::OPTIM_HESSIAN_NEXTRA;
       optim_hessian_use_positive = ConfigDefaults::OPTIM_HESSIAN_USE_POSITIVE;
+      optim_hessian_use_ksp_solve = ConfigDefaults::OPTIM_HESSIAN_USE_KSP_SOLVE;
+      optim_hessian_ksp_maxiter = ConfigDefaults::OPTIM_HESSIAN_KSP_MAXITER;
     } else {
       auto hessian_rff_table = optimization_table["hessian_rff"].as_table();
       if (!hessian_rff_table) {
@@ -283,6 +285,8 @@ Config::Config(const MPILogger& logger, const toml::table& toml) : logger(logger
       optim_hessian_ncut = validators::field<int>(*hessian_rff_table, "ncut").positive().valueOr(ConfigDefaults::OPTIM_HESSIAN_NCUT);
       optim_hessian_nextra = validators::field<int>(*hessian_rff_table, "nextra").greaterThanEqual(0).valueOr(ConfigDefaults::OPTIM_HESSIAN_NEXTRA);
       optim_hessian_use_positive = validators::field<bool>(*hessian_rff_table, "positive_evals_only").valueOr(ConfigDefaults::OPTIM_HESSIAN_USE_POSITIVE);
+      optim_hessian_use_ksp_solve = validators::field<bool>(*hessian_rff_table, "ksp_solve").valueOr(ConfigDefaults::OPTIM_HESSIAN_USE_KSP_SOLVE);
+      optim_hessian_ksp_maxiter = validators::field<int>(*hessian_rff_table, "ksp_maxiter").positive().valueOr(ConfigDefaults::OPTIM_HESSIAN_KSP_MAXITER);
     }
 
     // Parse output options from [output] table
@@ -479,6 +483,8 @@ Config::Config(const MPILogger& logger, const ParsedConfigData& settings) : logg
   optim_penalty_dpdm = settings.optim_penalty_dpdm.value_or(ConfigDefaults::OPTIM_PENALTY_DPDM);
   optim_penalty_energy = settings.optim_penalty_energy.value_or(ConfigDefaults::OPTIM_PENALTY_ENERGY);
   optim_penalty_variation = settings.optim_penalty_variation.value_or(ConfigDefaults::OPTIM_PENALTY_VARIATION);
+  optim_hessian_use_ksp_solve = settings.optim_hessian_use_ksp_solve.value_or(ConfigDefaults::OPTIM_HESSIAN_USE_KSP_SOLVE);
+  optim_hessian_ksp_maxiter = settings.optim_hessian_ksp_maxiter.value_or(ConfigDefaults::OPTIM_HESSIAN_KSP_MAXITER);
 
   // Output parameters
   output_directory = settings.datadir.value_or(ConfigDefaults::OUTPUT_DIRECTORY);
@@ -848,7 +854,9 @@ void Config::printConfig(std::stringstream& log) const {
   log << "rol_input = \"" << optim_rol_input << "\"\n";
   log << "hessian_rff = { ncut = " << optim_hessian_ncut
       << ", nextra = " << optim_hessian_nextra
-      << ", positive_evals_only = " << (optim_hessian_use_positive ? "true" : "false") << " }\n";
+      << ", positive_evals_only = " << (optim_hessian_use_positive ? "true" : "false")
+      << ", ksp_solve = " << (optim_hessian_use_ksp_solve ? "true" : "false")
+      << ", ksp_maxiter = " << optim_hessian_ksp_maxiter << " }\n";
 
   log << "\n";
   log << "[output]\n";

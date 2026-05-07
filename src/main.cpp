@@ -19,8 +19,9 @@
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
-#define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
-#define HESSIAN_COMPUTATION 0
+#define HESSIAN_DECOMPOSITION 0 // Perform eigenvalue decomposition on a Hessian loaded from file
+#define HESSIAN_COMPUTATION 0  // Compute exact Hessian using evalHessVec on each unit vector, write it to file
+#define HESSIANRFF_COMPUTATION 0  // Compute approximate Hessian using evalHessianRFF (Range Space Finder), and write to file.
 #define EPS 1e-5          // Epsilon for Finite Differences
 
 int main(int argc,char **argv)
@@ -239,10 +240,10 @@ int main(int argc,char **argv)
       printf("\nGradient norm: %1.14e\n", gnorm);
     }
 
-    if (config.getOptimSolverType() == OptimSolverType::TAO_HESSIAN) {
-      // TEST HESSIAN FUNCTION
-      optimctx->evalHessian(xinit, optimctx->Hessian, NULL);
-    }
+    // if (config.getOptimSolverType() == OptimSolverType::TAO_HESSIAN) {
+    //   // TEST HESSIAN FUNCTION
+    //   optimctx->evalHessianRFF(xinit, optimctx->Hessian, NULL);
+    // }
   }
 
   /* --- Solve the optimization  --- */
@@ -404,7 +405,7 @@ int main(int argc,char **argv)
 
       // Output Hessian column to file 
       if (mpirank_world == 0) {
-        snprintf(filename, 254, "%s/hessian_col_%04d.dat", output->datadir.c_str(), i);
+        snprintf(filename, 254, "%s/hessian_col_%04d.dat", config.getOutputDirectory().c_str(), i);
         FILE* hessfile = fopen(filename, "w");
         double hessval;
         for (int j=0; j<sizex; j++) {
@@ -416,6 +417,34 @@ int main(int argc,char **argv)
       VecDestroy(&ei);
       VecDestroy(&Hei);
     }
+#endif
+
+#if HESSIANRFF_COMPUTATION
+  // Approximate the Hessian using evalHessianRFF Range Space Finder.
+
+  // Create the Hessian matrix
+  int ndesign = optimctx->getNdesign();
+  Mat HessianRFF;
+  MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, NULL, &HessianRFF);
+  MatSetFromOptions(HessianRFF);
+
+  optimctx->evalHessianRFF(xinit, HessianRFF, NULL);
+
+  // Store Hessian to file in plain text format
+  if (mpirank_world == 0) {
+    snprintf(filename, 254, "%s/HessianRFF_ncut%d_nextra%d_posonly%d.dat", config.getOutputDirectory().c_str(), config.getOptimHessianNcut(), config.getOptimHessianNextra(), config.getOptimHessianUsePositive());
+    PetscViewer viewer;
+    PetscViewerCreate(MPI_COMM_WORLD, &viewer);
+    PetscViewerSetType(viewer, PETSCVIEWERASCII);
+    PetscViewerFileSetMode(viewer, FILE_MODE_WRITE);
+    PetscViewerFileSetName(viewer, filename);
+    PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_MATLAB);
+    MatView(HessianRFF, viewer);
+    PetscViewerPopFormat(viewer);
+    PetscViewerDestroy(&viewer);
+  }
+
+  MatDestroy(&HessianRFF);
 #endif
 
 
@@ -445,9 +474,11 @@ int main(int argc,char **argv)
     epsilon *= 0.1; // Decrease epsilon by factor of 10
     printf("\nTesting Hessian vector product with epsilon = %1.14e\n", epsilon);
 
+    double max_rel_err = 0.0;
+
     // Iterate over design variables testing H*e_i against finite differences
-    // for (int itest=0; itest < optimctx->getNdesign(); itest++){
-    { int itest = 3; // fixed column
+    for (int itest=0; itest < optimctx->getNdesign(); itest++){
+    // { int itest = 3; // fixed column
 
       // Choose the direction v = e_i
       VecZeroEntries(v);
@@ -457,12 +488,6 @@ int main(int argc,char **argv)
       // Evaluate HessianVector product
       VecZeroEntries(hessv);
       optimctx->evalHessVec(xinit, v, hessv);
-
-      // if (mpirank_init==0) {
-      //   printf("Hess vec hv = \n");
-      //   VecView(hessv, NULL);
-      // }
-      // exit(1);
 
       // Perturb xinit by epsilon in direction v
       VecCopy(xinit, xplus);
@@ -484,11 +509,17 @@ int main(int argc,char **argv)
       VecGetArrayRead(hessv, &hessv_ptr);
       VecGetArrayRead(hessv_fd, &hessv_fd_ptr);
       for (int j=0; j<optimctx->getNdesign(); j++) {
-        printf("Diff at i=%d, j=%d: Hv= %1.14e, Hv_FD=%1.14e, rel. err=%1.14e\n", i, j, hessv_ptr[j], hessv_fd_ptr[j], (hessv_ptr[j] - hessv_fd_ptr[j])/hessv_fd_ptr[j]);
+        printf("Diff at i=%d, j=%d: Hv= %1.14e, Hv_FD=%1.14e, rel. err=%1.14e\n", i, j, hessv_ptr[j], hessv_fd_ptr[j], fabs(hessv_ptr[j] - hessv_fd_ptr[j])/fabs(hessv_fd_ptr[j]));
+
+        // update max relative error
+        double rel_err = 0.0;
+        rel_err = fabs(hessv_ptr[j] - hessv_fd_ptr[j]) / fabs(hessv_fd_ptr[j]);
+        if (rel_err > max_rel_err) max_rel_err = rel_err;
       }
       VecRestoreArrayRead(hessv, &hessv_ptr);
       VecRestoreArrayRead(hessv_fd, &hessv_fd_ptr);
     }
+    printf("\n\n FD with epsilon = %1.14e Max relative error: %1.14e\n\n", epsilon, max_rel_err);
   }
 
 #endif

@@ -104,6 +104,8 @@ class Config {
   int optim_hessian_ncut; ///< Number of required eigenvalues forHessian Range Space Finder
   int optim_hessian_nextra; ///< Oversampling for Hessian Range Space Finder
   bool optim_hessian_use_positive; ///< Whether to only use positive eigenvalues of the Hessian
+  bool optim_hessian_use_ksp_solve; ///< Whether TAO_HESSIAN uses iterative KSP solve instead of direct preconditioner apply
+  int optim_hessian_ksp_maxiter; ///< Maximum KSP iterations for iterative TAO_HESSIAN solve
 
   // Output and runtypes
   std::string output_directory; ///< Directory for output files
@@ -186,6 +188,8 @@ class Config {
   int getOptimHessianNcut() const { return optim_hessian_ncut; }
   int getOptimHessianNextra() const { return optim_hessian_nextra; }
   bool getOptimHessianUsePositive() const { return optim_hessian_use_positive; }
+  bool getOptimHessianUseKSPSolve() const { return optim_hessian_use_ksp_solve; }
+  int getOptimHessianKSPMaxiter() const { return optim_hessian_ksp_maxiter; }
 
   const std::string& getOutputDirectory() const { return output_directory; }
   const std::vector<OutputType>& getOutputObservables() const { return output_observables; }

@@ -112,10 +112,10 @@ class OptimProblem {
   ROL::Ptr<ROL::Problem<double>> rolOptimProb;
   double* mygrad; ///< Auxiliary gradient storage
   Vec xtmp; ///< Temporary vector storage
-  OptimSolverType optim_solver_type; ///< Optimization solver type (TAO_BFGS, TAO_HESSIAN, or ROL)
   
   public: 
     bool lastIter; ///< Flag to indicate last iteration in optimization 
+    OptimSolverType optim_solver_type; ///< Optimization solver type (TAO_BFGS, TAO_HESSIAN, or ROL)
     Output* output; ///< Pointer to output handler
     TimeStepper* timestepper; ///< Pointer to time-stepping scheme
     Vec xlower, xupper; ///< Lower and upper bounds for optimization variables
@@ -127,6 +127,8 @@ class OptimProblem {
     PetscInt ncut; ///< Number of eigenvalues to be used for Hessian Range Space Finder
     PetscInt nextra; ///< Oversampling Hessian Range Space Finder. Hardcoded 10.
     bool use_positive_evals; ///< Only use positive eigenvalues for Hessian projection
+    bool use_hessian_iterative_ksp; ///< If true, solve Hessian system iteratively; otherwise apply preconditioner directly
+    int hessian_ksp_maxiter; ///< Max KSP iterations used when iterative Hessian solve is enabled
     KSP taoksp;  ///< Linear solver context within TAO.
 
   /**
@@ -303,7 +305,7 @@ class OptimProblem {
    * @param[out] H Hessian matrix
    * @param[out] Hinv inverse Hessian matrix, if not NULL
    */
-  void evalHessian(const Vec x, Mat H, Mat Hinv);
+  void evalHessianRFF(const Vec x, Mat H, Mat Hinv);
 
   /** 
   * @brief Projects the gradient onto the dominant subspace of the Hessian.

@@ -150,6 +150,8 @@ OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_
   ncut = config.getOptimHessianNcut();
   nextra = config.getOptimHessianNextra();
   use_positive_evals = config.getOptimHessianUsePositive();
+  use_hessian_iterative_ksp = config.getOptimHessianUseKSPSolve();
+  hessian_ksp_maxiter = config.getOptimHessianKSPMaxiter();
 
   // TODO. FOR NOW, disable any penalty terms when Hessian or ROL is used. 
   if (optim_solver_type == OptimSolverType::TAO_HESSIAN || optim_solver_type == OptimSolverType::ROL) {
@@ -172,12 +174,19 @@ OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_
     TaoSetTolerances(tao, tol_grad_abs, PETSC_DEFAULT, tol_grad_rel);
     TaoMonitorSet(tao, TaoMonitor, (void*)this, NULL);
     TaoSetVariableBounds(tao, xlower, xupper);
-    TaoSetFromOptions(tao);
 
     // Set the TAO solver type
     if (optim_solver_type == OptimSolverType::TAO_BFGS) {
       // TAO_BFGS: Use Bounded Quasi-Newton Line Search
       TaoSetType(tao,TAOBQNLS);   
+      // TAO_BFGS with Bounded Quasi-Newton Trust Region
+      // TaoSetType(tao,TAOBQNKTR);   
+
+      // // Disable LBFGS history to use just the (projected?) gradient 
+      // TaoSetType(tao,TAOBQNLS);   
+      // Mat H_lmvm;
+      // TaoGetLMVMMatrix(tao, &H_lmvm);
+      // MatLMVMSetHistorySize(H_lmvm, 0);
     } else {
       // TAO_HESSIAN: Approximate the Hessian and use as preconditioner. 
       // Need to allocate the Hessian matrix and pass to TAO
@@ -188,19 +197,26 @@ OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_
       MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, NULL, &Hessian_inv);
       MatSetFromOptions(Hessian_inv);
 
-      // TaoSetType(tao, TAONLS);     // Newton line search, unconstrained. TODO: Check Bounds!
+      // Newton line search with bound projection.
       TaoSetType(tao, TAOBNLS);     // Bounded Newton with line search
       TaoSetHessian(tao, Hessian, Hessian_inv, TaoEvalHessian, (void*) this);
 
       // Define and store linear system solver
       TaoGetKSP(tao, &taoksp);
-      // Type: Direct solve of the Hessian system: Use the preconditioner on the RHS directly, rather than solving a linear system.
-      // KSPSetType(taoksp, KSPPREONLY);
-
-      // Type: MINRES
-      KSPSetType(taoksp, KSPMINRES);
-      // // FOR TESTING: Get information about eigenvalues. NOT WORKING.
-      // KSPSetComputeEigenvalues(taoksp, PETSC_TRUE);
+      if (use_hessian_iterative_ksp) {
+        // Iterative mode: solve H p = -g with left preconditioning by Hessian_inv.
+        KSPSetType(taoksp, KSPGMRES);
+        KSPSetTolerances(taoksp, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT, hessian_ksp_maxiter);
+        if (mpirank_world == 0 && !quietmode) {
+          printf("TAO_HESSIAN: Using iterative KSP solve (maxiter=%d).\n", hessian_ksp_maxiter);
+        }
+      } else {
+        // Direct-preconditioner mode: one application p = M^{-1}(-g).
+        KSPSetType(taoksp, KSPPREONLY);
+        if (mpirank_world == 0 && !quietmode) {
+          printf("TAO_HESSIAN: Using direct preconditioner apply (KSPPREONLY).\n");
+        }
+      }
 
       // Set a Hessian preconditioner
       PC pc; 
@@ -215,13 +231,10 @@ OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_
       PCShellCtx* pcctx = new PCShellCtx;
       pcctx->optimctx_ = this;
       PCShellSetContext(pc, pcctx);
-
-      // TaoSetType(tao,TAOBQNLS);   // Bounded LBFGS with line search  
-      // // Disable LBFGS history to use just the (projected!) gradient
-      // Mat H_lmvm;
-      // TaoGetLMVMMatrix(tao, &H_lmvm);
-      // MatLMVMSetHistorySize(H_lmvm, 0); 
     }
+
+    // Read runtime options after default type/KSP/PC setup so command-line overrides still work.
+    TaoSetFromOptions(tao);
 
   } else { // ROL solver
     if (mpirank_world == 0 && !quietmode) printf("Using ROL optimization solver.\n");
@@ -707,10 +720,10 @@ void OptimProblem::solve(Vec xinit) {
     ROL::Ptr<myVec> xnew = ROL::makePtr<myVec>(xinit);
     rolOptimVariable->set(*xnew);
 
-    // // Check the ROL problem setup (FD test of gradient and Hessian.)
-    // ROL::Ptr<std::ostream> outStr = ROL::makePtrFromRef(std::cout);
-    // bool printtoscreen = true;
-    // rolOptimProb->check(printtoscreen, *outStr);
+    // Check the ROL problem setup (FD test of gradient and Hessian.)
+    ROL::Ptr<std::ostream> outStr = ROL::makePtrFromRef(std::cout);
+    bool printtoscreen = true;
+    rolOptimProb->check(printtoscreen, *outStr);
 
     rolSolver->solve(rolFileStream);
     rolFileStream.close();
@@ -797,9 +810,11 @@ bool OptimProblem::monitor(int iter, double deltax, Vec params){
     }
   }
 
+  // Write controls every iteration
+  output->writeControls(params, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+
   /* Last iteration: Print solution, controls and trajectory data to files */
   if (lastIter) {
-    output->writeControls(params, timestepper->mastereq, timestepper->ntime, timestepper->dt);
 
     // do one last forward evaluation while writing trajectory files
     timestepper->writeTrajectoryDataFiles = true;
@@ -813,7 +828,7 @@ bool OptimProblem::monitor(int iter, double deltax, Vec params){
 
   // print TAO summary of tao to screen
   if (optim_solver_type == OptimSolverType::TAO_HESSIAN || optim_solver_type == OptimSolverType::TAO_BFGS) {
-    if (lastIter && mpirank_world == 0) TaoView(tao, NULL);
+    // if (lastIter && mpirank_world == 0) TaoView(tao, NULL);
   }
 
   // Inspect TAO linear solver
@@ -921,6 +936,45 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   TaoGetSolutionStatus(tao, &iter, &f, &gnorm, NULL, &deltax, &reason);
   TaoGetSolution(tao, &params);
 
+  // ===== DEBUG: Enhanced diagnostics for line search and convergence =====
+  if (ctx->getMPIRankWorld() == 0 && iter > 0) {  // Skip iteration 0
+    // Get KSP convergence info
+    KSP taoksp;
+    TaoGetKSP(tao, &taoksp);
+    KSPConvergedReason ksp_reason = KSP_CONVERGED_ITERATING;
+    PetscInt ksp_iters = 0;
+    if (taoksp) {
+      KSPGetConvergedReason(taoksp, &ksp_reason);
+      KSPGetIterationNumber(taoksp, &ksp_iters);
+    }
+
+    // For TAO_BFGS (implemented via TAOBQNLS), inspect LMVM update counters.
+    PetscInt lmvm_updates = -1;
+    PetscInt lmvm_rejects = -1;
+    if (ctx->optim_solver_type == OptimSolverType::TAO_BFGS) {
+      Mat lmvm = NULL;
+      TaoGetLMVMMatrix(tao, &lmvm);
+      if (lmvm) {
+        MatLMVMGetUpdateCount(lmvm, &lmvm_updates);
+        MatLMVMGetRejectCount(lmvm, &lmvm_rejects);
+      }
+    }
+
+    // Print iteration diagnostics
+    if (ctx->optim_solver_type == OptimSolverType::TAO_BFGS) {
+      printf("[TAO-DIAG iter %3d] steplen=%1.6e, f=%1.12e, gnorm=%1.6e, tao_reason=%d, ksp_iters=%d, ksp_reason=%d, lmvm_updates=%d, lmvm_rejects=%d\n",
+             (int)iter, (double)deltax, (double)f, (double)gnorm,
+             (int)reason, (int)ksp_iters, (int)ksp_reason,
+             (int)lmvm_updates, (int)lmvm_rejects);
+    } else if (ctx->optim_solver_type == OptimSolverType::TAO_HESSIAN) {
+      printf("[TAO-DIAG iter %3d] steplen=%1.6e, f=%1.12e, gnorm=%1.6e, tao_reason=%d, ksp_iters=%d, ksp_reason=%d\n",
+             (int)iter, (double)deltax, (double)f, (double)gnorm,
+             (int)reason, (int)ksp_iters, (int)ksp_reason);
+    }
+    fflush(stdout);
+  }
+  // ===== END DEBUG =====
+
   bool TAOCONVERGED = ctx->monitor(iter, deltax, params);
   if (TAOCONVERGED) TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
 
@@ -956,9 +1010,11 @@ PetscErrorCode TaoEvalObjective(Tao /*tao*/, Vec x, PetscReal *f, void*ptr){
 PetscErrorCode TaoEvalHessian(Tao /* tao */, Vec x, Mat H, Mat Hpre, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
-  // Set the inverse Hessian as preconditioner. Works together with KSPSetType KSPPREONLY, which applies the preconditioner to the RHS rather than solving a linear system.
+  // Build Hessian model and inverse-Hessian preconditioner from randomized low-rank factors.
+  // BNLS may solve reduced inactive-set systems, so Hpre is used by TAO/KSP as the
+  // preconditioning operator for the current linear solve.
   // if (ctx->getMPIRankWorld() == 0) printf("Eval Hessian.\n");
-  ctx->evalHessian(x, H, Hpre); 
+  ctx->evalHessianRFF(x, H, Hpre);
 
   return 0;
 }
@@ -966,17 +1022,23 @@ PetscErrorCode TaoEvalHessian(Tao /* tao */, Vec x, Mat H, Mat Hpre, void*ptr){
 
 PetscErrorCode TaoPreconditioner(PC pc, Vec x, Vec y){
 
-
-  // PCShellCtx pcctx;
-  // PCShellGetContext(pc, &pcctx);
-
-  void* ctx_void;
-  PCShellGetContext(pc, &ctx_void);
-  auto* ctx = static_cast<PCShellCtx*>(ctx_void);
-  OptimProblem* optim = ctx->optimctx_;
-
-  // if (optim->getMPIRankWorld() == 0) printf("Applying preconditioner.\n");
-  MatMult(optim->Hessian_inv, x, y);
+  // Use the currently attached preconditioning operator from KSP (Pmat).
+  // In BNLS this may be the inactive-set submatrix, so dimensions stay consistent.
+  Mat A, P;
+  PCGetOperators(pc, &A, &P);
+  
+  // ===== DEBUG: Check preconditioner operator =====
+  // static int call_count = 0;
+  // if (call_count < 5) {
+  //   PetscInt m, n, M, N;
+  //   MatGetSize(P, &M, &N);
+  //   MatGetLocalSize(P, &m, &n);
+  //   printf("[PC-DIAG call %d] P dims=%d x %d (local %d x %d)\n", call_count, (int)M, (int)N, (int)m, (int)n);
+  //   call_count++;
+  // }
+  // ===== END DEBUG =====
+  
+  MatMult(P, x, y);
 
   return 0;
 }
@@ -1308,14 +1370,33 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_o
   KSPSetFromOptions(ksp);
   KSPMatSolve(ksp, RHS, X);
 
+  KSPConvergedReason ksp_reason;
+  KSPGetConvergedReason(ksp, &ksp_reason);
+  if (ksp_reason < 0) {
+    if (mpirank_world == 0) {
+      printf("ERROR: Gram solve failed in HessianRandRangeFinder with KSP reason %d\n", (int)ksp_reason);
+    }
+    exit(1);
+  }
+
   // Transpose X to get B
   MatTranspose(X, MAT_INITIAL_MATRIX, &B);
+
+  // // Keep B explicitly symmetric before using a Hermitian eigensolver.
+  // Mat Bt, Bsym;
+  // MatTranspose(B, MAT_INITIAL_MATRIX, &Bt);
+  // MatDuplicate(B, MAT_COPY_VALUES, &Bsym);
+  // MatAXPY(Bsym, 1.0, Bt, SAME_NONZERO_PATTERN);
+  // MatScale(Bsym, 0.5);
+  // MatDestroy(&Bt);
+  // MatDestroy(&B);
+  // B = Bsym;
 
   /* Eigenvalue decomposition of B */
   EPSCreate(PETSC_COMM_WORLD, &eps);
   EPSSetOperators(eps, B, NULL);
-  // EPSSetProblemType(eps, EPS_NHEP); // Non-Symmetric system matrix??
-  EPSSetProblemType(eps, EPS_HEP); // Symmetric system matrix??
+  EPSSetProblemType(eps, EPS_NHEP); // Non-Symmetric system matrix??
+  // EPSSetProblemType(eps, EPS_HEP); // Symmetric system matrix??
 
   // Get ncut eigenvalues
   EPSSetDimensions(eps, ncut, PETSC_DEFAULT, PETSC_DEFAULT);  
@@ -1409,7 +1490,7 @@ void OptimProblem::HessianRandRangeFinder(const Vec x, Mat* U_out, Vec* lambda_o
   PetscRandomDestroy(&rctx);
 }
 
-void OptimProblem::evalHessian(const Vec x, Mat H, Mat Hinv){
+void OptimProblem::evalHessianRFF(const Vec x, Mat H, Mat Hinv){
 
   // Get U, Lambda s.t. H \approx U * Lambda * U^T
   Mat U;
@@ -1434,11 +1515,16 @@ void OptimProblem::evalHessian(const Vec x, Mat H, Mat Hinv){
   Mat U_scaled;
   MatDuplicate(U, MAT_COPY_VALUES, &U_scaled);  // U_scaled = U
   MatDiagonalScale(U_scaled, NULL, lambda);  // Right scaling U_scaled = U * diag(lambda)
-  MatMatTransposeMult(U_scaled, U, MAT_REUSE_MATRIX, PETSC_DEFAULT, &H); // H= U_scaled * U^T
+  Mat Htmp;
+  MatMatTransposeMult(U_scaled, U, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Htmp); // H= U_scaled * U^T
+  MatCopy(Htmp, H, SAME_NONZERO_PATTERN);
+  MatDestroy(&Htmp);
 
   // invert Lambda if requested
   if (Hinv != NULL){
     int nelem;
+    const PetscReal lambda_floor = 1e-12;
+    int nsmall = 0;
     VecGetSize(lambda, &nelem);
     Vec lambdainv;
     VecDuplicate(lambda, &lambdainv);
@@ -1447,13 +1533,24 @@ void OptimProblem::evalHessian(const Vec x, Mat H, Mat Hinv){
     VecGetArrayRead(lambda, &lptr);
     VecGetArrayWrite(lambdainv, &linvptr);
     for (int i=0; i<nelem; i++){
-      linvptr[i] = 1.0 / lptr[i];
+      if (PetscAbsScalar(lptr[i]) <= lambda_floor) {
+        linvptr[i] = 0.0;
+        nsmall++;
+      } else {
+        linvptr[i] = 1.0 / lptr[i];
+      }
     }
     VecRestoreArrayWrite(lambdainv, &linvptr);
     VecRestoreArrayRead(lambda, &lptr);
+    if (nsmall > 0 && mpirank_world == 0 && !quietmode) {
+      printf("Warning: Regularized %d near-zero Hessian eigenvalues (|lambda| <= %1.3e) while building Hinv.\n", nsmall, lambda_floor);
+    }
     MatCopy(U, U_scaled, SAME_NONZERO_PATTERN);
     MatDiagonalScale(U_scaled, NULL, lambdainv);  // U_scaled = U * diag(lambda^-1)
-    MatMatTransposeMult(U_scaled, U, MAT_REUSE_MATRIX, PETSC_DEFAULT, &Hinv);
+    Mat Hinvtmp;
+    MatMatTransposeMult(U_scaled, U, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Hinvtmp);
+    MatCopy(Hinvtmp, Hinv, SAME_NONZERO_PATTERN);
+    MatDestroy(&Hinvtmp);
     VecDestroy(&lambdainv);
   }
 
@@ -1477,15 +1574,25 @@ void OptimProblem::ProjectGradient(const Vec x, const Vec grad, Vec grad_proj){
   // Scale rows of tmp by Lambda^{-1}
   PetscScalar *tmp_ptr;
   int ncols;
+  const PetscReal lambda_floor = 1e-12;
+  int nsmall = 0;
   VecGetSize(lambda, &ncols);
   VecGetArrayWrite(tmp, &tmp_ptr);
   const PetscScalar *lambda_ptr;
   VecGetArrayRead(lambda, &lambda_ptr);
   for (int i = 0; i < ncols; i++) {
-    tmp_ptr[i] = 1.0 / lambda_ptr[i] * tmp_ptr[i];  // tmp = Lambda^{-1} * U^T * grad
+    if (PetscAbsScalar(lambda_ptr[i]) <= lambda_floor) {
+      tmp_ptr[i] = 0.0;
+      nsmall++;
+    } else {
+      tmp_ptr[i] = (1.0 / lambda_ptr[i]) * tmp_ptr[i];  // tmp = Lambda^{-1} * U^T * grad
+    }
   }
   VecRestoreArrayWrite(tmp, &tmp_ptr);
   VecRestoreArrayRead(lambda, &lambda_ptr);
+  if (nsmall > 0 && mpirank_world == 0 && !quietmode) {
+    printf("Warning: Regularized %d near-zero Hessian eigenvalues (|lambda| <= %1.3e) during projected gradient scaling.\n", nsmall, lambda_floor);
+  }
 
   // Project gradient: grad_proj = U * tmp
   MatMult(U, tmp, grad_proj);

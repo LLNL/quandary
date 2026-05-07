@@ -58,6 +58,8 @@ const OptimSolverType OPTIM_SOLVER_TYPE = OptimSolverType::TAO_BFGS; ///< Defaul
 const int OPTIM_HESSIAN_NCUT = -1; ///< Default number of required eigenvalues for Hessian Range Space Finder
 const int OPTIM_HESSIAN_NEXTRA = 10; ///< Default oversampling for Hessian Range Space Finder
 const bool OPTIM_HESSIAN_USE_POSITIVE = false; ///< Default setting for using only positive eigenvalues in Hessian Range Space Finder
+const bool OPTIM_HESSIAN_USE_KSP_SOLVE = false; ///< Default: keep direct preconditioner application (KSPPREONLY)
+const int OPTIM_HESSIAN_KSP_MAXITER = 5; ///< Default max KSP iterations when iterative TAO_HESSIAN solve is enabled
 
 inline const std::string OUTPUT_DIRECTORY = "./data_out"; ///< Default output directory
 

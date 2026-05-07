@@ -52,6 +52,8 @@ CfgParser::CfgParser(const MPILogger& logger) : logger(logger) {
   registerConfig("optim_penalty_dpdm", settings.optim_penalty_dpdm);
   registerConfig("optim_penalty_energy", settings.optim_penalty_energy);
   registerConfig("optim_penalty_variation", settings.optim_penalty_variation);
+  registerConfig("optim_hessian_ksp_solve", settings.optim_hessian_use_ksp_solve);
+  registerConfig("optim_hessian_ksp_maxiter", settings.optim_hessian_ksp_maxiter);
   registerConfig("optim_regul_tik0", settings.optim_regul_tik0);
   registerConfig("optim_regul_interpolate", optim_regul_interpolate);
 
