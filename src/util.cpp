@@ -972,7 +972,7 @@ int getEigendecompositionComplex(Mat C_re, Mat C_im, Vec eigvals_re, Vec eigvals
     EPSCreate(PETSC_COMM_WORLD, &eps);
     EPSSetOperators(eps, M, NULL);
     EPSSetProblemType(eps, EPS_NHEP); // non-Hermitian eigenvalue problem
-    // EPSSetTolerances(eps, 1e-12, 500);
+    EPSSetTolerances(eps, 1e-9, 1000);
     EPSSetFromOptions(eps);
     EPSSetDimensions(eps, neigvals, PETSC_DEFAULT, PETSC_DEFAULT);
 
