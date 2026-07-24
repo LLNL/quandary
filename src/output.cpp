@@ -79,13 +79,9 @@ Output::Output(const Config& config, MasterEq* mastereq_, MPI_Comm comm_petsc, M
 
   writeStateObservables = false;
   if (config.getTransmonResonator()) {
-    if (mpisize_world > 1) {
-      printf("ERROR: State observables is not implemented for MPI parallelization yet.\n");
-      exit(1);
-    }
     writeStateObservables = true;
     
-    // First read all observables files. Each file contains one state vector per column, first all real elements, then all imaginary elements. The number of states is determined by the number of columns in the file. The number of levels is determined by the number of rows in the file. The number of observables is determined by the number of files. The files are named "state_observable_<index>.dat" where <index> is the observable index starting from 0.
+    // Read all observables files. Each file contains columns of state vectors, stacking real and imaginary elements on top of each other. The header of the files should contain the number of rows and column: Nrows = number of levels, Ncolumns = number of state observables.   
     state_observables_filenames = config.getOutputPureStateObservablesFilenames();
     for (size_t ifile=0; ifile<state_observables_filenames.size(); ifile++) {
       std::string filename = state_observables_filenames[ifile];
@@ -95,7 +91,6 @@ Output::Output(const Config& config, MasterEq* mastereq_, MPI_Comm comm_petsc, M
         MPI_Abort(MPI_COMM_WORLD, 1);
       }
       if (mpirank_world == 0 && !quietmode) printf("Loading state observables from %s\n", filename.c_str());
-      // The header of the file should contain the number of rows and column: Nrows = number of levels, Ncolumns = number of states. The file should contain 2*Nrows*Ncolumns numbers: first the real parts of the states, then the imaginary parts.  
       std::string line;
       std::getline(infile, line);
       std::istringstream iss(line);

@@ -3088,14 +3088,16 @@ void MasterEq::evalExpectedStateObservable(const Vec x, const std::vector<std::v
       // Lindblad solver: Tr(vv^dagger rho) = <v|rho|v>
       for (size_t i = 0; i < dim_rho; i++) {
         for (size_t j = 0; j < dim_rho; j++) {
-          PetscScalar psi_i_re = vec_re[i];
-          PetscScalar psi_i_im = vec_im[i];
-          PetscScalar psi_j_re = vec_re[j];
-          PetscScalar psi_j_im = vec_im[j];
-          size_t idx = getVecID(i,j,dim_rho);  // Index in the vectorized density matrix for element (i,j)
-          PetscScalar x_re = x_ptr[idx]; 
-          PetscScalar x_im = x_ptr[idx + dim_rho * dim_rho]; 
-          exp += (psi_i_re * psi_j_re + psi_i_im * psi_j_im) * x_re - (psi_i_re * psi_j_im - psi_i_im * psi_j_re) * x_im;
+          PetscInt idx = getVecID(i,j,dim_rho);  // Index in the vectorized density matrix for element (i,j)
+          if (ilow <= idx && idx < iupp)  { // Picks the processor who owns rho_ij
+            PetscScalar x_re = x_ptr[idx - ilow]; 
+            PetscScalar x_im = x_ptr[idx - ilow + localsize_u]; 
+            PetscScalar psi_i_re = vec_re[i];
+            PetscScalar psi_i_im = vec_im[i];
+            PetscScalar psi_j_re = vec_re[j];
+            PetscScalar psi_j_im = vec_im[j];
+            exp += (psi_i_re * psi_j_re + psi_i_im * psi_j_im) * x_re - (psi_i_re * psi_j_im - psi_i_im * psi_j_re) * x_im;
+          }
         }
       }
     } else {
@@ -3103,12 +3105,14 @@ void MasterEq::evalExpectedStateObservable(const Vec x, const std::vector<std::v
       double sum_re = 0.0;
       double sum_im = 0.0;
       for (size_t i = 0; i < dim_rho; i++) {
-        PetscScalar psi_i_re = vec_re[i];
-        PetscScalar psi_i_im = vec_im[i];
-        PetscScalar x_re = x_ptr[i];
-        PetscScalar x_im = x_ptr[i + dim_rho]; 
-        sum_re += psi_i_re * x_re + psi_i_im * x_im;
-        sum_im += psi_i_re * x_im - psi_i_im * x_re;
+        if (ilow <= PetscInt(i) && PetscInt(i) < iupp)  { // Picks the processor who owns u_i, v_i
+          PetscScalar psi_i_re = vec_re[i];
+          PetscScalar psi_i_im = vec_im[i];
+          PetscScalar x_re = x_ptr[i - ilow];
+          PetscScalar x_im = x_ptr[i - ilow + localsize_u]; 
+          sum_re += psi_i_re * x_re + psi_i_im * x_im;
+          sum_im += psi_i_re * x_im - psi_i_im * x_re;
+        }
       }
       exp = sum_re * sum_re + sum_im * sum_im; // |<v|psi>|^2
     }
@@ -3119,6 +3123,9 @@ void MasterEq::evalExpectedStateObservable(const Vec x, const std::vector<std::v
   }
   // Restore the state vector
   VecRestoreArrayRead(x, &x_ptr);
+
+  // Sum up from all Petsc processors
+  MPI_Allreduce(MPI_IN_PLACE, expectation.data(), expectation.size(), MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }
 
 
