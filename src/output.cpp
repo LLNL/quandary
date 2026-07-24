@@ -83,10 +83,6 @@ Output::Output(const Config& config, MasterEq* mastereq_, MPI_Comm comm_petsc, M
       printf("ERROR: State observables is not implemented for MPI parallelization yet.\n");
       exit(1);
     }
-    if (!mastereq->isLindbladSolver()) {
-      printf("ERROR: State observables is only implemented for Lindblad solver yet.\n");
-      exit(1);
-    }
     writeStateObservables = true;
     
     // First read all observables files. Each file contains one state vector per column, first all real elements, then all imaginary elements. The number of states is determined by the number of columns in the file. The number of levels is determined by the number of rows in the file. The number of observables is determined by the number of files. The files are named "state_observable_<index>.dat" where <index> is the observable index starting from 0.
@@ -493,42 +489,52 @@ void Output::writeResonatorFieldTrajectory(const std::vector<double>& resonator_
 
 void Output::evalExpectedStateObservable(const Vec x, const size_t iobs, std::vector<double> &expectation) {
 
-  // Currently only works for Lindblad solver. TODO: Sdhroedinger version
-
   // Get the state vector as a raw pointer
   const PetscScalar* x_ptr;
   VecGetArrayRead(x, &x_ptr);
 
-  // Dimension of the Hilbert space N 
-  size_t dim = mastereq->getDimRho();
+  size_t dim = mastereq->getDimRho(); // Dimension of the Hilbert space N 
+  bool isLindblad = mastereq->isLindbladSolver(); 
 
   for (size_t istate = 0; istate < state_observables_re[iobs].size(); istate++) {
-    const auto& evec_re = state_observables_re[iobs][istate];
-    const auto& evec_im = state_observables_im[iobs][istate];
+    const auto& vec_re = state_observables_re[iobs][istate];
+    const auto& vec_im = state_observables_im[iobs][istate];
 
-    // Evaluate evec^dagger * rho * evec, where rho is the density matrix represented by x. Assuming x is a vectorized density matrix in column-major order.
-    double sum = 0.0;
-    for (size_t i = 0; i < dim; i++) {
-      for (size_t j = 0; j < dim; j++) {
-        PetscScalar psi_i_re = evec_re[i];
-        PetscScalar psi_i_im = evec_im[i];
-        PetscScalar psi_j_re = evec_re[j];
-        PetscScalar psi_j_im = evec_im[j];
-
-        size_t idx = getVecID(i,j,dim);  // Index in the vectorized density matrix for element (i,j)
-        PetscScalar rho_re = x_ptr[idx]; 
-        PetscScalar rho_im = x_ptr[idx + dim * dim]; 
-
-        // Compute contribution to expectation value: <evec|rho|evec> (is real!)
-        sum += (psi_i_re * psi_j_re + psi_i_im * psi_j_im) * rho_re - (psi_i_re * psi_j_im - psi_i_im * psi_j_re) * rho_im;
+    // Evaluate Tr( v v^dagger rho)
+    double exp = 0.0;
+    if (isLindblad) {
+      // Lindblad solver: Tr(vv^dagger rho) = <v|rho|v>
+      for (size_t i = 0; i < dim; i++) {
+        for (size_t j = 0; j < dim; j++) {
+          PetscScalar psi_i_re = vec_re[i];
+          PetscScalar psi_i_im = vec_im[i];
+          PetscScalar psi_j_re = vec_re[j];
+          PetscScalar psi_j_im = vec_im[j];
+          size_t idx = getVecID(i,j,dim);  // Index in the vectorized density matrix for element (i,j)
+          PetscScalar x_re = x_ptr[idx]; 
+          PetscScalar x_im = x_ptr[idx + dim * dim]; 
+          exp += (psi_i_re * psi_j_re + psi_i_im * psi_j_im) * x_re - (psi_i_re * psi_j_im - psi_i_im * psi_j_re) * x_im;
+        }
       }
+    } else {
+      // Schroedinger solver: Tr(vv^dagger rho) = |<v|psi>|^2
+      double sum_re = 0.0;
+      double sum_im = 0.0;
+      for (size_t i = 0; i < dim; i++) {
+        PetscScalar psi_i_re = vec_re[i];
+        PetscScalar psi_i_im = vec_im[i];
+        PetscScalar x_re = x_ptr[i];
+        PetscScalar x_im = x_ptr[i + dim];
+        sum_re += psi_i_re * x_re + psi_i_im * x_im;
+        sum_im += psi_i_re * x_im - psi_i_im * x_re;
+      }
+      exp = sum_re * sum_re + sum_im * sum_im; // |<v|psi>|^2
     }
-    // Make sure sum lies in [0,1] due to numerical errors
-    if (sum < 0.0) sum = 0.0;
-    if (sum > 1.0) sum = 1.0;
-    expectation[istate] = sum;
+    // Make sure exp lies in [0,1] due to numerical errors
+    if (exp < 0.0) exp = 0.0; 
+    if (exp > 1.0) exp = 1.0; 
+    expectation[istate] = exp; 
   }
-
   // Restore the state vector
   VecRestoreArrayRead(x, &x_ptr);
 }
