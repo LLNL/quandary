@@ -3072,6 +3072,56 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
   MPI_Allreduce(mypop.data(), pop.data(), dim_rho, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }
 
+void MasterEq::evalExpectedStateObservable(const Vec x, const std::vector<std::vector<double>>& state_observables_re, const std::vector<std::vector<double>>& state_observables_im, std::vector<double> &expectation) {
+
+  // Get the state vector as a raw pointer
+  const PetscScalar* x_ptr;
+  VecGetArrayRead(x, &x_ptr); 
+
+  for (size_t istate = 0; istate < state_observables_re.size(); istate++) {
+    const auto& vec_re = state_observables_re[istate];
+    const auto& vec_im = state_observables_im[istate];
+
+    // Evaluate Tr( v v^dagger rho)
+    double exp = 0.0;
+    if (isLindbladSolver()) {
+      // Lindblad solver: Tr(vv^dagger rho) = <v|rho|v>
+      for (size_t i = 0; i < dim_rho; i++) {
+        for (size_t j = 0; j < dim_rho; j++) {
+          PetscScalar psi_i_re = vec_re[i];
+          PetscScalar psi_i_im = vec_im[i];
+          PetscScalar psi_j_re = vec_re[j];
+          PetscScalar psi_j_im = vec_im[j];
+          size_t idx = getVecID(i,j,dim_rho);  // Index in the vectorized density matrix for element (i,j)
+          PetscScalar x_re = x_ptr[idx]; 
+          PetscScalar x_im = x_ptr[idx + dim_rho * dim_rho]; 
+          exp += (psi_i_re * psi_j_re + psi_i_im * psi_j_im) * x_re - (psi_i_re * psi_j_im - psi_i_im * psi_j_re) * x_im;
+        }
+      }
+    } else {
+      // Schroedinger solver: Tr(vv^dagger rho) = |<v|psi>|^2
+      double sum_re = 0.0;
+      double sum_im = 0.0;
+      for (size_t i = 0; i < dim_rho; i++) {
+        PetscScalar psi_i_re = vec_re[i];
+        PetscScalar psi_i_im = vec_im[i];
+        PetscScalar x_re = x_ptr[i];
+        PetscScalar x_im = x_ptr[i + dim_rho]; 
+        sum_re += psi_i_re * x_re + psi_i_im * x_im;
+        sum_im += psi_i_re * x_im - psi_i_im * x_re;
+      }
+      exp = sum_re * sum_re + sum_im * sum_im; // |<v|psi>|^2
+    }
+    // Make sure exp lies in [0,1] due to numerical errors
+    if (exp < 0.0) exp = 0.0; 
+    if (exp > 1.0) exp = 1.0; 
+    expectation[istate] = exp; 
+  }
+  // Restore the state vector
+  VecRestoreArrayRead(x, &x_ptr);
+}
+
+
 /* --- 1 Oscillator cases --- */
 int applyRHS_matfree_1Osc(Mat RHS, Vec x, Vec y){
   /* Get the shell context */

@@ -275,6 +275,16 @@ class MasterEq{
      */
     void population(const Vec x, std::vector<double> &population_com);
 
+    /** 
+     * @brief Evaluate expectation of state observalbles Tr(v v^dagger rho) = <v|rho|v> for a given pure state vector v.
+     * 
+     * @param x Current state vector
+     * @param state_observables_re Vector of real parts of the state observable vectors v
+     * @param state_observables_im Vector of imaginary parts of the state observable vectors v
+     * @param expectation Output vector of state expectations
+     */
+    void evalExpectedStateObservable(const Vec x, const std::vector<std::vector<double>>& state_observables_re, const std::vector<std::vector<double>>& state_observables_im, std::vector<double> &expectation);
+
     // /* Compute reduced density operator for a sub-system defined by IDs in the oscilIDs vector */
     // void createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs);
     // /* Derivative of reduced density computation */

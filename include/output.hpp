@@ -154,13 +154,4 @@ class Output{
      * @param initid Initial condition identifier
      */
     void writeResonatorFieldTrajectory(const std::vector<double>& resonator_field_re, const std::vector<double>& resonator_field_im, const std::vector<double>& resonator_field_times, int initid) const;
-
-    /** 
-     * @brief Evaluate expectation of state observalble 
-     * 
-     * @param x Current state vector
-     * @param iobs Index of the state observable to evaluate
-     * @param expectation Output vector of state expectations
-     */
-    void evalExpectedStateObservable(const Vec x, const size_t iobs, std::vector<double> &expectation);
 };
