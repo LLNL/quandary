@@ -148,8 +148,26 @@ Output::Output(const Config& config, MasterEq* mastereq_, MPI_Comm comm_petsc, M
         MPI_Bcast(state_re[col].data(), mastereq->getDimRho(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
         MPI_Bcast(state_im[col].data(), mastereq->getDimRho(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
       }
+      // Store the real and imaginary parts for this observable
       state_observables_re.push_back(state_re);
       state_observables_im.push_back(state_im);
+    }
+
+    // Check the norm of the state observable vectors for each file.
+    for (size_t ifile=0; ifile<state_observables_re.size(); ifile++) {
+      for (size_t col=0; col<state_observables_re[ifile].size(); col++) {
+        double norm = 0.0;
+        for (size_t row=0; row<state_observables_re[ifile][col].size(); row++) {
+          norm += state_observables_re[ifile][col][row]*state_observables_re[ifile][col][row]; 
+          norm += state_observables_im[ifile][col][row]*state_observables_im[ifile][col][row];
+        }
+        norm = std::sqrt(norm);
+        if (std::abs(norm-1.0) > 1e-12) {
+          if (mpirank_world == 0) {
+            std::cerr << "WARNING: Norm of state observable column " << col << " is " << norm << " (should be 1)" << std::endl;
+          }
+        }
+      }
     }
 
     // Remove any preceeding directories and ".dat" from the filenames for output 

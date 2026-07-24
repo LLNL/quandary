@@ -3116,9 +3116,6 @@ void MasterEq::evalExpectedStateObservable(const Vec x, const std::vector<std::v
       }
       exp = sum_re * sum_re + sum_im * sum_im; // |<v|psi>|^2
     }
-    // Make sure exp lies in [0,1] due to numerical errors
-    if (exp < 0.0) exp = 0.0; 
-    if (exp > 1.0) exp = 1.0; 
     expectation[istate] = exp; 
   }
   // Restore the state vector
@@ -3126,6 +3123,12 @@ void MasterEq::evalExpectedStateObservable(const Vec x, const std::vector<std::v
 
   // Sum up from all Petsc processors
   MPI_Allreduce(MPI_IN_PLACE, expectation.data(), expectation.size(), MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
+
+  // Clamp to [0,1] to avoid numerical issues
+  for (auto& val : expectation) {
+    if (val < 0.0) val = 0.0;
+    if (val > 1.0) val = 1.0;
+  }
 }
 
 
