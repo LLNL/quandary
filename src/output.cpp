@@ -84,41 +84,70 @@ Output::Output(const Config& config, MasterEq* mastereq_, MPI_Comm comm_petsc, M
     // Read all observables files. Each file contains columns of state vectors, stacking real and imaginary elements on top of each other. The header of the files should contain the number of rows and column: Nrows = number of levels, Ncolumns = number of state observables.   
     state_observables_filenames = config.getOutputPureStateObservablesFilenames();
     for (size_t ifile=0; ifile<state_observables_filenames.size(); ifile++) {
-      std::string filename = state_observables_filenames[ifile];
-      std::ifstream infile(filename);
-      if (!infile.is_open()) {
-        std::cerr << "ERROR: Could not open " << filename << std::endl;
-        MPI_Abort(MPI_COMM_WORLD, 1);
-      }
-      if (mpirank_world == 0 && !quietmode) printf("Loading state observables from %s\n", filename.c_str());
-      std::string line;
-      std::getline(infile, line);
-      std::istringstream iss(line);
-      int nrows, ncolumns;
-      iss >> nrows;
-      iss >> ncolumns;
-      // Check that the number of rows matches the dimension of the Hilbert space
-      if (nrows != 2*mastereq->getDimRho()) {
-        std::cerr << "ERROR: Number of rows in " << filename << " does not match dimension of Hilbert space times 2. Expected " << 2*mastereq->getDimRho() << ", got " << nrows << std::endl;
-        MPI_Abort(MPI_COMM_WORLD, 1);
-      }
 
-      // Read the real and imaginary parts for each column from the file
+      int nrows, ncolumns;
+      if (mpirank_world == 0) { // Read header on one proc and broadcast to all
+        std::string filename = state_observables_filenames[ifile];
+        std::ifstream infile(filename);
+        if (!infile.is_open()) {
+          std::cerr << "ERROR: Could not open " << filename << std::endl;
+          MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+        std::string line;
+        std::getline(infile, line);
+        std::istringstream iss(line);
+        iss >> nrows;
+        iss >> ncolumns;
+        // Check that the number of rows matches the dimension of the Hilbert space
+        if (nrows != 2*mastereq->getDimRho()) {
+          std::cerr << "ERROR: Number of rows in " << filename << " does not match dimension of Hilbert space times 2. Expected " << 2*mastereq->getDimRho() << ", got " << nrows << std::endl;
+          MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+        infile.close();
+      }
+      MPI_Bcast(&nrows, 1, MPI_INT, 0, MPI_COMM_WORLD);
+      MPI_Bcast(&ncolumns, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
       std::vector<std::vector<double>> state_re; 
       std::vector<std::vector<double>> state_im;
       state_re.resize(ncolumns, std::vector<double>(mastereq->getDimRho(), 0.0));
       state_im.resize(ncolumns, std::vector<double>(mastereq->getDimRho(), 0.0));
-      for (int row=0; row<mastereq->getDimRho(); row++) { // All real parts
-        for (int col=0; col<ncolumns; col++) {
-          infile >> state_re[col][row];
+
+      if (mpirank_world == 0) { // Read the real and imaginary parts for each column from the file on one proc and broadcast to all
+        std::string filename = state_observables_filenames[ifile];
+        std::ifstream infile(filename);
+        if (!infile.is_open()) {
+          std::cerr << "ERROR: Could not open " << filename << std::endl;
+          MPI_Abort(MPI_COMM_WORLD, 1);
         }
-      }
-      for (int row=0; row<mastereq->getDimRho(); row++) {
-        for (int col=0; col<ncolumns; col++) {
-          infile >> state_im[col][row];
+        if (!quietmode) printf("Loading state observables from %s\n", filename.c_str());
+
+        // Skip the header line
+        std::string line;
+        std::getline(infile, line);
+        std::istringstream iss(line);
+        iss >> nrows;
+        iss >> ncolumns;
+ 
+        // Read all real parts
+        for (int row=0; row<mastereq->getDimRho(); row++) { 
+          for (int col=0; col<ncolumns; col++) {
+            infile >> state_re[col][row];
+          }
         }
+        // Read all imaginary parts
+        for (int row=0; row<mastereq->getDimRho(); row++) {
+          for (int col=0; col<ncolumns; col++) {
+            infile >> state_im[col][row];
+          }
+        }
+        infile.close();
       }
-      infile.close();
+      // Broadcast the real and imaginary parts to all processors
+      for (int col=0; col<ncolumns; col++) {
+        MPI_Bcast(state_re[col].data(), mastereq->getDimRho(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(state_im[col].data(), mastereq->getDimRho(), MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      }
       state_observables_re.push_back(state_re);
       state_observables_im.push_back(state_im);
     }
