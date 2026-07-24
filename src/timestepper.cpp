@@ -124,6 +124,11 @@ TimeStepper::~TimeStepper() {
 }
 
 Vec TimeStepper::solveODE(int initid, int iinit_local, Vec rho_t0){
+  /* start wall clock timer */
+  double monitor_wall_start = MPI_Wtime();
+  double monitor_last_report = monitor_wall_start;
+  double monitor_report_interval = 5.0;  // seconds
+
 
   /* Open output files */
   if (writeTrajectoryDataFiles) {
@@ -191,6 +196,29 @@ Vec TimeStepper::solveODE(int initid, int iinit_local, Vec rho_t0){
     }
     /* Add to energy integral term */
     if (eval_energy) energy_integral += evalEnergy(tstop);
+
+    /* Report progress */
+    if (mpirank_world == 0) {
+      const double now = MPI_Wtime();
+      const double elapsed = std::max(0.0, now - monitor_wall_start);
+      const double progress = std::max(0.0, std::min(1.0, tstart / total_time));
+      const bool is_final = progress >= 0.999999;
+      const bool should_report = (now - monitor_last_report >= monitor_report_interval) || is_final;
+
+      if (should_report && progress > 0.0) {
+        const double eta = elapsed * (1.0 - progress) / progress;
+        printf("Forward solve iinit=%d step=%d t=%1.6f/%1.6f (%5.1f%%) elapsed=%s eta=%s\n",
+               initid,
+               n,
+               tstart,
+               total_time,
+               100.0 * progress,
+               formatDuration(elapsed).c_str(),
+               formatDuration(eta).c_str());
+        fflush(stdout);
+        monitor_last_report = now;
+      }
+    }
 
 #ifdef SANITY_CHECK
     SanityTests(x, tstart);
