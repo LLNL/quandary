@@ -172,6 +172,8 @@ observables = ["population", "expectedEnergy"]
 timestep_stride = 1
 # Output frequency for optimization history: write every <num> optimization iterations
 optimization_stride = 1
+# Optional: Specify a list of filenames containing vectors of pure states to be used as observables during the time evolution. Each file can contain multiple columns, each column representing a pure state vector, v, for which the expectation <vv^dagger> = Tr(vv^dagger rho(t)) = v^dagger rho(t) v is computed. The number of rows should be 2*dim(H), listing first all real parts of the vector, followed all imaginary parts.
+# purestate_observables = ["vectors_branch_0.dat", "vectors_branch_1.dat"]
 
 [solver]
 # Runtype options:

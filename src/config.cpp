@@ -353,6 +353,18 @@ Config::Config(const MPILogger& logger, const toml::table& toml) : logger(logger
       }
     }
 
+    // Parse optional output filenames for pure state observables
+    output_purestate_observables_filenames.clear();
+    if (auto output_filenames_array = output_table["purestate_observables"].as_array()) {
+      for (auto&& elem : *output_filenames_array) {
+        if (auto str = elem.value<std::string>()) {
+          output_purestate_observables_filenames.push_back(*str);
+        } else {
+          logger.exitWithError("purestate_observables_filenames array must contain strings");
+        }
+      }
+    }
+
     output_timestep_stride = validators::field<size_t>(output_table, "timestep_stride").valueOr(ConfigDefaults::OUTPUT_TIMESTEP_STRIDE);
 
     output_optimization_stride = validators::field<size_t>(output_table, "optimization_stride").valueOr(ConfigDefaults::OUTPUT_OPTIMIZATION_STRIDE);
@@ -459,6 +471,11 @@ std::string printVector(const std::vector<T>& vec) {
     result += formatDouble(vec[0]);
     for (size_t i = 1; i < vec.size(); ++i) {
       result += ", " + formatDouble(vec[i]);
+    }
+  } else if constexpr (std::is_same_v<T, std::string>) {
+    result += "\"" + vec[0] + "\"";
+    for (size_t i = 1; i < vec.size(); ++i) {
+      result += ", \"" + vec[i] + "\"";
     }
   } else {
     result += std::to_string(vec[0]);
@@ -744,6 +761,7 @@ void Config::printConfig(std::stringstream& log) const {
     if (j < output_observables.size() - 1) log << ", ";
   }
   log << "]\n";
+  log << "purestate_observables = " << printVector(output_purestate_observables_filenames) << "\n";
   log << "timestep_stride = " << output_timestep_stride << "\n";
   log << "optimization_stride = " << output_optimization_stride << "\n";
 

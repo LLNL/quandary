@@ -215,6 +215,11 @@ class MasterEq{
     PetscInt getDimRho(){ return dim_rho; }
 
     /**
+     * @brief Checks if the solver is a Lindblad solver (open quantum system).
+     */
+    PetscBool isLindbladSolver() { return (decoherence_type != DecoherenceType::NONE); }
+
+    /**
      * @brief Assembles the real-valued system matrix (RHS) at time t.
      *
      * Updates the time-dependent parameters in the RHS MatShell context. This must be 

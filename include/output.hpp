@@ -17,6 +17,7 @@ class Output{
   protected:
 
   int mpirank_world; ///< Rank of processor in MPI_COMM_WORLD
+  int mpisize_world; ///< Size of processor in MPI_COMM_WORLD
   int mpirank_petsc; ///< Rank of processor for PETSc parallelization
   int mpisize_petsc; ///< Size of communicator for PETSc parallelization
   int mpirank_init; ///< Rank of processor for initial condition parallelization
@@ -39,6 +40,12 @@ class Output{
   std::vector<FILE *>populationfile; ///< Files for population evolution per oscillator
   FILE *expectedfile_comp; ///< File for expected energy evolution of the full composite system
   FILE *populationfile_comp; ///< File for population evolution of the full composite system
+
+  bool writeStateObservables;
+  std::vector<FILE*> state_expectations_files; ///< Files for writing state expectations for each observable
+  std::vector<std::string> state_observables_filenames; ///< Filenames for reading state observables from
+  std::vector<std::vector<std::vector<double>>> state_observables_re; ///< Real parts of states for observables: state_observables_Re/Im[observable_index][state_index][level_index]
+  std::vector<std::vector<std::vector<double>>> state_observables_im; ///< Imaginary parts
 
   // VecScatter scat; ///< PETSc's scatter context for state communication across cores
   // Vec xseq; ///< Sequential vector for I/O operations
@@ -148,4 +155,12 @@ class Output{
      */
     void writeResonatorFieldTrajectory(const std::vector<double>& resonator_field_re, const std::vector<double>& resonator_field_im, const std::vector<double>& resonator_field_times, int initid) const;
 
+    /** 
+     * @brief Evaluate expectation of state observalble 
+     * 
+     * @param x Current state vector
+     * @param iobs Index of the state observable to evaluate
+     * @param expectation Output vector of state expectations
+     */
+    void evalExpectedStateObservable(const Vec x, const size_t iobs, std::vector<double> &expectation);
 };

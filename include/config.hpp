@@ -108,6 +108,7 @@ class Config {
   // Output and runtypes
   std::string output_directory; ///< Directory for output files
   std::vector<OutputType> output_observables; ///< Specify the desired observables.
+  std::vector<std::string> output_purestate_observables_filenames; ///< Filenames for reading pure state observables from file
   size_t output_timestep_stride; ///< Output frequency in the time domain: write output every <num> time-step
   size_t output_optimization_stride; ///< Frequency of writing output during optimization iterations
   RunType runtype; ///< Runtype options: simulation, gradient, or optimization
@@ -181,6 +182,7 @@ class Config {
 
   const std::string& getOutputDirectory() const { return output_directory; }
   const std::vector<OutputType>& getOutputObservables() const { return output_observables; }
+  const std::vector<std::string>& getOutputPureStateObservablesFilenames() const { return output_purestate_observables_filenames; }
   size_t getOutputTimestepStride() const { return output_timestep_stride; }
   size_t getOutputOptimizationStride() const { return output_optimization_stride; }
   RunType getRuntype() const { return runtype; }

@@ -90,6 +90,7 @@ class Quandary:
     print_frequency_iter # Output frequency for optimization iterations. (Print every <x> iterations). Default: 1
     output_frequency     # Frequency (in number of timesteps) to store intermediate results during propagation. Default: 1 (write every time step)
     output_observables         # List of stringsn to specify which observables to write during time evolution. Defalut = ["expectedEnergy", "population", "fullstate"]
+    purestate_observables  # List of filenames to read pure state observables from file. Default: none
     usematfree           # Switch to use matrix-free (rather than sparse-matrix) solver. Default: True
     verbose              # Switch to turn on more screen output for debugging. Default: False
 
@@ -176,6 +177,7 @@ class Quandary:
     print_frequency_iter   : int  = 1
     output_frequency       : int  = 1
     output_observables     : List[str] = field(default_factory=lambda: ["expectedEnergy", "population", "fullstate"])
+    purestate_observables  : List[str] = field(default_factory=list)
     usematfree             : bool = True 
     verbose                : bool = False
     # Internal configuration. Should not be changed by user.
@@ -892,6 +894,7 @@ class Quandary:
         lines.append("\n[output]")
         lines.append("directory = \"./\"")
         lines.append(f"observables = {_toml_array_str(self.output_observables)}")
+        lines.append(f"purestate_observables = {_toml_array_str(self.purestate_observables)}")
         lines.append(f"timestep_stride = {self.output_frequency}")
         lines.append(f"optimization_stride = {self.print_frequency_iter}")
 

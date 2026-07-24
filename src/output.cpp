@@ -18,6 +18,7 @@ Output::Output(const Config& config, MasterEq* mastereq_, MPI_Comm comm_petsc, M
 
   /* Get communicator ranks */
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
+  MPI_Comm_size(MPI_COMM_WORLD, &mpisize_world);
   MPI_Comm_rank(comm_petsc, &mpirank_petsc);
   MPI_Comm_size(comm_petsc, &mpisize_petsc);
   MPI_Comm_rank(comm_init, &mpirank_init);
@@ -73,6 +74,76 @@ Output::Output(const Config& config, MasterEq* mastereq_, MPI_Comm comm_petsc, M
       case OutputType::FULLSTATE:
         writeFullState = true;
         break;
+    }
+  }
+
+  writeStateObservables = false;
+  if (config.getTransmonResonator()) {
+    if (mpisize_world > 1) {
+      printf("ERROR: State observables is not implemented for MPI parallelization yet.\n");
+      exit(1);
+    }
+    if (!mastereq->isLindbladSolver()) {
+      printf("ERROR: State observables is only implemented for Lindblad solver yet.\n");
+      exit(1);
+    }
+    writeStateObservables = true;
+    
+    // First read all observables files. Each file contains one state vector per column, first all real elements, then all imaginary elements. The number of states is determined by the number of columns in the file. The number of levels is determined by the number of rows in the file. The number of observables is determined by the number of files. The files are named "state_observable_<index>.dat" where <index> is the observable index starting from 0.
+    state_observables_filenames = config.getOutputPureStateObservablesFilenames();
+    for (size_t ifile=0; ifile<state_observables_filenames.size(); ifile++) {
+      std::string filename = state_observables_filenames[ifile];
+      std::ifstream infile(filename);
+      if (!infile.is_open()) {
+        std::cerr << "ERROR: Could not open " << filename << std::endl;
+        MPI_Abort(MPI_COMM_WORLD, 1);
+      }
+      if (mpirank_world == 0 && !quietmode) printf("Loading state observables from %s\n", filename.c_str());
+      // The header of the file should contain the number of rows and column: Nrows = number of levels, Ncolumns = number of states. The file should contain 2*Nrows*Ncolumns numbers: first the real parts of the states, then the imaginary parts.  
+      std::string line;
+      std::getline(infile, line);
+      std::istringstream iss(line);
+      int nrows, ncolumns;
+      iss >> nrows;
+      iss >> ncolumns;
+      // Check that the number of rows matches the dimension of the Hilbert space
+      if (nrows != 2*mastereq->getDimRho()) {
+        std::cerr << "ERROR: Number of rows in " << filename << " does not match dimension of Hilbert space times 2. Expected " << 2*mastereq->getDimRho() << ", got " << nrows << std::endl;
+        MPI_Abort(MPI_COMM_WORLD, 1);
+      }
+
+      // Read the real and imaginary parts for each column from the file
+      std::vector<std::vector<double>> state_re; 
+      std::vector<std::vector<double>> state_im;
+      state_re.resize(ncolumns, std::vector<double>(mastereq->getDimRho(), 0.0));
+      state_im.resize(ncolumns, std::vector<double>(mastereq->getDimRho(), 0.0));
+      for (int row=0; row<mastereq->getDimRho(); row++) { // All real parts
+        for (int col=0; col<ncolumns; col++) {
+          infile >> state_re[col][row];
+        }
+      }
+      for (int row=0; row<mastereq->getDimRho(); row++) {
+        for (int col=0; col<ncolumns; col++) {
+          infile >> state_im[col][row];
+        }
+      }
+      infile.close();
+      state_observables_re.push_back(state_re);
+      state_observables_im.push_back(state_im);
+    }
+
+    // Remove any preceeding directories and ".dat" from the filenames for output 
+    for (size_t ifile=0; ifile<state_observables_filenames.size(); ifile++) {
+      std::string filename = state_observables_filenames[ifile];
+      size_t pos = filename.find_last_of("/\\");
+      if (pos != std::string::npos) {
+        state_observables_filenames[ifile] = filename.substr(pos + 1);
+      }
+      // Remove ".dat" extension
+      size_t dot_pos = state_observables_filenames[ifile].rfind(".dat");
+      if (dot_pos != std::string::npos) {
+        state_observables_filenames[ifile] = state_observables_filenames[ifile].substr(0, dot_pos);
+      }
     }
   }
 }
@@ -190,6 +261,20 @@ void Output::openTrajectoryDataFiles(std::string prefix, int initid){
   // On the first petsc rank, open required files and print header information
   if (mpirank_petsc == 0) {
 
+    // State observables, one file each 
+    if (writeStateObservables) {
+      for (size_t ifile = 0; ifile < state_observables_filenames.size(); ifile++) {
+        snprintf(filename, 254, "%s/expected_%s.iinit%04d.dat", output_dir.c_str(), state_observables_filenames[ifile].c_str(), initid);
+        FILE* file = fopen(filename, "w");
+        if (file == nullptr) {
+          printf("ERROR: Could not open file %s\n", filename);
+          exit(1);
+        }
+        state_expectations_files.push_back(file);
+        fprintf(file, "#\"time\"      \"state expectations\"\n");
+      }
+    }
+
     // Open files for expected energy per oscillator  
     if (writeExpectedEnergy) {
       for (size_t i=0; i<noscillators; i++) { 
@@ -256,6 +341,21 @@ void Output::writeTrajectoryDataFiles(int timestep, double time, const Vec state
 
   /* Write output only every <num> time-steps */
   if (timestep % output_timestep_stride == 0) {
+
+    /* Write state expectations for each observable to file */
+    if (writeStateObservables) {
+      for (size_t iobs=0; iobs<state_observables_re.size(); iobs++) {
+        std::vector<double> expectation(state_observables_re[iobs].size(), 0.0);
+        evalExpectedStateObservable(state, iobs, expectation);
+        if (mpirank_petsc == 0) {
+          fprintf(state_expectations_files[iobs], "%.8f ", time);
+          for (size_t istate=0; istate<expectation.size(); istate++) {
+            fprintf(state_expectations_files[iobs], " %1.14e", expectation[istate]);
+          }
+          fprintf(state_expectations_files[iobs], "\n");
+        }
+      }
+    }
 
     /* Write expected energy levels to file */
     if (writeExpectedEnergy) {
@@ -351,6 +451,13 @@ void Output::closeTrajectoryDataFiles(){
   }
   if (populationfile_comp != NULL) fclose(populationfile_comp);
   populationfile_comp = NULL;
+
+  for (size_t i=0; i<state_expectations_files.size(); i++) {
+    if (state_expectations_files[i] != NULL) {
+      fclose(state_expectations_files[i]);
+      state_expectations_files[i] = NULL;
+    }
+  }
 }
 
 void Output::writeResonatorFieldTrajectory(const std::vector<double>& resonator_field_re, const std::vector<double>& resonator_field_im, const std::vector<double>& resonator_field_times, int initid) const {
@@ -382,3 +489,46 @@ void Output::writeResonatorFieldTrajectory(const std::vector<double>& resonator_
   }
   fclose(file);
 } 
+
+
+void Output::evalExpectedStateObservable(const Vec x, const size_t iobs, std::vector<double> &expectation) {
+
+  // Currently only works for Lindblad solver. TODO: Sdhroedinger version
+
+  // Get the state vector as a raw pointer
+  const PetscScalar* x_ptr;
+  VecGetArrayRead(x, &x_ptr);
+
+  // Dimension of the Hilbert space N 
+  size_t dim = mastereq->getDimRho();
+
+  for (size_t istate = 0; istate < state_observables_re[iobs].size(); istate++) {
+    const auto& evec_re = state_observables_re[iobs][istate];
+    const auto& evec_im = state_observables_im[iobs][istate];
+
+    // Evaluate evec^dagger * rho * evec, where rho is the density matrix represented by x. Assuming x is a vectorized density matrix in column-major order.
+    double sum = 0.0;
+    for (size_t i = 0; i < dim; i++) {
+      for (size_t j = 0; j < dim; j++) {
+        PetscScalar psi_i_re = evec_re[i];
+        PetscScalar psi_i_im = evec_im[i];
+        PetscScalar psi_j_re = evec_re[j];
+        PetscScalar psi_j_im = evec_im[j];
+
+        size_t idx = getVecID(i,j,dim);  // Index in the vectorized density matrix for element (i,j)
+        PetscScalar rho_re = x_ptr[idx]; 
+        PetscScalar rho_im = x_ptr[idx + dim * dim]; 
+
+        // Compute contribution to expectation value: <evec|rho|evec> (is real!)
+        sum += (psi_i_re * psi_j_re + psi_i_im * psi_j_im) * rho_re - (psi_i_re * psi_j_im - psi_i_im * psi_j_re) * rho_im;
+      }
+    }
+    // Make sure sum lies in [0,1] due to numerical errors
+    if (sum < 0.0) sum = 0.0;
+    if (sum > 1.0) sum = 1.0;
+    expectation[istate] = sum;
+  }
+
+  // Restore the state vector
+  VecRestoreArrayRead(x, &x_ptr);
+}
