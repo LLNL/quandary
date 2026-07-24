@@ -68,9 +68,8 @@ NB_MODULE(_quandary_impl, m) {
 
   nb::enum_<ControlType>(m, "ControlType", "Control pulse parameterization type")
     .value("NONE", ControlType::NONE, "No control")
-    .value("BSPLINE", ControlType::BSPLINE, "B-spline parameterization")
-    .value("BSPLINEAMP", ControlType::BSPLINEAMP, "B-spline with amplitude scaling")
-    .value("BSPLINE0", ControlType::BSPLINE0, "B-spline with zero boundary conditions");
+    .value("BSPLINE", ControlType::BSPLINE, "2nd orderB-spline parameterization")
+    .value("BSPLINE0", ControlType::BSPLINE0, "0-th order B-spline parameterization (piecewise constant)");
 
   nb::enum_<ControlInitializationType>(m, "ControlInitializationType", "Control pulse initialization method")
     .value("CONSTANT", ControlInitializationType::CONSTANT, "Constant amplitude initialization")
@@ -134,7 +133,6 @@ NB_MODULE(_quandary_impl, m) {
     .def_rw("nspline", &ControlParameterizationSettings::nspline, "(int >= 1 | None) Number of B-spline basis functions")
     .def_rw("tstart", &ControlParameterizationSettings::tstart, "(float | None) Start time of parameterization [ns]")
     .def_rw("tstop", &ControlParameterizationSettings::tstop, "(float | None) Stop time of parameterization [ns]")
-    .def_rw("scaling", &ControlParameterizationSettings::scaling, "(float | None) Amplitude scaling factor (BSPLINEAMP only)")
     .def("__repr__", [](const ControlParameterizationSettings& s) { return Config::toString(s); });
 
   nb::class_<ControlInitializationSettings>(m, "ControlInitializationSettings",
@@ -143,7 +141,6 @@ NB_MODULE(_quandary_impl, m) {
     .def(nb::init<>())
     .def_rw("init_type", &ControlInitializationSettings::type, "(ControlInitializationType) Initialization method")
     .def_rw("amplitude", &ControlInitializationSettings::amplitude, "(float | None) Initial amplitude [GHz] (for CONSTANT)")
-    .def_rw("phase", &ControlInitializationSettings::phase, "(float | None) Initial phase [rad]")
     .def_rw("filename", &ControlInitializationSettings::filename, "(str | None) File path (for FILE type)")
     .def("__repr__", [](const ControlInitializationSettings& s) { return Config::toString(s); });
 

@@ -75,6 +75,11 @@ class Config {
   std::optional<std::vector<ControlInitializationSettings>> control_initializations; ///< Control initializations for each oscillator
   std::optional<std::vector<double>> control_amplitude_bound; ///< Control amplitude bounds for each oscillator
   std::optional<std::vector<std::vector<double>>> carrier_frequencies; ///< Carrier frequencies for each oscillator
+  std::optional<bool> control_flux_enabled; ///< Enable additional flux control channel per oscillator
+  std::optional<std::vector<ControlParameterizationSettings>> control_flux_parameterizations; ///< Flux control parameterizations for each oscillator
+  std::optional<std::vector<ControlInitializationSettings>> control_flux_initializations; ///< Flux control initializations for each oscillator
+  std::optional<std::vector<double>> control_flux_amplitude_bounds; ///< Flux control amplitude bounds for each oscillator
+  std::optional<bool> control_flux_zero_boundary_condition; ///< Decide whether flux controls should start and end at zero
   std::optional<OptimTargetSettings> optim_target; ///< Grouped optimization target configuration
   std::optional<ObjectiveType> optim_objective; ///< Objective function measure
   std::optional<std::vector<double>> optim_weights; ///< Weights for summing up the objective function
@@ -163,6 +168,11 @@ class Config {
   }
   double getControlAmplitudeBound(size_t i_osc) const { return control_amplitude_bound.value()[i_osc]; }
   const std::vector<double>& getCarrierFrequencies(size_t i_osc) const { return carrier_frequencies.value()[i_osc]; }
+  bool getControlFluxEnabled() const { return control_flux_enabled.value(); }
+  bool getControlFluxZeroBoundaryCondition() const { return control_flux_zero_boundary_condition.value(); }
+  const ControlParameterizationSettings& getControlFluxParameterizations(size_t i_osc) const { return control_flux_parameterizations.value()[i_osc]; }
+  const ControlInitializationSettings& getControlFluxInitializations(size_t i_osc) const { return control_flux_initializations.value()[i_osc]; }
+  double getControlFluxAmplitudeBound(size_t i_osc) const { return control_flux_amplitude_bounds.value()[i_osc]; }
   const OptimTargetSettings& getOptimTarget() const { return optim_target.value(); }
   ObjectiveType getOptimObjective() const { return optim_objective.value(); }
   const std::vector<double>& getOptimWeights() const { return optim_weights.value(); }

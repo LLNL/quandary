@@ -30,10 +30,12 @@ const ControlType CONTROL_TYPE = ControlType::BSPLINE; ///< Default control para
 const size_t CONTROL_SPLINE_COUNT = 10; ///< Default number of B-spline basis functions
 const ControlInitializationType CONTROL_INIT_TYPE = ControlInitializationType::RANDOM; ///< Default control initialization amplitude
 const double CONTROL_INIT_AMPLITUDE = 0.0; ///< Default control initialization amplitude
-const double CONTROL_INIT_PHASE = 0.0; ///< Default control initialization phase
 
 const double CONTROL_AMPLITUDE_BOUND = 1e12; ///< Default amplitude bound for control pulses
 const double CARRIER_FREQ = 0.0; ///< Default carrier frequency
+
+const double CONTROL_FLUX_AMPLITUDE_BOUND = 1e12; ///< Default amplitude bound for flux control
+const bool CONTROL_FLUX_ENABLED = false; ///< Default switch for flux control channel
 
 const InitialConditionType INITIAL_CONDITION_TYPE = InitialConditionType::BASIS; ///< Default initial condition 
 
@@ -103,8 +105,6 @@ struct ControlParameterizationSettings {
   std::optional<size_t> nspline = ConfigDefaults::CONTROL_SPLINE_COUNT; ///< Number of basis functions in this parameterization
   std::optional<double> tstart = std::nullopt; ///< Start time of the control parameterization
   std::optional<double> tstop = std::nullopt; ///< Stop time of the control parameterization
-  std::optional<double> scaling = std::nullopt; ///< Amplitude scaling factor, only for BSPLINEAMP
-
 };
 
 /**
@@ -113,6 +113,5 @@ struct ControlParameterizationSettings {
 struct ControlInitializationSettings {
   ControlInitializationType type = ConfigDefaults::CONTROL_INIT_TYPE; ///< Initialization type
   std::optional<double> amplitude = ConfigDefaults::CONTROL_INIT_AMPLITUDE; ///< Initial control pulse amplitude
-  std::optional<double> phase = std::nullopt; ///< Initial control pulse phase
   std::optional<std::string> filename = std::nullopt; ///< Filename for FILE type
 };
