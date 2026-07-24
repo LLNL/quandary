@@ -43,6 +43,8 @@ class Output{
   // VecScatter scat; ///< PETSc's scatter context for state communication across cores
   // Vec xseq; ///< Sequential vector for I/O operations
 
+  MasterEq* mastereq; ///< Pointer to the master equation solver for evaluating system dynamics
+
   public:
     std::string output_dir; ///< Directory path for output data files
 
@@ -57,7 +59,7 @@ class Output{
      * @param comm_init MPI communicator for initial condition parallelization
      * @param quietmode Flag for reduced output (default: false)
      */
-    Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, bool quietmode=false);
+    Output(const Config& config, MasterEq* mastereq_, MPI_Comm comm_petsc, MPI_Comm comm_init, bool quietmode=false);
 
     ~Output();
 
@@ -93,12 +95,11 @@ class Output{
      * @brief Writes current control pulses to file.
      * 
      * @param params Current parameter vector
-     * @param mastereq Pointer to master equation solver
      * @param total_time Total evolution time 
      * @param dt Time step size 
      * @param min_dt Smallest timestep size chosen during adaptive timestepping (default: equal to dt)
      */
-    void writeControls(Vec params, MasterEq* mastereq, double total_time, double dt, double min_dt = -1.0);
+    void writeControls(Vec params, double total_time, double dt, double min_dt = -1.0);
 
     /**
      * @brief Writes gradient vector for debugging adjoint calculations.
@@ -127,9 +128,8 @@ class Output{
      * @param timestep Current time step number
      * @param time Current time value
      * @param state Current state vector
-     * @param mastereq Pointer to master equation solver
      */
-    void writeTrajectoryDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq);
+    void writeTrajectoryDataFiles(int timestep, double time, const Vec state);
 
     /**
      * @brief Closes open time evolution data files.

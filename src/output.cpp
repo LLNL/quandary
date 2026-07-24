@@ -10,8 +10,9 @@ Output::Output(){
   quietmode = false;
 }
 
-Output::Output(const Config& config, MPI_Comm comm_petsc, MPI_Comm comm_init, bool quietmode_) : Output() {
+Output::Output(const Config& config, MasterEq* mastereq_, MPI_Comm comm_petsc, MPI_Comm comm_init, bool quietmode_) : Output() {
   quietmode = quietmode_;
+  mastereq = mastereq_;
   noscillators = config.getNumOsc();
   output_timestep_stride = config.getOutputTimestepStride();
 
@@ -146,7 +147,7 @@ void Output::writeControlParams(Vec params){
   }
 }
 
-void Output::writeControls(Vec params, MasterEq* mastereq, double total_time, double dt, double min_dt){
+void Output::writeControls(Vec params, double total_time, double dt, double min_dt){
 
   if (mpirank_world != 0) return; // Only write on one rank
 
@@ -251,7 +252,7 @@ void Output::openTrajectoryDataFiles(std::string prefix, int initid){
   }
 }
 
-void Output::writeTrajectoryDataFiles(int timestep, double time, const Vec state, MasterEq* mastereq){
+void Output::writeTrajectoryDataFiles(int timestep, double time, const Vec state){
 
   /* Write output only every <num> time-steps */
   if (timestep % output_timestep_stride == 0) {

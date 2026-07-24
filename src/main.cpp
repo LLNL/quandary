@@ -167,7 +167,7 @@ int main(int argc,char **argv)
   MasterEq* mastereq = new MasterEq(config, oscil_vec, quietmode);
 
   /* Output */
-  Output* output = new Output(config, comm_petsc, comm_init, quietmode);
+  Output* output = new Output(config, mastereq, comm_petsc, comm_init, quietmode);
 
   /* --- Initialize the time-stepper --- */
   TimeStepperType timesteppertype = config.getTimestepperType();
@@ -264,7 +264,7 @@ int main(int argc,char **argv)
     optimctx->getSolution(&opt);
 
     // Write control pulses to file
-    output->writeControls(xinit, mastereq, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize()); // Write the control pulses 
+    output->writeControls(xinit, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize()); // Write the control pulses 
   } 
   
   /* --- Solve adjoint --- */
@@ -284,7 +284,7 @@ int main(int argc,char **argv)
     output->writeGradient(grad);
 
     // Write control pulses to file
-    output->writeControls(xinit, mastereq, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize()); // Write the control pulses 
+    output->writeControls(xinit, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize()); // Write the control pulses 
   }
 
   /* --- Solve the optimization  --- */
@@ -301,7 +301,7 @@ int main(int argc,char **argv)
 
     // Write control and parameters to file. 
     output->writeControlParams(opt);
-    output->writeControls(opt, mastereq, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize());
+    output->writeControls(opt, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize());
 
 
   }
@@ -312,7 +312,7 @@ int main(int argc,char **argv)
     if (mpirank_world == 0 && !quietmode) printf("\nEvaluating current controls ... \n");
     optimctx->getStartingPoint(xinit);
     output->writeControlParams(xinit); // Write params to file
-    output->writeControls(xinit, mastereq, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize()); // Write the control pulses 
+    output->writeControls(xinit, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize()); // Write the control pulses 
   }
 
   /* Output */

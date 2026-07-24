@@ -171,7 +171,7 @@ Vec TimeStepper::solveODE(int initid, int iinit_local, Vec rho_t0){
     /* store and write current state. */
     if (trajectory_states.size() > 0) VecCopy(x, trajectory_states[iinit_local][n]);
     if (writeTrajectoryDataFiles) {
-      output->writeTrajectoryDataFiles(n, tstart, x, mastereq);
+      output->writeTrajectoryDataFiles(n, tstart, x);
     }
 
     /* Evaluate resonator field value */
@@ -249,7 +249,7 @@ Vec TimeStepper::solveODE(int initid, int iinit_local, Vec rho_t0){
  
   /* Write last time step and close files */
   if (writeTrajectoryDataFiles) {
-    output->writeTrajectoryDataFiles(ntime, ntime*dt, x, mastereq);
+    output->writeTrajectoryDataFiles(ntime, ntime*dt, x);
     output->closeTrajectoryDataFiles();
 
     if (mastereq->isTransmonResonatorSystem()) {
@@ -1377,7 +1377,7 @@ PetscErrorCode PetscTS::monitorTrajectory(TS ts, PetscInt step, PetscReal time, 
 
   // evaluate trajectory output 
   if (self->writeTrajectoryDataFiles) {
-    self->output->writeTrajectoryDataFiles(step, time, state, self->mastereq);
+    self->output->writeTrajectoryDataFiles(step, time, state);
   }
 
   return 0;
