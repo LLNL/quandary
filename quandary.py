@@ -992,6 +992,20 @@ class Quandary:
                 except:
                     if not ignore_failure:
                         print("Can't read expected energy from ", filename)
+        
+        # extract time from expected energy files, 0-th oscillator
+        iosc = 0
+        iinit = 0
+        iid = iinit if not self._lindblad_solver else iinit*ninits + iinit
+        filename = os.path.join(datadir, f"expected{iosc}.iinit{str(iid).zfill(4)}.dat")
+        try:
+            x = np.loadtxt(filename)
+            time = x[:,0]    # 0th column is time
+        except:
+            if not ignore_failure:
+                print("Can't read time from ", filename)
+            time = []
+
     
         # Get population for each qubit, for each initial condition
         population = [[] for _ in range(len(self.Ne))]
@@ -1040,7 +1054,6 @@ class Quandary:
                 print("Can't read control pulses from ", filename)
                 x = np.zeros((1,4))
             # Extract the pulses 
-            time = x[:,0]   # Time domain
             pt.append([x[n,1]*1e+3 for n in range(len(x[:,0]))])     # Rot frame p(t), MHz
             qt.append([x[n,2]*1e+3 for n in range(len(x[:,0]))])     # Rot frame q(t), MHz
     
