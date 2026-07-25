@@ -53,7 +53,7 @@ std::vector<SettingsType> parsePerSubsystemSettings(const toml::table& toml, con
       size_t index;
       if (elem_table->get(subsystem_key)->is_array()) {
         // Coupling parameter case: subsystem is an array of two indices
-        auto subsys_array = validators::vectorField<size_t>(*elem_table, subsystem_key).hasLength(2).value();
+        auto subsys_array = validators::vectorField<size_t>(*elem_table, subsystem_key, key).hasLength(2).value();
         size_t i = subsys_array[0];
         size_t j = subsys_array[1];
         if (i >= num_subsystems || j >= num_subsystems) {
@@ -66,7 +66,7 @@ std::vector<SettingsType> parsePerSubsystemSettings(const toml::table& toml, con
         settings.resize(num_pairs, default_settings);
       } else if (elem_table->get(subsystem_key)->is_value()) {
         // Single subsystem index case
-        index = validators::field<size_t>(*elem_table, subsystem_key).lessThan(num_subsystems).value();
+        index = validators::field<size_t>(*elem_table, subsystem_key, key).lessThan(num_subsystems).value();
         settings.resize(num_subsystems, default_settings);
       } else {
         throw validators::ValidationError(key, "subsystem field must be an integer index or an array of two indices");

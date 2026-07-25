@@ -110,13 +110,14 @@ template <typename T>
 class Validator {
  private:
   const toml::table& config;
+  std::string context;
   std::string key;
   std::optional<T> greater_than;
   std::optional<T> greater_than_equal;
   std::optional<T> less_than;
 
  public:
-  Validator(const toml::table& config_, const std::string& key_) : config(config_), key(key_) {}
+  Validator(const toml::table& config_, const std::string& key_, const std::string& context_ = "") : config(config_), key(key_), context(context_) {}
 
   /**
    * @brief Requires value to be strictly greater than threshold.
@@ -172,7 +173,8 @@ class Validator {
     auto val = config[key].template value<T>();
     if (!val) {
       // Key exists but wrong type - always an error
-      throw ValidationError(key, "wrong type (expected " + getTypeName<T>() + ")");
+      std::string full_context = context.empty() ? key : context + "." + key;
+      throw ValidationError(full_context, "wrong type (expected " + getTypeName<T>() + ")");
     }
 
     return val;
@@ -182,19 +184,22 @@ class Validator {
     if (greater_than && result <= *greater_than) {
       std::ostringstream oss;
       oss << "must be > " << *greater_than << ", got " << result;
-      throw ValidationError(key, oss.str());
+      std::string full_context = context.empty() ? key : context + "." + key;
+      throw ValidationError(full_context, oss.str());
     }
 
     if (greater_than_equal && result < *greater_than_equal) {
       std::ostringstream oss;
       oss << "must be >= " << *greater_than_equal << ", got " << result;
-      throw ValidationError(key, oss.str());
+      std::string full_context = context.empty() ? key : context + "." + key;
+      throw ValidationError(full_context, oss.str());
     }
 
     if (less_than && result >= *less_than) {
       std::ostringstream oss;
       oss << "must be < " << *less_than << ", got " << result;
-      throw ValidationError(key, oss.str());
+      std::string full_context = context.empty() ? key : context + "." + key;
+      throw ValidationError(full_context, oss.str());
     }
 
     return result;
@@ -214,7 +219,8 @@ class Validator {
     auto val = extractValue();
 
     if (!val) {
-      throw ValidationError(key, "field not found");
+      std::string full_context = context.empty() ? key : context + "." + key;
+      throw ValidationError(full_context, "field not found");
     }
 
     return validateValue(*val);
@@ -268,12 +274,13 @@ class VectorValidator {
  private:
   const toml::table& config;
   std::string key;
+  std::string context;
   std::optional<size_t> min_length;
   std::optional<size_t> exact_length;
   bool is_positive = false;
 
  public:
-  VectorValidator(const toml::table& config_, const std::string& key_) : config(config_), key(key_) {}
+  VectorValidator(const toml::table& config_, const std::string& key_, const std::string& context_ = "") : config(config_), key(key_), context(context_) {}
 
   /**
    * @brief Requires minimum vector length.
@@ -318,7 +325,7 @@ class VectorValidator {
     auto* arr = config[key].as_array();
     if (!arr) {
       // Key exists but wrong type - always an error
-      throw ValidationError(key, "wrong type (expected array)");
+      throw ValidationError(context.empty() ? key : context + "." + key, "wrong type (expected array)");
     }
 
     // Extract and validate array elements
@@ -328,7 +335,7 @@ class VectorValidator {
       if (!val) {
         std::ostringstream oss;
         oss << "element [" << i << "] wrong type (expected " << getTypeName<T>() << ")";
-        throw ValidationError(key, oss.str());
+        throw ValidationError(context.empty() ? key : context + "." + key, oss.str());
       }
       result.push_back(*val);
     }
@@ -340,13 +347,13 @@ class VectorValidator {
     if (exact_length && result.size() != *exact_length) {
       std::ostringstream oss;
       oss << "must have exactly " << *exact_length << " elements, got " << result.size();
-      throw ValidationError(key, oss.str());
+      throw ValidationError(context.empty() ? key : context + "." + key, oss.str());
     }
 
     if (min_length && result.size() < *min_length) {
       std::ostringstream oss;
       oss << "must have at least " << *min_length << " elements, got " << result.size();
-      throw ValidationError(key, oss.str());
+      throw ValidationError(context.empty() ? key : context + "." + key, oss.str());
     }
 
       for (size_t i = 0; i < result.size(); ++i) {
@@ -355,7 +362,7 @@ class VectorValidator {
       if (is_positive && element <= T{0}) {
           std::ostringstream oss;
         oss << "element [" << i << "] must be positive, got " << element;
-          throw ValidationError(key, oss.str());
+          throw ValidationError(context.empty() ? key : context + "." + key, oss.str());
         }
       }
 
@@ -373,7 +380,7 @@ class VectorValidator {
     auto val = extractVector();
 
     if (!val) {
-      throw ValidationError(key, "field not found");
+      throw ValidationError(context.empty() ? key : context + "." + key, "field not found");
     }
 
     return validateVector(*val);
@@ -405,8 +412,8 @@ class VectorValidator {
  * @return A Validator for chaining validation rules
  */
 template <typename T>
-Validator<T> field(const toml::table& config_, const std::string& key_) {
-  return Validator<T>(config_, key_);
+Validator<T> field(const toml::table& config_, const std::string& key_, const std::string& context_ = "") {
+  return Validator<T>(config_, key_, context_);
 }
 
 /**
@@ -420,8 +427,8 @@ Validator<T> field(const toml::table& config_, const std::string& key_) {
  * @return A VectorValidator for chaining validation rules
  */
 template <typename T>
-VectorValidator<T> vectorField(const toml::table& config_, const std::string& key_) {
-  return VectorValidator<T>(config_, key_);
+VectorValidator<T> vectorField(const toml::table& config_, const std::string& key_, const std::string& context_ = "") {
+  return VectorValidator<T>(config_, key_, context_);
 }
 
 /**
