@@ -509,6 +509,12 @@ std::string toStringCoupling(const std::vector<double>& couplings, size_t num_os
   if (all_equal) {
     return formatDouble(couplings[0]);
   }
+  
+  // coupling could be too large, check the size first, through validationerror if not match:
+  size_t max_couplings = (num_osc * (num_osc - 1)) / 2;
+  if (couplings.size() > max_couplings) {
+    throw validators::ValidationError("coupling for selfkerr or dipole-dipole", "number of couplings " + std::to_string(couplings.size()) + " exceeds the maximum allowed " + std::to_string(max_couplings));
+  }
 
   // Collect non-zero couplings with their pair indices
   std::vector<std::pair<std::pair<size_t, size_t>, double>> nonzero_couplings;
@@ -534,6 +540,7 @@ std::string toStringCoupling(const std::vector<double>& couplings, size_t num_os
     result += "\n";
   }
   result += "]";
+
   return result;
 }
 

@@ -68,7 +68,7 @@ class TestVectorSizeValidation:
     def test_carrier_frequencies_wrong_size(self):
         setup = _make_setup()
         setup.carrier_frequencies = [[1.0], [2.0]]  # 2 oscillators for 1 qubit
-        with pytest.raises(ValidationError, match="carrier_frequencies.*must have exactly 1 elements.*got 2"):
+        with pytest.raises(ValidationError, match="Validation error for field 'carrier_frequency.subsystem': must be < 1, got 1"):
             setup.validate(True)
 
     def test_transition_frequency_wrong_size(self):
@@ -80,13 +80,13 @@ class TestVectorSizeValidation:
     def test_crosskerr_coupling_wrong_size(self):
         setup = _make_2q_setup()
         setup.crosskerr_coupling = [0.01, 0.02]  # expects 1 pair
-        with pytest.raises(ValidationError, match="crosskerr_coupling.*must have exactly 1 elements.*got 2"):
+        with pytest.raises(ValidationError, match="Validation error for field 'coupling for selfkerr or dipole-dipole': number of couplings 2 exceeds the maximum allowed 1"):
             setup.validate(True)
 
     def test_dipole_coupling_wrong_size(self):
         setup = _make_2q_setup()
         setup.dipole_coupling = [0.01, 0.02, 0.03]  # expects 1 pair
-        with pytest.raises(ValidationError, match="dipole_coupling.*must have exactly 1 elements.*got 3"):
+        with pytest.raises(ValidationError, match="Validation error for field 'coupling for selfkerr or dipole-dipole': number of couplings 3 exceeds the maximum allowed 1"):
             setup.validate(True)
 
     def test_nessential_wrong_size(self):
