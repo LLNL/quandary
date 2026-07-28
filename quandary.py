@@ -37,6 +37,7 @@ class Quandary:
     charge_offset   # Charge offset for transmon-resonator system. Default: 0.0
     Ec             # Charging energy for transmon-resonator system [GHz]. Default: 0.0
     Ej             # Josephson energy for transmon-resonator system [GHz]. Default: 0.0
+    transmon_eigenvectors_filename # Name of the file containing the transmon eigenvectors (one column per eigenvector). Default: "./H_transmon_eigenvectors.dat"
 
     # Optional: User-defined system and control Hamiltonian operators. Default: Superconducting Hamiltonian model
     Hsys                # Optional: User specified system Hamiltonian model. Array. 
@@ -134,6 +135,7 @@ class Quandary:
     Hc_re               : List[List[float]] = field(default_factory=list)
     Hc_im               : List[List[float]] = field(default_factory=list)
     standardmodel       : bool              = True
+    transmon_eigenvectors_filename : str = "./H_transmon_eigenvectors.dat"
     # Time duration and discretization options
     T            : float = 100.0
     Pmin         : int   = 150
@@ -782,6 +784,7 @@ class Quandary:
             lines.append(f"charge_offset = {self.charge_offset}")
             lines.append(f"Ec = {self.Ec}")
             lines.append(f"Ej = {self.Ej}")
+            lines.append(f"transmon_eigenvectors_filename = {_toml_str(self.transmon_eigenvectors_filename)}")
 
         # Initial condition
         init_tokens = [t.strip() for t in self.initialcondition.split(",")]
