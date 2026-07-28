@@ -229,6 +229,7 @@ Config::Config(const MPILogger& logger, const toml::table& toml) : logger(logger
       charge_offset = validators::field<double>(*system_table, "charge_offset").valueOr(0.0);
       Ec = validators::field<double>(*system_table, "Ec").greaterThanEqual(0.0).valueOr(0.0);
       Ej = validators::field<double>(*system_table, "Ej").greaterThanEqual(0.0).valueOr(0.0);
+      transmon_eigenvectors_filename = validators::field<std::string>(*system_table, "transmon_eigenvectors_filename").valueOr("H_transmon_eigenvectors.dat");
     }
 
     // Parse control options from [control] table
@@ -717,6 +718,7 @@ void Config::printConfig(std::stringstream& log) const {
     log << "charge_offset = " << charge_offset << "\n";
     log << "Ec = " << Ec << "\n";
     log << "Ej = " << Ej << "\n";
+    log << "transmon_eigenvectors_filename = \"" << transmon_eigenvectors_filename << "\"\n";
   }
 
   log << "\n";

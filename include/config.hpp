@@ -81,6 +81,7 @@ class Config {
   double charge_offset; ///< Charge offset for transmon qubits in charge basis
   double Ec;  ///< Charging energy for transmon qubits
   double Ej;  ///< Josephson energy for transmon qubits
+  std::string transmon_eigenvectors_filename; ///< Filename for reading transmon eigenvectors. Those are used for computing the transmon's bare energy levels and populations.
 
   // Optimization options
   bool control_zero_boundary_condition; ///< Decide whether control pulses should start and end at zero
@@ -155,6 +156,7 @@ class Config {
   double getChargeOffset() const { return charge_offset; }
   double getEc() const { return Ec; }
   double getEj() const { return Ej; }
+  std::string getTransmonEigenvectorsFilename() const { return transmon_eigenvectors_filename; }
 
   const ControlParameterizationSettings& getControlParameterizations(size_t i_osc) const { return control_parameterizations[i_osc]; }
   bool getControlZeroBoundaryCondition() const { return control_zero_boundary_condition; }

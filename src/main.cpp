@@ -121,36 +121,36 @@ int main(int argc,char **argv)
   // If transmon-resonator system, load eigenvectors of the transmon Hamiltonian from file and store them in the 0'th oscillator. Filename is H_transmon_eigenvectors. Format is one vector per column, all real elements. Dimension is that of the first oscillator 
   std::vector<std::vector<double>> transmon_eigenvectors;
   if (config.getTransmonResonator()) {
-    int dim = config.getNLevels(0);
-    transmon_eigenvectors.resize(dim, std::vector<double>(dim, 0.0));
+    int dim_transmon = config.getNLevels(0);
+    transmon_eigenvectors.resize(dim_transmon, std::vector<double>(dim_transmon, 0.0));
+    std::string eigvec_filename = config.getTransmonEigenvectorsFilename();
     if (mpirank_world == 0) {
-      std::string eigvec_filename = "./H_transmon_eigenvectors.dat";
       std::ifstream infile(eigvec_filename);
       if (!infile.is_open()) {
-        std::cerr << "ERROR: Could not open " << eigvec_filename << std::endl;
+        std::cerr << "ERROR: Could not open file for transmon eigenvectors:" << eigvec_filename << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
       }
-      // File stores one eigenvector per column: read row-major, store transposed
-      for (int row = 0; row < dim; row++) {
-        for (int col = 0; col < dim; col++) {
+      // File stores one eigenvector per column (all real): read row-major, store transposed
+      for (int row = 0; row < dim_transmon; row++) {
+        for (int col = 0; col < dim_transmon; col++) {
           infile >> transmon_eigenvectors[col][row];
         }
       }
       infile.close();
     }
     // Broadcast eigenvectors to all ranks
-    for (int col = 0; col < dim; col++) {
-      MPI_Bcast(transmon_eigenvectors[col].data(), dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    for (int col = 0; col < dim_transmon; col++) {
+      MPI_Bcast(transmon_eigenvectors[col].data(), dim_transmon, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     }
     // Check the norm of each column
-    for (int col = 0; col < dim; col++) {
+    for (int col = 0; col < dim_transmon; col++) {
       double norm = 0.0;
-      for (int row = 0; row < dim; row++) {
+      for (int row = 0; row < dim_transmon; row++) {
         norm += transmon_eigenvectors[col][row] * transmon_eigenvectors[col][row];
       }
       norm = std::sqrt(norm);
       if (std::abs(norm - 1.0) > 1e-10) {
-        printf("\n WARNING: Eigenvector %d is not normalized. Norm = %1.10e\n\n", col, norm);
+        printf("\n WARNING: Transmon eigenvector column %d is not normalized. Norm = %1.4e. Check the content of %s and make sure it contains %d normalized column vectors each with %d elements. \n\n", col, norm, eigvec_filename.c_str(), dim_transmon, dim_transmon);
       }
     }
     // Store them to the 0'th oscillator 

@@ -41,6 +41,13 @@ decoherence = { type = "none",              # "none", "decay", "dephase", or "bo
             #    dephase_time = [0.0, 0.0]  # Dephasing times T2: single value or one per subsystem (ns)
               }
 
+# Switch to using the transmon-resonator Hamiltonian: 2 oscillators, [transmon, resonator]. Uses transmon Hamiltonian in the charge basis, resonator Hamiltonian in the fock basis.
+#transmon_resonator = false
+#charge_offset = 0.0
+#Ec = 0.0
+#Ej = 0.0
+#transmon_eigenvectors_filename = "./H_transmon_eigenvectors.dat"
+
 # Specify the initial conditions that are to be propagated
 # Available initial condition types:
 # "basis" - all basis states of the full composite system, or of specified subsystems (subsystem = [...])
