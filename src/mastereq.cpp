@@ -3072,7 +3072,7 @@ void MasterEq::population(const Vec x, std::vector<double> &pop){
   MPI_Allreduce(mypop.data(), pop.data(), dim_rho, MPI_DOUBLE, MPI_SUM, PETSC_COMM_WORLD);
 }
 
-void MasterEq::evalExpectedStateObservable(const Vec x, const std::vector<std::vector<double>>& state_observables_re, const std::vector<std::vector<double>>& state_observables_im, std::vector<double> &expectation) {
+void MasterEq::evalExpectedStateObservable(const double time, const Vec x, const std::vector<std::vector<double>>& state_observables_re, const std::vector<std::vector<double>>& state_observables_im, std::vector<double> &expectation) {
 
   // Get the state vector as a raw pointer
   const PetscScalar* x_ptr;
@@ -3087,6 +3087,8 @@ void MasterEq::evalExpectedStateObservable(const Vec x, const std::vector<std::v
     if (isLindbladSolver()) {
       // Lindblad solver: Tr(vv^dagger rho) = <v|rho|v>
       for (size_t i = 0; i < dim_rho; i++) {
+        assert(isTransmonResonatorSystem());
+        PetscInt resonator_index_i = PetscInt(i % nlevels[1]);
         for (size_t j = 0; j < dim_rho; j++) {
           PetscInt idx = getVecID(i,j,dim_rho);  // Index in the vectorized density matrix for element (i,j)
           if (ilow <= idx && idx < iupp)  { // Picks the processor who owns rho_ij
@@ -3096,7 +3098,16 @@ void MasterEq::evalExpectedStateObservable(const Vec x, const std::vector<std::v
             PetscScalar psi_i_im = vec_im[i];
             PetscScalar psi_j_re = vec_re[j];
             PetscScalar psi_j_im = vec_im[j];
-            exp += (psi_i_re * psi_j_re + psi_i_im * psi_j_im) * x_re - (psi_i_re * psi_j_im - psi_i_im * psi_j_re) * x_im;
+            double val_re = (psi_i_re * psi_j_re + psi_i_im * psi_j_im) * x_re - (psi_i_re * psi_j_im - psi_i_im * psi_j_re) * x_im;
+            double val_im = (psi_i_re * psi_j_re + psi_i_im * psi_j_im) * x_im + (psi_i_re * psi_j_im - psi_i_im * psi_j_re) * x_re;
+
+            // If rotating frame, need to include the rotation frequency:
+            PetscInt resonator_index_j = PetscInt(j % nlevels[1]);
+            double rot_freq = eta[0]; // = rot_freq[resonator] 
+            double cos_val = cos((resonator_index_j - resonator_index_i) * rot_freq * time);
+            double sin_val = sin((resonator_index_j - resonator_index_i) * rot_freq * time);
+
+            exp += val_re * cos_val - val_im * sin_val;
           }
         }
       }

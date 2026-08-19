@@ -283,7 +283,7 @@ class MasterEq{
      * @param state_observables_im Vector of imaginary parts of the state observable vectors v
      * @param expectation Output vector of state expectations
      */
-    void evalExpectedStateObservable(const Vec x, const std::vector<std::vector<double>>& state_observables_re, const std::vector<std::vector<double>>& state_observables_im, std::vector<double> &expectation);
+    void evalExpectedStateObservable(const double time, const Vec x, const std::vector<std::vector<double>>& state_observables_re, const std::vector<std::vector<double>>& state_observables_im, std::vector<double> &expectation);
 
     // /* Compute reduced density operator for a sub-system defined by IDs in the oscilIDs vector */
     // void createReducedDensity(const Vec rho, Vec *reduced, const std::vector<int>& oscilIDs);

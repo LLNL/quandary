@@ -384,7 +384,7 @@ void Output::writeTrajectoryDataFiles(int timestep, double time, const Vec state
     if (writeStateObservables) {
       for (size_t iobs=0; iobs<state_observables_re.size(); iobs++) {
         std::vector<double> expectation(state_observables_re[iobs].size(), 0.0);
-        mastereq->evalExpectedStateObservable(state, state_observables_re[iobs], state_observables_im[iobs], expectation);
+        mastereq->evalExpectedStateObservable(time, state, state_observables_re[iobs], state_observables_im[iobs], expectation);
         if (mpirank_petsc == 0) {
           fprintf(state_expectations_files[iobs], "%.8f ", time);
           for (size_t istate=0; istate<expectation.size(); istate++) {
