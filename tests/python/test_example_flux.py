@@ -70,7 +70,7 @@ def test_example_flux(mpi_exec, tmp_path, request):
 
     targetstate = [1.0/np.sqrt(2), 1.0/np.sqrt(2)]
     n_osc = 1
-    n_levels = 1
+    n_levels = 2
 
     quandary = Quandary(
         Ne=Ne,
