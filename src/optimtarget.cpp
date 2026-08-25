@@ -964,8 +964,9 @@ void OptimTarget::RiemannianDistance_diff(const Mat U_final_re, const Mat U_fina
     VecRestoreArrayRead(eigvals_UdV_re, &eigvals_UdV_re_ptr);
     VecRestoreArrayRead(eigvals_UdV_im, &eigvals_UdV_im_ptr);
     trace = trace / double(dim);
-    MatAXPY(U_final_re_bar, trace, U_final_re, SAME_NONZERO_PATTERN);
-    MatAXPY(U_final_im_bar, trace, U_final_im, SAME_NONZERO_PATTERN);
+    // Note: tr(log(U^dV)) = i sum_j theta_j
+    MatAXPY(U_final_re_bar, -trace, U_final_im, SAME_NONZERO_PATTERN);
+    MatAXPY(U_final_im_bar, trace, U_final_re, SAME_NONZERO_PATTERN);
   }
 
   MatScale(U_final_re_bar, 1.0/double(dim));

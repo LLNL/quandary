@@ -571,6 +571,10 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
     // Derivative of Riemannian penalty
     if (optim_penalty_riemannian > 0.0) {
+
+      // NOT SURE IF THIS IS RIGHT. 
+      // VecZeroEntries(rho_t0_bar);
+
       // Pass i-th column of U_final_bar into rho_t0_bar
       for (size_t row = 0; row < mastereq->getDim(); row++) {
         int id_re = row;
