@@ -51,7 +51,6 @@ class OptimProblem {
   int ninit_local; ///< Local number of initial conditions on this processor
   Vec rho_t0; ///< Storage for initial condition of the ODE
   Vec rho_t0_bar; ///< Storage for adjoint initial condition of the adjoint ODE (aka the terminal condition)
-  std::vector<Vec> store_finalstates; ///< Storage for final states for each initial condition
   Mat U_final_re; ///< Storage for final-time unitary matrix. TODO: Remove the above store_finalstates, and use this one instead.
   Mat U_final_im; ///< Storage for final-time unitary matrix. TODO: Remove the above store_finalstates, and use this one instead.
   Mat U_final_re_bar; ///< Storage for derivative of final-time unitary matrix
@@ -72,17 +71,17 @@ class OptimProblem {
 
   std::vector<double> obj_weights; ///< Weights for averaging objective over initial conditions
   int ndesign; ///< Number of global design (optimization) parameters
-  double objective; ///< Current objective function value (sum over final-time cost, regularization terms and penalty terms)
-  double obj_cost; ///< Final-time measure J(T) in objective
-  double obj_riemann; ///< Riemannian distance measure 
-  double obj_regul; ///< Regularization term in objective
-  double obj_penal_leakage; ///< Penalty term for leakage into guard levels
-  double obj_penal_weightedcost; ///< Penalty term for weighted running cost 
-  double obj_penal_dpdm; ///< Penalty term second-order state derivatives (penalizes variations of the state evolution)
-  double obj_penal_variation; ///< Penalty term for variation of control parameters
-  double obj_penal_energy; ///< Energy penalty term in objective
-  double fidelity; ///< Final-time fidelity: 1/ninit sum_i Tr(rho_target^dag rho(T)) for Lindblad, |1/ninit sum_i phi_target^dag phi|^2 for Schrodinger
-  double gnorm; ///< Current norm of gradient
+  double objective = 0.0; ///< Current objective function value (sum over final-time cost, regularization terms and penalty terms)
+  double obj_cost = 0.0; ///< Final-time measure J(T) in objective
+  double obj_riemann = 0.0; ///< Riemannian distance measure 
+  double obj_regul = 0.0; ///< Regularization term in objective
+  double obj_penal_leakage = 0.0; ///< Penalty term for leakage into guard levels
+  double obj_penal_weightedcost = 0.0; ///< Penalty term for weighted running cost 
+  double obj_penal_dpdm = 0.0; ///< Penalty term second-order state derivatives (penalizes variations of the state evolution)
+  double obj_penal_variation = 0.0; ///< Penalty term for variation of control parameters
+  double obj_penal_energy = 0.0; ///< Energy penalty term in objective
+  double fidelity = 0.0; ///< Final-time fidelity: 1/ninit sum_i Tr(rho_target^dag rho(T)) for Lindblad, |1/ninit sum_i phi_target^dag phi|^2 for Schrodinger
+  double gnorm = 0.0; ///< Current norm of gradient
   double gamma_tikhonov; ///< Parameter for Tikhonov regularization
   bool tikhonov_use_x0; ///< Switch to use ||x - x0||^2 for Tikhonov regularization instead of ||x||^2
   double gamma_penalty_leakage; ///< Parameter multiplying integral leakage term
@@ -97,12 +96,14 @@ class OptimProblem {
   int maxiter; ///< Stopping criterion based on maximum number of iterations
   Tao tao; ///< PETSc's TAO optimization solver
   double* mygrad; ///< Auxiliary gradient storage
-    
   Vec xtmp; ///< Temporary vector storage
-  
+  int output_optimization_stride; ///< Write output files every N optimization iterations
+
+  TimeStepper* timestepper; ///< Pointer to time-stepping scheme
+  Output* output; ///< Pointer to output handler
+  MasterEq* mastereq; ///< Pointer to master equation solver
+    
   public: 
-    Output* output; ///< Pointer to output handler
-    TimeStepper* timestepper; ///< Pointer to time-stepping scheme
     Vec xlower, xupper; ///< Lower and upper bounds for optimization variables
     Vec xprev; ///< Design vector at previous iteration
     Vec xinit; ///< Initial design vector
@@ -111,125 +112,38 @@ class OptimProblem {
    * @brief Constructor for optimization problem.
    *
    * @param config Configuration parameters from input file
+   * @param optim_target_ Pointer to optimization target
    * @param timestepper_ Pointer to time-stepping scheme
+   * @param mastereq_ Pointer to master equation solver
    * @param comm_init_ MPI communicator for initial condition parallelization
    * @param comm_optim MPI communicator for optimization parallelization
    * @param output_ Pointer to output handler
    * @param quietmode Flag for quiet operation (default: false)
    */
-  OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim, Output* output_, bool quietmode=false);
+  OptimProblem(const Config& config, OptimTarget* optim_target_, TimeStepper* timestepper_, MasterEq* mastereq_, MPI_Comm comm_init_, MPI_Comm comm_optim, Output* output_, bool quietmode=false);
 
   ~OptimProblem();
 
-  /**
-   * @brief Retrieves the number of design variables.
-   *
-   * @return int Number of optimization parameters
-   */
   int getNdesign(){ return ndesign; };
-
-  /**
-   * @brief Retrieves the current objective function value.
-   *
-   * @return double Total objective function value
-   */
   double getObjective(){ return objective; };
-
-  /**
-   * @brief Retrieves the final-time cost term.
-   *
-   * @return double Final-time cost J(T)
-   */
   double getCostT()    { return obj_cost; };
-
-  // Get riemannian distance measure
   double getRiemannDistance()    { return obj_riemann; };
-
-  /**
-   * @brief Retrieves the Tikhonov regularization term.
-   *
-   * @return double Tikhonov regularization contribution
-   */
   double getRegul()    { return obj_regul; };
-
-  /**
-   * @brief Retrieves the integral term for leakage.
-   *
-   * @return double Penalty term contribution
-   */
   double getPenaltyLeakage()  { return obj_penal_leakage; };
-
-  /**
-   * @brief Retrieves the integral penalty term for weighted running cost.
-   *
-   * @return double Penalty term contribution
-   */
   double getPenaltyWeightedCost()  { return obj_penal_weightedcost; };
-
-
-
-  /**
-   * @brief Retrieves the second-order state derivative penalty term.
-   *
-   * @return double Second-order penalty contribution
-   */
   double getPenaltyDpDm()  { return obj_penal_dpdm; };
-
-  /**
-   * @brief Retrieves the control variation penalty term.
-   *
-   * @return double Control variation penalty contribution
-   */
   double getPenaltyVariation()  { return obj_penal_variation; };
-
-  /**
-   * @brief Retrieves the control energy penalty term.
-   *
-   * @return double Energy penalty contribution
-   */
   double getPenaltyEnergy()  { return obj_penal_energy; };
-
-  /**
-   * @brief Retrieves the current fidelity.
-   *
-   * @return double Quantum fidelity measure
-   */
   double getFidelity() { return fidelity; };
-
-  /**
-   * @brief Retrieves the objective function tolerance.
-   *
-   * @return double Absolute tolerance for objective function convergence
-   */
   double getTolFinalCost()    { return tol_final_cost; };
-
-  /**
-   * @brief Retrieves the gradient tolerance.
-   *
-   * @return double Absolute tolerance for gradient norm convergence
-   */
   double getTolGradAbs()    { return tol_grad_abs; };
-
-  /**
-   * @brief Retrieves the infidelity tolerance.
-   *
-   * @return double Tolerance for infidelity convergence
-   */
   double getTolInfidelity()   { return tol_infidelity; };
-
-  /**
-   * @brief Retrieves the MPI rank in the world communicator.
-   *
-   * @return int MPI rank
-   */
   int getMPIrank_world() { return mpirank_world;};
-
-  /**
-   * @brief Retrieves the maximum number of iterations.
-   *
-   * @return int Maximum iteration limit
-   */
   int getMaxIter()     { return maxiter; };
+
+  int getOutputOptimizationStride() { return output_optimization_stride; };
+  Output* getOutput() { return output; };
+  TimeStepper* getTimeStepper() { return timestepper; };
 
   /**
    * @brief Evaluates the objective function F(x).

@@ -32,6 +32,7 @@ class Output{
   bool writeExpectedEnergy_comp; ///< Flag to determine if evolution of expected energy of the full composite system should be written to file
   bool writePopulation; ///< Flag to determine if the evolution of the energy level occupations per oscillator should be written to files
   bool writePopulation_comp; ///< Flag to determine if the evolution of the energy level occupations of the full composite system should be written to file
+  bool control_flux_enabled; ///< Whether flux control output should be written
   FILE *ufile; ///< File for writing real part of fullstate evolution
   FILE *vfile; ///< File for writing imaginary part of fullstate evolution
   std::vector<FILE *>expectedfile; ///< Files for expected energy evolution per oscillator
@@ -44,7 +45,6 @@ class Output{
 
   public:
     std::string output_dir; ///< Directory path for output data files
-    int output_optimization_stride; ///< Write output files every N optimization iterations
 
   public:
     Output();
@@ -83,18 +83,22 @@ class Output{
     void writeOptimFile(int optim_iter, double objective, double gnorm, double stepsize, double Favg, double cost, double obj_riemann, double tikh_regul,  double penalty_leakage, double penalty_dpdm, double penalty_energy, double penalty_variation, double penalty_weightedcost);
 
     /**
-     * @brief Writes current control pulses per oscillator and control parameters.
-     *
-     * Called every output_optimization_stride optimization iterations. 
-     * Control pulses are written to `<output_dir>/control<ioscillator>.dat`
-     * Control parameters are written to `<output_dir>/params.dat`
+     * @brief Writes current control parameters to file.
      *
      * @param params Current parameter vector
-     * @param mastereq Pointer to master equation solver
-     * @param ntime Total number of time steps
-     * @param dt Time step size
      */
-    void writeControls(Vec params, MasterEq* mastereq, int ntime, double dt);
+    void writeControlParams(Vec params);
+
+    /**
+     * @brief Writes current control pulses to file.
+     * 
+     * @param params Current parameter vector
+     * @param mastereq Pointer to master equation solver
+     * @param total_time Total evolution time 
+     * @param dt Time step size 
+     * @param min_dt Smallest timestep size chosen during adaptive timestepping (default: equal to dt)
+     */
+    void writeControls(Vec params, MasterEq* mastereq, double total_time, double dt, double min_dt = -1.0);
 
     /**
      * @brief Writes gradient vector for debugging adjoint calculations.

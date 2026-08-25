@@ -1,4 +1,5 @@
 #include "config.hpp"
+#include "util.hpp"
 
 namespace {
 
@@ -102,9 +103,10 @@ Config::Config(const MPILogger& logger, const toml::table& toml) : logger(logger
 
     nessential = validators::scalarOrVectorOr<size_t>(*system_table, "nessential", num_osc, nlevels);
 
-    ntime = validators::field<size_t>(*system_table, "ntime").positive().value();
-
-    dt = validators::field<double>(*system_table, "dt").positive().value();
+    // total_time is required in the future. For backward capability, print warning if not provided and use ntime * dt instead.
+    total_time = validators::field<double>(*system_table, "total_time").positive().valueOr(-1.0);
+    ntime = validators::field<size_t>(*system_table, "ntime").positive().valueOr(0);
+    dt = validators::field<double>(*system_table, "dt").positive().valueOr(0.0);
 
     transition_frequency = validators::scalarOrVector<double>(*system_table, "transition_frequency", num_osc);
 
@@ -205,13 +207,43 @@ Config::Config(const MPILogger& logger, const toml::table& toml) : logger(logger
       }
     }
 
+    // Parse optional flux control settings from [control.flux]
+    control_flux_enabled = ConfigDefaults::CONTROL_FLUX_ENABLED;
+    control_flux_zero_boundary_condition = ConfigDefaults::CONTROL_ZERO_BOUNDARY_CONDITION;
+    ControlParameterizationSettings default_flux_param;
+    default_flux_param.type = ControlType::NONE;
+    control_flux_parameterizations.assign(num_osc, default_flux_param);
+    ControlInitializationSettings default_flux_init;
+    control_flux_initializations.assign(num_osc, default_flux_init);
+    control_flux_amplitude_bounds = std::vector<double>(num_osc, ConfigDefaults::CONTROL_FLUX_AMPLITUDE_BOUND);
+
+    if (control_table.contains("flux")) {
+      auto* flux_table = control_table["flux"].as_table();
+      if (!flux_table) {
+        logger.exitWithError("control.flux must be a table");
+      }
+
+      control_flux_enabled = validators::field<bool>(*flux_table, "enabled").valueOr(ConfigDefaults::CONTROL_FLUX_ENABLED);
+      control_flux_zero_boundary_condition = validators::field<bool>(*flux_table, "zero_boundary_condition").valueOr(ConfigDefaults::CONTROL_ZERO_BOUNDARY_CONDITION);
+
+      if (flux_table->contains("parameterization")) {
+        auto parseParamFunc = [this](const toml::table& t) { return parseControlParameterizationSpecs(t); };
+        control_flux_parameterizations = parsePerSubsystemSettings<ControlParameterizationSettings>(*flux_table, "parameterization", num_osc, default_flux_param, parseParamFunc, logger);
+      }
+      if (flux_table->contains("initialization")) {
+        auto parseInitFunc = [this](const toml::table& t) { return parseControlInitializationSpecs(t); };
+        control_flux_initializations = parsePerSubsystemSettings<ControlInitializationSettings>(*flux_table, "initialization", num_osc, default_flux_init, parseInitFunc, logger);
+      }
+      control_flux_amplitude_bounds = validators::scalarOrVectorOr<double>(*flux_table, "amplitude_bound", num_osc, std::vector<double>(num_osc, ConfigDefaults::CONTROL_FLUX_AMPLITUDE_BOUND));
+    }
+
     // Parse optimization options from [optimization] table
     optim_target = parseOptimTarget(optimization_table, num_osc);
 
     optim_objective = parseEnum(optimization_table["objective"].value<std::string>(), OBJECTIVE_TYPE_MAP, ConfigDefaults::OPTIM_OBJECTIVE);
 
     // Parse optional weights
-    optim_weights = validators::vectorField<double>(optimization_table, "weights").valueOr({ConfigDefaults::OPTIM_WEIGHT});
+    optim_weights = validators::vectorField<double>(optimization_table, "weights").valueOr({});
 
     // Parse optional optimization tolerances
     if (!optimization_table.contains("tolerance")) {
@@ -329,207 +361,14 @@ Config::Config(const MPILogger& logger, const toml::table& toml) : logger(logger
   validate();
 }
 
-Config::Config(const MPILogger& logger, const ParsedConfigData& settings) : logger(logger) {
-
-  if (!settings.nlevels.has_value()) {
-    logger.exitWithError("nlevels cannot be empty");
-  }
-  nlevels = settings.nlevels.value();
-  size_t num_osc = nlevels.size();
-
-  nessential = settings.nessential.value_or(nlevels);
-  copyLast(nessential, num_osc);
-
-  if (!settings.ntime.has_value()) {
-    logger.exitWithError("ntime cannot be empty");
-  }
-  ntime = settings.ntime.value();
-  if (ntime <= 0) {
-    logger.exitWithError("ntime must be positive, got " + std::to_string(ntime));
-  }
-
-  if (!settings.dt.has_value()) {
-    logger.exitWithError("dt cannot be empty");
-  }
-  dt = settings.dt.value();
-  if (dt <= 0) {
-    logger.exitWithError("dt must be positive, got " + std::to_string(dt));
-  }
-
-  if (!settings.transfreq.has_value()) {
-    logger.exitWithError("transition_frequency cannot be empty");
-  }
-
-  transition_frequency = settings.transfreq.value();
-  copyLast(transition_frequency, num_osc);
-
-  selfkerr = settings.selfkerr.value_or(std::vector<double>(num_osc, ConfigDefaults::SELFKERR));
-  copyLast(selfkerr, num_osc);
-
-  size_t num_pairs_osc = (num_osc - 1) * num_osc / 2;
-  crosskerr_coupling = settings.crosskerr.value_or(std::vector<double>(num_pairs_osc, ConfigDefaults::CROSSKERR_COUPLING));
-  copyLast(crosskerr_coupling, num_pairs_osc);
-  crosskerr_coupling.resize(num_pairs_osc);  // Truncate if larger than expected
-
-  dipole_coupling = settings.Jkl.value_or(std::vector<double>(num_pairs_osc, ConfigDefaults::DIPOLE_COUPLING));
-  copyLast(dipole_coupling, num_pairs_osc);
-  dipole_coupling.resize(num_pairs_osc);  // Truncate if larger than expected
-
-  rotation_frequency = settings.rotfreq.value_or(std::vector<double>(num_osc, ConfigDefaults::ROTATION_FREQUENCY));
-  copyLast(rotation_frequency, num_osc);
-
-  hamiltonian_file_Hsys = settings.hamiltonian_file_Hsys;
-  hamiltonian_file_Hc = settings.hamiltonian_file_Hc;
-
-  decoherence_type = settings.decoherence_type.value_or(ConfigDefaults::DECOHERENCE_TYPE);
-
-  decay_time = settings.decay_time.value_or(std::vector<double>(num_osc, ConfigDefaults::DECAY_TIME));
-  copyLast(decay_time, num_osc);
-
-  dephase_time = settings.dephase_time.value_or(std::vector<double>(num_osc, ConfigDefaults::DEPHASE_TIME));
-  copyLast(dephase_time, num_osc);
-
-  if (!settings.initialcondition.has_value()) {
-    logger.exitWithError("initialcondition cannot be empty");
-  }
-  initial_condition.type = settings.initialcondition.value().type;
-  initial_condition.filename = settings.initialcondition.value().filename;
-  initial_condition.levels = settings.initialcondition.value().levels;
-  initial_condition.subsystem = settings.initialcondition.value().subsystem;
-
-  // Control and optimization parameters
-  control_zero_boundary_condition = settings.control_zero_boundary_condition.value_or(ConfigDefaults::CONTROL_ZERO_BOUNDARY_CONDITION);
-
-  control_parameterizations = parseControlParameterizationsCfg(settings.indexed_control_parameterizations);
-
-  // Control initialization
-  if (settings.indexed_control_init.has_value()) {
-    auto init_map = settings.indexed_control_init.value();
-    // First check for global file initialization and populate to all oscillators if present
-    if (init_map.find(0) != init_map.end() && init_map[0].filename.has_value()) {
-      control_initializations.resize(num_osc);
-      std::string control_initialization_file = init_map[0].filename.value();
-      for (size_t i = 0; i < num_osc; i++) {
-        control_initializations[i] = ControlInitializationSettings{ControlInitializationType::FILE, std::nullopt, std::nullopt, control_initialization_file};
-      }
-    } else {
-      control_initializations = parseControlInitializationsCfg(settings.indexed_control_init);
-    }
-  } else {
-    // Initialize with defaults when no control initialization is provided
-    control_initializations.resize(num_osc);
-    for (size_t i = 0; i < num_osc; i++) {
-      control_initializations[i] = ControlInitializationSettings{
-        ConfigDefaults::CONTROL_INIT_TYPE, ConfigDefaults::CONTROL_INIT_AMPLITUDE, std::nullopt, std::nullopt};
-    }
-  }
-
-  // Parse control_amplitude_bounds from CFG format (returns vector of vectors, but we need vector)
-  auto control_amplitude_bounds_cfg = parseOscillatorSettingsCfg<double>(settings.indexed_control_amplitude_bounds, control_parameterizations.size(), {ConfigDefaults::CONTROL_AMPLITUDE_BOUND});
-  control_amplitude_bounds.resize(control_amplitude_bounds_cfg.size());
-  for (size_t i = 0; i < control_amplitude_bounds_cfg.size(); ++i) {
-    control_amplitude_bounds[i] = control_amplitude_bounds_cfg[i].empty() ? ConfigDefaults::CONTROL_AMPLITUDE_BOUND : control_amplitude_bounds_cfg[i][0];
-  }
-
-  carrier_frequencies.resize(num_osc);
-  carrier_frequencies = parseOscillatorSettingsCfg<double>(settings.indexed_carrier_frequencies, num_osc, {ConfigDefaults::CARRIER_FREQ});
-
-  if (settings.optim_target.has_value()) {
-    optim_target = settings.optim_target.value();
-    optim_target.gate_rot_freq = settings.gate_rot_freq.value_or(std::vector<double>(num_osc, ConfigDefaults::GATE_ROT_FREQ));
-  } else {
-    // No optim_target specified, use default (no target)
-    OptimTargetSettings default_target;
-    optim_target = default_target;
-  }
-
-  optim_objective = settings.optim_objective.value_or(ConfigDefaults::OPTIM_OBJECTIVE);
-
-  optim_weights = settings.optim_weights.value_or(std::vector<double>{ConfigDefaults::OPTIM_WEIGHT});
-
-  optim_tol_grad_abs = settings.optim_tol_grad_abs.value_or(ConfigDefaults::OPTIM_TOL_GRAD_ABS);
-  optim_tol_grad_rel = settings.optim_tol_grad_rel.value_or(ConfigDefaults::OPTIM_TOL_GRAD_REL);
-  optim_tol_final_cost = settings.optim_tol_final_cost.value_or(ConfigDefaults::OPTIM_TOL_FINAL_COST);
-  optim_tol_infidelity = settings.optim_tol_infidelity.value_or(ConfigDefaults::OPTIM_TOL_INFIDELITY);
-  optim_maxiter = settings.optim_maxiter.value_or(ConfigDefaults::OPTIM_MAXITER);
-
-  optim_tikhonov_coeff = settings.optim_regul.value_or(ConfigDefaults::OPTIM_TIKHONOV_COEFF);
-  optim_tikhonov_use_x0 = settings.optim_regul_tik0.value_or(ConfigDefaults::OPTIM_TIKHONOV_USE_X0);
-  if (settings.optim_regul_interpolate.has_value()) {
-    // Handle deprecated optim_regul_interpolate logic
-    optim_tikhonov_use_x0 = settings.optim_regul_interpolate.value();
-    logger.log("# Warning: 'optim_regul_interpolate' is deprecated. Please use 'optim_regul_tik0' instead.\n");
-  }
-
-  optim_penalty_leakage = settings.optim_penalty.value_or(ConfigDefaults::OPTIM_PENALTY_LEAKAGE);
-  optim_penalty_weightedcost = settings.optim_penalty.value_or(ConfigDefaults::OPTIM_PENALTY_WEIGHTEDCOST);
-  optim_penalty_weightedcost_width = settings.optim_penalty_param.value_or(ConfigDefaults::OPTIM_PENALTY_WEIGHTEDCOST_WIDTH);
-  optim_penalty_dpdm = settings.optim_penalty_dpdm.value_or(ConfigDefaults::OPTIM_PENALTY_DPDM);
-  optim_penalty_energy = settings.optim_penalty_energy.value_or(ConfigDefaults::OPTIM_PENALTY_ENERGY);
-  optim_penalty_variation = settings.optim_penalty_variation.value_or(ConfigDefaults::OPTIM_PENALTY_VARIATION);
-
-  // Output parameters
-  output_directory = settings.datadir.value_or(ConfigDefaults::OUTPUT_DIRECTORY);
-
-  // Convert old per-oscillator output to global output_observables (apply to all oscillators)
-  auto indexed_output_vec = parseOscillatorSettingsCfg<OutputType>(settings.indexed_output, num_osc);
-  output_observables.clear();
-  // Collect unique output types from all oscillators
-  std::set<OutputType> unique_types;
-  for (const auto& osc_output : indexed_output_vec) {
-    for (const auto& type : osc_output) {
-      unique_types.insert(type);
-    }
-  }
-  // Convert set to vector
-  output_observables.assign(unique_types.begin(), unique_types.end());
-
-  output_timestep_stride = settings.output_timestep_stride.value_or(ConfigDefaults::OUTPUT_TIMESTEP_STRIDE);
-  output_optimization_stride = settings.output_optimization_stride.value_or(ConfigDefaults::OUTPUT_OPTIMIZATION_STRIDE);
-  runtype = settings.runtype.value_or(ConfigDefaults::RUNTYPE);
-  usematfree = settings.usematfree.value_or(ConfigDefaults::USEMATFREE);
-  linearsolver_type = settings.linearsolver_type.value_or(ConfigDefaults::LINEARSOLVER_TYPE);
-  linearsolver_maxiter = settings.linearsolver_maxiter.value_or(ConfigDefaults::LINEARSOLVER_MAXITER);
-  timestepper_type = settings.timestepper_type.value_or(ConfigDefaults::TIMESTEPPER_TYPE);
-  setRandSeed(settings.rand_seed.value_or(ConfigDefaults::RAND_SEED));
-
-  // Finalize interdependent settings, then validate
-  finalize();
-  validate();
-}
-
 Config Config::fromFile(const std::string& filename, const MPILogger& logger) {
-  if (hasSuffix(filename, ".toml")) {
-    return Config::fromToml(filename, logger);
-  } else {
-    // TODO cfg: delete this when .cfg format is removed.
-    logger.log(
-        "# Warning: Config file does not have .toml extension. "
-        "The deprecated .cfg format will be removed in future versions.\n");
-    return Config::fromCfg(filename, logger);
-  }
-}
-
-Config Config::fromToml(const std::string& filename, const MPILogger& logger) {
   toml::table toml = toml::parse_file(filename);
   return Config(logger, toml);
 }
 
-Config Config::fromTomlString(const std::string& toml_content, const MPILogger& logger) {
+Config Config::fromString(const std::string& toml_content, const MPILogger& logger) {
   toml::table toml = toml::parse(toml_content);
   return Config(logger, toml);
-}
-
-Config Config::fromCfg(const std::string& filename, const MPILogger& logger) {
-  CfgParser parser(logger);
-  ParsedConfigData settings = parser.parseFile(filename);
-  return Config(logger, settings);
-}
-
-Config Config::fromCfgString(const std::string& cfg_content, const MPILogger& logger) {
-  CfgParser parser(logger);
-  ParsedConfigData settings = parser.parseString(cfg_content);
-  return Config(logger, settings);
 }
 
 namespace {
@@ -712,13 +551,12 @@ std::string toString(const std::vector<ControlInitializationSettings>& control_i
     out += "type = \"" + enumToString(init.type, CONTROL_INITIALIZATION_TYPE_MAP) + "\"";
     out += init.filename.has_value() ? ", filename = \"" + init.filename.value() + "\"" : "";
     out += init.amplitude.has_value() ? ", amplitude = " + formatDouble(init.amplitude.value()) : "";
-    out += init.phase.has_value() ? ", phase = " + formatDouble(init.phase.value()) : "";
     return out;
   };
 
   // Helper function to compare two ControlInitializationSettings items
   auto areEqual = [](const ControlInitializationSettings& a, const ControlInitializationSettings& b) {
-    return a.type == b.type && a.amplitude == b.amplitude && a.phase == b.phase;
+    return a.type == b.type && a.amplitude == b.amplitude;
   };
 
   return toStringWithOptionalPerSubsystem(control_initializations, printItems, areEqual);
@@ -732,14 +570,13 @@ std::string toString(const std::vector<ControlParameterizationSettings>& control
     out += param.nspline.has_value() ? ", num = " + std::to_string(param.nspline.value()) : "";
     out += param.tstart.has_value() ? ", tstart = " + formatDouble(param.tstart.value()) : "";
     out += param.tstop.has_value() ? ", tstop = " + formatDouble(param.tstop.value()) : "";
-    out += param.scaling.has_value() ? ", scaling = " + formatDouble(param.scaling.value()) : "";
     return out;
   };
 
   // Helper function to compare two ControlParameterizationSettings items
   auto areEqual = [](const ControlParameterizationSettings& a, const ControlParameterizationSettings& b) {
     return a.type == b.type && a.nspline == b.nspline &&
-           a.tstart == b.tstart && a.tstop == b.tstop && a.scaling == b.scaling;
+           a.tstart == b.tstart && a.tstop == b.tstop;
   };
 
   return toStringWithOptionalPerSubsystem(control_parameterizations, printItems, areEqual);
@@ -781,8 +618,12 @@ void Config::printConfig(std::stringstream& log) const {
   // System parameters
   log << "nlevels = " << printVector(nlevels) << "\n";
   log << "nessential = " << printVector(nessential) << "\n";
-  log << "ntime = " << ntime << "\n";
-  log << "dt = " << dt << "\n";
+  log << "total_time = " << formatDouble(total_time) << "\n";
+  // if not using PETSCTS timestepper, also print ntime and dt
+  if (timestepper_type != TimeStepperType::PETSCTS) {
+    log << "ntime = " << ntime << "\n";
+    log << "dt = " << formatDouble(dt) << "\n";
+  }
   log << "transition_frequency = " << printVector(transition_frequency) << "\n";
   log << "selfkerr = " << printVector(selfkerr) << "\n";
   log << "crosskerr_coupling = " << toStringCoupling(crosskerr_coupling, nlevels.size()) << "\n";
@@ -809,6 +650,14 @@ void Config::printConfig(std::stringstream& log) const {
   log << "initialization = " << toString(control_initializations) << "\n";
   log << "amplitude_bound = " << toString(control_amplitude_bounds) << "\n";
   log << "zero_boundary_condition = " << (control_zero_boundary_condition ? "true" : "false") << "\n";
+
+  log << "\n";
+  log << "[control.flux]\n";
+  log << "enabled = " << (control_flux_enabled ? "true" : "false") << "\n";
+  log << "parameterization = " << toString(control_flux_parameterizations) << "\n";
+  log << "initialization = " << toString(control_flux_initializations) << "\n";
+  log << "amplitude_bound = " << toString(control_flux_amplitude_bounds) << "\n";
+  log << "zero_boundary_condition = " << (control_flux_zero_boundary_condition ? "true" : "false") << "\n";
 
   log << "\n";
   log << "[optimization]\n";
@@ -860,12 +709,42 @@ void Config::printConfig(std::stringstream& log) const {
 }
 
 void Config::finalize() {
+  // Time domain specification: total_time is required, ntime and dt are optional but must be consistent with total_time if provided. If PetscTimestepper is used, ignore N and dt and print a warning if they were provided. For other timesteppers, either ntime or dt must be provided, and the other will be computed from total_time. If both are provided, check for consistency with total_time and print a warning if they are inconsistent.
+  if (total_time < 0.0) {
+    logger.log("# Warning: total_time not provided or negative. Setting total_time to ntime * dt = " + std::to_string(ntime * dt) + ". It is suggested to provide total_time and remove either ntime or dt from the configuration.\n");
+    total_time = ntime * dt;
+  }
+  if (timestepper_type == TimeStepperType::PETSCTS) {
+    if (ntime > 0 || dt > 0) {
+      logger.log("# Warning: PETSCTS timestepper is adaptive and ignores configuration input for ntime and dt.\n");
+      ntime = 0;
+      dt = 0.0;
+    }
+  } else { // any timestepper other than PETSCTS
+      if (ntime > 0 && dt > 0) { // if both are provided, check consistency with total_time. 
+        double total_time_from_ntime_dt = ntime * dt;
+        if (std::abs(total_time_from_ntime_dt - total_time) > 1e-6) {
+          logger.exitWithError(" ntime * dt = " + std::to_string(total_time_from_ntime_dt) + " is inconsistent with total_time = " + std::to_string(total_time) + ". Provide consistent values for ntime and dt, or provide only one of them and it will be computed from total_time."); 
+      }
+    } else if (ntime > 0) { // if only ntime is provided, compute dt from total_time
+      dt = total_time / ntime;
+    } else if (dt > 0) { // if only dt is provided, compute ntime from total_time
+      ntime = static_cast<size_t>(std::round(total_time / dt));
+    } else {
+      logger.exitWithError("Either ntime or dt must be provided when using a non-PETSCTS timestepper.");
+    }
+  }
+
   // Hamiltonian file + matrix-free compatibility check
   if ((hamiltonian_file_Hsys.has_value() || hamiltonian_file_Hc.has_value()) && usematfree) {
     logger.log(
         "# Warning: Matrix-free solver cannot be used when Hamiltonian is read from file. Switching to sparse-matrix "
         "version.\n");
     usematfree = false;
+  }
+
+  if (control_flux_enabled && (hamiltonian_file_Hsys.has_value() || hamiltonian_file_Hc.has_value())) {
+    logger.exitWithError("Flux control is currently unsupported when Hamiltonian files are provided. Disable [control.flux] or remove hamiltonian_file_Hsys/hamiltonian_file_Hc.");
   }
 
   if (usematfree && nlevels.size() > 5) {
@@ -904,10 +783,9 @@ void Config::finalize() {
   }
 
   // Scale optimization weights such that they sum up to one
-  // If a single value was provided, replicate it for all initial conditions
-  if (optim_weights.size() == 1) {
-    // TODO remove this when removing cfg format
-    copyLast(optim_weights, n_initial_conditions);
+  // If unspecified, default to uniform weights across initial conditions
+  if (optim_weights.empty()) {
+    optim_weights.assign(n_initial_conditions, ConfigDefaults::OPTIM_WEIGHT);
   } else if (optim_weights.size() != n_initial_conditions) {
     logger.exitWithError("optim_weights vector has length " + std::to_string(optim_weights.size()) + " but must have length " + std::to_string(n_initial_conditions) + " (number of initial conditions)");
   }
@@ -932,10 +810,10 @@ void Config::finalize() {
     }
   }
 
-  // Unset control initialization phase paremeter, unless BSPLINEAMP parameterization is used
-  for (size_t i = 0; i < control_initializations.size(); i++) {
-    if (control_parameterizations[i].type != ControlType::BSPLINEAMP) {
-      control_initializations[i].phase = std::nullopt;
+  // Disable flux channel by forcing NONE parameterization when explicitly disabled
+  if (!control_flux_enabled) {
+    for (size_t i = 0; i < control_flux_parameterizations.size(); i++) {
+      control_flux_parameterizations[i].type = ControlType::NONE;
     }
   }
 
@@ -978,6 +856,12 @@ void Config::validate() const {
     }
   }
 
+  for (size_t i = 0; i < control_flux_amplitude_bounds.size(); i++) {
+    if (control_flux_amplitude_bounds[i] <= 0.0) {
+      logger.exitWithError("control_flux_amplitude_bounds[" + std::to_string(i) + "] must be positive");
+    }
+  }
+
   // Validate initial condition settings
   if (initial_condition.type == InitialConditionType::FROMFILE) {
     if (!initial_condition.filename.has_value()) {
@@ -1009,6 +893,20 @@ void Config::validate() const {
     for (size_t i = 1; i < initial_condition.subsystem->size() - 1; i++) {
       if (initial_condition.subsystem->at(i) + 1 != initial_condition.subsystem->at(i + 1)) {
         logger.exitWithError("List of oscillators for ensemble initialization should be consecutive!\n");
+      }
+    }
+  }
+
+  // Validate supported features for PetscTS timestepper
+  if (timestepper_type == TimeStepperType::PETSCTS) {
+    // Gradient of more than one integral penalty term not correct.
+    if (runtype != RunType::SIMULATION && optim_penalty_energy > 1e-13 && optim_penalty_leakage > 1e-13) {
+      logger.exitWithError("Gradient using Petsc's adaptive timestepping might be wrong if both the energy and the leakage penalties are enabled. It is advised to disable one of them, or use a non-adaptive time-stepper, such as type IMR.\n");
+    }
+    // Bspline0 parameterization doesn't work for adaptive PETSCTS timestepper! 
+    for (size_t i = 0; i < control_parameterizations.size(); i++) {
+      if (control_parameterizations[i].type == ControlType::BSPLINE0) {
+        logger.exitWithError("Control parameterization type BSPLINE0 is not compatible with PETSCTS adaptive timestepper. Use a different parameterization or timestepper.\n");
       }
     }
   }
@@ -1060,7 +958,6 @@ size_t Config::computeNumInitialConditions(InitialConditionSettings init_cond_se
       }
       break;
   }
-  logger.log("Number of initial conditions: " + std::to_string(n_initial_conditions) + "\n");
   return n_initial_conditions;
 }
 
@@ -1090,13 +987,6 @@ ControlParameterizationSettings Config::parseControlParameterizationSpecs(const 
       param.tstop = validators::getOptional<double>(param_table["tstop"]);
       break;
 
-    case ControlType::BSPLINEAMP:
-      param.nspline = validators::field<size_t>(param_table, "num").value();
-      param.scaling = validators::field<double>(param_table, "scaling").value();
-      param.tstart = validators::getOptional<double>(param_table["tstart"]);
-      param.tstop = validators::getOptional<double>(param_table["tstop"]);
-      break;
-
     case ControlType::NONE:
       break;
   }
@@ -1118,13 +1008,11 @@ ControlInitializationSettings Config::parseControlInitializationSpecs(const toml
   if (init.type == ControlInitializationType::FILE) {
     init.filename = validators::field<std::string>(init_table, "filename").value();
     init.amplitude = std::nullopt;
-    init.phase = std::nullopt;
     if (!init.filename.has_value()) {
       logger.exitWithError("control_initialization of type 'file' must have a 'filename' parameter");
     }
   } else {
     init.amplitude = validators::field<double>(init_table, "amplitude").valueOr(ConfigDefaults::CONTROL_INIT_AMPLITUDE);
-    init.phase = validators::field<double>(init_table, "phase").greaterThanEqual(0.0).valueOr(ConfigDefaults::CONTROL_INIT_PHASE);
   }
 
   return init;
@@ -1193,83 +1081,4 @@ OptimTargetSettings Config::parseOptimTarget(const toml::table& toml, size_t num
   }
 
   return optim_target;
-}
-
-
-// CFG parsing helpers
-// TODO cfg: delete these when .cfg format is removed.
-
-template <typename T>
-std::vector<std::vector<T>> Config::parseOscillatorSettingsCfg(
-    const std::optional<std::map<int, std::vector<T>>>& indexed, size_t num_entries,
-    const std::vector<T>& default_values) const {
-  // Start with all defaults
-  std::vector<std::vector<T>> result(num_entries, default_values);
-
-  // Overwrite with specified values
-  if (indexed.has_value()) {
-    for (const auto& [idx, vals] : *indexed) {
-      if (idx >= 0 && static_cast<size_t>(idx) < num_entries) {
-        result[idx] = vals;
-      }
-    }
-  }
-  return result;
-}
-
-std::vector<ControlParameterizationSettings> Config::parseControlParameterizationsCfg(const std::optional<std::map<int, ControlParameterizationData>>& parameterizations_map) const {
-  // Use default-initialized struct (defaults provided in struct definition)
-  ControlParameterizationSettings default_parameterization;
-
-  // Populate default if paramterization is not specified
-  if (!parameterizations_map.has_value()) {
-    return std::vector<ControlParameterizationSettings>(nlevels.size(), default_parameterization);
-  }
-
-  // Otherwise, parse specified parameterizations for each oscillator
-  auto parsed_parameterizations = std::vector<ControlParameterizationSettings>(nlevels.size(), default_parameterization);
-  for (size_t i = 0; i < parsed_parameterizations.size(); i++) {
-    if (parameterizations_map.value().find(static_cast<int>(i)) != parameterizations_map.value().end()) {
-
-      // auto parameterization = parseControlParameterizationCfg(parameterizations_map.value().at(i));
-      auto oscil_config = parameterizations_map.value().at(static_cast<int>(i));
-      const auto& params = oscil_config.parameters;
-
-      // Create and store the parameterization
-      ControlParameterizationSettings parameterization;
-      parameterization.type = oscil_config.control_type;
-      if (oscil_config.control_type == ControlType::BSPLINE || oscil_config.control_type == ControlType::BSPLINE0) {
-        assert(params.size() >= 1); // nspline is required, should be validated in CfgParser
-        parameterization.nspline = static_cast<size_t>(params[0]);
-        parameterization.tstart = params.size() > 1 ? std::optional<double>(params[1]) : std::nullopt;
-        parameterization.tstop = params.size() > 2 ? std::optional<double>(params[2]) : std::nullopt;
-      } else if (oscil_config.control_type == ControlType::BSPLINEAMP) {
-        assert(params.size() >= 2); // nspline and scaling are required, should be validated in CfgParser
-        parameterization.nspline = static_cast<size_t>(params[0]);
-        parameterization.scaling = static_cast<double>(params[1]);
-        parameterization.tstart = params.size() > 2 ? std::optional<double>(params[2]) : std::nullopt;
-        parameterization.tstop = params.size() > 3 ? std::optional<double>(params[3]) : std::nullopt;
-      }
-      parsed_parameterizations[i] = parameterization;
-    }
-  }
-  return parsed_parameterizations;
-}
-
-
-std::vector<ControlInitializationSettings> Config::parseControlInitializationsCfg(const std::optional<std::map<int, ControlInitializationSettings>>& init_configs) const {
-
-  ControlInitializationSettings default_init;
-
-  std::vector<ControlInitializationSettings> control_initializations(nlevels.size(), default_init);
-
-  if (init_configs.has_value()) {
-    for (size_t i = 0; i < nlevels.size(); i++) {
-      if (init_configs->find(static_cast<int>(i)) != init_configs->end()) {
-        control_initializations[i] = init_configs->at(static_cast<int>(i));
-      }
-    }
-  }
-
-  return control_initializations;
 }

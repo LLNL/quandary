@@ -149,14 +149,12 @@ const std::map<std::string, RunType> RUN_TYPE_MAP = {
 enum class ControlType {
   NONE,       ///< Non-controllable
   BSPLINE,    ///< Control pulses are parameterized with 2nd order BSpline basis functions with carrier waves
-  BSPLINEAMP, ///< Paramerizes only the amplitudes of the control pulse with 2nd order BSpline basis functions 
   BSPLINE0    ///< Control pulses are parameterized with Zeroth order Bspline (piece-wise constant)
 };
 
 const std::map<std::string, ControlType> CONTROL_TYPE_MAP = {
     {"none", ControlType::NONE},
     {"spline", ControlType::BSPLINE},
-    {"spline_amplitude", ControlType::BSPLINEAMP},
     {"spline0", ControlType::BSPLINE0}
 };
 
@@ -185,13 +183,15 @@ enum class TimeStepperType {
   IMR4,  ///< Implicit Midpoint Rule with 4th order extrapolation
   IMR8,  ///< Implicit Midpoint Rule with 8th order extrapolation
   EE,    ///< Explicit Euler (1st order)
+  PETSCTS ///< PETSc's TS time-stepping solvers
 };
 
 const std::map<std::string, TimeStepperType> TIME_STEPPER_TYPE_MAP = {
     {"imr", TimeStepperType::IMR},
     {"imr4", TimeStepperType::IMR4},
     {"imr8", TimeStepperType::IMR8},
-    {"ee", TimeStepperType::EE}
+    {"ee", TimeStepperType::EE},
+    {"petscts", TimeStepperType::PETSCTS}
 };
 
 /**

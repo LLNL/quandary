@@ -15,7 +15,6 @@
 #include <limits>
 #include <random>
 #include <type_traits>
-#include "cfgparser.hpp"
 #include "defs.hpp"
 #include "mpi_logger.hpp"
 #include "config_defaults.hpp"
@@ -27,7 +26,7 @@
  *
  * Contains validated, typed configuration parameters. All fields have been
  * validated with defaults set. Handles parsing from TOML configuration files
- * and deprecated CFG format, as well as printing log of used configuration.
+ * and printing log of used configuration.
  * This class is immutable after construction.
  *
  * @note Adding a new toml configuration option:
@@ -64,6 +63,7 @@ class Config {
   std::vector<size_t> nessential; ///< Number of essential levels per subsystem (Default: same as nlevels)
   size_t ntime; ///< Number of time steps used for time-integration
   double dt; ///< Time step size (ns). Determines final time: T=ntime*dt
+  double total_time; ///< Total evolution time (ns). Alternative to specifying ntime and dt.
   std::vector<double> transition_frequency; ///< Fundamental transition frequencies for each oscillator (GHz)
   std::vector<double> selfkerr; ///< Self-kerr frequencies for each oscillator (GHz)
   std::vector<double> crosskerr_coupling; ///< Cross-kerr coupling frequencies for each oscillator coupling (GHz)
@@ -78,11 +78,16 @@ class Config {
   std::optional<std::string> hamiltonian_file_Hc; ///< File to read the control Hamiltonian from
 
   // Optimization options
-  bool control_zero_boundary_condition; ///< Decide whether control pulses should start and end at zero
-  std::vector<ControlParameterizationSettings> control_parameterizations; ///< Control parameterizations for each oscillator
-  std::vector<ControlInitializationSettings> control_initializations; ///< Control initializations for each oscillator
-  std::vector<double> control_amplitude_bounds; ///< Control amplitude bounds for each oscillator
+  bool control_zero_boundary_condition; ///< Decide whether drive controls should start and end at zero
+  std::vector<ControlParameterizationSettings> control_parameterizations; ///< Drive control parameterizations for each oscillator
+  std::vector<ControlInitializationSettings> control_initializations; ///< Drive control initializations for each oscillator
+  std::vector<double> control_amplitude_bounds; ///< Drive control amplitude bounds for each oscillator
   std::vector<std::vector<double>> carrier_frequencies; ///< Carrier frequencies for each oscillator
+  bool control_flux_enabled; ///< Enable additional flux control channel per oscillator
+  std::vector<ControlParameterizationSettings> control_flux_parameterizations; ///< Flux control parameterizations for each oscillator
+  std::vector<ControlInitializationSettings> control_flux_initializations; ///< Flux control initializations for each oscillator
+  std::vector<double> control_flux_amplitude_bounds; ///< Flux control amplitude bounds for each oscillator
+  bool control_flux_zero_boundary_condition; ///< Decide whether flux controls should start and end at zero
   OptimTargetSettings optim_target; ///< Grouped optimization target configuration
   ObjectiveType optim_objective; ///< Objective function measure
   std::vector<double> optim_weights; ///< Weights for summing up the objective function
@@ -117,18 +122,10 @@ class Config {
  public:
   Config(const MPILogger& logger, const toml::table& table);
 
-  // TODO cfg: delete this when .cfg format is removed.
-  Config(const MPILogger& logger, const ParsedConfigData& settings);
-
   ~Config() = default;
 
   static Config fromFile(const std::string& filename, const MPILogger& logger);
-  static Config fromToml(const std::string& toml_filename, const MPILogger& logger);
-  static Config fromTomlString(const std::string& toml_content, const MPILogger& logger);
-
-  // TODO cfg: delete these when .cfg format is removed.
-  static Config fromCfg(const std::string& cfg_filename, const MPILogger& logger);
-  static Config fromCfgString(const std::string& cfg_content, const MPILogger& logger);
+  static Config fromString(const std::string& toml_content, const MPILogger& logger);
 
   void printConfig(std::stringstream& log) const;
 
@@ -140,7 +137,7 @@ class Config {
   size_t getNEssential(size_t i_osc) const { return nessential[i_osc]; }
   size_t getNTime() const { return ntime; }
   double getDt() const { return dt; }
-  double getTotalTime() const { return ntime * dt; }
+  double getTotalTime() const { return total_time; }
 
   const std::vector<double>& getTransitionFrequency() const { return transition_frequency; }
   const std::vector<double>& getSelfKerr() const { return selfkerr; }
@@ -162,6 +159,11 @@ class Config {
   }
   double getControlAmplitudeBound(size_t i_osc) const { return control_amplitude_bounds[i_osc]; }
   const std::vector<double>& getCarrierFrequencies(size_t i_osc) const { return carrier_frequencies[i_osc]; }
+  bool getControlFluxEnabled() const { return control_flux_enabled; }
+  bool getControlFluxZeroBoundaryCondition() const { return control_flux_zero_boundary_condition; }
+  const ControlParameterizationSettings& getControlFluxParameterizations(size_t i_osc) const { return control_flux_parameterizations[i_osc]; }
+  const ControlInitializationSettings& getControlFluxInitializations(size_t i_osc) const { return control_flux_initializations[i_osc]; }
+  double getControlFluxAmplitudeBound(size_t i_osc) const { return control_flux_amplitude_bounds[i_osc]; }
   const OptimTargetSettings& getOptimTarget() const { return optim_target; }
   ObjectiveType getOptimObjective() const { return optim_objective; }
   const std::vector<double>& getOptimWeights() const { return optim_weights; }
@@ -214,13 +216,4 @@ class Config {
    * @return Parsed optimization target settings
    */
   OptimTargetSettings parseOptimTarget(const toml::table& table, size_t num_osc) const;
-
-
-  // TODO cfg: delete these when .cfg format is removed.
-  template <typename T>
-  std::vector<std::vector<T>> parseOscillatorSettingsCfg(const std::optional<std::map<int, std::vector<T>>>& indexed, size_t num_entries, const std::vector<T>& default_values = {}) const;
-
-  std::vector<ControlParameterizationSettings> parseControlParameterizationsCfg(const std::optional<std::map<int, ControlParameterizationData>>& parameterizations_map) const;
-
-  std::vector<ControlInitializationSettings> parseControlInitializationsCfg(const std::optional<std::map<int, ControlInitializationSettings>>& init_configs) const;
 };

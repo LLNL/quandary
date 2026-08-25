@@ -50,6 +50,7 @@ class Quandary:
     gate_rot_freq       # Specify frequencies to rotate a target gate (one per oscillator). Default: no rotation (0.0 for each oscillator)
 
     # Control pulse options
+    control_enabled       # Switch to enable control pulses. Default: True
     pcof0               # Optional: Pass an initial vector of control parameters. Default: none
     pcof0_filename      # Optional: Load initial control parameter vector from a file. Default: none
     randomize_init_ctrl # Randomize the initial control parameters (will be ignored if pcof0 or pcof0_filename are given). Default: True
@@ -62,6 +63,15 @@ class Quandary:
     carrier_frequency   # Carrier frequencies for each oscillator. List[List[float]]. Default will be computed based on Hsys.
     cw_amp_thres        # Threshold to ignore carrier wave frequencies whose growth rate is below this value. Default: 1e-7
     cw_prox_thres       # Threshold to distinguish different carrier wave frequencies from each other. Default: 1e-2
+
+    # Optional flux control
+    flux_enabled          # Switch to enable flux control. Default: False
+    flux_initctrl_MHz   # Initial amplitude for the flux control. Float or list. Default: 0.0
+    flux_randomize_init_ctrl  # Randomize the initial flux control parameters (will be ignored if flux_init_amplitude is given). Default: True
+    flux_maxctrl_MHz  # Maximum amplitude for the flux control. Float or list. Default: None
+    flux_nsplines            # Number of Bspline basis functions for the flux control. Default: T/flux_spline_knot_spacing + 2
+    flux_spline_order        # Order of the B-spline basis for the flux control (0 or 2). Default: 2
+    flux_enforce_BC # Bool to let flux control pulses start and end at zero. Default: False
 
     # Optimization options
     maxiter             # Maximum number of optimization iterations. Default 200
@@ -83,6 +93,7 @@ class Quandary:
     # General options
     rand_seed            # Set a fixed random number generator seed. Default: None (non-reproducable)
     print_frequency_iter # Output frequency for optimization iterations. (Print every <x> iterations). Default: 1
+    output_frequency     # Frequency (in number of timesteps) to store intermediate results during propagation. Default: 1 (write every time step)
     usematfree           # Switch to use matrix-free (rather than sparse-matrix) solver. Default: True
     verbose              # Switch to turn on more screen output for debugging. Default: False
 
@@ -132,6 +143,7 @@ class Quandary:
     initialcondition       : str = "basis"
     gate_rot_freq          : List[float] = field(default_factory=list)
     # Control pulse options
+    control_enabled     : bool        = True
     pcof0               : List[float] = field(default_factory=list)   
     pcof0_filename      : str         = ""                            
     randomize_init_ctrl : bool        = True                          
@@ -144,6 +156,16 @@ class Quandary:
     carrier_frequency   : List[List[float]] = field(default_factory=list) 
     cw_amp_thres        : float       = 1e-7
     cw_prox_thres       : float       = 1e-2                        
+
+    # Flux control settings
+    flux_enabled        : bool        = False
+    flux_randomize_init_ctrl : bool   = False
+    flux_initctrl_MHz   : List[float] = field(default_factory=list)
+    flux_maxctrl_MHz   : List[float] = field(default_factory=list)
+    flux_enforce_BC     : bool        = False
+    flux_nsplines       : int         = 10
+    flux_spline_order   : int         = 2
+
     # Optimization options
     maxiter                : int   = 200         
     tol_infidelity         : float = 1e-5        
@@ -163,6 +185,7 @@ class Quandary:
     # General options
     rand_seed              : int  = None
     print_frequency_iter   : int  = 1
+    output_frequency       : int  = 1
     usematfree             : bool = True 
     verbose                : bool = False
     # Internal configuration. Should not be changed by user.
@@ -213,6 +236,11 @@ class Quandary:
             self.initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
         if len(self.initctrl_MHz) == 0:
             self.initctrl_MHz = [10.0 for _ in range(len(self.Ne))]
+        if isinstance(self.flux_initctrl_MHz, float) or isinstance(self.flux_initctrl_MHz, int):
+            max_alloscillators = self.flux_initctrl_MHz
+            self.flux_initctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
+        if len(self.flux_initctrl_MHz) == 0:
+            self.flux_initctrl_MHz = [0.0 for _ in range(len(self.Ne))]
         if len(self.Hsys) > 0 and not self.standardmodel: # User-provided Hamiltonian operators 
             self.standardmodel=False   
             self.usematfree=False
@@ -229,7 +257,10 @@ class Quandary:
         if isinstance(self.maxctrl_MHz, float) or isinstance(self.maxctrl_MHz, int):
             max_alloscillators = self.maxctrl_MHz
             self.maxctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
-        
+        if isinstance(self.flux_maxctrl_MHz, float) or isinstance(self.flux_maxctrl_MHz, int):
+            max_alloscillators = self.flux_maxctrl_MHz
+            self.flux_maxctrl_MHz = [max_alloscillators for _ in range(len(self.Ne))]
+  
         # Store the number of initial conditions and solver flag
         self._lindblad_solver = True if (len(self.T1)>0) or (len(self.T2)>0) else False
         if self.initialcondition[0:4] == "file" or self.initialcondition[0:4] == "pure":
@@ -240,34 +271,36 @@ class Quandary:
             self._ninit = self._ninit**2
         
         # Estimate the number of required time steps
-        if self.dT < 0:
-            if self.standardmodel==True: # set up the standard Hamiltonian first
-                Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
-                self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
-            self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
-            self.dT = self.T/self.nsteps
-        else:
-            self.nsteps = int(np.ceil(self.T / self.dT))
-            self.T = self.nsteps*self.dT
+        if self.timestepper != "petscts": # Petsc timestepper does not use dT or nsteps
+            if self.dT < 0:
+                if self.standardmodel==True: # set up the standard Hamiltonian first
+                    Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
+                    self.Hsys, self.Hc_re, self.Hc_im = hamiltonians(N=Ntot, freq01=self.freq01, selfkerr=self.selfkerr, crosskerr=self.crosskerr, Jkl=self.Jkl, rotfreq=self.rotfreq, verbose=self.verbose)
+                self.nsteps = estimate_timesteps(T=self.T, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, maxctrl_MHz=self.maxctrl_MHz, Pmin=self.Pmin)
+                self.dT = self.T/self.nsteps
+            else:
+                self.nsteps = int(np.ceil(self.T / self.dT))
+                self.T = self.nsteps*self.dT
+
         if self.verbose:
-            print("Final time: ",self.T,"ns, Number of timesteps: ", self.nsteps,", dt=", self.T/self.nsteps, "ns")
+            print("Final time: ",self.T,"ns.")
             print("Maximum control amplitudes: ", self.maxctrl_MHz, "MHz")
 
         # Get number of splines right
         if self.nsplines < 0:
             if self.spline_order == 0:
-                self.nsplines = int(np.max([np.rint(self.nsteps*self.dT/self.spline_knot_spacing+1), minspline])) 
+                self.nsplines = int(np.max([np.rint(self.T/self.spline_knot_spacing+1), minspline])) 
             else: 
                 self.nsplines = int(np.max([np.ceil(self.T/self.spline_knot_spacing+ 2), minspline]))
 
-            self.spline_knot_spacing = self.nsteps*self.dT / (self.nsplines-1) if self.spline_order == 0 else self.nsteps*self.dT / (self.nsplines-2)
+            self.spline_knot_spacing = self.T / (self.nsplines-1) if self.spline_order == 0 else self.T / (self.nsplines-2)
         else:
-            self.spline_knot_spacing= self.nsteps*self.dT/(self.nsplines-1) if self.spline_order == 0 else self.T/(self.nsplines - 2)
+            self.spline_knot_spacing= self.T/(self.nsplines-1) if self.spline_order == 0 else self.T/(self.nsplines - 2)
 
         # Estimate carrier wave frequencies
         if self.spline_order == 0 and len(self.carrier_frequency) == 0:
             self.carrier_frequency = [[0.0] for _ in range(len(self.freq01))]
-        if len(self.carrier_frequency) == 0: 
+        if len(self.carrier_frequency) == 0 and self.control_enabled: 
             # set up the standard Hamiltonian first, if needed and if not done so already
             if self.standardmodel==True and len(self.Hsys)<=0:
                 Ntot = [sum(x) for x in zip(self.Ne, self.Ng)]
@@ -275,8 +308,7 @@ class Quandary:
             self.carrier_frequency, _ = get_resonances(Ne=self.Ne, Ng=self.Ng, Hsys=self.Hsys, Hc_re=self.Hc_re, Hc_im=self.Hc_im, rotfreq=self.rotfreq, verbose=self.verbose, cw_amp_thres=self.cw_amp_thres, cw_prox_thres=self.cw_prox_thres, stdmodel=self.standardmodel)
 
         if self.verbose: 
-            print("\n")
-            print("Carrier frequencies (rot. frame): ", self.carrier_frequency)
+            print("Carrier frequencies: ", self.carrier_frequency)
             print("\n")
 
     def copy(self):
@@ -337,7 +369,7 @@ class Quandary:
             spline_order_org = self.spline_order
             self.spline_order = 0
             self.spline_knot_spacing = self.dT 
-            self.nsplines = np.max([2,int(np.ceil(self.nsteps*self.dT/self.spline_knot_spacing + 1))])
+            self.nsplines = np.max([2,int(np.ceil(self.T/self.spline_knot_spacing + 1))])
 
             pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
@@ -385,7 +417,7 @@ class Quandary:
             self.carrier_frequency = [[0.0] for _ in range(len(self.Ne))]
             self.spline_order = 0
             self.spline_knot_spacing = self.dT 
-            self.nsplines = np.max([2,int(np.ceil(self.nsteps*self.dT/self.spline_knot_spacing + 1))])
+            self.nsplines = np.max([2,int(np.ceil(self.T/self.spline_knot_spacing + 1))])
             pcof0 = self.downsample_pulses(pt0=pt0, qt0=qt0)
 
         result = self.__run(pcof0=pcof0, runtype="optimization", overwrite_popt=True, maxcores=maxcores, datadir=datadir, quandary_exec=quandary_exec, cygwinbash=cygwinbash, mpi_exec=mpi_exec, batchargs=batchargs)
@@ -463,7 +495,7 @@ class Quandary:
                     
                     for iosc in range(Nsys):
                         Nelem = np.size(pt0[iosc])
-                        dt = (self.nsteps*self.dT)/(Nelem-1) # time step corresponding to (pt0, qt0)
+                        dt = (self.T)/(Nelem-1) # time step corresponding to (pt0, qt0)
                         p_seg = pt0[iosc]
                         q_seg = qt0[iosc]
 
@@ -665,8 +697,10 @@ class Quandary:
         lines.append("[system]")
         lines.append(f"nlevels = {_toml_array(Nt)}")
         lines.append(f"nessential = {_toml_array(self.Ne)}")
-        lines.append(f"ntime = {self.nsteps}")
-        lines.append(f"dt = {self.dT}")
+        lines.append(f"total_time = {self.T}")
+        if self.timestepper != "petscts":
+            lines.append(f"ntime = {self.nsteps}")
+            lines.append(f"dt = {self.dT}")
         lines.append(f"transition_frequency = {_toml_array(self.freq01)}")
         lines.append(f"selfkerr = {_toml_array(self.selfkerr)}")
 
@@ -742,46 +776,79 @@ class Quandary:
 
         # [control]
         lines.append("\n[control]")
-        if self.spline_order == 0:
-            lines.append(f"parameterization = {{ type = {_toml_str('spline0')}, num = {self.nsplines} }}")
-        elif self.spline_order == 2:
-            lines.append(f"parameterization = {{ type = {_toml_str('spline')}, num = {self.nsplines} }}")
-        else:
-            print("Error: spline order = ", self.spline_order, " is currently not available. Choose 0 or 2.")
-            return -1
+        if not self.control_enabled:
+            lines.append(f"parameterization = {{ type = {_toml_str('none')} }}")
+        else: 
+            if self.spline_order == 0:
+                lines.append(f"parameterization = {{ type = {_toml_str('spline0')}, num = {self.nsplines} }}")
+            elif self.spline_order == 2:
+                lines.append(f"parameterization = {{ type = {_toml_str('spline')}, num = {self.nsplines} }}")
+            else:
+                print("Error: spline order = ", self.spline_order, " is currently not available. Choose 0 or 2.")
+                return -1
 
-        # Carrier frequencies per subsystem
-        if len(self.carrier_frequency) > 0:
-            lines.append("carrier_frequency = [")
-            for iosc, vals in enumerate(self.carrier_frequency):
-                lines.append(f"  {{ subsystem = {iosc}, value = {_toml_array(vals)} }},")
-            lines.append("]")
+            # Carrier frequencies per subsystem
+            if len(self.carrier_frequency) > 0:
+                lines.append("carrier_frequency = [")
+                for iosc, vals in enumerate(self.carrier_frequency):
+                    lines.append(f"  {{ subsystem = {iosc}, value = {_toml_array(vals)} }},")
+                lines.append("]")
 
-        # Control initialization
-        if read_pcof0_from_file:
-            lines.append(f"initialization = {{ type = {_toml_str('file')}, filename = {_toml_str(self.pcof0_filename)} }}")
-        else:
-            init_type = "random" if self.randomize_init_ctrl else "constant"
-            if len(self.initctrl_MHz) <= 1:
-                initamp = self.initctrl_MHz[0] / 1000.0 / np.sqrt(2) / len(self.carrier_frequency[0])
+            # Control initialization
+            if read_pcof0_from_file:
+                lines.append(f"initialization = {{ type = {_toml_str('file')}, filename = {_toml_str(self.pcof0_filename)} }}")
+            else:
+                init_type = "random" if self.randomize_init_ctrl else "constant"
+                if len(self.initctrl_MHz) <= 1:
+                    initamp = self.initctrl_MHz[0] / 1000.0 / np.sqrt(2) / len(self.carrier_frequency[0])
+                    lines.append(f"initialization = {{ type = {_toml_str(init_type)}, amplitude = {initamp} }}")
+                else:
+                    lines.append("initialization = [")
+                    for iosc in range(len(self.initctrl_MHz)):
+                        initamp = self.initctrl_MHz[iosc] / 1000.0 / np.sqrt(2) / len(self.carrier_frequency[iosc])
+                        lines.append(f"  {{ subsystem = {iosc}, type = {_toml_str(init_type)}, amplitude = {initamp} }},")
+                    lines.append("]")
+
+            # Amplitude bounds
+            if len(self.maxctrl_MHz) == 0:
+                lines.append("amplitude_bound = 1.0e12")
+            elif len(self.maxctrl_MHz) == 1:
+                lines.append(f"amplitude_bound = {self.maxctrl_MHz[0] / 1000.0}")
+            else:
+                bounds = [v / 1000.0 for v in self.maxctrl_MHz]
+                lines.append(f"amplitude_bound = {_toml_array(bounds)}")
+
+            lines.append(f"zero_boundary_condition = {_toml_bool(self.control_enforce_BC)}")
+
+        # Flux control 
+        if self.flux_enabled:
+            lines.append("\n[control.flux]")
+            lines.append(f"enabled = {_toml_bool(self.flux_enabled)}")
+            if self.flux_spline_order == 0:
+                lines.append(f"parameterization = {{ type = {_toml_str('spline0')}, num = {self.flux_nsplines} }}")
+            elif self.flux_spline_order == 2:
+                lines.append(f"parameterization = {{ type = {_toml_str('spline')}, num = {self.flux_nsplines} }}")
+            else:
+                print("Error: spline order = ", self.flux_spline_order, " is currently not available. Choose 0 or 2.")
+                return -1
+            init_type = "random" if self.flux_randomize_init_ctrl else "constant"
+            if len(self.flux_initctrl_MHz) <= 1:
+                initamp = self.flux_initctrl_MHz[0] / 1000.0 
                 lines.append(f"initialization = {{ type = {_toml_str(init_type)}, amplitude = {initamp} }}")
             else:
                 lines.append("initialization = [")
-                for iosc in range(len(self.initctrl_MHz)):
-                    initamp = self.initctrl_MHz[iosc] / 1000.0 / np.sqrt(2) / len(self.carrier_frequency[iosc])
+                for iosc in range(len(self.flux_initctrl_MHz)):
+                    initamp = self.flux_initctrl_MHz[iosc] / 1000.0 
                     lines.append(f"  {{ subsystem = {iosc}, type = {_toml_str(init_type)}, amplitude = {initamp} }},")
                 lines.append("]")
-
-        # Amplitude bounds
-        if len(self.maxctrl_MHz) == 0:
-            lines.append("amplitude_bound = 1.0e12")
-        elif len(self.maxctrl_MHz) == 1:
-            lines.append(f"amplitude_bound = {self.maxctrl_MHz[0] / 1000.0}")
-        else:
-            bounds = [v / 1000.0 for v in self.maxctrl_MHz]
-            lines.append(f"amplitude_bound = {_toml_array(bounds)}")
-
-        lines.append(f"zero_boundary_condition = {_toml_bool(self.control_enforce_BC)}")
+            if len(self.flux_maxctrl_MHz) == 0:
+                lines.append(f"amplitude_bound = 1.0e12")
+            elif len(self.flux_maxctrl_MHz) == 1:
+                lines.append(f"amplitude_bound = {self.flux_maxctrl_MHz[0] / 1000.0}")
+            else:
+                bounds = [v / 1000.0 for v in self.flux_maxctrl_MHz]
+                lines.append(f"amplitude_bound = {_toml_array(bounds)}")
+            lines.append(f"zero_boundary_condition = {_toml_bool(self.flux_enforce_BC)}")
 
         # [optimization]
         lines.append("\n[optimization]")
@@ -821,7 +888,7 @@ class Quandary:
         lines.append("\n[output]")
         lines.append("directory = \"./\"")
         lines.append("observables = [\"population\", \"expectedEnergy\", \"fullstate\"]")
-        lines.append("timestep_stride = 1")
+        lines.append(f"timestep_stride = {self.output_frequency}")
         lines.append(f"optimization_stride = {self.print_frequency_iter}")
 
         # [solver]
@@ -961,7 +1028,6 @@ class Quandary:
         # Get the control pulses for each qubit
         pt = []
         qt = []
-        ft = []
         for iosc in range(len(self.Ne)):
             # Read the control pulse file
             filename = os.path.join(datadir, f"control{iosc}.dat")
@@ -974,7 +1040,6 @@ class Quandary:
             time = x[:,0]   # Time domain
             pt.append([x[n,1]*1e+3 for n in range(len(x[:,0]))])     # Rot frame p(t), MHz
             qt.append([x[n,2]*1e+3 for n in range(len(x[:,0]))])     # Rot frame q(t), MHz
-            ft.append([x[n,3]*1e+3 for n in range(len(x[:,0]))])     # Lab frame f(t)
     
         return time, pt, qt, uT, expectedEnergy, population, pcof, infid_last, optim_hist
 

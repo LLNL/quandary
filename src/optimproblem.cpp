@@ -1,11 +1,15 @@
 #include "optimproblem.hpp"
 
-OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_Comm comm_init_, MPI_Comm comm_optim_, Output* output_, bool quietmode_){
+OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, TimeStepper* timestepper_, MasterEq* mastereq_, MPI_Comm comm_init_, MPI_Comm comm_optim_, Output* output_, bool quietmode_){
 
+  optim_target = optim_target_;
   timestepper = timestepper_;
+  mastereq = mastereq_;
   ninit = config.getNInitialConditions();
   output = output_;
   quietmode = quietmode_;
+  output_optimization_stride = config.getOutputOptimizationStride();
+
   /* Reset */
   objective = 0.0;
 
@@ -24,37 +28,12 @@ OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_
   /* Store number of initial conditions per init-processor group */
   ninit_local = ninit / mpisize_init; 
 
-  /*  If Schroedingers solver, allocate storage for the final states at time T for each initial condition. Schroedinger's solver does not store the time-trajectories during forward ODE solve, but instead recomputes the primal states during the adjoint solve. Therefore we need to store the terminal condition for the backwards primal solve. Be aware that the final states stored here will be overwritten during backwards computation!! */
-  if (timestepper->mastereq->decoherence_type == DecoherenceType::NONE) {
-    for (int i = 0; i < ninit_local; i++) {
-
-      PetscInt globalsize = 2 * timestepper->mastereq->getDim();  // Global state vector: 2 for real and imaginary part
-      PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
-      Vec state;
-      VecCreate(PETSC_COMM_WORLD, &state);
-      VecSetSizes(state, localsize, globalsize);
-      VecSetFromOptions(state);
-      store_finalstates.push_back(state);
-    }
-  }
-
-  // Check for new Riemannian objective function:
+  
+  // Allocate storage for final-time unitary if new objective function is used
   optim_penalty_riemannian = config.getOptimPenaltyRiemannian();
   phase_invariant = config.getOptimPenaltyRiemannianPhaseFree();
   if (optim_penalty_riemannian > 0.0) {
-    if (mpisize_petsc>1){
-      printf("New objective function only works with one petsc core right now.\n");
-      exit(1);
-    }
-    if (timestepper->mastereq->getDimEss() != timestepper->mastereq->getDim()){
-      printf("New objective function does not work with guard levels right now.\n");
-      exit(1);
-    }
-  }
-
-  // Allocate storage for final-time unitary if new objective function is used
-  if (optim_penalty_riemannian > 0.0) {
-    PetscInt globalsize_rows = timestepper->mastereq->getDim();
+    PetscInt globalsize_rows = mastereq->getDim();
     PetscInt globalsize_cols = ninit;;
     PetscInt localsize_rows = globalsize_rows / mpisize_petsc;
     PetscInt localsize_cols = globalsize_cols / mpisize_petsc;
@@ -83,26 +62,16 @@ OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_
 
   /* Store number of design parameters */
   int n = 0;
-  for (size_t ioscil = 0; ioscil < timestepper->mastereq->getNOscillators(); ioscil++) {
-      n += timestepper->mastereq->getOscillator(ioscil)->getNParams(); 
+  for (size_t ioscil = 0; ioscil < mastereq->getNOscillators(); ioscil++) {
+      n += mastereq->getOscillator(ioscil)->getNParams(); 
   }
   ndesign = n;
   if (mpirank_world == 0 && !quietmode) std::cout<< "Number of control parameters: " << ndesign << std::endl;
 
-  /* Allocate the initial condition vector and adjoint terminal state */
-  VecCreate(PETSC_COMM_WORLD, &rho_t0); 
-  PetscInt globalsize = 2 * timestepper->mastereq->getDim();  // Global state vector: 2 for real and imaginary part
-  PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
-  VecSetSizes(rho_t0, localsize, globalsize);
-  VecSetFromOptions(rho_t0);
-  VecZeroEntries(rho_t0);
-  VecAssemblyBegin(rho_t0); VecAssemblyEnd(rho_t0);
-  VecDuplicate(rho_t0, &rho_t0_bar);
+  /* Allocate adjoint terminal state */
+  VecDuplicate(optim_target->getInitialState(), &rho_t0_bar);
   VecZeroEntries(rho_t0_bar);
   VecAssemblyBegin(rho_t0_bar); VecAssemblyEnd(rho_t0_bar);
-
-  /* Initialize the optimization target, including setting of initial state rho_t0 if read from file or product state or ensemble */
-  optim_target = new OptimTarget(config, timestepper->mastereq, timestepper->total_time, rho_t0, quietmode);
 
   /* Get weights for the objective function (weighting the different initial conditions */
   obj_weights = config.getOptimWeights();
@@ -121,59 +90,40 @@ OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_
   // Get penalty settings
   gamma_penalty_leakage = config.getOptimPenaltyLeakage();
   gamma_penalty_weightedcost = config.getOptimPenaltyWeightedCost();
-  double weightedcost_width = config.getOptimPenaltyWeightedCostWidth();
   gamma_penalty_energy = config.getOptimPenaltyEnergy();
   gamma_penalty_dpdm = config.getOptimPenaltyDpdm();
   gamma_penalty_variation = config.getOptimPenaltyVariation();
 
-  if (gamma_penalty_dpdm > 1e-13 && timestepper->mastereq->decoherence_type != DecoherenceType::NONE){
+  if (gamma_penalty_dpdm > 1e-13 && mastereq->decoherence_type != DecoherenceType::NONE){
     if (mpirank_world == 0 && !quietmode) {
       printf("Warning: Disabling DpDm penalty term because it is not implemented for the Lindblad solver.\n");
     }
     gamma_penalty_dpdm = 0.0;
   }
 
-
-  /* Pass information on objective function to the time stepper needed for penalty objective function */
-  timestepper->setEvalWeightedCost(gamma_penalty_weightedcost > 1e-13, weightedcost_width);
-  timestepper->setEvalDPDM(gamma_penalty_dpdm > 1e-13);
-  timestepper->setEvalEnergy(gamma_penalty_energy > 1e-13);
-  double eval_leakage = false; 
-  if (gamma_penalty_leakage > 1e-13) {
-    for (size_t i=0; i<timestepper->mastereq->getNOscillators(); i++){
-      if (timestepper->mastereq->nessential[i] < timestepper->mastereq->nlevels[i]) eval_leakage = true;
-    }
-  }
-  timestepper->setEvalLeakage(eval_leakage);
-
-  timestepper->optim_target = optim_target;
-
   /* Store optimization bounds */
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xlower);
   VecSetFromOptions(xlower);
   VecDuplicate(xlower, &xupper);
   int col = 0;
-  for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    for (size_t iseg = 0; iseg < timestepper->mastereq->getOscillator(iosc)->getNParameterizations(); iseg++){ // Note: Currently only one parameterization is supported! iseg=0!
-      double boundval = config.getControlAmplitudeBound(iosc);
-      // Scale bounds by the number of carrier waves, and convert to radians */
-      boundval = boundval / (sqrt(2) * timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies());
-      boundval = boundval * 2.0*M_PI;
-      for (int i=0; i<timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg); i++){
-        VecSetValue(xupper, col + i, boundval, INSERT_VALUES);
-        VecSetValue(xlower, col + i, -1. * boundval, INSERT_VALUES);
-      }
-      // Disable bound for phase if this is spline_amplitude control
-      if (timestepper->mastereq->getOscillator(iosc)->getControlType() == ControlType::BSPLINEAMP) {
-        for (size_t f = 0; f < timestepper->mastereq->getOscillator(iosc)->getNCarrierfrequencies(); f++){
-          int nsplines = timestepper->mastereq->getOscillator(iosc)->getNSplines();
-          boundval = 1e+10;
-          VecSetValue(xupper, col + f*(nsplines+1) + nsplines, boundval, INSERT_VALUES);
-          VecSetValue(xlower, col + f*(nsplines+1) + nsplines, -1.*boundval, INSERT_VALUES);
-        }
-      }
-      col = col + timestepper->mastereq->getOscillator(iosc)->getNSegParams(iseg);
+  for (size_t iosc = 0; iosc < mastereq->getNOscillators(); iosc++){
+    // Drive bounds (existing p/q controls)
+    double drive_bound = config.getControlAmplitudeBound(iosc);
+    drive_bound = drive_bound / (sqrt(2) * mastereq->getOscillator(iosc)->getNCarrierfrequencies());
+    drive_bound = drive_bound * 2.0 * M_PI;
+    for (size_t i = 0; i < mastereq->getOscillator(iosc)->getNDriveParams(); i++) {
+      VecSetValue(xupper, col + i, drive_bound, INSERT_VALUES);
+      VecSetValue(xlower, col + i, -1.0 * drive_bound, INSERT_VALUES);
     }
+    col += mastereq->getOscillator(iosc)->getNDriveParams();
+
+    // Flux bounds (independent f controls)
+    double flux_bound = config.getControlFluxAmplitudeBound(iosc) * 2.0 * M_PI;
+    for (size_t i = 0; i < mastereq->getOscillator(iosc)->getNFluxParams(); i++) {
+      VecSetValue(xupper, col + i, flux_bound, INSERT_VALUES);
+      VecSetValue(xlower, col + i, -1.0 * flux_bound, INSERT_VALUES);
+    }
+    col += mastereq->getOscillator(iosc)->getNFluxParams();
   }
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
@@ -207,8 +157,6 @@ OptimProblem::OptimProblem(const Config& config, TimeStepper* timestepper_, MPI_
 
 OptimProblem::~OptimProblem() {
   delete [] mygrad;
-  delete optim_target;
-  VecDestroy(&rho_t0);
   VecDestroy(&rho_t0_bar);
 
   VecDestroy(&xlower);
@@ -216,9 +164,6 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&xinit);
   VecDestroy(&xtmp);
 
-  for (size_t i = 0; i < store_finalstates.size(); i++) {
-    VecDestroy(&(store_finalstates[i]));
-  }
   if (optim_penalty_riemannian > 0.0) {
     MatDestroy(&U_final_re);
     MatDestroy(&U_final_im);
@@ -232,9 +177,6 @@ OptimProblem::~OptimProblem() {
 
 
 double OptimProblem::evalF(const Vec x) {
-
-  MasterEq* mastereq = timestepper->mastereq;
-
   if (mpirank_world == 0 && !quietmode) printf("EVAL F... \n");
 
   /* Pass design vector x to oscillators */
@@ -265,25 +207,22 @@ double OptimProblem::evalF(const Vec x) {
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
+    int iinit_global = mpirank_init * ninit_local + iinit;
       
     /* Prepare the initial condition in [rank * ninit_local, ... , (rank+1) * ninit_local - 1] */
-    int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
-    if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
-
-    /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    optim_target->prepareTargetState(rho_t0);
+    int initid = optim_target->prepareInitialAndTargetState(iinit_global, ninit, mastereq->nlevels, mastereq->nessential);
 
     /* Run forward with initial condition initid */
-    Vec finalstate = timestepper->solveODE(initid, rho_t0);
+    if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
+    Vec finalstate = timestepper->solveODE(initid, iinit, optim_target->getInitialState());
 
     /* Store the final state for Riemannian objective function */
     if (optim_penalty_riemannian > 0.0) {
       const PetscScalar *finalstate_array;
       VecGetArrayRead(finalstate, &finalstate_array);
-      for (size_t row = 0; row < timestepper->mastereq->getDim(); row++) {
+      for (size_t row = 0; row < mastereq->getDim(); row++) {
         int id_re = row;
-        int id_im = row + timestepper->mastereq->getDim();
+        int id_im = row + mastereq->getDim();
         MatSetValue(U_final_re, row, iinit_global, finalstate_array[id_re], INSERT_VALUES);
         MatSetValue(U_final_im, row, iinit_global, finalstate_array[id_im], INSERT_VALUES);
       }
@@ -291,23 +230,23 @@ double OptimProblem::evalF(const Vec x) {
     }
 
     /* Add to leakage penalty term */
-    obj_penal_leakage += obj_weights[iinit] * gamma_penalty_leakage * timestepper->getLeakageIntegral();
+    obj_penal_leakage += obj_weights[iinit_global] * gamma_penalty_leakage * timestepper->getLeakageIntegral();
 
     /* Add to running cost penalty term */
-    obj_penal_weightedcost += obj_weights[iinit] * gamma_penalty_weightedcost * timestepper->getWeightedCostIntegral();
+    obj_penal_weightedcost += obj_weights[iinit_global] * gamma_penalty_weightedcost * timestepper->getWeightedCostIntegral();
 
     /* Add to second derivative penalty term */
-    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->getDPDMIntegral();
+    obj_penal_dpdm += obj_weights[iinit_global] * gamma_penalty_dpdm * timestepper->getDPDMIntegral();
     
     /* Add to energy integral penalty term */
-    obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy* timestepper->getEnergyIntegral();
+    obj_penal_energy += obj_weights[iinit_global] * gamma_penalty_energy* timestepper->getEnergyIntegral();
 
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
     double obj_iinit_im = 0.0;
     optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
-    obj_cost_re += obj_weights[iinit] * obj_iinit_re;
-    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+    obj_cost_re += obj_weights[iinit_global] * obj_iinit_re;
+    obj_cost_im += obj_weights[iinit_global] * obj_iinit_im;
 
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
@@ -316,7 +255,7 @@ double OptimProblem::evalF(const Vec x) {
     fidelity_re += 1./ ninit * fidelity_iinit_re;
     fidelity_im += 1./ ninit * fidelity_iinit_im;
 
-    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
+    // printf("%d, %d: iinit obj_iinit: %f * (%1.14e + i %1.14e, Overlap=%1.14e + i %1.14e\n", mpirank_world, mpirank_init, obj_weights[iinit_global], obj_iinit_re, obj_iinit_im, fidelity_iinit_re, fidelity_iinit_im);
   }
   if (optim_penalty_riemannian > 0.0) {
     MatAssemblyBegin(U_final_re, MAT_FINAL_ASSEMBLY);
@@ -344,7 +283,7 @@ double OptimProblem::evalF(const Vec x) {
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
-  if (timestepper->mastereq->decoherence_type == DecoherenceType::NONE) {
+  if (mastereq->decoherence_type == DecoherenceType::NONE) {
     fidelity = pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
   } else {
     fidelity = fidelity_re; 
@@ -361,7 +300,7 @@ double OptimProblem::evalF(const Vec x) {
     /* allreduce the U_final matrix */
     PetscScalar *data;
     MatDenseGetArray(U_final_re, &data);
-    int size = timestepper->mastereq->getDim();
+    int size = mastereq->getDim();
     MPI_Allreduce(MPI_IN_PLACE, data, size * size, MPIU_SCALAR, MPI_SUM, comm_init);
     MatDenseRestoreArray(U_final_re, &data);
 
@@ -392,8 +331,8 @@ double OptimProblem::evalF(const Vec x) {
 
   /* Evaluate penality term for control variation */
   double var_reg = 0.0;
-  for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
+  for (size_t iosc = 0; iosc < mastereq->getNOscillators(); iosc++){
+    var_reg += mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
   }
   obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
 
@@ -412,16 +351,13 @@ double OptimProblem::evalF(const Vec x) {
 
 
 void OptimProblem::evalGradF(const Vec x, Vec G){
-
-  MasterEq* mastereq = timestepper->mastereq;
-
   if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
 
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
 
   // TEST
-  output->writeControls(x, timestepper->mastereq, timestepper->ntime, timestepper->dt);
+  // output->writeControls(x, mastereq, timestepper->ntime, timestepper->dt);
 
   /* Reset Gradient */
   VecZeroEntries(G);
@@ -455,8 +391,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     // Derivative of penalization of control variation 
     double var_reg_bar = 0.5*gamma_penalty_variation;
     int skip_to_oscillator = 0;
-    for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-      Oscillator* osc = timestepper->mastereq->getOscillator(iosc);
+    for (size_t iosc = 0; iosc < mastereq->getNOscillators(); iosc++){
+      Oscillator* osc = mastereq->getOscillator(iosc);
       osc->evalControlVariationDiff(G, var_reg_bar, skip_to_oscillator);
       skip_to_oscillator += osc->getNParams();
     }
@@ -477,27 +413,25 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   double fidelity_re = 0.0;
   double fidelity_im = 0.0;
   for (int iinit = 0; iinit < ninit_local; iinit++) {
-
-    /* Prepare the initial condition */
     int iinit_global = mpirank_init * ninit_local + iinit;
-    int initid = optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
+    // printf("%d: Initial condition id=%d ...\n", mpirank_init, iinit_global);
 
-    /* If gate optimiztion, compute the target state rho^target = Vrho(0)V^dagger */
-    optim_target->prepareTargetState(rho_t0);
+    /* Prepare the initial and target state */
+    int initid = optim_target->prepareInitialAndTargetState(iinit_global, ninit, mastereq->nlevels, mastereq->nessential);
 
     /* --- Solve primal --- */
     // if (mpirank_optim == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
-    /* Run forward with initial condition rho_t0 */
-    Vec finalstate = timestepper->solveODE(initid, rho_t0);
+    /* Run forward with initial condition */
+    Vec finalstate = timestepper->solveODE(initid, iinit, optim_target->getInitialState());
 
     /* Store the final state for Riemannian objective function */
     if (optim_penalty_riemannian > 0.0) {
       const PetscScalar *finalstate_array;
       VecGetArrayRead(finalstate, &finalstate_array);
-      for (size_t row = 0; row < timestepper->mastereq->getDim(); row++) {
+      for (size_t row = 0; row < mastereq->getDim(); row++) {
         int id_re = row;
-        int id_im = row + timestepper->mastereq->getDim();
+        int id_im = row + mastereq->getDim();
         MatSetValue(U_final_re, row, iinit_global, finalstate_array[id_re], INSERT_VALUES);
         MatSetValue(U_final_im, row, iinit_global, finalstate_array[id_im], INSERT_VALUES);
       }
@@ -510,26 +444,23 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
       MatAssemblyEnd(U_final_im, MAT_FINAL_ASSEMBLY);
     }
 
-    /* Store the final state for the Schroedinger solver */
-    if (timestepper->mastereq->decoherence_type == DecoherenceType::NONE) VecCopy(finalstate, store_finalstates[iinit]);
-
     /* Add to leakage penalty term */
-    obj_penal_leakage += obj_weights[iinit] * gamma_penalty_leakage * timestepper->getLeakageIntegral();
+    obj_penal_leakage += obj_weights[iinit_global] * gamma_penalty_leakage * timestepper->getLeakageIntegral();
 
     /* Add to running cost penalty term */
-    obj_penal_weightedcost += obj_weights[iinit] * gamma_penalty_weightedcost * timestepper->getWeightedCostIntegral();
+    obj_penal_weightedcost += obj_weights[iinit_global] * gamma_penalty_weightedcost * timestepper->getWeightedCostIntegral();
 
     /* Add to second derivative dpdm integral penalty term */
-    obj_penal_dpdm += obj_weights[iinit] * gamma_penalty_dpdm * timestepper->getDPDMIntegral();
+    obj_penal_dpdm += obj_weights[iinit_global] * gamma_penalty_dpdm * timestepper->getDPDMIntegral();
     /* Add to energy integral penalty term */
-    obj_penal_energy += obj_weights[iinit] * gamma_penalty_energy * timestepper->getEnergyIntegral();
+    obj_penal_energy += obj_weights[iinit_global] * gamma_penalty_energy * timestepper->getEnergyIntegral();
 
     /* Evaluate J(finalstate) and add to final-time cost */
     double obj_iinit_re = 0.0;
     double obj_iinit_im = 0.0;
     optim_target->evalJ(finalstate,  &obj_iinit_re, &obj_iinit_im);
-    obj_cost_re += obj_weights[iinit] * obj_iinit_re;
-    obj_cost_im += obj_weights[iinit] * obj_iinit_im;
+    obj_cost_re += obj_weights[iinit_global] * obj_iinit_re;
+    obj_cost_im += obj_weights[iinit_global] * obj_iinit_im;
 
     /* Add to final-time fidelity */
     double fidelity_iinit_re = 0.0;
@@ -537,25 +468,6 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     optim_target->HilbertSchmidtOverlap(finalstate, false, &fidelity_iinit_re, &fidelity_iinit_im);
     fidelity_re += 1./ ninit * fidelity_iinit_re;
     fidelity_im += 1./ ninit * fidelity_iinit_im;
-
-    /* If Lindblas solver, compute adjoint for this initial condition. Otherwise (Schroedinger solver), compute adjoint only after all initial conditions have been propagated through (separate loop below) */
-    if (timestepper->mastereq->decoherence_type != DecoherenceType::NONE) {
-      // if (mpirank_optim == 0) printf("%d: %d BWD.", mpirank_init, initid);
-
-      /* Reset adjoint */
-      VecZeroEntries(rho_t0_bar);
-
-      /* Terminal condition for adjoint variable: Derivative of final time objective J */
-      double obj_cost_re_bar, obj_cost_im_bar;
-      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-      optim_target->evalJ_diff(finalstate, rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
-
-      /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(rho_t0_bar, finalstate, obj_weights[iinit] * gamma_penalty_leakage, obj_weights[iinit]*gamma_penalty_weightedcost, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
-
-      /* Add to optimizers's gradient */
-      VecAXPY(G, 1.0, timestepper->redgrad);
-    }
   }
 
   /* Sum up from initial conditions processors */
@@ -577,7 +489,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   MPI_Allreduce(&myfidelity_im, &fidelity_im, 1, MPI_DOUBLE, MPI_SUM, comm_init);
 
   /* Set the fidelity: If Schroedinger, need to compute the absolute value: Fid= |\sum_i \phi^\dagger \phi_target|^2 */
-  if (timestepper->mastereq->decoherence_type == DecoherenceType::NONE) {
+  if (mastereq->decoherence_type == DecoherenceType::NONE) {
     fidelity = pow(fidelity_re, 2.0) + pow(fidelity_im, 2.0);
   } else {
     fidelity = fidelity_re; 
@@ -595,7 +507,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     /* allreduce the U_final matrix */
     PetscScalar *data;
     MatDenseGetArray(U_final_re, &data);
-    int size = timestepper->mastereq->getDim();
+    int size = mastereq->getDim();
     MPI_Allreduce(MPI_IN_PLACE, data, size * size, MPIU_SCALAR, MPI_SUM, comm_init);
     MatDenseRestoreArray(U_final_re, &data);
 
@@ -626,8 +538,8 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
 
   /* Evaluate penalty term for control parameter variation */
   double var_reg = 0.0;
-  for (size_t iosc = 0; iosc < timestepper->mastereq->getNOscillators(); iosc++){
-    var_reg += timestepper->mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
+  for (size_t iosc = 0; iosc < mastereq->getNOscillators(); iosc++){
+    var_reg += mastereq->getOscillator(iosc)->evalControlVariation(); // uses Oscillator::params instead of 'x'
   }
   obj_penal_variation = 0.5*gamma_penalty_variation*var_reg; 
 
@@ -642,48 +554,43 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   }
 
 
-  /* For Schroedinger solver: Solve adjoint equations for all initial conditions here. */
-  if (timestepper->mastereq->decoherence_type == DecoherenceType::NONE) {
+  /* Solve adjoint equations for all initial conditions . */
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
+    int iinit_global = mpirank_init * ninit_local + iinit;
 
-    // Iterate over all initial conditions 
-    for (int iinit = 0; iinit < ninit_local; iinit++) {
-      int iinit_global = mpirank_init * ninit_local + iinit;
+    /* Recompute the initial state and target */
+    optim_target->prepareInitialAndTargetState(iinit_global, ninit, mastereq->nlevels, mastereq->nessential);
+   
+    /* Reset adjoint */
+    VecZeroEntries(rho_t0_bar);
 
-      /* Recompute the initial state and target */
-      optim_target->prepareInitialState(iinit_global, ninit, timestepper->mastereq->nlevels, timestepper->mastereq->nessential, rho_t0);
-      optim_target->prepareTargetState(rho_t0);
-     
-      /* Reset adjoint */
-      VecZeroEntries(rho_t0_bar);
+    /* Terminal condition for adjoint variable: Derivative of final time objective J */
+    double obj_cost_re_bar, obj_cost_im_bar;
+    optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
+    optim_target->evalJ_diff(timestepper->getFinalState(iinit), rho_t0_bar, obj_weights[iinit_global]*obj_cost_re_bar, obj_weights[iinit_global]*obj_cost_im_bar);
 
-      /* Terminal condition for adjoint variable: Derivative of final time objective J */
-      double obj_cost_re_bar, obj_cost_im_bar;
-      optim_target->finalizeJ_diff(obj_cost_re, obj_cost_im, &obj_cost_re_bar, &obj_cost_im_bar);
-      optim_target->evalJ_diff(store_finalstates[iinit], rho_t0_bar, obj_weights[iinit]*obj_cost_re_bar, obj_weights[iinit]*obj_cost_im_bar);
-
-      // Derivative of Riemannian penalty
-      if (optim_penalty_riemannian > 0.0) {
-        // Pass i-th column of U_final_bar into rho_t0_bar
-        for (size_t row = 0; row < timestepper->mastereq->getDim(); row++) {
-          int id_re = row;
-          int id_im = row + timestepper->mastereq->getDim();
-          double val_ufinal_re_bar, val_ufinal_im_bar;
-          MatGetValue(U_final_re_bar, row, iinit_global, &val_ufinal_re_bar);
-          MatGetValue(U_final_im_bar, row, iinit_global, &val_ufinal_im_bar);
-          VecSetValue(rho_t0_bar, id_re, val_ufinal_re_bar, ADD_VALUES);
-          VecSetValue(rho_t0_bar, id_im, val_ufinal_im_bar, ADD_VALUES);
-        }
-        VecAssemblyBegin(rho_t0_bar);
-        VecAssemblyEnd(rho_t0_bar);
+    // Derivative of Riemannian penalty
+    if (optim_penalty_riemannian > 0.0) {
+      // Pass i-th column of U_final_bar into rho_t0_bar
+      for (size_t row = 0; row < mastereq->getDim(); row++) {
+        int id_re = row;
+        int id_im = row + mastereq->getDim();
+        double val_ufinal_re_bar, val_ufinal_im_bar;
+        MatGetValue(U_final_re_bar, row, iinit_global, &val_ufinal_re_bar);
+        MatGetValue(U_final_im_bar, row, iinit_global, &val_ufinal_im_bar);
+        VecSetValue(rho_t0_bar, id_re, val_ufinal_re_bar, ADD_VALUES);
+        VecSetValue(rho_t0_bar, id_im, val_ufinal_im_bar, ADD_VALUES);
       }
+      VecAssemblyBegin(rho_t0_bar);
+      VecAssemblyEnd(rho_t0_bar);
+    }
 
-      /* Derivative of time-stepping */
-      timestepper->solveAdjointODE(rho_t0_bar, store_finalstates[iinit], obj_weights[iinit] * gamma_penalty_leakage, obj_weights[iinit]*gamma_penalty_weightedcost, obj_weights[iinit]*gamma_penalty_dpdm, obj_weights[iinit]*gamma_penalty_energy);
+    /* Derivative of time-stepping */
+    timestepper->solveAdjointODE(iinit, rho_t0_bar, obj_weights[iinit_global] * gamma_penalty_leakage, obj_weights[iinit_global]*gamma_penalty_weightedcost, obj_weights[iinit_global]*gamma_penalty_dpdm, obj_weights[iinit_global]*gamma_penalty_energy);
 
-      /* Add to optimizers's gradient */
-      VecAXPY(G, 1.0, timestepper->redgrad);
-    } // end of initial condition loop 
-  } // end of adjoint for Schroedinger
+    /* Add to optimizers's gradient */
+    VecAXPY(G, 1.0, timestepper->getReducedGradient());
+  } // end of initial condition loop 
 
   /* Sum up the gradient from all initial condition processors */
   PetscScalar* grad; 
@@ -710,14 +617,13 @@ void OptimProblem::solve(Vec xinit) {
 }
 
 void OptimProblem::getStartingPoint(Vec xinit){
-  MasterEq* mastereq = timestepper->mastereq;
 
   // Grab parameters from oscillators
   PetscScalar* xptr;
   VecGetArray(xinit, &xptr);
   int shift = 0;
   for (size_t ioscil = 0; ioscil<mastereq->getNOscillators(); ioscil++){
-    mastereq->getOscillator(ioscil)->getParams(xptr + shift);
+    mastereq->getOscillator(ioscil)->getControlParams(xptr + shift);
     shift += mastereq->getOscillator(ioscil)->getNParams();
   }
   VecRestoreArray(xinit, &xptr);
@@ -727,11 +633,7 @@ void OptimProblem::getStartingPoint(Vec xinit){
   VecAssemblyEnd(xinit);
 
   /* Pass to oscillator */
-  timestepper->mastereq->setControlAmplitudes(xinit);
-  
-  /* Write initial control functions to file */
-  output->writeControls(xinit, timestepper->mastereq, timestepper->ntime, timestepper->dt);
-
+  mastereq->setControlAmplitudes(xinit);
 }
 
 
@@ -798,9 +700,9 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   }
 
   /* Every <output_optimization_stride> iterations: Output of optimization history */
-  if (iter % ctx->output->output_optimization_stride == 0 ||lastIter) {
+  if (iter % ctx->getOutputOptimizationStride() == 0 ||lastIter) {
     // Add to optimization history file 
-    ctx->output->writeOptimFile(iter, f, gnorm, deltax, F_avg, obj_cost, obj_riemann, obj_regul, obj_penal_leakage, obj_penal_dpdm, obj_penal_energy, obj_penal_variation, obj_penal_weightedcost);
+    ctx->getOutput()->writeOptimFile(iter, f, gnorm, deltax, F_avg, obj_cost, obj_riemann, obj_regul, obj_penal_leakage, obj_penal_dpdm, obj_penal_energy, obj_penal_variation, obj_penal_weightedcost);
     // Screen output 
     if (ctx->getMPIrank_world() == 0) {
       std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal_leakage << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << " + " << obj_penal_weightedcost << " + " << obj_riemann;
@@ -810,18 +712,9 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
     }
   }
 
-  /* Last iteration: Print solution, controls and trajectory data to files */
-  if (lastIter) {
-    ctx->output->writeControls(params, ctx->timestepper->mastereq, ctx->timestepper->ntime, ctx->timestepper->dt);
-
-    // do one last forward evaluation while writing trajectory files
-    ctx->timestepper->writeTrajectoryDataFiles = true;
-    ctx->evalF(params); 
-
-    // Print stopping reason to screen
-    if (ctx->getMPIrank_world() == 0){
-      std::cout<< finalReason_str << std::endl;
-    }
+  /* Print last iteration stopping reason */
+  if (lastIter && ctx->getMPIrank_world() == 0) {
+    std::cout<< finalReason_str << std::endl;
   }
 
 
