@@ -855,7 +855,7 @@ double OptimTarget::RiemannianDistance(const Mat U_final_re, const Mat U_final_i
   Mat UdagV_test_re, UdagV_test_im;
   int ierr = reconstructMatrixFromEigenComplex(eigvals_UdV_re, eigvals_UdV_im, eigvecs_UdV_re, eigvecs_UdV_im, UdagV_test_re, UdagV_test_im, false, UdagV_re, UdagV_im);
   if (ierr > 0) {
-    printf("\n ERROR in reconstruction. ");
+    printf("\n ERROR: Reconstruction from eigendecomposition failed. ");
   }
   MatDestroy(&UdagV_test_re);
   MatDestroy(&UdagV_test_im);
@@ -864,16 +864,16 @@ double OptimTarget::RiemannianDistance(const Mat U_final_re, const Mat U_final_i
   if (ierr_tests > 0) {
       printf("\n ERROR: Eigendecomposition test failed.\n\n");
 
-      // For debugging: print the final unitary, eigenvalues, and eigenvectors 
-      printf("UdagV:\n");
-      MatView(UdagV_re, PETSC_VIEWER_STDOUT_WORLD);
-      MatView(UdagV_im, PETSC_VIEWER_STDOUT_WORLD);
-      printf("Eigenvalues of UdagV:\n");
-      VecView(eigvals_UdV_re, PETSC_VIEWER_STDOUT_WORLD);
-      VecView(eigvals_UdV_im, PETSC_VIEWER_STDOUT_WORLD);
-      printf("Eigenvectors of UdagV:\n");
-      MatView(eigvecs_UdV_re, PETSC_VIEWER_STDOUT_WORLD);
-      MatView(eigvecs_UdV_im, PETSC_VIEWER_STDOUT_WORLD);
+      // // For debugging: print the final unitary, eigenvalues, and eigenvectors 
+      // printf("UdagV:\n");
+      // MatView(UdagV_re, PETSC_VIEWER_STDOUT_WORLD);
+      // MatView(UdagV_im, PETSC_VIEWER_STDOUT_WORLD);
+      // printf("Eigenvalues of UdagV:\n");
+      // VecView(eigvals_UdV_re, PETSC_VIEWER_STDOUT_WORLD);
+      // VecView(eigvals_UdV_im, PETSC_VIEWER_STDOUT_WORLD);
+      // printf("Eigenvectors of UdagV:\n");
+      // MatView(eigvecs_UdV_re, PETSC_VIEWER_STDOUT_WORLD);
+      // MatView(eigvecs_UdV_im, PETSC_VIEWER_STDOUT_WORLD);
 
       exit(1);
   }  
