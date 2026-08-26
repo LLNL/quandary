@@ -170,6 +170,7 @@ Config::Config(const MPILogger& logger, const toml::table& toml) : logger(logger
 
     // Parse control options from [control] table
     control_zero_boundary_condition = control_table["zero_boundary_condition"].value_or(ConfigDefaults::CONTROL_ZERO_BOUNDARY_CONDITION);
+    control_only_p_drive = control_table["control_only_p_drive"].value_or(ConfigDefaults::CONTROL_ONLY_P_DRIVE);
 
     // Parse control parameterization, either table (applies to all) or array (per-oscillator)
     ControlParameterizationSettings default_param;

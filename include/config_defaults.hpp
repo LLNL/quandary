@@ -25,6 +25,7 @@ const double DEPHASE_TIME = 0.0; ///< Default dephase time
 
 // Optimization options
 const bool CONTROL_ZERO_BOUNDARY_CONDITION = true; ///< Default drive-control boundary conditions enforcement
+const bool CONTROL_ONLY_P_DRIVE = false; ///< Default switch to disable the q-drive
 const ControlType CONTROL_TYPE = ControlType::BSPLINE; ///< Default drive-control parameterization type
 const size_t CONTROL_SPLINE_COUNT = 10; ///< Default number of B-spline basis functions for drive control
 const ControlInitializationType CONTROL_INIT_TYPE = ControlInitializationType::CONSTANT; ///< Default drive-control initialization type

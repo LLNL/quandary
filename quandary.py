@@ -144,6 +144,7 @@ class Quandary:
     gate_rot_freq          : List[float] = field(default_factory=list)
     # Control pulse options
     control_enabled     : bool        = True
+    control_only_p_drive : bool = False
     pcof0               : List[float] = field(default_factory=list)   
     pcof0_filename      : str         = ""                            
     randomize_init_ctrl : bool        = True                          
@@ -776,6 +777,7 @@ class Quandary:
 
         # [control]
         lines.append("\n[control]")
+        lines.append(f"control_only_p_drive = {_toml_bool(self.control_only_p_drive)}")
         if not self.control_enabled:
             lines.append(f"parameterization = {{ type = {_toml_str('none')} }}")
         else: 

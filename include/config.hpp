@@ -79,6 +79,7 @@ class Config {
 
   // Optimization options
   bool control_zero_boundary_condition; ///< Decide whether drive controls should start and end at zero
+  bool control_only_p_drive;  ///< Disable the q-drive. 
   std::vector<ControlParameterizationSettings> control_parameterizations; ///< Drive control parameterizations for each oscillator
   std::vector<ControlInitializationSettings> control_initializations; ///< Drive control initializations for each oscillator
   std::vector<double> control_amplitude_bounds; ///< Drive control amplitude bounds for each oscillator
@@ -154,6 +155,7 @@ class Config {
 
   const ControlParameterizationSettings& getControlParameterizations(size_t i_osc) const { return control_parameterizations[i_osc]; }
   bool getControlZeroBoundaryCondition() const { return control_zero_boundary_condition; }
+  bool getControlOnlyPDrive() const { return control_only_p_drive; }
   const ControlInitializationSettings& getControlInitializations(size_t i_osc) const {
     return control_initializations[i_osc];
   }

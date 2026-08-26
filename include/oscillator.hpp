@@ -58,6 +58,8 @@ class Oscillator {
     PetscInt ilow; ///< First index of the local sub vector u,v
     PetscInt iupp; ///< Last index (+1) of the local sub vector u,v
 
+    bool control_only_p_drive; ///< Switch to disable the q-drive
+
   public:
     PetscInt dim_preOsc; ///< Dimension of coupled subsystems preceding this oscillator
     PetscInt dim_postOsc; ///< Dimension of coupled subsystems following this oscillator

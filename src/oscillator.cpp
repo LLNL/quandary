@@ -72,6 +72,7 @@ Oscillator::Oscillator(const Config& config, size_t id, std::mt19937& rand_engin
   }
 
   // Create p/q drive control parameterizations with carrier waves.
+  control_only_p_drive = config.getControlOnlyPDrive();
   const auto& pq_drive_settings = config.getControlParameterizations(id);
   auto nspline = pq_drive_settings.nspline.value_or(0);
   auto tstart = pq_drive_settings.tstart.value_or(0.0);
@@ -249,6 +250,9 @@ int Oscillator::evalControl(const double t, double* p_ptr, double* q_ptr, double
     p_drive += cos_omt * Blt1 - sin_omt * Blt2; 
     q_drive += sin_omt * Blt1 + cos_omt * Blt2;
   }
+
+  if (control_only_p_drive) q_drive = 0.0;
+
   *p_ptr = p_drive;
   *q_ptr = q_drive;
 
@@ -261,14 +265,17 @@ int Oscillator::evalControl(const double t, double* p_ptr, double* q_ptr, double
 
 int Oscillator::evalControl_diff(const double t, double* grad, const double pbar, const double qbar, const double fbar) {
 
+  double qbar_local = qbar;
+  if (control_only_p_drive) qbar_local = 0.0;
+
   // First, accumulate drive-channel sensitivity
   int skip = 0;
   for (size_t f = 0; f < carrier_freq.size(); f++) {
 
     double cos_omt = cos(carrier_freq[f]*t);
     double sin_omt = sin(carrier_freq[f]*t);
-    double Blt1bar = sin_omt*qbar + cos_omt*pbar;
-    double Blt2bar = cos_omt*qbar - sin_omt*pbar;
+    double Blt1bar = sin_omt*qbar_local + cos_omt*pbar;
+    double Blt2bar = cos_omt*qbar_local - sin_omt*pbar;
 
     /* Derivative with respect to control coefficients. */
     drive_basisfunctions_re->derivative(t, static_cast<int>(f), grad + skip, Blt1bar);
