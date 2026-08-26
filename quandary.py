@@ -827,16 +827,19 @@ class Quandary:
             else:
                 print("Error: spline order = ", self.flux_spline_order, " is currently not available. Choose 0 or 2.")
                 return -1
-            init_type = "random" if self.flux_randomize_init_ctrl else "constant"
-            if len(self.flux_initctrl_MHz) <= 1:
-                initamp = self.flux_initctrl_MHz[0] / 1000.0 
-                lines.append(f"initialization = {{ type = {_toml_str(init_type)}, amplitude = {initamp} }}")
+            if read_pcof0_from_file:
+                lines.append(f"initialization = {{ type = {_toml_str('file')}, filename = {_toml_str(self.pcof0_filename)} }}")
             else:
-                lines.append("initialization = [")
-                for iosc in range(len(self.flux_initctrl_MHz)):
-                    initamp = self.flux_initctrl_MHz[iosc] / 1000.0 
-                    lines.append(f"  {{ subsystem = {iosc}, type = {_toml_str(init_type)}, amplitude = {initamp} }},")
-                lines.append("]")
+                init_type = "random" if self.flux_randomize_init_ctrl else "constant"
+                if len(self.flux_initctrl_MHz) <= 1:
+                    initamp = self.flux_initctrl_MHz[0] / 1000.0 
+                    lines.append(f"initialization = {{ type = {_toml_str(init_type)}, amplitude = {initamp} }}")
+                else:
+                    lines.append("initialization = [")
+                    for iosc in range(len(self.flux_initctrl_MHz)):
+                        initamp = self.flux_initctrl_MHz[iosc] / 1000.0 
+                        lines.append(f"  {{ subsystem = {iosc}, type = {_toml_str(init_type)}, amplitude = {initamp} }},")
+                    lines.append("]")
             if len(self.flux_maxctrl_MHz) == 0:
                 lines.append(f"amplitude_bound = 1.0e12")
             elif len(self.flux_maxctrl_MHz) == 1:
