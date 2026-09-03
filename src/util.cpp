@@ -763,7 +763,7 @@ bool isUnitary(const Mat V_re, const Mat V_im){
 }
 
 
-int reconstructMatrixFromEigenComplex(const Vec& eigvals_re, const Vec& eigvals_im, const Mat& Evecs_re, const Mat& Evecs_im, Mat& Aout_re, Mat& Aout_im, const bool do_log, const Mat& Atest_re, const Mat& Atest_im){
+int reconstructMatrixFromEigenComplex(const Vec& eigvals_re, const Vec& eigvals_im, const Mat& Evecs_re, const Mat& Evecs_im, Mat& Aout_re, Mat& Aout_im, const double do_log_frechetmean, const Mat& Atest_re, const Mat& Atest_im){
 // Compute A_out = Evecs * diag(evals) * Evecs^dagger, or the log thereof 
 // A_out_re = V_re * (D_re V_re^T + D_im V_im^T) - V_im * (D_im V_re^T - D_re V_im^T)
 // A_out_im = V_im * (D_re V_re^T + D_im V_im^T) + V_re * (D_im V_re^T - D_re V_im^T)
@@ -795,8 +795,9 @@ int reconstructMatrixFromEigenComplex(const Vec& eigvals_re, const Vec& eigvals_
     // scale each row by the diagonal matrix D
     double diag_re = eigvals_re_ptr[row]; // for reconstruction of A
     double diag_im = eigvals_im_ptr[row];
-    if (do_log) { // for reconstruction of log(A), compute log of d = diag_re + i diag_im. Know that d is on unit circle, so log(d) = i*phi with phi = atan2(diag_im, diag_re)
+    if (do_log_frechetmean > -10000.0) { // for reconstruction of log(A), compute log of d = diag_re + i diag_im. 
       double phi = atan2(diag_im, diag_re);
+      phi = wrapToPi(phi - do_log_frechetmean);
       diag_re = 0.0;
       diag_im = phi;
     }

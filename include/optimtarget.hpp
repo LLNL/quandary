@@ -45,13 +45,16 @@ class OptimTarget{
     bool quietmode; ///< Flag for quiet mode operation
 
 
-    Vec eigvals_UdV_re, eigvals_UdV_im; ///< Storage for eigenvalues log(U^\dagger V)
+    Vec eigvals_UdV_re; ///< Storage for eigenvalues log(U^\dagger V)
+    Vec eigvals_UdV_im; ///< Storage for eigenvalues log(U^\dagger V)
+    double theta_avg; ///< Frechet mean of eigenvalue angles for phase-invariant Riemannian distance
 
     Mat eigvecs_UdV_re; ///< Eigenvectors of log(U^\dagger V) (real part)
     Mat eigvecs_UdV_im; ///< Eigenvectors of log(U^\dagger V) (imaginary part)
 
   public:
     OptimTarget();
+    bool freeze_theta_avg;
 
     /**
      * @brief Constructor with full target specification.

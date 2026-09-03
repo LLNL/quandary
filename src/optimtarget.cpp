@@ -18,6 +18,7 @@ OptimTarget::OptimTarget(){
   mpisize_petsc=0;
   mpirank_petsc=0;
   mpirank_world=0;
+  freeze_theta_avg = false;
 }
 
 
@@ -853,7 +854,7 @@ double OptimTarget::RiemannianDistance(const Mat U_final_re, const Mat U_final_i
   int ierr_tests = testEigendecompositionComplex(UdagV_re, UdagV_im, eigvals_UdV_re, eigvals_UdV_im, eigvecs_UdV_re, eigvecs_UdV_im);
 
   Mat UdagV_test_re, UdagV_test_im;
-  int ierr = reconstructMatrixFromEigenComplex(eigvals_UdV_re, eigvals_UdV_im, eigvecs_UdV_re, eigvecs_UdV_im, UdagV_test_re, UdagV_test_im, false, UdagV_re, UdagV_im);
+  int ierr = reconstructMatrixFromEigenComplex(eigvals_UdV_re, eigvals_UdV_im, eigvecs_UdV_re, eigvecs_UdV_im, UdagV_test_re, UdagV_test_im, -100000.0, UdagV_re, UdagV_im);
   if (ierr > 0) {
     printf("\n ERROR: Reconstruction from eigendecomposition failed. ");
   }
@@ -879,30 +880,36 @@ double OptimTarget::RiemannianDistance(const Mat U_final_re, const Mat U_final_i
   }  
 
   /* Sum up the objective function from eigenvalue phases, eigval = e^{i*theta} */
-  // For phase invariance, sum up theta_average first
-  double avg_theta = 0.0;
+
+  // Compute angles theta_j
   const PetscScalar* eigvals_UdV_re_ptr;
   const PetscScalar* eigvals_UdV_im_ptr;
   VecGetArrayRead(eigvals_UdV_re, &eigvals_UdV_re_ptr);
   VecGetArrayRead(eigvals_UdV_im, &eigvals_UdV_im_ptr);
-  if (phase_invariant) {
-    for (int i=0; i<neigvals; i++){
-      // double theta = atan2(eigvals_UdV_im->at(i), eigvals_UdV_re->at(i));
-      double theta = atan2(eigvals_UdV_im_ptr[i], eigvals_UdV_re_ptr[i]);
-      avg_theta += theta;
-    }
-    avg_theta = avg_theta / double(dim);
-  }
-  // Sum up the objective function 
-  double obj = 0.0;
+  std::vector<double> evals_theta(neigvals); ///< angles of the eigenvalues
   for (int i=0; i<neigvals; i++){
-    // double theta = atan2(eigvals_UdV_im->at(i), eigvals_UdV_re->at(i));
-    double theta = atan2(eigvals_UdV_im_ptr[i], eigvals_UdV_re_ptr[i]);
-    obj += (theta - avg_theta) * (theta - avg_theta);
-    // if (mpirank_world == 0) printf("Eigenvalue %d: %f + i*%f  -> theta (degree)= %f \n", j, evals_UdV_re->at(j), evals_UdV_im->at(j), theta*180.0/M_PI);
+    double theta = atan2(eigvals_UdV_im_ptr[i], eigvals_UdV_re_ptr[i]); // in [-pi, pi]
+    evals_theta[i] = theta;
   }
   VecRestoreArrayRead(eigvals_UdV_re, &eigvals_UdV_re_ptr);
   VecRestoreArrayRead(eigvals_UdV_im, &eigvals_UdV_im_ptr);
+
+  // For phase invariance, compute Frechet mean theta_avg
+  if (phase_invariant) {
+    // Compute Frechet mean
+    if (!freeze_theta_avg)
+      theta_avg = FrechetMin(evals_theta);
+  } else {
+    theta_avg = 0.0;
+  }
+
+  // Sum up the objective function 
+  double obj = 0.0;
+  for (int i=0; i<neigvals; i++){
+    double theta = evals_theta[i];
+    obj += wrapToPi(theta - theta_avg) * wrapToPi(theta - theta_avg);
+    // if (mpirank_world == 0) printf("Eigenvalue %d: %f + i*%f  -> theta (degree)= %f \n", i, eigvals_UdV_re_ptr[i], eigvals_UdV_im_ptr[i], theta*180.0/M_PI);
+  }
   
   // Scale the objective function by the dimension
   obj = obj / 2.0 / double(dim);
@@ -923,9 +930,11 @@ void OptimTarget::RiemannianDistance_diff(const Mat U_final_re, const Mat U_fina
 
   // Reconstruct log(U^\dagger V) from eigen decomposition of UdagV
   Mat logUdagV_re, logUdagV_im;
-  int ierr = reconstructMatrixFromEigenComplex(eigvals_UdV_re, eigvals_UdV_im, eigvecs_UdV_re, eigvecs_UdV_im, logUdagV_re, logUdagV_im, true);
+  double do_log_frechetmean = phase_invariant ? theta_avg : 0.0;
+  int ierr = reconstructMatrixFromEigenComplex(eigvals_UdV_re, eigvals_UdV_im, eigvecs_UdV_re, eigvecs_UdV_im, logUdagV_re, logUdagV_im, do_log_frechetmean);
   if (ierr > 0){
-    return;
+    printf("Computing the log failed.\n");
+    exit(1);
   }
 
   // Now compute U_final_bar = - U_final * log(U_final^\dagger V)
@@ -949,25 +958,6 @@ void OptimTarget::RiemannianDistance_diff(const Mat U_final_re, const Mat U_fina
 
   MatDestroy(&logUdagV_re);
   MatDestroy(&logUdagV_im);
-
-  // If phase invariant, add (tr log(U^† V))/d * U_final to the gradient
-  if (phase_invariant) {
-    double trace = 0.0;
-    const PetscScalar* eigvals_UdV_re_ptr;
-    const PetscScalar* eigvals_UdV_im_ptr;
-    VecGetArrayRead(eigvals_UdV_re, &eigvals_UdV_re_ptr);
-    VecGetArrayRead(eigvals_UdV_im, &eigvals_UdV_im_ptr);
-    for (int i=0; i<dim; i++){
-      double theta = atan2(eigvals_UdV_im_ptr[i], eigvals_UdV_re_ptr[i]);
-      trace += theta;
-    }
-    VecRestoreArrayRead(eigvals_UdV_re, &eigvals_UdV_re_ptr);
-    VecRestoreArrayRead(eigvals_UdV_im, &eigvals_UdV_im_ptr);
-    trace = trace / double(dim);
-    // Note: tr(log(U^dV)) = i sum_j theta_j
-    MatAXPY(U_final_re_bar, -trace, U_final_im, SAME_NONZERO_PATTERN);
-    MatAXPY(U_final_im_bar, trace, U_final_re, SAME_NONZERO_PATTERN);
-  }
 
   MatScale(U_final_re_bar, 1.0/double(dim));
   MatScale(U_final_im_bar, 1.0/double(dim));

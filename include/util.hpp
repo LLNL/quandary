@@ -361,8 +361,35 @@ int getEigendecompositionComplex(Mat C_re, Mat C_im, Vec eigvals_re, Vec eigvals
 int testEigendecompositionComplex(Mat C_re, Mat C_im, Vec eigvals_re, Vec eigvals_im, Mat eigvecs_re, Mat eigvecs_im);
 
 
-int reconstructMatrixFromEigenComplex(const Vec& eigvals_re, const Vec& eigvals_im, const Mat& Evecs_re, const Mat& Evecs_im, Mat& A_re_out, Mat& A_im_out, const bool do_log=false, const Mat& Atest_re=NULL, const Mat& Atest_im=NULL);
+int reconstructMatrixFromEigenComplex(const Vec& eigvals_re, const Vec& eigvals_im, const Mat& Evecs_re, const Mat& Evecs_im, Mat& A_re_out, Mat& A_im_out, const double do_log_frechetmean, const Mat& Atest_re=NULL, const Mat& Atest_im=NULL);
 
+// Wraps angles to [-pi, pi]
+inline double wrapToPi(double w) {
+    while (w > M_PI) w -= 2.0 * M_PI;
+    while (w < -M_PI) w += 2.0 * M_PI;
+    return w;
+}
+
+// Returns the Frechet mean of a set of angles in [-pi, pi] by minimizing the sum of squared wrapped differences:
+//    theta_bar = argmin_mu sum_i wrapToPi(theta_i - mu)^2
+inline double FrechetMin(std::vector<double> theta) {
+  int nsamples = 10000;
+  double mu = 0.0;
+  double min_obj = std::numeric_limits<double>::max();
+  for (int i = 0; i < nsamples; i++) {
+    double mu_candidate = -M_PI + 2.0 * M_PI * i / double(nsamples);
+    double obj = 0.0;
+    for (double th : theta) {
+      double diff = wrapToPi(th - mu_candidate);
+      obj += diff * diff;
+    }
+    if (obj < min_obj) {
+      min_obj = obj;
+      mu = mu_candidate;
+    }
+  }
+  return mu;
+}
 
 // Helper function for complex dot product: out = a^H * b, where a and b are
 // complex vectors represented by their real and imaginary parts.

@@ -140,6 +140,7 @@ class OptimProblem {
   double getTolInfidelity()   { return tol_infidelity; };
   int getMPIrank_world() { return mpirank_world;};
   int getMaxIter()     { return maxiter; };
+  OptimTarget* getOptimTarget() { return optim_target; };
 
   int getOutputOptimizationStride() { return output_optimization_stride; };
   Output* getOutput() { return output; };

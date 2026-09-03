@@ -356,8 +356,9 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
 
-  // TEST
-  // output->writeControls(x, mastereq, timestepper->ntime, timestepper->dt);
+  // DEBUG
+  // output->writeControl(x, mastereq, timestepper->ntime, timestepper->dt);
+  output->writeControlParams(x);
 
   /* Reset Gradient */
   VecZeroEntries(G);
@@ -679,6 +680,11 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   //   ctx->setRiemannianDistance(false);
   // }
 
+  // // Freeze theta_avg if fidelity is sufficiently high
+  // if (F_avg > 0.80) {
+  //   ctx->getOptimTarget()->freeze_theta_avg = true;
+  // }
+
   /* Additional Stopping criteria */
   bool lastIter = false;
   std::string finalReason_str = "";
@@ -731,6 +737,7 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
   TaoEvalGradient(tao, x, G, ptr);
   OptimProblem* ctx = (OptimProblem*) ptr;
   *f = ctx->getObjective();
+  // *f = 1.0 - ctx->getFidelity();
 
   return 0;
 }
