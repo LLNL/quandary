@@ -20,6 +20,7 @@
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
+#define TEST_FD_LINEARIZED_FWD 1 // Run Finite Differences Linearized Forward test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-5          // Epsilon for Finite Differences
 
@@ -403,6 +404,126 @@ int main(int argc,char **argv)
   printf("\nMax. Finite Difference relative error: %1.14e\n", max_err);
   printf("Max. Finite Difference absolute error: %1.14e\n\n", max_abs_err);
   
+#endif
+
+#if TEST_FD_LINEARIZED_FWD
+  if (mpirank_world == 0)  {
+    printf("\n\n#########################\n");
+    printf(" FD Testing for linearized forward solve... \n");
+    printf("#########################\n\n");
+  }
+
+  // Point of evaluation
+  optimctx->getStartingPoint(xinit);
+  output->writeControlParams(xinit); // Write params to file
+
+  // one forward just to get a state of correct dimension
+  optimctx->evalF(xinit);
+  Vec state;
+  VecDuplicate(timestepper->getFinalState(0), &state);
+  VecAssemblyBegin(state); VecAssemblyEnd(state);
+ 
+  // Create storate
+  Vec FD_approx, FD_err;
+  VecDuplicate(state, &FD_approx);
+  VecDuplicate(state, &FD_err);
+  std::vector<Vec> states_plus (ninit_local);
+  std::vector<Vec> states_minus (ninit_local);
+  std::vector<Vec> linearized_state (ninit_local);
+  for (int i =0; i<ninit_local; i++){
+    VecDuplicate(state, &states_plus[i]);
+    VecDuplicate(state, &states_minus[i]);
+    VecDuplicate(state, &linearized_state[i]);
+    VecAssemblyBegin(states_plus[i]); VecAssemblyEnd(states_plus[i]);
+    VecAssemblyBegin(states_minus[i]); VecAssemblyEnd(states_minus[i]);
+    VecAssemblyBegin(linearized_state[i]); VecAssemblyEnd(linearized_state[i]);
+    VecZeroEntries(states_plus[i]);
+    VecZeroEntries(states_minus[i]);
+    VecZeroEntries(linearized_state[i]);
+  }
+  Vec v;
+  VecDuplicate(xinit, &v);
+  VecAssemblyBegin(v); VecAssemblyEnd(v);
+
+  /* --- Finite Differences --- */
+  double max_abs_err = 0.0;
+  double abs_err = 0.0;
+  double rel_err = 0.0;
+
+  for (PetscInt ix=0; ix<optimctx->getNdesign(); ix++){
+  // PetscInt i=5; {
+    double xi = 0.0;
+    VecGetValues(xinit, 1, &ix, &xi);
+    const double eps_i = EPS * std::max(1.0, std::abs(xi));
+    printf("Testing finite difference for parameter index %d with eps_i = %e\n", ix, eps_i);
+
+    // Set linearization direction to i-th unit vector
+    VecZeroEntries(v);
+    VecSetValue(v, ix, 1.0, ADD_VALUES);
+    VecAssemblyBegin(v); VecAssemblyEnd(v);
+
+    // Get linearized forward results
+    optimctx->evalLinearizedForward(xinit, v);
+    for (int i =0; i<ninit_local; i++){
+      VecCopy(timestepper->getLinearizedState(i, config.getNTime()), linearized_state[i]);
+    }
+
+    /* Evaluate perturbed state U(p+eps)*/
+    VecSetValue(xinit, ix, eps_i, ADD_VALUES);
+    VecAssemblyBegin(xinit); VecAssemblyEnd(xinit);
+    optimctx->evalF(xinit);
+    for (int i =0; i<ninit_local; i++){
+      VecCopy(timestepper->getFinalState(i), states_plus[i]);
+    }
+
+    /* Evaluate U(p-eps)*/
+    VecSetValue(xinit, ix, -2*eps_i, ADD_VALUES);
+    VecAssemblyBegin(xinit); VecAssemblyEnd(xinit);
+    optimctx->evalF(xinit);
+    for (int i =0; i<ninit_local; i++){
+      VecCopy(timestepper->getFinalState(i), states_minus[i]);
+    }
+
+    /* Restore original parameters xinit */
+    VecSetValue(xinit, ix, eps_i, ADD_VALUES);
+    VecAssemblyBegin(xinit); VecAssemblyEnd(xinit);
+
+    /* Evaluate finite difference and error */
+    // FD : dU/dalpha_k = 1/(2EPS)* (Uplus - Uminus)
+    // error = norm(DU_FD - DU_exact)
+    for (int iinit=0; iinit<ninit_local; iinit++){
+
+      // FD_approx = (U(p+eps) - U(p-eps)) / 2eps
+      VecCopy(states_plus[iinit], FD_approx);
+      VecAXPY(FD_approx, -1.0, states_minus[iinit]);
+      VecScale(FD_approx, 1./(2.*eps_i)); 
+
+      // FD_error = states_minus = Exact - FDapprox = exact - states_plus
+      VecCopy(linearized_state[iinit], FD_err);
+      VecAXPY(FD_err, -1.0, FD_approx);
+
+      // error: norm(DU_exact - FD_approx) 
+      VecNorm(FD_err, NORM_2, &abs_err);
+
+      if (mpirank_world == 0)
+      printf(" %d: %d/%d iinit %d abs_err %1.14e \n", mpirank_world, ix, optimctx->getNdesign(), iinit, abs_err);
+
+      max_abs_err = std::max(abs_err, max_abs_err);
+    }
+  }
+
+  printf("\n Max. absolute error = %1.14e\n", max_abs_err);
+
+  // Cleanup
+  VecDestroy(&v);
+  VecDestroy(&FD_approx);
+  VecDestroy(&FD_err);
+  for (int i =0; i<ninit_local; i++){
+    VecDestroy(&states_plus[i]);
+    VecDestroy(&states_minus[i]);
+    VecDestroy(&linearized_state[i]);
+  }
+
 #endif
 
 

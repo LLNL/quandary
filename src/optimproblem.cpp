@@ -618,52 +618,52 @@ void OptimProblem::evalGradF(const Vec x, Vec G, bool writeTrajectoryDataFiles){
 
 
 
-void OptimProblem::evalGEOPEVec(const Vec x, const Vec v, Vec Av){
-  if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GEOPE Av ... " << std::endl;
+void OptimProblem::evalLinearizedForward(const Vec x, const Vec v){
+  if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL LINEARIZED FWD ... " << std::endl;
 
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
 
   // Reset
-  VecZeroEntries(Av);
-
+  // VecZeroEntries(Av);
+  
   /* Solve ODE and linearized ODE forward in time */
   for (int iinit = 0; iinit < ninit_local; iinit++) {
     int iinit_global = mpirank_init * ninit_local + iinit;
-    printf("Solving ODE for initial condition %d (global index %d)\n", iinit, iinit_global);
+    // printf("Solving ODE for initial condition %d (global index %d), total ninit_local = %d\n", iinit, iinit_global, ninit_local);
 
     int initid = optim_target->prepareInitialAndTargetState(iinit_global, ninit, mastereq->nlevels, mastereq->nessential);
 
-    // do not write states to file
-    // TODO: DO STORE STATES
-    Vec finalstate = timestepper->solveODE(initid, iinit, optim_target->getInitialState(), false, true);
+    // Solve Forward ODE while storing trajectory states
+    bool writeTrajectoryDataFiles = false;
+    bool storeStates = true;
+    Vec finalstate = timestepper->solveODE(initid, iinit, optim_target->getInitialState(), writeTrajectoryDataFiles, storeStates);
 
-    // Solve linearized forward ODE
-    printf("Solve linearized forward...\n");
-    timestepper->solveLinearizedODE(iinit, v, true); // Storing linearized states
+
+    // Solve linearized forward ODE in direction v while storing linearized states
+    // printf("Solve linearized forward for iinit = %d\n", iinit);
+    bool storeLinearizedStates = true;
+    Vec linearized_finalstate = timestepper->solveLinearizedODE(iinit, v, storeLinearizedStates); 
 
     // Set terminal condition for adjoint
-    VecCopy(finalstate, rho_t0_bar);
+    // VecCopy(finalstate, rho_t0_bar);
 
-    // Solve adjoint backward ODE
-    timestepper->solveAdjointODE(iinit, rho_t0_bar, 0.0, 0.0, 0.0, 0.0);
+    // // Solve adjoint backward ODE
+    // printf("Solve adjoint backward ODE...\n");
+    // timestepper->solveAdjointODE(iinit, rho_t0_bar, 0.0, 0.0, 0.0, 0.0);
 
-    // Add gradient to output
-    VecAXPY(Av, 1.0, timestepper->getReducedGradient());
+    // // Add gradient to output
+    // VecAXPY(Av, 1.0, timestepper->getReducedGradient());
   }
 
-  /* Sum up the gradient from all initial condition processors */
-  PetscScalar* Av_ptr; 
-  VecGetArray(Av, &Av_ptr);
-  for (int i=0; i<ndesign; i++) {
-    mygrad[i] = Av_ptr[i];
-  }
-  MPI_Allreduce(mygrad, Av_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
-  VecRestoreArray(Av, &Av_ptr);
-
-  // double hnorm;
-  // VecNorm(Hv, NORM_2, &(hnorm));
-  // printf("Hessian vector product norm = %1.14e\n", hnorm);
+  // /* Sum up the gradient from all initial condition processors */
+  // PetscScalar* Av_ptr; 
+  // VecGetArray(Av, &Av_ptr);
+  // for (int i=0; i<ndesign; i++) {
+  //   mygrad[i] = Av_ptr[i];
+  // }
+  // MPI_Allreduce(mygrad, Av_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
+  // VecRestoreArray(Av, &Av_ptr);
 }
 
 

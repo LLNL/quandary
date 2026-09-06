@@ -167,15 +167,14 @@ class OptimProblem {
   void evalGradF(const Vec x, Vec G, bool writeTrajectoryDataFiles=false);
 
   /**
-   * @brief Evaluate GEOPE Av = L^*Lv
+   * @brief Evaluate linearized forward operator: Lv = \sum_k dU/dv_k v_k. 
    * 
-   * Applies GEOPE Av = L^*Lv: One linearized forward solve, followed by one adjoint solve with terminal condition set to the linearized forward final state, while collecting contributions to Av
+   * This does one ODE solve followed by one linearized ODE solve. After this, the timesteppers trajectory_states as well as lin_trajectory_states will be set.
    * 
    * @param[in] x Point of evaluation
-   * @param[in] v Vector to which the GEOPE matrix is applied to.
-   * @param[out] Av Vector to store the GEOPE-vector product
+   * @param[in] v Direction vector 
    */
-  void evalGEOPEVec(const Vec x, const Vec v, Vec Av);
+  void evalLinearizedForward(const Vec x, const Vec v);
 
   /**
    * @brief Runs the optimization solver.

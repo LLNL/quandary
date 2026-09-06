@@ -106,8 +106,8 @@ Vec TimeStepper::solveODE(int initid, int iinit_local, Vec rho_t0, bool writeTra
   if (storeTrajectories && trajectory_states.size() < ninit_local) {
     trajectory_states.resize(ninit_local);
     for (int i = 0; i < ninit_local; i++) {
-      trajectory_states[i].resize(ntime);
-      for (int n = 0; n < ntime; n++) {
+      trajectory_states[i].resize(ntime+1);
+      for (int n = 0; n <= ntime; n++) {
         Vec state;
         VecCreate(PETSC_COMM_WORLD, &state);
         PetscInt globalsize = 2 * mastereq->getDim(); 
@@ -186,6 +186,7 @@ Vec TimeStepper::solveODE(int initid, int iinit_local, Vec rho_t0, bool writeTra
 
   /* Store last time step */
   VecCopy(x, final_states[iinit_local]);
+  if (storeTrajectories) VecCopy(x, trajectory_states[iinit_local][ntime]);
 
   /* Clear out dpdm storage */
   if (eval_dpdm) {
@@ -204,7 +205,7 @@ Vec TimeStepper::solveODE(int initid, int iinit_local, Vec rho_t0, bool writeTra
   return x;
 }
 
-Vec TimeStepper::solveLinearizedODE(int iinit_local, const Vec v, bool store_trajectory) {
+Vec TimeStepper::solveLinearizedODE(int iinit_local, const Vec v, bool storeTrajectories) {
 
   // Check that primal trajectory exists for linearization
   if (trajectory_states.size() == 0 || trajectory_states[iinit_local].size() == 0) {
@@ -214,12 +215,10 @@ Vec TimeStepper::solveLinearizedODE(int iinit_local, const Vec v, bool store_tra
   }
 
   // Allocate storage for linearized trajectory if requested
-  if (store_trajectory) {
-    if (lin_trajectory_states.size() <= (size_t)iinit_local) {
-      lin_trajectory_states.resize(iinit_local + 1);
-    }
-    if (lin_trajectory_states[iinit_local].size() == 0) {
-      lin_trajectory_states[iinit_local].resize(ntime + 1);
+  if (storeTrajectories && lin_trajectory_states.size() < ninit_local) {
+    lin_trajectory_states.resize(ninit_local);
+    for (int i=0; i<ninit_local; i++){
+      lin_trajectory_states[i].resize(ntime+1);
       for (int n = 0; n <= ntime; n++) {
         Vec state;
         VecCreate(PETSC_COMM_WORLD, &state);
@@ -227,7 +226,7 @@ Vec TimeStepper::solveLinearizedODE(int iinit_local, const Vec v, bool store_tra
         PetscInt localsize = globalsize / mpisize_petsc;
         VecSetSizes(state, localsize, globalsize);
         VecSetFromOptions(state);
-        lin_trajectory_states[iinit_local][n] = state;
+        lin_trajectory_states[i][n] = state;
       }
     }
   }
@@ -235,24 +234,20 @@ Vec TimeStepper::solveLinearizedODE(int iinit_local, const Vec v, bool store_tra
   /* Set initial condition to zero for linearized solve) */
   VecZeroEntries(x);
 
-  /* Store initial state if requested */
-  if (store_trajectory) {
-    VecCopy(x, lin_trajectory_states[iinit_local][0]);
-  }
-
   /* --- Loop over time interval --- */
   for (int n = 0; n < ntime; n++){
     double tstart = n * dt;
     double tstop  = (n+1) * dt;
 
+    /* Store current linearized state if requested */
+    if (storeTrajectories) VecCopy(x, lin_trajectory_states[iinit_local][n]);
+
     /* Take one linearized time step */
     evolveLinearizedFWD(iinit_local, tstart, tstop, v, x);
-
-    /* Store current state if requested */
-    if (store_trajectory) {
-      VecCopy(x, lin_trajectory_states[iinit_local][n+1]);
-    }
   }
+
+  /* Store last time step */
+  VecCopy(x, lin_trajectory_states[iinit_local][ntime]);
 
   return x;
 }
