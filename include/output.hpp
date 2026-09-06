@@ -39,6 +39,7 @@ class Output{
   std::vector<FILE *>populationfile; ///< Files for population evolution per oscillator
   FILE *expectedfile_comp; ///< File for expected energy evolution of the full composite system
   FILE *populationfile_comp; ///< File for population evolution of the full composite system
+  bool writeRiemannDistOptimHist; ///< Flag to determine if the Riemann distance optimization history should be written as a column in the Optimization history file
 
   // VecScatter scat; ///< PETSc's scatter context for state communication across cores
   // Vec xseq; ///< Sequential vector for I/O operations
