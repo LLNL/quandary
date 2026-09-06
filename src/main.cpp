@@ -221,10 +221,21 @@ int main(int argc,char **argv)
     output->writeControlParams(xinit); // Write params to file
 
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
-    timestepper->setWriteTrajectoryDataFiles(true);
-    objective = optimctx->evalF(xinit);
+    bool writeTrajectoryDataFiles = true;
+    objective = optimctx->evalF(xinit, writeTrajectoryDataFiles);
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
+
+    // // TEST: Call Geope Av for v = e0
+    // Vec v;
+    // VecDuplicate(xinit, &v);
+    // VecZeroEntries(v);
+    // VecSetValue(v, 0, 1.0, INSERT_VALUES);
+    // VecAssemblyBegin(v);
+    // VecAssemblyEnd(v);
+    // Vec Av;
+    // VecDuplicate(xinit, &Av);
+    // optimctx->evalGEOPEVec(xinit, v, Av);
 
     // Write control pulses to file
     output->writeControls(xinit, mastereq, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize()); // Write the control pulses 
@@ -237,8 +248,8 @@ int main(int argc,char **argv)
     output->writeControlParams(xinit); // Write params to file
 
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
-    timestepper->setWriteTrajectoryDataFiles(true);
-    optimctx->evalGradF(xinit, grad);
+    bool writeTrajectoryDataFiles=true;
+    optimctx->evalGradF(xinit, grad, writeTrajectoryDataFiles);
     VecNorm(grad, NORM_2, &gnorm);
     // VecView(grad, PETSC_VIEWER_STDOUT_WORLD);
     if (mpirank_world == 0 && !quietmode) {
@@ -258,7 +269,6 @@ int main(int argc,char **argv)
     output->writeControlParams(xinit); // Write params to file
 
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
-    timestepper->setWriteTrajectoryDataFiles(false);
     optimctx->solve(xinit);
     optimctx->getSolution(&opt);
 
@@ -267,8 +277,7 @@ int main(int argc,char **argv)
     output->writeControls(opt, mastereq, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize());
 
     // Do one last forward evaluation while writing trajectory files
-    optimctx->getTimeStepper()->setWriteTrajectoryDataFiles(true);
-    optimctx->evalF(opt); 
+    optimctx->evalF(opt, true); 
   }
 
   /* Only evaluate and write control pulses (no propagation) */

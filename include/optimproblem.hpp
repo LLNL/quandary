@@ -153,9 +153,10 @@ class OptimProblem {
    * evaluates the objective function. 
    *
    * @param x Design vector
+   * @param writeTrajectoryDataFiles Flag to determine whether trajectory data should be written during forward simulations to files (default: false)
    * @return double Objective function value
    */
-  double evalF(const Vec x);
+  double evalF(const Vec x, bool writeTrajectoryDataFiles=false);
 
   /**
    * @brief Evaluates the gradient of the objective function with respect to the control parameters
@@ -163,7 +164,18 @@ class OptimProblem {
    * @param x Design (optimization) vector
    * @param G Gradient vector to store result
    */
-  void evalGradF(const Vec x, Vec G);
+  void evalGradF(const Vec x, Vec G, bool writeTrajectoryDataFiles=false);
+
+  /**
+   * @brief Evaluate GEOPE Av = L^*Lv
+   * 
+   * Applies GEOPE Av = L^*Lv: One linearized forward solve, followed by one adjoint solve with terminal condition set to the linearized forward final state, while collecting contributions to Av
+   * 
+   * @param[in] x Point of evaluation
+   * @param[in] v Vector to which the GEOPE matrix is applied to.
+   * @param[out] Av Vector to store the GEOPE-vector product
+   */
+  void evalGEOPEVec(const Vec x, const Vec v, Vec Av);
 
   /**
    * @brief Runs the optimization solver.

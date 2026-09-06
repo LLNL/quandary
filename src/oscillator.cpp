@@ -295,6 +295,39 @@ int Oscillator::evalDriveControl_diff(const double t, double* grad_for_this_osci
   return evalControl_diff(t, grad_for_this_oscillator, pbar, qbar, 0.0);
 }
 
+int Oscillator::evalControl_linearized(const double t, const std::vector<double>& vdir, double* dpv_ptr, double* dqv_ptr){
+
+  *dpv_ptr = 0.0;
+  *dqv_ptr = 0.0;
+
+  if (vdir.size() == 0 || getNParams() == 0) {
+    return 0;
+  }
+
+  // Compute directional derivatives using the chain rule:
+  // dp/d(params) * v = sum_f sum_i (dp/dBlt1_{f} * dBlt1_{f}/dparams_i * v_i + dp/dBlt2_{f} * dBlt2_{f}/dparams_i * v_i)
+  // where Blt1_{f} = sum_i alpha^1_{f,i} B_i(t), Blt2_{f} = sum_i alpha^2_{f,i} B_i(t)
+  //
+  // For the linearized controls:
+  // dp/dparams * v corresponds to evaluating the basis functions with coefficients v instead of params
+
+  // Make a copy of the current parameter values for the drive basis functions
+  std::vector<double> params_save(getNParams());
+  getControlParams(params_save.data());
+
+  // Pass direction vdir to the basis functions for linearized evaluation
+  setControlParams(vdir.data());
+
+  // Evaluate the linearized control values using the direction vector vdir
+  evalDriveControl(t, dpv_ptr, dqv_ptr);
+  if (control_only_p_drive) *dqv_ptr = 0.0;
+
+  // Restore the original control parameters
+  setControlParams(params_save.data());
+
+  return 0;
+}
+
 double Oscillator::expectedEnergy(const Vec x) {
  
   PetscInt dim;

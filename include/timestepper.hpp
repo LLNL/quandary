@@ -35,7 +35,10 @@ class TimeStepper{
     Vec x; ///< Auxiliary vector for forward time stepping
     Vec xadj; ///< Auxiliary vector needed for adjoint (backward) time stepping
     Vec xprimal; ///< Auxiliary vector for backward time stepping
-    std::vector<std::vector<Vec>> trajectory_states; ///< Storage for primal states during forward evolution, one trajectory for each local initial condition..
+    Vec xhalf; ///< Auxiliary vector for midpoint evaluations in linearized forward solve
+    int ninit_local; ///< Number of initial conditions local to this processor
+    std::vector<std::vector<Vec>> trajectory_states; ///< Storage for primal states during forward evolution, one trajectory for each local initial condition.
+    std::vector<std::vector<Vec>> lin_trajectory_states; ///< Optional storage for linearized forward states, allocated on demand
     std::vector<Vec> final_states; ///< Storage for final states for each local initial condition. Always filled after solveODE.
     std::vector<Vec> dpdm_states; ///< Storage for states needed for second-order derivative penalty
     int mpirank_world; ///< MPI rank in global communicator
@@ -58,7 +61,6 @@ class TimeStepper{
     int ntime; ///< Number of time steps
     double total_time; ///< Final evolution time
     double dt; ///< Time step size
-    bool writeTrajectoryDataFiles;  ///< Flag to determine whether or not trajectory data will be written to files during forward simulation */
 
     Vec redgrad; ///< Reduced gradient vector for optimization
     OptimTarget* optim_target; ///< Pointer to optimization target specification
@@ -85,7 +87,6 @@ class TimeStepper{
     double getEnergyIntegral(){ return energy_integral; };
     double getDPDMIntegral(){ return dpdm_integral; };
     Vec getReducedGradient(){ return redgrad; };
-    void setWriteTrajectoryDataFiles(bool write){ writeTrajectoryDataFiles = write; };
 
     void setOptimTarget(OptimTarget* optim_target_){ optim_target = optim_target_; };
 
@@ -115,15 +116,17 @@ class TimeStepper{
      * @param initid Initial condition identifier
      * @param iinit_local Local index of initial condition for this processor
      * @param rho_t0 Initial state vector
+     * @param writeTrajectoryDataFiles Flag to write trajectory data to files
+     * @param storeTrajectories Flag to store full trajectories in memory (ignored for PetscTS)
      * @return Vec Final state vector at time T
      */
-    virtual Vec solveODE(int initid, int iinit_local, Vec rho_t0);
+    virtual Vec solveODE(int initid, int iinit_local, Vec rho_t0, bool writeTrajectoryDataFiles, bool storeTrajectories);
 
     /**
      * @brief Solves the adjoint ODE backward in time.
-     * 
-     * This performs backward time-stepping to backpropagate an adjoint initial condition at 
-     * final time (aka a terminal condtion) to time t=0, while accumulating the reduced gradient. 
+     *
+     * This performs backward time-stepping to backpropagate an adjoint initial condition at
+     * final time (aka a terminal condtion) to time t=0, while accumulating the reduced gradient.
      *
      * @param iinit_local Local index of initial condition for this processor
      * @param rho_t0_bar Terminal condition for adjoint state
@@ -133,6 +136,31 @@ class TimeStepper{
      * @param Jbar_energy Adjoint of energy integral term
      */
     virtual void solveAdjointODE(int iinit_local, Vec rho_t0_bar, double Jbar_leakage, double Jbar_weightedcost, double Jbar_dpdm, double Jbar_energy);
+
+    /**
+     * @brief Solves the linearized ODE forward in time.
+     *
+     * Propagates the linearized dynamics forward: dx/dt = (dRHS/dparams) * v * x(t)
+     * where v is a direction vector and the linearization is around the stored primal trajectory.
+     *
+     * @param initid Initial condition identifier
+     * @param iinit_local Local index of initial condition for this processor
+     * @param v Direction vector for parameter perturbation
+     * @param store_trajectory Flag to store full linearized trajectory (default false, only return final state)
+     * @return Vec Final linearized state at time T
+     */
+    Vec solveLinearizedODE(int iinit_local, const Vec v, bool store_trajectory = false);
+
+    /**
+     * @brief Retrieves a stored linearized state at a specific time step.
+     *
+     * Only valid if solveLinearizedODE was called with store_trajectory=true.
+     *
+     * @param iinit_local Local index of initial condition
+     * @param itimestep Time step index (0 to ntime)
+     * @return Vec Linearized state vector at the specified time step
+     */
+    Vec getLinearizedState(int iinit_local, int itimestep);
 
     /**
      * @brief Evaluates leakage into guard levels 
@@ -218,8 +246,22 @@ class TimeStepper{
     virtual void evolveFWD(const double tstart, const double tstop, Vec x) = 0;
 
     /**
+     * @brief Evolves linearized state forward by one time-step.
+     *
+     * Applies one timestep of the linearized forward dynamics.
+     * Pure virtual function to be implemented by derived classes.
+     *
+     * @param iinit Local initial condition index
+     * @param tstart Start time
+     * @param tstop Stop time
+     * @param v Direction vector for parameter perturbation
+     * @param x Linearized state vector to evolve
+     */
+    virtual void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) = 0;
+
+    /**
      * @brief Evolves adjoint state backward by one time-step and updates reduced gradient.
-     * 
+     *
      * Abstract base-class implementation is empty. Derived classes that need backward time-stepping should implement this function.
      *
      * @param tstart Start time (backward evolution)
@@ -274,6 +316,11 @@ class ExplEuler : public TimeStepper {
      * @param compute_gradient Flag to compute gradient
      */
     void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+
+    /**
+     * @brief Stub for linearized forward evolution (not implemented for ExplEuler).
+     */
+    virtual void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x);
 };
 
 /**
@@ -337,6 +384,17 @@ class ImplMidpoint : public TimeStepper {
      * @param compute_gradient Flag to compute gradient
      */
     virtual void evolveBWD(const double tstart, const double tstop, const Vec x_stop, Vec x_adj, Vec grad, bool compute_gradient);
+
+    /**
+     * @brief Evolves linearized state forward using implicit midpoint rule.
+     *
+     * @param iinit Local initial condition index
+     * @param tstart Start time
+     * @param tstop Stop time
+     * @param v Direction vector for parameter perturbation
+     * @param x Linearized state vector to evolve
+     */
+    virtual void evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x);
 
     /**
      * @brief Solves (I - alpha*A) * x = b using Neumann iterations.
@@ -421,6 +479,7 @@ class PetscTS : public TimeStepper {
     double adj_scale_weightedcost; ///< Per-solve scaling for weighted-cost integral adjoint contribution.
     double adj_scale_energy; ///< Per-solve scaling for energy integral adjoint contribution.
     double min_timestep_size; ///< Smallest timestep size chosen during adaptive timestepping
+    bool _writeTrajectoryDataFiles; ///< Flag to determine whether or not trajectory data will be written to files during forward simulation.
 
   public:
     /**
@@ -440,9 +499,11 @@ class PetscTS : public TimeStepper {
      * @param initid Initial condition identifier
      * @param iinit_local Local index of initial condition for this processor
      * @param rho_t0 Initial state vector
+     * @param writeTrajectoryDataFiles Flag to write trajectory data to files
+     * @param storeTrajectories Flag to store full trajectories in memory (ignored for PetscTS)
      * @return Vec Final state vector at time T
      */
-    Vec solveODE(int initid, int iinit_local, Vec rho_t0) override;
+    Vec solveODE(int initid, int iinit_local, Vec rho_t0, bool writeTrajectoryDataFiles, bool storeTrajectories) override;
 
     /** 
      * @brief Overwrites the default adjoint time-stepping by calling PETSc's TSSolve on the adjoint system.
@@ -545,9 +606,10 @@ class PetscTS : public TimeStepper {
      */
     static PetscErrorCode monitorTrajectory(TS ts, PetscInt step, PetscReal time, Vec state, void *ctx);
 
-    // THESE ARE NOT USED. Instead, solveODE and solveAdjointODE overwrites the default time-stepping by calling TSSolve. 
+    // THESE ARE NOT USED. Instead, solveODE and solveAdjointODE overwrites the default time-stepping by calling TSSolve.
     void evolveFWD(const double, const double, Vec) override {};
     void evolveBWD(const double, const double, const Vec, Vec, Vec, bool) override {};
+    void evolveLinearizedFWD(const int, const double, const double, const Vec, Vec) override {};
 
     /**
      * @brief Get the smallest timestep size chosen during adaptive timestepping.

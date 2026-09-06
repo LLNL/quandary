@@ -9,10 +9,10 @@ TimeStepper::TimeStepper() {
   MPI_Comm_rank(MPI_COMM_WORLD, &mpirank_world);
   MPI_Comm_rank(PETSC_COMM_WORLD, &mpirank_petsc);
   MPI_Comm_size(PETSC_COMM_WORLD, &mpisize_petsc);
-  writeTrajectoryDataFiles = false;
 }
 
-TimeStepper::TimeStepper(const Config& config, MasterEq* mastereq_, Output* output_, int ninit_local) : TimeStepper() {
+TimeStepper::TimeStepper(const Config& config, MasterEq* mastereq_, Output* output_, int _ninit_local) : TimeStepper() {
+  ninit_local = _ninit_local;
   mastereq = mastereq_;
   output = output_;
   ntime = config.getNTime();
@@ -36,27 +36,6 @@ TimeStepper::TimeStepper(const Config& config, MasterEq* mastereq_, Output* outp
   ilow = mpirank_petsc * localsize_u;
   iupp = ilow + localsize_u;         
 
-  /* If this is a gradient or optimization run, allocate storage of primal state trajectories, one trajectory for each local initial condition */
-  if (config.getRuntype() == RunType::OPTIMIZATION || config.getRuntype() == RunType::GRADIENT) {
-    // The Petsc Timestepper uses its internal storage
-    // If Schroedinger solver, then states are recomputed during backpropagation 
-    if (config.getTimestepperType() != TimeStepperType::PETSCTS && config.getDecoherenceType() != DecoherenceType::NONE) {
-      trajectory_states.resize(ninit_local);
-      for (int iinit = 0; iinit < ninit_local; iinit++) {
-        trajectory_states[iinit].resize(ntime);  // excluding final time 
-        for (int n = 0; n <ntime; n++) {
-          Vec state;
-          VecCreate(PETSC_COMM_WORLD, &state);
-          PetscInt globalsize = 2 * mastereq->getDim();  // 2 for real and imaginary part
-          PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
-          VecSetSizes(state,localsize,globalsize);
-          VecSetFromOptions(state);
-          trajectory_states[iinit][n] = state;
-        }
-      }
-    }
-  }
-
   /* Allocate storage for final states for each local initial condition */
   final_states.resize(ninit_local);
   for (int iinit = 0; iinit < ninit_local; iinit++) {
@@ -69,16 +48,17 @@ TimeStepper::TimeStepper(const Config& config, MasterEq* mastereq_, Output* outp
     final_states[iinit] = state;
   }
 
-  /* Allocate auxiliary state vector */
+  /* Allocate auxiliary state vectors */
   VecCreate(PETSC_COMM_WORLD, &x);
 
-  PetscInt globalsize = 2 * mastereq->getDim(); 
+  PetscInt globalsize = 2 * mastereq->getDim();
   PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
   VecSetSizes(x,localsize,globalsize);
   VecSetFromOptions(x);
   VecZeroEntries(x);
   VecDuplicate(x, &xadj);
   VecDuplicate(x, &xprimal);
+  VecDuplicate(x, &xhalf);
 
   /* Allocate the reduced gradient */
   int ndesign = 0;
@@ -102,17 +82,42 @@ TimeStepper::~TimeStepper() {
   for (size_t iinit = 0; iinit < final_states.size(); iinit++) {
     VecDestroy(&(final_states[iinit]));
   }
+  // Destroy linearized state storage if allocated
+  for (size_t iinit = 0; iinit < lin_trajectory_states.size(); iinit++) {
+    for (size_t n = 0; n < lin_trajectory_states[iinit].size(); n++) {
+      VecDestroy(&(lin_trajectory_states[iinit][n]));
+    }
+  }
   VecDestroy(&x);
   VecDestroy(&xadj);
   VecDestroy(&xprimal);
+  VecDestroy(&xhalf);
   VecDestroy(&redgrad);
 }
 
-Vec TimeStepper::solveODE(int initid, int iinit_local, Vec rho_t0){
+Vec TimeStepper::solveODE(int initid, int iinit_local, Vec rho_t0, bool writeTrajectoryDataFiles, bool storeTrajectories){
 
   /* Open output files */
   if (writeTrajectoryDataFiles) {
     output->openTrajectoryDataFiles("rho", initid);
+  }
+
+  /* Allocate trajectory storage, if not done so yet */
+  if (storeTrajectories && trajectory_states.size() < ninit_local) {
+    trajectory_states.resize(ninit_local);
+    for (int i = 0; i < ninit_local; i++) {
+      trajectory_states[i].resize(ntime);
+      for (int n = 0; n < ntime; n++) {
+        Vec state;
+        VecCreate(PETSC_COMM_WORLD, &state);
+        PetscInt globalsize = 2 * mastereq->getDim(); 
+        PetscInt localsize = globalsize / mpisize_petsc;  // Local vector per processor
+        VecSetSizes(state,localsize,globalsize);
+        VecSetFromOptions(state);
+        VecZeroEntries(state);
+        trajectory_states[i][n] = state;
+      }
+    }
   }
 
   /* Set initial condition  */
@@ -144,7 +149,8 @@ Vec TimeStepper::solveODE(int initid, int iinit_local, Vec rho_t0){
     double tstop  = (n+1) * dt;
 
     /* store and write current state. */
-    if (trajectory_states.size() > 0) VecCopy(x, trajectory_states[iinit_local][n]);
+    if (storeTrajectories) VecCopy(x, trajectory_states[iinit_local][n]);
+
     if (writeTrajectoryDataFiles) {
       output->writeTrajectoryDataFiles(n, tstart, x, mastereq);
     }
@@ -196,6 +202,71 @@ Vec TimeStepper::solveODE(int initid, int iinit_local, Vec rho_t0){
   }
   
   return x;
+}
+
+Vec TimeStepper::solveLinearizedODE(int iinit_local, const Vec v, bool store_trajectory) {
+
+  // Check that primal trajectory exists for linearization
+  if (trajectory_states.size() == 0 || trajectory_states[iinit_local].size() == 0) {
+    printf("ERROR: Primal trajectory must be stored before calling solveLinearizedODE.\n");
+    printf("       Run solveODE first to populate trajectory_states.\n");
+    exit(1);
+  }
+
+  // Allocate storage for linearized trajectory if requested
+  if (store_trajectory) {
+    if (lin_trajectory_states.size() <= (size_t)iinit_local) {
+      lin_trajectory_states.resize(iinit_local + 1);
+    }
+    if (lin_trajectory_states[iinit_local].size() == 0) {
+      lin_trajectory_states[iinit_local].resize(ntime + 1);
+      for (int n = 0; n <= ntime; n++) {
+        Vec state;
+        VecCreate(PETSC_COMM_WORLD, &state);
+        PetscInt globalsize = 2 * mastereq->getDim();
+        PetscInt localsize = globalsize / mpisize_petsc;
+        VecSetSizes(state, localsize, globalsize);
+        VecSetFromOptions(state);
+        lin_trajectory_states[iinit_local][n] = state;
+      }
+    }
+  }
+
+  /* Set initial condition to zero for linearized solve) */
+  VecZeroEntries(x);
+
+  /* Store initial state if requested */
+  if (store_trajectory) {
+    VecCopy(x, lin_trajectory_states[iinit_local][0]);
+  }
+
+  /* --- Loop over time interval --- */
+  for (int n = 0; n < ntime; n++){
+    double tstart = n * dt;
+    double tstop  = (n+1) * dt;
+
+    /* Take one linearized time step */
+    evolveLinearizedFWD(iinit_local, tstart, tstop, v, x);
+
+    /* Store current state if requested */
+    if (store_trajectory) {
+      VecCopy(x, lin_trajectory_states[iinit_local][n+1]);
+    }
+  }
+
+  return x;
+}
+
+Vec TimeStepper::getLinearizedState(int iinit_local, int itimestep) {
+  if (lin_trajectory_states.size() <= (size_t)iinit_local || lin_trajectory_states[iinit_local].size() == 0) {
+    printf("ERROR: Linearized states not stored. Call solveLinearizedODE with store_trajectory=true first.\n");
+    exit(1);
+  }
+  if (itimestep < 0 || itimestep > ntime) {
+    printf("ERROR: Invalid time step index %d (valid range: 0 to %d)\n", itimestep, ntime);
+    exit(1);
+  }
+  return lin_trajectory_states[iinit_local][itimestep];
 }
 
 
@@ -250,6 +321,11 @@ void TimeStepper::solveAdjointODE(int iinit_local, Vec rho_t0_bar, double Jbar_l
     /* Get the state at n-1. If Schroedinger solver, recompute it by taking a step backwards with the forward solver, otherwise get it from storage. */
     if (trajectory_states.size() > 0) VecCopy(trajectory_states[iinit_local][n-1], xprimal);
     else evolveFWD(tstop, tstart, xprimal);
+// printf("TEST: n = %d\n", n);
+// evolveFWD(tstop, tstart, xprimal);
+// VecView(xprimal, PETSC_VIEWER_STDOUT_WORLD);
+// VecCopy(trajectory_states[iinit_local][n-1], xprimal);
+// VecView(xprimal, PETSC_VIEWER_STDOUT_WORLD);
 
     /* Take one time step backwards for the adjoint */
     evolveBWD(tstop, tstart, xprimal, xadj, redgrad, true);
@@ -535,10 +611,17 @@ void ExplEuler::evolveBWD(const double tstop,const  double tstart,const  Vec x, 
 
   /* update x_adj = x_adj + hA^Tx_adj */
   mastereq->assemble_RHS(tstop);
-  Mat A = mastereq->getRHS(); 
+  Mat A = mastereq->getRHS();
   MatMultTranspose(A, x_adj, stage);
   VecAXPY(x_adj, dt, stage);
 
+}
+
+void ExplEuler::evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) {
+  (void)iinit; (void)tstart; (void)tstop; (void)v; (void)x;
+  printf("ERROR: Linearized forward solve not implemented for ExplEuler.\n");
+  printf("       Use ImplMidpoint timestepper instead.\n");
+  exit(1);
 }
 
 ImplMidpoint::ImplMidpoint(const Config& config, MasterEq* mastereq_, Output* output_, int ninit_local) : TimeStepper(config, mastereq_, output_, ninit_local) {
@@ -570,11 +653,8 @@ ImplMidpoint::ImplMidpoint(const Config& config, MasterEq* mastereq_, Output* ou
     KSPSetOperators(ksp, mastereq->getRHS(), mastereq->getRHS());
     KSPSetFromOptions(ksp);
   }
-  else {
-    /* For Neumann iterations, allocate a temporary vector */
-    MatCreateVecs(mastereq->getRHS(), &tmp, NULL);
-    MatCreateVecs(mastereq->getRHS(), &err, NULL);
-  }
+  MatCreateVecs(mastereq->getRHS(), &err, NULL);
+  MatCreateVecs(mastereq->getRHS(), &tmp, NULL);
 }
 
 
@@ -590,10 +670,9 @@ ImplMidpoint::~ImplMidpoint(){
   /* Free up Petsc's linear solver */
   if (linsolve_type == LinearSolverType::GMRES) {
     KSPDestroy(&ksp);
-  } else {
-    VecDestroy(&tmp);
-    VecDestroy(&err);
   }
+  VecDestroy(&err);
+  VecDestroy(&tmp);
 
   /* Free up intermediate vectors */
   VecDestroy(&stage_adj);
@@ -713,6 +792,61 @@ void ImplMidpoint::evolveBWD(const double tstop, const double tstart, const Vec 
   /* Update adjoint state x_adj += dt * A^Tstage_adj --- */
   MatMultTransposeAdd(A, stage_adj, x_adj, x_adj);
 
+}
+
+void ImplMidpoint::evolveLinearizedFWD(const int iinit, const double tstart, const double tstop, const Vec v, Vec x) {
+
+  /* Compute time step size */
+  double dt = tstop - tstart;
+  double thalf = (tstart + tstop) / 2.0;
+
+  /* Compute A(t_n+h/2) */
+  mastereq->assemble_RHS(thalf);
+  Mat A = mastereq->getRHS();
+
+  /* Get the primal state at midpoint: xhalf = 0.5 * (x_n + x_{n+1}) */
+  int n = (int)round(tstart / this->dt);
+  VecCopy(trajectory_states[iinit][n], xhalf);
+  VecAXPY(xhalf, 1.0, trajectory_states[iinit][n+1]);
+  VecScale(xhalf, 0.5);
+
+  /* Compute rhs = A * x + apply_linearized_RHS(v, xhalf) */
+  MatMult(A, x, rhs);
+  mastereq->apply_linearized_RHS(thalf, v, xhalf, tmp);
+  VecAXPY(rhs, 1.0, tmp);
+
+  /* Solve for the stage variable (I-dt/2 A) k1 = rhs */
+  switch (linsolve_type) {
+    case LinearSolverType::GMRES:
+      /* Set up I-dt/2 A, then solve */
+      MatScale(A, - dt/2.0);
+      MatShift(A, 1.0);
+      KSPSolve(ksp, rhs, stage);
+
+      /* Monitor error */
+      double rnorm;
+      PetscInt iters_taken;
+      KSPGetResidualNorm(ksp, &rnorm);
+      KSPGetIterationNumber(ksp, &iters_taken);
+      linsolve_iterstaken_avg += iters_taken;
+      linsolve_error_avg += rnorm;
+      if (rnorm > 1e-3)  {
+        printf("WARNING: Linearized forward linear solver residual norm: %1.5e\n", rnorm);
+      }
+
+      /* Revert the scaling and shifting */
+      MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+      MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+      break;
+
+    case LinearSolverType::NEUMANN:
+      linsolve_iterstaken_avg += NeumannSolve(A, rhs, stage, dt/2.0, false);
+      break;
+  }
+  linsolve_counter++;
+
+  /* --- Update state x += dt * stage --- */
+  VecAXPY(x, dt, stage);
 }
 
 
@@ -872,6 +1006,7 @@ PetscTS::PetscTS(const Config& config, MasterEq* mastereq_, Output* output_, int
   adj_scale_weightedcost = 0.0;
   adj_scale_energy = 0.0;
   min_timestep_size = total_time;  // Initialize to maximum possible value
+  _writeTrajectoryDataFiles = false;
 
   // Helper function to create TS objects
   auto configureTS = [&](TS tsi) {
@@ -956,7 +1091,9 @@ PetscTS::~PetscTS() {
   VecDestroy(&redgrad_ts);
 }
 
-Vec PetscTS::solveODE(int initid, int iinit_local, Vec rho_t0){
+Vec PetscTS::solveODE(int initid, int iinit_local, Vec rho_t0, bool writeTrajectoryDataFiles, bool /* storeTrajectories */){
+  /* PetscTS will always store trajectories in its own storage. Ignoring it. */
+
   // Grab the timestepper for this initial condit
   const int iinit = iinit_local;
   TS ts_run = ts_pool[iinit_local];
@@ -968,6 +1105,7 @@ Vec PetscTS::solveODE(int initid, int iinit_local, Vec rho_t0){
   /* Prepare storage for trajectory output data */
   if (writeTrajectoryDataFiles) {
     output->openTrajectoryDataFiles("rho", initid);
+    _writeTrajectoryDataFiles = writeTrajectoryDataFiles;
   }
 
   /* Reset the time stepper */
@@ -1169,7 +1307,7 @@ PetscErrorCode PetscTS::monitorTrajectory(TS ts, PetscInt step, PetscReal time, 
   }
 
   // evaluate trajectory output 
-  if (self->writeTrajectoryDataFiles) {
+  if (self->_writeTrajectoryDataFiles) {
     self->output->writeTrajectoryDataFiles(step, time, state, self->mastereq);
   }
 

@@ -254,6 +254,20 @@ class MasterEq{
     void compute_dRHS_dParams(const double t,const Vec x,const Vec x_bar, const double alpha, Vec grad);
 
     /**
+     * @brief Applies the linearized RHS operator to a state vector.
+     *
+     * Computes xout = (dRHS/dparams) * v * xhalf, where v is a direction vector
+     * and xhalf is the state at which to evaluate the linearization.
+     *
+     * @param t Time at which to evaluate
+     * @param v Direction vector for parameter perturbation
+     * @param xhalf State vector at which the RHS is applied
+     * @param xout Output vector (result of applying linearized operator)
+     */
+    void apply_linearized_RHS(const double t, const Vec v, const Vec xhalf, Vec xout);
+    void apply_linearized_RHS_transpose(const double t,const Vec v,  const Vec xhalf, Vec xout);
+
+    /**
      * @brief Pass control parameters from global design vector to each oscillator.
      *
      * @param x Global design vector containing control parameters

@@ -210,6 +210,20 @@ class Oscillator {
     int evalControl_diff(const double t, double* grad_for_this_oscillator, const double pbar, const double qbar, const double fbar);
 
     /**
+     * @brief Evaluates directional derivatives of control functions with respect to design parameters.
+     *
+     * Computes the linearized control functions dp(t)/d(params) * vdir and dq(t)/d(params) * vdir
+     * for a given direction vector vdir.
+     *
+     * @param[in] t Time at which to evaluate
+     * @param[in] vdir Direction vector for the parameters
+     * @param[out] dpv Pointer to store the linearized p-drive component
+     * @param[out] dqv Pointer to store the linearized q-drive component
+     * @return int Error code
+     */
+    int evalControl_linearized(const double t, const std::vector<double>& vdir, double* dpv, double* dqv);
+
+    /**
      * @brief Computes expected energy for this oscillator.
      *
      * Returns the expected value of the number operator for this oscillator's subsystem.

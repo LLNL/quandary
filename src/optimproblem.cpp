@@ -176,7 +176,7 @@ OptimProblem::~OptimProblem() {
 
 
 
-double OptimProblem::evalF(const Vec x) {
+double OptimProblem::evalF(const Vec x, bool writeTrajectoryDataFiles) {
   if (mpirank_world == 0 && !quietmode) printf("EVAL F... \n");
 
   /* Pass design vector x to oscillators */
@@ -214,7 +214,7 @@ double OptimProblem::evalF(const Vec x) {
 
     /* Run forward with initial condition initid */
     if (mpirank_optim == 0 && !quietmode) printf("%d: Initial condition id=%d ...\n", mpirank_init, initid);
-    Vec finalstate = timestepper->solveODE(initid, iinit, optim_target->getInitialState());
+    Vec finalstate = timestepper->solveODE(initid, iinit, optim_target->getInitialState(), writeTrajectoryDataFiles, false);
 
     /* Store the final state for Riemannian objective function */
     if (optim_penalty_riemannian > 0.0) {
@@ -350,7 +350,7 @@ double OptimProblem::evalF(const Vec x) {
 
 
 
-void OptimProblem::evalGradF(const Vec x, Vec G){
+void OptimProblem::evalGradF(const Vec x, Vec G, bool writeTrajectoryDataFiles){
   if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GRAD F... " << std::endl;
 
   /* Pass design vector x to oscillators */
@@ -424,7 +424,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
     // if (mpirank_optim == 0) printf("%d: %d FWD. ", mpirank_init, initid);
 
     /* Run forward with initial condition */
-    Vec finalstate = timestepper->solveODE(initid, iinit, optim_target->getInitialState());
+    Vec finalstate = timestepper->solveODE(initid, iinit, optim_target->getInitialState(), writeTrajectoryDataFiles, true);
 
     /* Store the final state for Riemannian objective function */
     if (optim_penalty_riemannian > 0.0) {
@@ -616,6 +616,58 @@ void OptimProblem::evalGradF(const Vec x, Vec G){
   // }
 }
 
+
+
+void OptimProblem::evalGEOPEVec(const Vec x, const Vec v, Vec Av){
+  if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL GEOPE Av ... " << std::endl;
+
+  /* Pass design vector x to oscillators */
+  mastereq->setControlAmplitudes(x); 
+
+  // Reset
+  VecZeroEntries(Av);
+
+  /* Solve ODE and linearized ODE forward in time */
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
+    int iinit_global = mpirank_init * ninit_local + iinit;
+    printf("Solving ODE for initial condition %d (global index %d)\n", iinit, iinit_global);
+
+    int initid = optim_target->prepareInitialAndTargetState(iinit_global, ninit, mastereq->nlevels, mastereq->nessential);
+
+    // do not write states to file
+    // TODO: DO STORE STATES
+    Vec finalstate = timestepper->solveODE(initid, iinit, optim_target->getInitialState(), false, true);
+
+    // Solve linearized forward ODE
+    printf("Solve linearized forward...\n");
+    timestepper->solveLinearizedODE(iinit, v, true); // Storing linearized states
+
+    // Set terminal condition for adjoint
+    VecCopy(finalstate, rho_t0_bar);
+
+    // Solve adjoint backward ODE
+    timestepper->solveAdjointODE(iinit, rho_t0_bar, 0.0, 0.0, 0.0, 0.0);
+
+    // Add gradient to output
+    VecAXPY(Av, 1.0, timestepper->getReducedGradient());
+  }
+
+  /* Sum up the gradient from all initial condition processors */
+  PetscScalar* Av_ptr; 
+  VecGetArray(Av, &Av_ptr);
+  for (int i=0; i<ndesign; i++) {
+    mygrad[i] = Av_ptr[i];
+  }
+  MPI_Allreduce(mygrad, Av_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
+  VecRestoreArray(Av, &Av_ptr);
+
+  // double hnorm;
+  // VecNorm(Hv, NORM_2, &(hnorm));
+  // printf("Hessian vector product norm = %1.14e\n", hnorm);
+}
+
+
+
 void OptimProblem::solve(Vec xinit) {
   TaoSetSolution(tao, xinit);
   TaoSolve(tao);
@@ -745,7 +797,7 @@ PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, 
 PetscErrorCode TaoEvalObjective(Tao /*tao*/, Vec x, PetscReal *f, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
-  *f = ctx->evalF(x);
+  *f = ctx->evalF(x, false);
   
   return 0;
 }
@@ -754,7 +806,7 @@ PetscErrorCode TaoEvalObjective(Tao /*tao*/, Vec x, PetscReal *f, void*ptr){
 PetscErrorCode TaoEvalGradient(Tao /*tao*/, Vec x, Vec G, void*ptr){
 
   OptimProblem* ctx = (OptimProblem*) ptr;
-  ctx->evalGradF(x, G);
+  ctx->evalGradF(x, G, false);
   
   return 0;
 }
