@@ -21,6 +21,7 @@
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define TEST_FD_LINEARIZED_FWD 0 // Run Finite Differences Linearized Forward test
+#define TEST_GEOPE_A 1
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-5          // Epsilon for Finite Differences
 
@@ -269,37 +270,7 @@ int main(int argc,char **argv)
     // Do one last forward evaluation while writing trajectory files
     optimctx->evalF(opt, true); 
   }
-
-  /*  ---- Evaluate GEOPE matrix columns ---- */
-  optimctx->getStartingPoint(xinit);
-  VecCopy(xinit, optimctx->xinit); // Store the initial guess
-  output->writeControlParams(xinit); // Write params to file
-
-  Vec v, Av;
-  VecDuplicate(xinit, &v);
-  VecDuplicate(xinit, &Av);
-  VecZeroEntries(v);
-  VecZeroEntries(Av);
-  // output storage for all Ae_i vectors
-  std::vector<Vec> A_columns;
-
-  for (int ix=0; ix<optimctx->getNdesign(); ix++) {
-    printf("Eval A*e_%d / %d ", ix, optimctx->getNdesign());
-
-    // Set v to the i-th unit vector
-    VecSetValue(v, ix, 1.0, INSERT_VALUES);
-    VecAssemblyBegin(v); VecAssemblyEnd(v);
-
-    // Evaluate Av
-    optimctx->evalGEOPEVec(xinit, v, Av);
-    
-    // Store Av in A_columns
-    Vec Av_copy;
-    VecDuplicate(Av, &Av_copy);
-    VecCopy(Av, Av_copy);
-    A_columns.push_back(Av_copy);
-  }
-
+  
   /* Only evaluate and write control pulses (no propagation) */
   if (config.getRuntype() == RunType::EVALCONTROLS) {
     std::vector<double> pt, qt;
@@ -542,6 +513,98 @@ int main(int argc,char **argv)
     VecDestroy(&states_minus[i]);
     VecDestroy(&linearized_state[i]);
   }
+
+#endif
+
+#if TEST_GEOPE_A
+  /*  ---- TEST: Evaluate GEOPE matrix columns ---- */
+  optimctx->getStartingPoint(xinit);
+  VecCopy(xinit, optimctx->xinit); // Store the initial guess
+  output->writeControlParams(xinit); // Write params to file
+
+  Vec v, Av;
+  VecDuplicate(xinit, &v);
+  VecDuplicate(xinit, &Av);
+  VecZeroEntries(v);
+  VecZeroEntries(Av);
+
+  // storage for Uk for all k and all initial conditions
+  optimctx->evalF(xinit);
+  Vec state;
+  VecDuplicate(timestepper->getFinalState(0), &state);
+  int ndesign = optimctx->getNdesign();
+  std::vector<std::vector<Vec>> DU(ndesign);
+  for (int ix = 0; ix<ndesign; ix++){
+    DU[ix].resize(ninit_local);
+    for (int iinit=0; iinit<ninit_local; iinit++){
+      VecDuplicate(state, &DU[ix][iinit]);
+    }
+  }
+
+  // // storage for all Ae_i vectors
+  // std::vector<Vec> A_columns(ndesign);
+  // for (int ix=0; ix<ndesign; ix++){
+  //   VecDuplicate(xinit, &A_columns[ix]);
+  // }
+  // Storage for A matrix
+  Mat A;
+  MatCreate(PETSC_COMM_SELF, &A);
+  MatSetSizes(A,  PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign);
+  MatSetType(A, MATDENSE);
+  MatSetUp(A);
+  MatZeroEntries(A);
+
+  for (int ix=0; ix<optimctx->getNdesign(); ix++) {
+    printf("Eval A*e_%d / %d ", ix, optimctx->getNdesign());
+
+    // Set v to the i-th unit vector
+    VecZeroEntries(v);
+    VecSetValue(v, ix, 1.0, INSERT_VALUES);
+    VecAssemblyBegin(v); VecAssemblyEnd(v);
+
+    // Evaluate Av
+    optimctx->evalGEOPEVec(xinit, v, Av);
+    
+    // Store Av in k-th column of A 
+    // VecCopy(Av, A_columns[ix]);
+    const PetscScalar *Av_ptr;
+    VecGetArrayRead(Av, &Av_ptr);
+    for (size_t row=0; row < ndesign; row++){
+      MatSetValue(A, row, ix, Av_ptr[row], INSERT_VALUES);
+    }
+    VecRestoreArrayRead(Av, &Av_ptr);
+    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY); MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+
+    // Store linearized final states 
+    for (int iinit=0; iinit<ninit_local; iinit++){
+      VecCopy(timestepper->getLinearizedFinalState(iinit), DU[ix][iinit]);
+    }
+  }
+
+  // Compare Aij to Re tr(Ui^d Uj) = sum_init Ui[iinit]^T Uj[iinit]
+  double max_abs_err = 0.0;
+  for (int ix=0; ix<ndesign; ix++){
+    for (int jx=0; jx<ndesign; jx++){
+    // int jx = ix; {
+      double Aij = 0.0;
+      // VecGetValues(A_columns[jx], 1, &ix, &Aij);
+      MatGetValue(A, ix, jx, &Aij);
+
+      double Aij_test = 0.0;
+      for (int iinit=0; iinit<ninit_local; iinit++){
+        double dot = 0.0;
+        VecDot(DU[ix][iinit], DU[jx][iinit], &dot);
+        Aij_test += dot;
+      }
+
+      double abs_err = std::abs(Aij - Aij_test);
+      printf("A_%d,%d: linSolve = %1.14e, ReTr = %1.14e err=%1.14e\n", ix, jx, Aij, Aij_test, abs_err);
+
+      max_abs_err = std::max(abs_err, max_abs_err);
+    }
+  }
+
+  printf("\n Max. absolute error = %1.14e\n", max_abs_err);
 
 #endif
 
