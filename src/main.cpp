@@ -20,7 +20,7 @@
 
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
-#define TEST_FD_LINEARIZED_FWD 1 // Run Finite Differences Linearized Forward test
+#define TEST_FD_LINEARIZED_FWD 0 // Run Finite Differences Linearized Forward test
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-5          // Epsilon for Finite Differences
 
@@ -227,17 +227,6 @@ int main(int argc,char **argv)
     if (mpirank_world == 0 && !quietmode) printf("\nTotal objective = %1.14e, \n", objective);
     optimctx->getSolution(&opt);
 
-    // // TEST: Call Geope Av for v = e0
-    // Vec v;
-    // VecDuplicate(xinit, &v);
-    // VecZeroEntries(v);
-    // VecSetValue(v, 0, 1.0, INSERT_VALUES);
-    // VecAssemblyBegin(v);
-    // VecAssemblyEnd(v);
-    // Vec Av;
-    // VecDuplicate(xinit, &Av);
-    // optimctx->evalGEOPEVec(xinit, v, Av);
-
     // Write control pulses to file
     output->writeControls(xinit, mastereq, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize()); // Write the control pulses 
   } 
@@ -279,6 +268,36 @@ int main(int argc,char **argv)
 
     // Do one last forward evaluation while writing trajectory files
     optimctx->evalF(opt, true); 
+  }
+
+  /*  ---- Evaluate GEOPE matrix columns ---- */
+  optimctx->getStartingPoint(xinit);
+  VecCopy(xinit, optimctx->xinit); // Store the initial guess
+  output->writeControlParams(xinit); // Write params to file
+
+  Vec v, Av;
+  VecDuplicate(xinit, &v);
+  VecDuplicate(xinit, &Av);
+  VecZeroEntries(v);
+  VecZeroEntries(Av);
+  // output storage for all Ae_i vectors
+  std::vector<Vec> A_columns;
+
+  for (int ix=0; ix<optimctx->getNdesign(); ix++) {
+    printf("Eval A*e_%d / %d ", ix, optimctx->getNdesign());
+
+    // Set v to the i-th unit vector
+    VecSetValue(v, ix, 1.0, INSERT_VALUES);
+    VecAssemblyBegin(v); VecAssemblyEnd(v);
+
+    // Evaluate Av
+    optimctx->evalGEOPEVec(xinit, v, Av);
+    
+    // Store Av in A_columns
+    Vec Av_copy;
+    VecDuplicate(Av, &Av_copy);
+    VecCopy(Av, Av_copy);
+    A_columns.push_back(Av_copy);
   }
 
   /* Only evaluate and write control pulses (no propagation) */

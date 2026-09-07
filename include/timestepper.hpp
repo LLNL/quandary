@@ -161,6 +161,7 @@ class TimeStepper{
      * @return Vec Linearized state vector at the specified time step
      */
     Vec getLinearizedState(int iinit_local, int itimestep);
+    Vec getLinearizedFinalState(int iinit_local);
 
     /**
      * @brief Evaluates leakage into guard levels 

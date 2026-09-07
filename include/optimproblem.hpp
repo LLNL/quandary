@@ -169,12 +169,21 @@ class OptimProblem {
   /**
    * @brief Evaluate linearized forward operator: Lv = \sum_k dU/dv_k v_k. 
    * 
-   * This does one ODE solve followed by one linearized ODE solve. After this, the timesteppers trajectory_states as well as lin_trajectory_states will be set.
+   * This does one ODE solve followed by one linearized ODE solve. After this, the timesteppers trajectory_states and lin_trajectory_states will be set.
    * 
    * @param[in] x Point of evaluation
    * @param[in] v Direction vector 
    */
   void evalLinearizedForward(const Vec x, const Vec v);
+
+  /**
+   * @brief Apply GEOPE Av = L*Lv: Linearized forward + adjoint operator. 
+   * 
+   * @param[in] x Point of evaluation
+   * @param[in] v Direction vector
+   * @param[out] Av Resulting vector after applying the linearized forward and adjoint operators
+   */
+  void evalGEOPEVec(const Vec x, const Vec v, Vec Av);
 
   /**
    * @brief Runs the optimization solver.

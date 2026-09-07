@@ -623,10 +623,7 @@ void OptimProblem::evalLinearizedForward(const Vec x, const Vec v){
 
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
-
-  // Reset
-  // VecZeroEntries(Av);
-  
+ 
   /* Solve ODE and linearized ODE forward in time */
   for (int iinit = 0; iinit < ninit_local; iinit++) {
     int iinit_global = mpirank_init * ninit_local + iinit;
@@ -637,35 +634,48 @@ void OptimProblem::evalLinearizedForward(const Vec x, const Vec v){
     // Solve Forward ODE while storing trajectory states
     bool writeTrajectoryDataFiles = false;
     bool storeStates = true;
-    Vec finalstate = timestepper->solveODE(initid, iinit, optim_target->getInitialState(), writeTrajectoryDataFiles, storeStates);
+    timestepper->solveODE(initid, iinit, optim_target->getInitialState(), writeTrajectoryDataFiles, storeStates);
 
 
     // Solve linearized forward ODE in direction v while storing linearized states
-    // printf("Solve linearized forward for iinit = %d\n", iinit);
     bool storeLinearizedStates = true;
-    Vec linearized_finalstate = timestepper->solveLinearizedODE(iinit, v, storeLinearizedStates); 
-
-    // Set terminal condition for adjoint
-    // VecCopy(finalstate, rho_t0_bar);
-
-    // // Solve adjoint backward ODE
-    // printf("Solve adjoint backward ODE...\n");
-    // timestepper->solveAdjointODE(iinit, rho_t0_bar, 0.0, 0.0, 0.0, 0.0);
-
-    // // Add gradient to output
-    // VecAXPY(Av, 1.0, timestepper->getReducedGradient());
+    timestepper->solveLinearizedODE(iinit, v, storeLinearizedStates); 
   }
-
-  // /* Sum up the gradient from all initial condition processors */
-  // PetscScalar* Av_ptr; 
-  // VecGetArray(Av, &Av_ptr);
-  // for (int i=0; i<ndesign; i++) {
-  //   mygrad[i] = Av_ptr[i];
-  // }
-  // MPI_Allreduce(mygrad, Av_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
-  // VecRestoreArray(Av, &Av_ptr);
 }
 
+void OptimProblem::evalGEOPEVec(const Vec x, const Vec v, Vec Av){
+
+  //  Reset output 
+  VecZeroEntries(Av);
+  
+  // Apply linearized forward to get U(t) and dU/dalpha x v
+  // fills the timesteppers trajectory_states and lin_trajectory_states.
+  evalLinearizedForward(x, v);
+
+  // For each final linearized state, solve the adjoint ODE
+
+  for (int iinit = 0; iinit < ninit_local; iinit++) {
+
+    // Set terminal condition for adjoint
+    Vec lin_final_state = timestepper->getLinearizedFinalState(iinit);
+    VecCopy(lin_final_state, rho_t0_bar);
+
+    // Solve adjoint backward ODE
+    timestepper->solveAdjointODE(iinit, rho_t0_bar, 0.0, 0.0, 0.0, 0.0);
+
+    // Add gradient to output
+    VecAXPY(Av, 1.0, timestepper->getReducedGradient());
+  }
+
+  /* Sum up the gradient from all initial condition processors */
+  PetscScalar* Av_ptr; 
+  VecGetArray(Av, &Av_ptr);
+  for (int i=0; i<ndesign; i++) {
+    mygrad[i] = Av_ptr[i];
+  }
+  MPI_Allreduce(mygrad, Av_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
+  VecRestoreArray(Av, &Av_ptr);
+}
 
 
 void OptimProblem::solve(Vec xinit) {

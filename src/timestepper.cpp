@@ -264,6 +264,14 @@ Vec TimeStepper::getLinearizedState(int iinit_local, int itimestep) {
   return lin_trajectory_states[iinit_local][itimestep];
 }
 
+Vec TimeStepper::getLinearizedFinalState(int iinit_local) {
+  if (lin_trajectory_states.size() <= (size_t)iinit_local || lin_trajectory_states[iinit_local].size() == 0) {
+    printf("ERROR: Linearized states not stored. Call solveLinearizedODE with store_trajectory=true first.\n");
+    exit(1);
+  }
+  return lin_trajectory_states[iinit_local][ntime];
+}
+
 
 void TimeStepper::solveAdjointODE(int iinit_local, Vec rho_t0_bar, double Jbar_leakage, double Jbar_weightedcost, double Jbar_dpdm, double Jbar_energy) {
 
