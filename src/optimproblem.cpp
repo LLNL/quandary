@@ -692,10 +692,13 @@ void OptimProblem::applyAGeope(Mat A, const Vec v, Vec Av){
 
 std::vector<double> OptimProblem::computeGeopeEvals(Vec xinit){
 
-  // Pass xinit to the shell 
+  // Store xinit so the MatShell can use it as point of evaluation.
   VecCopy(xinit, x_for_AGeope);
 
-  int neigvals = ndesign; // Number of evals requested
+  // Set the number of evals requested
+  int neigvals = ndesign; 
+  // int neigvals = 2*mastereq->getDim(); 
+
   EPS eps;
   EPSCreate(PETSC_COMM_SELF, &eps);
   EPSSetOperators(eps, A_Geope, NULL);
@@ -708,20 +711,29 @@ std::vector<double> OptimProblem::computeGeopeEvals(Vec xinit){
   PetscInt numConv;
   EPSGetConverged(eps, &numConv);
   if (numConv < neigvals) {
-      printf("WARNING: Only %d eigenvalues converged out of %d requested.\n", numConv, neigvals);
+      printf("WARNING: Only %d eigenvalues out of %d eigenvalues converged.\n", numConv, neigvals);
       // exit(1);
   }
 
-  // Retrieve store the eigenvalues of M
+  PetscInt iters_taken = 0;
+  EPSGetIterationNumber(eps,&iters_taken);
+
+  // Retrieve and store the eigenvalues of M
   std::vector<double> evals_re(ndesign);
   for (PetscInt i = 0; i < numConv && i < ndesign; i++) {
+
+      // Retrieve the eigenvalue (is real)
       EPSGetEigenvalue(eps, i, &evals_re[i], NULL);
+
+      // Alternatively, retrieve the eigenpair (evals and evecs). 
+      // EPSGetEigenpair(eps,i,&evals_re[i], NULL, &evec_re[i], evec_im[i]);
+    
+      // Let EPS estimate the errror (needs one move application of A)
+      double error = 0.0;
+      // EPSComputeError(eps,i,EPS_ERROR_RELATIVE,&error);
+      printf("%d: eval = %1.14e, error=%1.4e\n", i, evals_re[i], error);
   }
-  printf("Here are the eigenvalues of A_Geope:\n");
-  for (int i=0; i<evals_re.size(); i++){
-    printf("%d: %1.14e\n", i, evals_re[i]);
-  }
- 
+
   return evals_re;
 }
 
