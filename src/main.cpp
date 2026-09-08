@@ -541,11 +541,6 @@ int main(int argc,char **argv)
     }
   }
 
-  // // storage for all Ae_i vectors
-  // std::vector<Vec> A_columns(ndesign);
-  // for (int ix=0; ix<ndesign; ix++){
-  //   VecDuplicate(xinit, &A_columns[ix]);
-  // }
   // Storage for A matrix
   Mat A;
   MatCreate(PETSC_COMM_SELF, &A);
@@ -555,7 +550,7 @@ int main(int argc,char **argv)
   MatZeroEntries(A);
 
   for (int ix=0; ix<optimctx->getNdesign(); ix++) {
-    printf("Eval A*e_%d / %d ", ix, optimctx->getNdesign());
+    printf("Eval A*e_%d / %d \n", ix, optimctx->getNdesign());
 
     // Set v to the i-th unit vector
     VecZeroEntries(v);
@@ -563,10 +558,10 @@ int main(int argc,char **argv)
     VecAssemblyBegin(v); VecAssemblyEnd(v);
 
     // Evaluate Av
-    optimctx->evalGEOPEVec(xinit, v, Av);
+    VecCopy(xinit, optimctx->x_for_AGeope);
+    MatMult(optimctx->A_Geope, v, Av);
     
     // Store Av in k-th column of A 
-    // VecCopy(Av, A_columns[ix]);
     const PetscScalar *Av_ptr;
     VecGetArrayRead(Av, &Av_ptr);
     for (size_t row=0; row < ndesign; row++){
@@ -581,7 +576,7 @@ int main(int argc,char **argv)
     }
   }
 
-  // Compare Aij to Re tr(Ui^d Uj) = sum_init Ui[iinit]^T Uj[iinit]
+  // Now Compare Aij to Re tr(Ui^d Uj) = sum_init Ui[iinit]^T Uj[iinit]
   double max_abs_err = 0.0;
   for (int ix=0; ix<ndesign; ix++){
     for (int jx=0; jx<ndesign; jx++){

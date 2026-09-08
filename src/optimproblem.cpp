@@ -152,6 +152,14 @@ OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, Tim
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
   VecSetFromOptions(xtmp);
   VecZeroEntries(xtmp);
+
+  /* Create Geope MatShell for A=L^*L */
+  MatCreateShell(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, this, &A_Geope);
+  MatShellSetOperation(A_Geope, MATOP_MULT, (void(*) (void)) applyAGeope);
+  VecDuplicate(xinit, &x_for_AGeope);
+  VecZeroEntries(x_for_AGeope);
+  VecAssemblyBegin(x_for_AGeope); VecAssemblyEnd(x_for_AGeope);
+
 }
 
 
@@ -170,6 +178,8 @@ OptimProblem::~OptimProblem() {
     MatDestroy(&U_final_re_bar);
     MatDestroy(&U_final_im_bar);
   }
+  MatDestroy(&A_Geope);
+  VecDestroy(&x_for_AGeope);
 
   TaoDestroy(&tao);
 }
@@ -619,7 +629,7 @@ void OptimProblem::evalGradF(const Vec x, Vec G, bool writeTrajectoryDataFiles){
 
 
 void OptimProblem::evalLinearizedForward(const Vec x, const Vec v){
-  if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL LINEARIZED FWD ... " << std::endl;
+  // if (mpirank_world == 0 && !quietmode) std::cout<< "EVAL LINEARIZED FWD ... " << std::endl;
 
   /* Pass design vector x to oscillators */
   mastereq->setControlAmplitudes(x); 
@@ -643,38 +653,39 @@ void OptimProblem::evalLinearizedForward(const Vec x, const Vec v){
   }
 }
 
-void OptimProblem::evalGEOPEVec(const Vec x, const Vec v, Vec Av){
+void OptimProblem::applyAGeope(Mat A, const Vec v, Vec Av){
+
+  OptimProblem *self;
+  MatShellGetContext(A, (void**)&self);
+  Vec x = self->x_for_AGeope;
 
   //  Reset output 
   VecZeroEntries(Av);
   
   // Apply linearized forward to get U(t) and dU/dalpha x v
   // fills the timesteppers trajectory_states and lin_trajectory_states.
-  evalLinearizedForward(x, v);
+  self->evalLinearizedForward(x, v);
 
   // For each final linearized state, solve the adjoint ODE
 
-  for (int iinit = 0; iinit < ninit_local; iinit++) {
+  for (int iinit = 0; iinit < self->ninit_local; iinit++) {
 
     // Set terminal condition for adjoint
-    Vec lin_final_state = timestepper->getLinearizedFinalState(iinit);
-    VecCopy(lin_final_state, rho_t0_bar);
+    Vec lin_final_state = self->timestepper->getLinearizedFinalState(iinit);
+    VecCopy(lin_final_state, self->rho_t0_bar);
 
     // Solve adjoint backward ODE
-    timestepper->solveAdjointODE(iinit, rho_t0_bar, 0.0, 0.0, 0.0, 0.0);
+    self->timestepper->solveAdjointODE(iinit, self->rho_t0_bar, 0.0, 0.0, 0.0, 0.0);
 
     // Add gradient to output
-    VecAXPY(Av, 1.0, timestepper->getReducedGradient());
+    VecAXPY(Av, 1.0, self->timestepper->getReducedGradient());
   }
 
   /* Sum up the gradient from all initial condition processors */
-  PetscScalar* Av_ptr; 
-  VecGetArray(Av, &Av_ptr);
-  for (int i=0; i<ndesign; i++) {
-    mygrad[i] = Av_ptr[i];
-  }
-  MPI_Allreduce(mygrad, Av_ptr, ndesign, MPI_DOUBLE, MPI_SUM, comm_init);
-  VecRestoreArray(Av, &Av_ptr);
+  PetscScalar* Av_data; 
+  VecGetArray(Av, &Av_data);
+  MPI_Allreduce(MPI_IN_PLACE, Av_data, self->ndesign, MPIU_SCALAR, MPI_SUM, self->comm_init);
+  VecRestoreArray(Av, &Av_data);
 }
 
 

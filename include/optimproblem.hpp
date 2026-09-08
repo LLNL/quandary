@@ -108,6 +108,9 @@ class OptimProblem {
     Vec xprev; ///< Design vector at previous iteration
     Vec xinit; ///< Initial design vector
 
+    Mat A_Geope; ///< MatShell for applying GEOPE matrix A=L^L to a vector
+    Vec x_for_AGeope; ///< Point of evaluation for GEOPE apply A 
+
   /**
    * @brief Constructor for optimization problem.
    *
@@ -177,13 +180,14 @@ class OptimProblem {
   void evalLinearizedForward(const Vec x, const Vec v);
 
   /**
-   * @brief Apply GEOPE Av = L*Lv: Linearized forward + adjoint operator. 
+   * @brief MatMult operation for MatShell GEOPE Av = L*Lv: Linearized forward + adjoint operator. 
    * 
-   * @param[in] x Point of evaluation
+   * The point of evaluation x_for_AGeople must be set correctly in the OptimProblem before calling this.
+   * 
    * @param[in] v Direction vector
    * @param[out] Av Resulting vector after applying the linearized forward and adjoint operators
    */
-  void evalGEOPEVec(const Vec x, const Vec v, Vec Av);
+  static void applyAGeope(Mat A, const Vec v, Vec Av);
 
   /**
    * @brief Runs the optimization solver.
