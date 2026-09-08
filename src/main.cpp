@@ -21,7 +21,7 @@
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define TEST_FD_LINEARIZED_FWD 0 // Run Finite Differences Linearized Forward test
-#define TEST_GEOPE_A 1
+#define TEST_GEOPE_A 0
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-5          // Epsilon for Finite Differences
 
@@ -231,6 +231,10 @@ int main(int argc,char **argv)
     // Write control pulses to file
     output->writeControls(xinit, mastereq, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize()); // Write the control pulses 
   } 
+
+  // Evals of A=L^*L
+  optimctx->computeGeopeEvals(xinit);
+
 
   /* --- Solve adjoint --- */
   if (config.getRuntype() == RunType::GRADIENT) {

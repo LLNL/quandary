@@ -654,6 +654,7 @@ void OptimProblem::evalLinearizedForward(const Vec x, const Vec v){
 }
 
 void OptimProblem::applyAGeope(Mat A, const Vec v, Vec Av){
+  printf("APPLYING A_GEOPE...\n");
 
   OptimProblem *self;
   MatShellGetContext(A, (void**)&self);
@@ -686,6 +687,42 @@ void OptimProblem::applyAGeope(Mat A, const Vec v, Vec Av){
   VecGetArray(Av, &Av_data);
   MPI_Allreduce(MPI_IN_PLACE, Av_data, self->ndesign, MPIU_SCALAR, MPI_SUM, self->comm_init);
   VecRestoreArray(Av, &Av_data);
+}
+
+
+std::vector<double> OptimProblem::computeGeopeEvals(Vec xinit){
+
+  // Pass xinit to the shell 
+  VecCopy(xinit, x_for_AGeope);
+
+  int neigvals = ndesign; // Number of evals requested
+  EPS eps;
+  EPSCreate(PETSC_COMM_SELF, &eps);
+  EPSSetOperators(eps, A_Geope, NULL);
+  EPSSetProblemType(eps, EPS_HEP); // Hermitian 
+  EPSSetTolerances(eps, 1e-3, 10);
+  EPSSetFromOptions(eps);
+  EPSSetDimensions(eps, neigvals, PETSC_DEFAULT, PETSC_DEFAULT);
+
+  EPSSolve(eps);
+  PetscInt numConv;
+  EPSGetConverged(eps, &numConv);
+  if (numConv < neigvals) {
+      printf("WARNING: Only %d eigenvalues converged out of %d requested.\n", numConv, neigvals);
+      // exit(1);
+  }
+
+  // Retrieve store the eigenvalues of M
+  std::vector<double> evals_re(ndesign);
+  for (PetscInt i = 0; i < numConv && i < ndesign; i++) {
+      EPSGetEigenvalue(eps, i, &evals_re[i], NULL);
+  }
+  printf("Here are the eigenvalues of A_Geope:\n");
+  for (int i=0; i<evals_re.size(); i++){
+    printf("%d: %1.14e\n", i, evals_re[i]);
+  }
+ 
+  return evals_re;
 }
 
 

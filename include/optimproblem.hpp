@@ -190,6 +190,14 @@ class OptimProblem {
   static void applyAGeope(Mat A, const Vec v, Vec Av);
 
   /**
+   * @brief Compute evals of Geope A=L^*L matrix
+   * 
+   * @param[in] xinit Point of evaluation
+   * @return Eigenvalues of A_Geope
+   */
+  std::vector<double> computeGeopeEvals(Vec xinit);
+
+  /**
    * @brief Runs the optimization solver.
    *
    * @param xinit Initial guess for design variables
