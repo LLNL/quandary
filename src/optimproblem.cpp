@@ -654,10 +654,10 @@ void OptimProblem::evalLinearizedForward(const Vec x, const Vec v){
 }
 
 void OptimProblem::applyAGeope(Mat A, const Vec v, Vec Av){
-  printf("APPLYING A_GEOPE...\n");
-
   OptimProblem *self;
   MatShellGetContext(A, (void**)&self);
+  if (self->mpirank_world == 0) printf("APPLYING A_GEOPE...\n");
+
   Vec x = self->x_for_AGeope;
 
   //  Reset output 
@@ -696,43 +696,59 @@ std::vector<double> OptimProblem::computeGeopeEvals(Vec xinit){
   VecCopy(xinit, x_for_AGeope);
 
   // Set the number of evals requested
-  int neigvals = ndesign; 
-  // int neigvals = 2*mastereq->getDim(); 
+  // int neigvals = ndesign; 
+  int neigvals = mastereq->getDim()*mastereq->getDim();  // N^2
 
   EPS eps;
   EPSCreate(PETSC_COMM_SELF, &eps);
   EPSSetOperators(eps, A_Geope, NULL);
   EPSSetProblemType(eps, EPS_HEP); // Hermitian 
+  EPSSetWhichEigenpairs(eps, EPS_LARGEST_REAL); // largest eigenvalues
+  // int ncv = 2*neigvals; // Dimension of the subspace (?): 2*nev is recommended by SLEPc documentation
+  // EPSSetDimensions(eps, neigvals, ncv, PETSC_DEFAULT);
+  EPSSetDimensions(eps, neigvals, PETSC_DEFAULT, PETSC_DEFAULT);
   EPSSetTolerances(eps, 1e-3, 10);
   EPSSetFromOptions(eps);
-  EPSSetDimensions(eps, neigvals, PETSC_DEFAULT, PETSC_DEFAULT);
 
   EPSSolve(eps);
   PetscInt numConv;
+  PetscInt iters_taken;
   EPSGetConverged(eps, &numConv);
-  if (numConv < neigvals) {
-      printf("WARNING: Only %d eigenvalues out of %d eigenvalues converged.\n", numConv, neigvals);
-      // exit(1);
-  }
-
-  PetscInt iters_taken = 0;
   EPSGetIterationNumber(eps,&iters_taken);
-
-  // Retrieve and store the eigenvalues of M
-  std::vector<double> evals_re(ndesign);
-  for (PetscInt i = 0; i < numConv && i < ndesign; i++) {
-
-      // Retrieve the eigenvalue (is real)
-      EPSGetEigenvalue(eps, i, &evals_re[i], NULL);
-
-      // Alternatively, retrieve the eigenpair (evals and evecs). 
-      // EPSGetEigenpair(eps,i,&evals_re[i], NULL, &evec_re[i], evec_im[i]);
-    
-      // Let EPS estimate the errror (needs one move application of A)
-      double error = 0.0;
-      // EPSComputeError(eps,i,EPS_ERROR_RELATIVE,&error);
-      printf("%d: eval = %1.14e, error=%1.4e\n", i, evals_re[i], error);
+  if (numConv < neigvals) {
+      if (mpirank_world==0) printf("WARNING: Only %d eigenvalues out of %d eigenvalues converged.\n", numConv, neigvals);
   }
+
+  // Set up storage for eigenvalues and eigenvectors (should be real!)
+  std::vector<double> evals_re(neigvals);
+  std::vector<Vec> evec_re(neigvals);
+  for (int ix = 0; ix < neigvals; ix++) {
+    MatCreateVecs(A_Geope, &evec_re[ix], NULL);
+  }
+
+  // Retrieve eigenpairs of M and compute error. 
+  for (PetscInt i = 0; i < numConv && i < neigvals; i++) {
+
+    // Retrieve the eigenvalue (is real) and eigenvector
+    EPSGetEigenpair(eps, i, &evals_re[i], NULL, evec_re[i], NULL);
+    // EPSGetEigenvalue(eps, i, &evals_re[i], NULL);
+
+    // Estimate the errror (needs one more application of A)
+    // double error = 0.0;
+    // EPSComputeError(eps,i,EPS_ERROR_RELATIVE,&error);
+    // if (error > 1e-12) {
+    //     if (mpirank_world==0) printf("WARNING: Relative error of eigenpair %d is large (error=%1.4e)\n", i, error);
+    // }
+  }
+
+  // Resize to the number of converged eigenvalues. 
+  evals_re.resize(std::min(numConv, neigvals));
+
+  // Cleanup
+  for (int ix = 0; ix < neigvals; ix++) {
+    VecDestroy(&evec_re[ix]);
+  }
+  EPSDestroy(&eps);
 
   return evals_re;
 }

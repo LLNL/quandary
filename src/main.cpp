@@ -233,7 +233,15 @@ int main(int argc,char **argv)
   } 
 
   // Evals of A=L^*L
-  optimctx->computeGeopeEvals(xinit);
+  optimctx->getStartingPoint(xinit);
+  VecCopy(xinit, optimctx->xinit); // Store the initial guess
+  std::vector<double> geope_evals = optimctx->computeGeopeEvals(xinit);
+  if (mpirank_world==0) {
+    printf("Geope eigenvalues:\n");
+    for (int i = 0; i < geope_evals.size(); i++) {
+      printf("%1.14e\n", geope_evals[i]);
+    }
+  }
 
 
   /* --- Solve adjoint --- */
