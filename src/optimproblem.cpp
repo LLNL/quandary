@@ -9,6 +9,7 @@ OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, Tim
   output = output_;
   quietmode = quietmode_;
   output_optimization_stride = config.getOutputOptimizationStride();
+  optim_solver_type = config.getOptimSolverType();
 
   /* Reset */
   objective = 0.0;
@@ -128,7 +129,7 @@ OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, Tim
   VecAssemblyBegin(xlower); VecAssemblyEnd(xlower);
   VecAssemblyBegin(xupper); VecAssemblyEnd(xupper);
 
-  /* Create Petsc's optimization solver */
+  /* Create TAO optimization solver */
   TaoCreate(PETSC_COMM_SELF, &tao);
   /* Set optimization type and parameters */
   TaoSetType(tao,TAOBQNLS);         // Optim type: taoblmvm vs BQNLS ??
@@ -152,6 +153,8 @@ OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, Tim
   VecCreateSeq(PETSC_COMM_SELF, ndesign, &xtmp);
   VecSetFromOptions(xtmp);
   VecZeroEntries(xtmp);
+  VecDuplicate(xinit, &x_GN);
+  VecZeroEntries(x_GN);
 
   /* Create MatShell for Gauss-Newton A=L^*L */
   MatCreateShell(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, this, &GaussNewtonMatShell);
@@ -179,7 +182,7 @@ OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, Tim
   EPSSetProblemType(eps_GN, EPS_HEP); // Hermitian 
   EPSSetWhichEigenpairs(eps_GN, EPS_LARGEST_REAL); // largest eigenvalues
   neigvals = mastereq->getDim()*mastereq->getDim() - 1; 
-  ncv = neigvals + 2; // Dimension
+  ncv = neigvals + 2; // Max Krylov dimension. How to set??
   EPSSetDimensions(eps_GN, neigvals, ncv, PETSC_DEFAULT);
   EPSSetTolerances(eps_GN, eps_tol, eps_maxiter);
   EPSSetFromOptions(eps_GN);
@@ -194,6 +197,7 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&xupper);
   VecDestroy(&xinit);
   VecDestroy(&xtmp);
+  VecDestroy(&x_GN);
 
   if (optim_penalty_riemannian > 0.0) {
     MatDestroy(&U_final_re);
@@ -874,8 +878,20 @@ std::vector<double> OptimProblem::computeGaussNewtonEvals(Vec xinit, Mat* evecs_
 
 
 void OptimProblem::solve(Vec xinit) {
-  TaoSetSolution(tao, xinit);
-  TaoSolve(tao);
+
+  switch (optim_solver_type) {
+    case OptimSolverType::TAO_LBFGS:
+      TaoSetSolution(tao, xinit);
+      TaoSolve(tao);
+      break;
+    case OptimSolverType::GAUSS_NEWTON: 
+      printf("Gauss-Newton solver not yet implemented.\n");
+
+      break;
+    default:
+      printf("Unsupported optimization solver type.\n");
+      break;
+  }
 }
 
 void OptimProblem::getStartingPoint(Vec xinit){
@@ -902,79 +918,60 @@ void OptimProblem::getStartingPoint(Vec xinit){
 }
 
 
-void OptimProblem::getSolution(Vec* param_ptr){
+void OptimProblem::getSolution(Vec* xopt){
   
   /* Get ref to optimized parameters */
-  Vec params;
-  TaoGetSolution(tao, &params);
-  *param_ptr = params;
+  if (optim_solver_type == OptimSolverType::TAO_LBFGS) {
+    Vec params;
+    TaoGetSolution(tao, &params);
+    *xopt = params;
+  } else if (optim_solver_type == OptimSolverType::GAUSS_NEWTON) {
+    *xopt = x_GN;
+  } else {
+    printf("Unsupported optimization solver type.\n");
+  }
 }
 
-PetscErrorCode TaoMonitor(Tao tao,void*ptr){
-  OptimProblem* ctx = (OptimProblem*) ptr;
+bool OptimProblem::monitor(int iter, double f, double gnorm, double deltax){
 
-  /* Get information from Tao optimization */
-  PetscInt iter;
-  PetscScalar deltax;
-  Vec params;
-  TaoConvergedReason reason;
-  PetscScalar f, gnorm;
-  TaoGetSolutionStatus(tao, &iter, &f, &gnorm, NULL, &deltax, &reason);
-  TaoGetSolution(tao, &params);
-
-  /* Grab some output stuff */
-  double obj_cost = ctx->getCostT();
-  double obj_riemann = ctx->getRiemannDistance();
-  double obj_regul = ctx->getRegul();
-  double obj_penal_leakage = ctx->getPenaltyLeakage();
-  double obj_penal_weightedcost = ctx->getPenaltyWeightedCost();
-  double obj_penal_dpdm = ctx->getPenaltyDpDm();
-  double obj_penal_energy = ctx->getPenaltyEnergy();
-  double obj_penal_variation= ctx->getPenaltyVariation();
-  double F_avg = ctx->getFidelity();
+  double F_avg = getFidelity();
 
   // Switch objective functions
   // if (1.0 - F_avg < 0.73) {
   // if (iter > 50) {
   //   printf("Switching to infidelity measure.\n");
-  //   ctx->setRiemannianDistance(false);
+  //   setRiemannianDistance(false);
   // }
 
   // // Freeze theta_avg if fidelity is sufficiently high
   // if (F_avg > 0.80) {
-  //   ctx->getOptimTarget()->freeze_theta_avg = true;
+  //   getOptimTarget()->freeze_theta_avg = true;
   // }
 
   /* Additional Stopping criteria */
-  bool lastIter = false;
   std::string finalReason_str = "";
-  if (1.0 - F_avg <= ctx->getTolInfidelity()) {
+  if (1.0 - F_avg <= getTolInfidelity()) {
     finalReason_str = "Optimization converged with small infidelity.";
-    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-    lastIter = true;
-  // } else if (obj_cost <= ctx->getTolFinalCost()) {
+  // } else if (obj_cost <= getTolFinalCost()) {
   //   finalReason_str = "Optimization converged with small final time cost.";
-  //   TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
-  //   lastIter = true;
-  } else if (iter == ctx->getMaxIter()) {
+  } else if (iter == getMaxIter()) {
     finalReason_str = "Optimization stopped at maximum number of iterations.";
-    lastIter = true;
-  } else if (gnorm < ctx->getTolGradAbs()) {
+  } else if (gnorm < getTolGradAbs()) {
     finalReason_str = "OPtimization converged with small gradient norm.";
-    lastIter=true;
   }
+  bool lastIter = (finalReason_str.length() > 0);
 
   /* First iteration: Header for screen output of optimization history */
-  if (iter == 0 && ctx->getMPIrank_world() == 0) {
+  if (iter == 0 && getMPIrank_world() == 0) {
     std::cout<<  "    Objective             Tikhonov               Penalty-Leakage        Penalty-StateVar       Penalty-TotalEnergy    Penalty-CtrlVar        Penalty-WeightedCost" << std::endl;
   }
 
   /* Every <output_optimization_stride> iterations: Output of optimization history */
-  if (iter % ctx->getOutputOptimizationStride() == 0 ||lastIter) {
+  if (iter % getOutputOptimizationStride() == 0 || lastIter) {
     // Add to optimization history file 
-    ctx->getOutput()->writeOptimFile(iter, f, gnorm, deltax, F_avg, obj_cost, obj_riemann, obj_regul, obj_penal_leakage, obj_penal_dpdm, obj_penal_energy, obj_penal_variation, obj_penal_weightedcost);
+    getOutput()->writeOptimFile(iter, f, gnorm, deltax, F_avg, obj_cost, obj_riemann, obj_regul, obj_penal_leakage, obj_penal_dpdm, obj_penal_energy, obj_penal_variation, obj_penal_weightedcost);
     // Screen output 
-    if (ctx->getMPIrank_world() == 0) {
+    if (getMPIrank_world() == 0) {
       std::cout<< iter <<  "  " << std::scientific<<std::setprecision(14) << obj_cost << " + " << obj_regul << " + " << obj_penal_leakage << " + " << obj_penal_dpdm << " + " << obj_penal_energy << " + " << obj_penal_variation << " + " << obj_penal_weightedcost << " + " << obj_riemann;
       std::cout<< "  Fidelity = " << F_avg;
       std::cout<< "  ||Grad|| = " << gnorm;
@@ -983,10 +980,27 @@ PetscErrorCode TaoMonitor(Tao tao,void*ptr){
   }
 
   /* Print last iteration stopping reason */
-  if (lastIter && ctx->getMPIrank_world() == 0) {
+  if (lastIter && getMPIrank_world() == 0) {
     std::cout<< finalReason_str << std::endl;
   }
 
+  return lastIter;
+}
+
+PetscErrorCode TaoMonitor(Tao tao,void*ptr){
+  OptimProblem* ctx = (OptimProblem*) ptr;
+
+  /* Get information from Tao optimization */
+  PetscInt iter;
+  PetscScalar deltax;
+  TaoConvergedReason reason;
+  PetscScalar f, gnorm;
+  TaoGetSolutionStatus(tao, &iter, &f, &gnorm, NULL, &deltax, &reason);
+
+  bool lastIter = ctx->monitor(iter, f, gnorm, deltax);
+  if (lastIter) {
+    TaoSetConvergedReason(tao, TAO_CONVERGED_USER);
+  }
 
   return 0;
 }

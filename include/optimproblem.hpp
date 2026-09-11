@@ -69,6 +69,7 @@ class OptimProblem {
 
   bool quietmode; ///< Flag for quiet mode operation
 
+  OptimSolverType optim_solver_type; ///< Type of optimization solver to use
   std::vector<double> obj_weights; ///< Weights for averaging objective over initial conditions
   int ndesign; ///< Number of global design (optimization) parameters
   double objective = 0.0; ///< Current objective function value (sum over final-time cost, regularization terms and penalty terms)
@@ -106,6 +107,7 @@ class OptimProblem {
   Mat GaussNewtonMatShell; ///< MatShell for applying Gauss-Newtonmatrix A=L^L to a vector
   Vec xeval_GN; ///< Point of evaluation for Gauss-Newtonapply A 
   int GN_MatVec_counter; ///< Counter for Gauss-Newton MatVec multiplications
+  Vec x_GN; ///< Current iterate for the GN optimization. Holds solution after finished. 
 
   // KSP linear solver
   KSP ksp_GN;  ///< Linear solver for Gauss-Newton system
@@ -257,6 +259,17 @@ class OptimProblem {
    * @param opt Pointer to vector to store the optimal solution
    */
   void getSolution(Vec* opt);
+
+  /**
+   * @brief Monitor function called in each optimization iteration.
+   * 
+   * @param iter Current iteration number
+   * @param f Current objective function value
+   * @param gnorm Current gradient norm
+   * @param deltax Current step size
+   * @return True if this stopping criterion is satisfied (if last iteration)
+   */
+  bool monitor(int iter, double f, double gnorm, double deltax);
 };
 
 /**

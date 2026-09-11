@@ -58,6 +58,7 @@ const double OPTIM_PENALTY_ENERGY = 0.0; ///< Default energy penalty coefficient
 const double OPTIM_PENALTY_VARIATION = 0.01; ///< Default amplitude variation penalty coefficient
 const double OPTIM_PENALTY_RIEMANNIAN = 0.0; ///< Default Riemannian distance penalty coefficient
 const bool OPTIM_PENALTY_RIEMANNIAN_PHASEFREE = false; ///< Default switch to use phase-free Riemannian distance measure
+const OptimSolverType OPTIM_SOLVER_TYPE = OptimSolverType::TAO_LBFGS; ///< Default optimization solver type
 
 inline const std::string OUTPUT_DIRECTORY = "./data_out"; ///< Default output directory
 

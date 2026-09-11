@@ -107,6 +107,7 @@ class Config {
   double optim_penalty_variation; ///< Amplitude variation penalty coefficient
   double optim_penalty_riemannian; ///< Riemannian distance penalty coefficient
   bool optim_penalty_riemannian_phasefree; ///< Switch to use phase-free Riemannian distance measure
+  OptimSolverType optim_solver_type; ///< Type of optimization solver to use
 
   // Output and runtypes
   std::string output_directory; ///< Directory for output files
@@ -184,6 +185,7 @@ class Config {
   double getOptimPenaltyVariation() const { return optim_penalty_variation; }
   double getOptimPenaltyRiemannian() const { return optim_penalty_riemannian; }
   bool getOptimPenaltyRiemannianPhaseFree() const { return optim_penalty_riemannian_phasefree; }
+  OptimSolverType getOptimSolverType() const { return optim_solver_type; }
 
   const std::string& getOutputDirectory() const { return output_directory; }
   const std::vector<OutputType>& getOutputObservables() const { return output_observables; }

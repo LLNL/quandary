@@ -43,6 +43,19 @@ const std::map<std::string, DecoherenceType> DECOHERENCE_TYPE_MAP = {
 };
 
 /**
+ * @brief Available types for optimization solver.
+ */
+enum class OptimSolverType {
+  TAO_LBFGS, ///< TAO Limited-memory BFGS optimization solver
+  GAUSS_NEWTON ///< Gauss-Newton optimization solver
+};
+
+const std::map<std::string, OptimSolverType> OPTIM_SOLVER_TYPE_MAP = {
+    {"tao_lbfgs", OptimSolverType::TAO_LBFGS},
+    {"gauss_newton", OptimSolverType::GAUSS_NEWTON}
+};
+
+/**
  * @brief Available types of initial conditions that are propagated through the quantum dynamics.
  *
  * Defines how the initial quantum state is specified and prepared

@@ -306,6 +306,9 @@ Config::Config(const MPILogger& logger, const toml::table& toml) : logger(logger
       optim_penalty_riemannian_phasefree = validators::field<bool>(*penalty_table, "riemannian_phasefree").valueOr(ConfigDefaults::OPTIM_PENALTY_RIEMANNIAN_PHASEFREE);
     }
 
+    // Parse optimization solver type
+    optim_solver_type = parseEnum(optimization_table["solver_type"].value<std::string>(), OPTIM_SOLVER_TYPE_MAP, ConfigDefaults::OPTIM_SOLVER_TYPE);
+
     // Parse output options from [output] table
     output_directory = output_table["directory"].value_or(ConfigDefaults::OUTPUT_DIRECTORY);
 
@@ -685,6 +688,7 @@ void Config::printConfig(std::stringstream& log) const {
       << ", riemannian = " << optim_penalty_riemannian
       << ", riemannian_phasefree = " << (optim_penalty_riemannian_phasefree ? "true" : "false")
       << " }\n";
+  log << "solver_type = \"" << enumToString(optim_solver_type, OPTIM_SOLVER_TYPE_MAP) << "\"\n";
 
   log << "\n";
   log << "[output]\n";
