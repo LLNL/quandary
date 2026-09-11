@@ -21,7 +21,7 @@
 #define TEST_FD_GRAD 0    // Run Finite Differences gradient test
 #define TEST_FD_HESS 0    // Run Finite Differences Hessian test
 #define TEST_FD_LINEARIZED_FWD 0 // Run Finite Differences Linearized Forward test
-#define TEST_GEOPE_A 0
+#define TEST_GAUSSNEWTON 0
 #define HESSIAN_DECOMPOSITION 0 // Run eigenvalue analysis for Hessian
 #define EPS 1e-5          // Epsilon for Finite Differences
 
@@ -230,17 +230,6 @@ int main(int argc,char **argv)
     // Write control pulses to file
     output->writeControls(xinit, mastereq, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize()); // Write the control pulses 
   } 
-
-  // Evals of A=L^*L
-  optimctx->getStartingPoint(xinit);
-  std::vector<double> geope_evals = optimctx->computeGeopeEvals(xinit);
-  if (mpirank_world==0) {
-    printf("Geope eigenvalues:\n");
-    for (int i = 0; i < geope_evals.size(); i++) {
-      printf("%1.14e\n", geope_evals[i]);
-    }
-  }
-
 
   /* --- Solve adjoint --- */
   if (config.getRuntype() == RunType::GRADIENT) {
@@ -524,8 +513,8 @@ int main(int argc,char **argv)
 
 #endif
 
-#if TEST_GEOPE_A
-  /*  ---- TEST: Evaluate GEOPE matrix columns ---- */
+#if TEST_GAUSSNEWTON
+  /*  ---- TEST: Evaluate GaussNewton matrix columns ---- */
   optimctx->getStartingPoint(xinit);
   output->writeControlParams(xinit); // Write params to file
 
@@ -565,8 +554,8 @@ int main(int argc,char **argv)
     VecAssemblyBegin(v); VecAssemblyEnd(v);
 
     // Evaluate Av
-    VecCopy(xinit, optimctx->x_for_AGeope);
-    MatMult(optimctx->A_Geope, v, Av);
+    VecCopy(xinit, optimctx->x_for_GN);
+    MatMult(optimctx->GaussNewton, v, Av);
     
     // Store Av in k-th column of A 
     const PetscScalar *Av_ptr;

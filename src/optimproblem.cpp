@@ -153,12 +153,12 @@ OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, Tim
   VecSetFromOptions(xtmp);
   VecZeroEntries(xtmp);
 
-  /* Create Geope MatShell for A=L^*L */
-  MatCreateShell(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, this, &A_Geope);
-  MatShellSetOperation(A_Geope, MATOP_MULT, (void(*) (void)) applyAGeope);
-  VecDuplicate(xinit, &x_for_AGeope);
-  VecZeroEntries(x_for_AGeope);
-  VecAssemblyBegin(x_for_AGeope); VecAssemblyEnd(x_for_AGeope);
+  /* Create MatShell for Gauss-Newton A=L^*L */
+  MatCreateShell(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, this, &GaussNewton);
+  MatShellSetOperation(GaussNewton, MATOP_MULT, (void(*) (void)) applyGaussNewton);
+  VecDuplicate(xinit, &x_for_GN);
+  VecZeroEntries(x_for_GN);
+  VecAssemblyBegin(x_for_GN); VecAssemblyEnd(x_for_GN);
 
 }
 
@@ -178,8 +178,8 @@ OptimProblem::~OptimProblem() {
     MatDestroy(&U_final_re_bar);
     MatDestroy(&U_final_im_bar);
   }
-  MatDestroy(&A_Geope);
-  VecDestroy(&x_for_AGeope);
+  MatDestroy(&GaussNewton);
+  VecDestroy(&x_for_GN);
 
   TaoDestroy(&tao);
 }
@@ -653,12 +653,12 @@ void OptimProblem::evalLinearizedForward(const Vec x, const Vec v){
   }
 }
 
-void OptimProblem::applyAGeope(Mat A, const Vec v, Vec Av){
+void OptimProblem::applyGaussNewton(Mat A, const Vec v, Vec Av){
   OptimProblem *self;
   MatShellGetContext(A, (void**)&self);
-  if (self->mpirank_world == 0) printf("APPLYING A_GEOPE...\n");
+  if (self->mpirank_world == 0) printf("APPLYING GAUSS-NEWTON...\n");
 
-  Vec x = self->x_for_AGeope;
+  Vec x = self->x_for_GN;
 
   //  Reset output 
   VecZeroEntries(Av);
@@ -690,10 +690,10 @@ void OptimProblem::applyAGeope(Mat A, const Vec v, Vec Av){
 }
 
 
-std::vector<double> OptimProblem::computeGeopeEvals(Vec xinit){
+std::vector<double> OptimProblem::computeGaussNewtonEvals(Vec xinit){
 
   // Store xinit so the MatShell can use it as point of evaluation.
-  VecCopy(xinit, x_for_AGeope);
+  VecCopy(xinit, x_for_GN);
 
   // Set the number of evals requested
   // int neigvals = ndesign; 
@@ -701,7 +701,7 @@ std::vector<double> OptimProblem::computeGeopeEvals(Vec xinit){
 
   EPS eps;
   EPSCreate(PETSC_COMM_SELF, &eps);
-  EPSSetOperators(eps, A_Geope, NULL);
+  EPSSetOperators(eps, GaussNewton, NULL);
   EPSSetProblemType(eps, EPS_HEP); // Hermitian 
   EPSSetWhichEigenpairs(eps, EPS_LARGEST_REAL); // largest eigenvalues
   // int ncv = 2*neigvals; // Dimension of the subspace (?): 2*nev is recommended by SLEPc documentation
@@ -723,7 +723,7 @@ std::vector<double> OptimProblem::computeGeopeEvals(Vec xinit){
   std::vector<double> evals_re(neigvals);
   std::vector<Vec> evec_re(neigvals);
   for (int ix = 0; ix < neigvals; ix++) {
-    MatCreateVecs(A_Geope, &evec_re[ix], NULL);
+    MatCreateVecs(GaussNewton, &evec_re[ix], NULL);
   }
 
   // Retrieve eigenpairs of M and compute error. 

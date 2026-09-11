@@ -108,8 +108,8 @@ class OptimProblem {
     Vec xprev; ///< Design vector at previous iteration
     Vec xinit; ///< Initial design vector
 
-    Mat A_Geope; ///< MatShell for applying GEOPE matrix A=L^L to a vector
-    Vec x_for_AGeope; ///< Point of evaluation for GEOPE apply A 
+    Mat GaussNewton; ///< MatShell for applying Gauss-Newtonmatrix A=L^L to a vector
+    Vec x_for_GN; ///< Point of evaluation for Gauss-Newtonapply A 
 
   /**
    * @brief Constructor for optimization problem.
@@ -180,22 +180,22 @@ class OptimProblem {
   void evalLinearizedForward(const Vec x, const Vec v);
 
   /**
-   * @brief MatMult operation for MatShell GEOPE Av = L*Lv: Linearized forward + adjoint operator. 
+   * @brief MatMult operation for MatShell Gauss-Newton Av = L*Lv: Linearized forward + adjoint operator. 
    * 
-   * The point of evaluation x_for_AGeople must be set correctly in the OptimProblem before calling this.
+   * The point of evaluation x_for_GN must be set correctly in the OptimProblem before calling this.
    * 
    * @param[in] v Direction vector
    * @param[out] Av Resulting vector after applying the linearized forward and adjoint operators
    */
-  static void applyAGeope(Mat A, const Vec v, Vec Av);
+  static void applyGaussNewton(Mat A, const Vec v, Vec Av);
 
   /**
-   * @brief Compute evals of Geope A=L^*L matrix
+   * @brief Compute evals of Gauss-Newton A=L^*L matrix
    * 
    * @param[in] xinit Point of evaluation
-   * @return Eigenvalues of A_Geope
+   * @return Eigenvalues of Gauss-Newton matrix
    */
-  std::vector<double> computeGeopeEvals(Vec xinit);
+  std::vector<double> computeGaussNewtonEvals(Vec xinit);
 
   /**
    * @brief Runs the optimization solver.
