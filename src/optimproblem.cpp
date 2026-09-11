@@ -154,15 +154,15 @@ OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, Tim
   VecZeroEntries(xtmp);
 
   /* Create MatShell for Gauss-Newton A=L^*L */
-  MatCreateShell(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, this, &GaussNewton);
-  MatShellSetOperation(GaussNewton, MATOP_MULT, (void(*) (void)) applyGaussNewtonMat);
+  MatCreateShell(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, this, &GaussNewtonMatShell);
+  MatShellSetOperation(GaussNewtonMatShell, MATOP_MULT, (void(*) (void)) applyGaussNewtonMatShell);
   VecDuplicate(xinit, &xeval_GN);
   VecZeroEntries(xeval_GN);
   VecAssemblyBegin(xeval_GN); VecAssemblyEnd(xeval_GN);
 
   /* Create linear solver for solving Gauss-Newton Ax=b */
   KSPCreate(PETSC_COMM_SELF, &ksp_GN);
-  KSPSetOperators(ksp_GN, GaussNewton, GaussNewton);
+  KSPSetOperators(ksp_GN, GaussNewtonMatShell, GaussNewtonMatShell);
   KSPSetType(ksp_GN, KSPCG);  // CG method
   // KSPSetType(ksp_GN, KSPMINRES);  // MINRES method
   KSPSetInitialGuessNonzero(ksp_GN, PETSC_FALSE);
@@ -175,11 +175,11 @@ OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, Tim
 
   /* Create eigenvalues solver for Gauss-Newton Ax=b */
   EPSCreate(PETSC_COMM_SELF, &eps_GN);
-  EPSSetOperators(eps_GN, GaussNewton, NULL);
+  EPSSetOperators(eps_GN, GaussNewtonMatShell, NULL);
   EPSSetProblemType(eps_GN, EPS_HEP); // Hermitian 
   EPSSetWhichEigenpairs(eps_GN, EPS_LARGEST_REAL); // largest eigenvalues
   neigvals = mastereq->getDim()*mastereq->getDim() - 1; 
-  ncv = neigvals + 1; // Dimension
+  ncv = neigvals + 2; // Dimension
   EPSSetDimensions(eps_GN, neigvals, ncv, PETSC_DEFAULT);
   EPSSetTolerances(eps_GN, eps_tol, eps_maxiter);
   EPSSetFromOptions(eps_GN);
@@ -201,7 +201,7 @@ OptimProblem::~OptimProblem() {
     MatDestroy(&U_final_re_bar);
     MatDestroy(&U_final_im_bar);
   }
-  MatDestroy(&GaussNewton);
+  MatDestroy(&GaussNewtonMatShell);
   VecDestroy(&xeval_GN);
   KSPDestroy(&ksp_GN);
   EPSDestroy(&eps_GN);
@@ -677,7 +677,7 @@ void OptimProblem::evalLinearizedForward(const Vec x, const Vec v){
   }
 }
 
-void OptimProblem::applyGaussNewtonMat(Mat A, const Vec v, Vec Av){
+void OptimProblem::applyGaussNewtonMatShell(Mat A, const Vec v, Vec Av){
   OptimProblem *self;
   MatShellGetContext(A, (void**)&self);
   // if (self->mpirank_world == 0) printf("APPLYING GAUSS-NEWTON...\n");
@@ -723,7 +723,7 @@ void OptimProblem::solveGaussNewtonKSP(Vec xinit, const Vec b, Vec Ainv_b){
   VecCopy(xinit, xeval_GN);
 
   // Set the matrix again, just in case, for reset. 
-  KSPSetOperators(ksp_GN, GaussNewton, GaussNewton);
+  KSPSetOperators(ksp_GN, GaussNewtonMatShell, GaussNewtonMatShell);
 
   // Set zero initial guess
   VecZeroEntries(Ainv_b);
@@ -733,14 +733,14 @@ void OptimProblem::solveGaussNewtonKSP(Vec xinit, const Vec b, Vec Ainv_b){
   KSPMonitorSet(ksp_GN, KSPMonitorResidualAndSolution, (void*)this, NULL);
 
   // Optional Levenberg-Marquardt damping: A += mu I
-  if (ksp_damping > 0.0) MatShift(GaussNewton, ksp_damping);
+  if (ksp_damping > 0.0) MatShift(GaussNewtonMatShell, ksp_damping);
 
   // Solve the linear system L^*L x = b
   GN_MatVec_counter = 0;
   KSPSolve(ksp_GN, b, Ainv_b);
 
   // Revert the optional scaling
-  if (ksp_damping > 0.0) MatShift(GaussNewton, -ksp_damping);
+  if (ksp_damping > 0.0) MatShift(GaussNewtonMatShell, -ksp_damping);
 
   // Report convergence
   KSPConvergedReason reason;
@@ -828,7 +828,7 @@ std::vector<double> OptimProblem::computeGaussNewtonEvals(Vec xinit, Mat* evecs_
   std::vector<double> evals_re(neigvals);
   std::vector<Vec> evec_re(neigvals);
   for (int ix = 0; ix < neigvals; ix++) {
-    MatCreateVecs(GaussNewton, &evec_re[ix], NULL);
+    MatCreateVecs(GaussNewtonMatShell, &evec_re[ix], NULL);
   }
 
   // Retrieve eigenpairs of M and compute error. 

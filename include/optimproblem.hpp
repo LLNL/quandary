@@ -103,7 +103,7 @@ class OptimProblem {
   Output* output; ///< Pointer to output handler
   MasterEq* mastereq; ///< Pointer to master equation solver
 
-  Mat GaussNewton; ///< MatShell for applying Gauss-Newtonmatrix A=L^L to a vector
+  Mat GaussNewtonMatShell; ///< MatShell for applying Gauss-Newtonmatrix A=L^L to a vector
   Vec xeval_GN; ///< Point of evaluation for Gauss-Newtonapply A 
   int GN_MatVec_counter; ///< Counter for Gauss-Newton MatVec multiplications
 
@@ -119,7 +119,7 @@ class OptimProblem {
   PetscInt eps_maxiter = 10; ///< Maximum number of iterations for EPS eigenvalue solver
   double evals_cutoff = 1e-5; ///< Cutoff for eigenvalues of the Gauss-Newton matrix
   int neigvals; ///< Number of eigenvalues to compute (=N^2-1)
-  int ncv; ///< Number of Lanczos vectors to use in EPS solver. Currently = neigvals + 1. HOW TO CHOOSE?? 
+  int ncv; ///< Number of Lanczos vectors to use in EPS solver. Currently = neigvals + 2. HOW TO CHOOSE?? 
 
   public: 
     Vec xlower, xupper; ///< Lower and upper bounds for optimization variables
@@ -160,7 +160,7 @@ class OptimProblem {
   int getMPIrank_world() { return mpirank_world;};
   int getMaxIter()     { return maxiter; };
   OptimTarget* getOptimTarget() { return optim_target; };
-  Mat getGaussNewtonMatShell() { return GaussNewton; };
+  Mat getGaussNewtonMatShell() { return GaussNewtonMatShell; };
 
   int getOutputOptimizationStride() { return output_optimization_stride; };
   Output* getOutput() { return output; };
@@ -204,7 +204,7 @@ class OptimProblem {
    * @param[in] v Direction vector
    * @param[out] Av Resulting vector after applying the linearized forward and adjoint operators
    */
-  static void applyGaussNewtonMat(Mat A, const Vec v, Vec Av);
+  static void applyGaussNewtonMatShell(Mat A, const Vec v, Vec Av);
 
   /**
    * @brief Solves the Gauss-Newton linear system A(x) v = b for v using CG iterations
