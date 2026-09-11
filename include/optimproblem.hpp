@@ -105,6 +105,7 @@ class OptimProblem {
 
   Mat GaussNewton; ///< MatShell for applying Gauss-Newtonmatrix A=L^L to a vector
   Vec xeval_GN; ///< Point of evaluation for Gauss-Newtonapply A 
+  int GN_MatVec_counter; ///< Counter for Gauss-Newton MatVec multiplications
 
   // KSP linear solver
   KSP ksp_GN;  ///< Linear solver for Gauss-Newton system
@@ -114,10 +115,11 @@ class OptimProblem {
 
   // EPS eigenvalue solver
   EPS eps_GN;
-  PetscReal eps_tol = 1e-3; ///< Tolerance for EPS eigenvalue solver
+  PetscReal eps_tol = 1e-2; ///< Tolerance for EPS eigenvalue solver
   PetscInt eps_maxiter = 10; ///< Maximum number of iterations for EPS eigenvalue solver
-  double evals_cutoff = 1e-8; ///< Cutoff for eigenvalues of the Gauss-Newton matrix
-  int neigvals; ///< Number of eigenvalues to compute for the Gauss-Newton matrix
+  double evals_cutoff = 1e-5; ///< Cutoff for eigenvalues of the Gauss-Newton matrix
+  int neigvals; ///< Number of eigenvalues to compute (=N^2-1)
+  int ncv; ///< Number of Lanczos vectors to use in EPS solver. Currently = neigvals + 1. HOW TO CHOOSE?? 
 
   public: 
     Vec xlower, xupper; ///< Lower and upper bounds for optimization variables

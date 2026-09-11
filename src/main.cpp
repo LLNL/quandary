@@ -261,15 +261,21 @@ int main(int argc,char **argv)
       VecDuplicate(grad, &diff);
       VecCopy(v_KSP, diff);
       VecAXPY(diff, -1.0, v_EPS);
-      VecNorm(diff, NORM_2, &gnorm);
-      printf("\n Difference norm between KSP and EPS solutions: %1.14e\n", gnorm);
+      double diff_norm;
+      VecNorm(diff, NORM_2, &diff_norm);
+      double vnorm;
+      VecNorm(v_KSP, NORM_2, &vnorm);
+      printf("\n Relative difference norm between KSP and EPS solutions: %1.14e (absolute: %1.14e)\n", diff_norm/vnorm, diff_norm);
       VecDestroy(&diff);
     }
     
     // Check if v_KSP is a descent direction
-    VecDot(grad, v_KSP, &gnorm);
+    double dot_ksp, dot_eps;
+    VecDot(grad, v_KSP, &dot_ksp);
+    VecDot(grad, v_EPS, &dot_eps);
     if (mpirank_world == 0 && !quietmode) {
-      printf(" Dot product of gradient and KSP solution (should be negative for descent): %1.14e\n", gnorm);
+      printf(" Dot product of gradient and KSP solution (should be negative for descent): %1.14e\n", dot_ksp);
+      printf(" Dot product of gradient and EPS solution (should be negative for descent): %1.14e\n", dot_eps);
     }
 
     VecDestroy(&v_KSP);

@@ -179,7 +179,8 @@ OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, Tim
   EPSSetProblemType(eps_GN, EPS_HEP); // Hermitian 
   EPSSetWhichEigenpairs(eps_GN, EPS_LARGEST_REAL); // largest eigenvalues
   neigvals = mastereq->getDim()*mastereq->getDim() - 1; 
-  EPSSetDimensions(eps_GN, neigvals, PETSC_DEFAULT, PETSC_DEFAULT);
+  ncv = neigvals + 1; // Dimension
+  EPSSetDimensions(eps_GN, neigvals, ncv, PETSC_DEFAULT);
   EPSSetTolerances(eps_GN, eps_tol, eps_maxiter);
   EPSSetFromOptions(eps_GN);
 }
@@ -680,6 +681,7 @@ void OptimProblem::applyGaussNewtonMat(Mat A, const Vec v, Vec Av){
   OptimProblem *self;
   MatShellGetContext(A, (void**)&self);
   // if (self->mpirank_world == 0) printf("APPLYING GAUSS-NEWTON...\n");
+  self->GN_MatVec_counter++;
 
   // Grab the point of evaluation from the shell
   Vec x = self->xeval_GN;
@@ -720,6 +722,9 @@ void OptimProblem::solveGaussNewtonKSP(Vec xinit, const Vec b, Vec Ainv_b){
   // Store the point of evaluation for the Gauss-Newton matrix shell A(xinit)
   VecCopy(xinit, xeval_GN);
 
+  // Set the matrix again, just in case, for reset. 
+  KSPSetOperators(ksp_GN, GaussNewton, GaussNewton);
+
   // Set zero initial guess
   VecZeroEntries(Ainv_b);
 
@@ -731,6 +736,7 @@ void OptimProblem::solveGaussNewtonKSP(Vec xinit, const Vec b, Vec Ainv_b){
   if (ksp_damping > 0.0) MatShift(GaussNewton, ksp_damping);
 
   // Solve the linear system L^*L x = b
+  GN_MatVec_counter = 0;
   KSPSolve(ksp_GN, b, Ainv_b);
 
   // Revert the optional scaling
@@ -744,7 +750,7 @@ void OptimProblem::solveGaussNewtonKSP(Vec xinit, const Vec b, Vec Ainv_b){
   KSPGetIterationNumber(ksp_GN, &iters);
   KSPGetResidualNorm(ksp_GN, &rnorm);
   if (mpirank_world == 0) {
-    printf("Gauss-Newton CG stats: iterations = %d, residual norm = %1.14e\n", iters, rnorm);
+    printf("Gauss-Newton CG stats: iterations = %d, MatVec counter = %d, residual norm = %1.14e\n", iters, GN_MatVec_counter, rnorm);
   }
 }
 
@@ -804,13 +810,16 @@ std::vector<double> OptimProblem::computeGaussNewtonEvals(Vec xinit, Mat* evecs_
   // Store xinit so the MatShell can use it as point of evaluation.
   VecCopy(xinit, xeval_GN);
 
+  // CAREFUL: EPS solver might need a reset if called multiple times!?
+
   // Solve the eigenvalue problem for the Gauss-Newton matrix
+  GN_MatVec_counter = 0;
   EPSSolve(eps_GN);
   PetscInt numConv;
   PetscInt iters_taken;
   EPSGetConverged(eps_GN, &numConv);
   EPSGetIterationNumber(eps_GN,&iters_taken);
-  if (mpirank_world == 0) printf("Gauss-Newton EPS converged %d eigenvalues in %d iterations.\n", numConv, iters_taken);
+  if (mpirank_world == 0) printf("Gauss-Newton EPS converged %d eigenvalues in %d iterations. MatVec counter = %d\n", numConv, iters_taken, GN_MatVec_counter);
   if (numConv < neigvals) {
       if (mpirank_world==0) printf("WARNING: Only %d eigenvalues out of %d eigenvalues converged.\n", numConv, neigvals);
   }
