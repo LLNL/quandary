@@ -219,7 +219,6 @@ int main(int argc,char **argv)
   /* --- Solve primal --- */
   if (config.getRuntype() == RunType::SIMULATION) {
     optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
     output->writeControlParams(xinit); // Write params to file
 
     if (mpirank_world == 0 && !quietmode) printf("\nStarting primal solver... \n");
@@ -234,7 +233,6 @@ int main(int argc,char **argv)
 
   // Evals of A=L^*L
   optimctx->getStartingPoint(xinit);
-  VecCopy(xinit, optimctx->xinit); // Store the initial guess
   std::vector<double> geope_evals = optimctx->computeGeopeEvals(xinit);
   if (mpirank_world==0) {
     printf("Geope eigenvalues:\n");
@@ -247,7 +245,6 @@ int main(int argc,char **argv)
   /* --- Solve adjoint --- */
   if (config.getRuntype() == RunType::GRADIENT) {
     optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
     output->writeControlParams(xinit); // Write params to file
 
     if (mpirank_world == 0 && !quietmode) printf("\nStarting adjoint solver...\n");
@@ -268,7 +265,6 @@ int main(int argc,char **argv)
   if (config.getRuntype() == RunType::OPTIMIZATION) {
     /* Set initial starting point */
     optimctx->getStartingPoint(xinit);
-    VecCopy(xinit, optimctx->xinit); // Store the initial guess
     output->writeControlParams(xinit); // Write params to file
 
     if (mpirank_world == 0 && !quietmode) printf("\nStarting Optimization solver ... \n");
@@ -531,7 +527,6 @@ int main(int argc,char **argv)
 #if TEST_GEOPE_A
   /*  ---- TEST: Evaluate GEOPE matrix columns ---- */
   optimctx->getStartingPoint(xinit);
-  VecCopy(xinit, optimctx->xinit); // Store the initial guess
   output->writeControlParams(xinit); // Write params to file
 
   Vec v, Av;

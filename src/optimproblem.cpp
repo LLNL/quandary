@@ -777,6 +777,9 @@ void OptimProblem::getStartingPoint(Vec xinit){
 
   /* Pass to oscillator */
   mastereq->setControlAmplitudes(xinit);
+
+  // Store it in the optimProblem
+  VecCopy(xinit, this->xinit);
 }
 
 
