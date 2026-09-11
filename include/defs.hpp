@@ -130,6 +130,7 @@ enum class RunType {
   GRADIENT,     ///< Runs a simulation followed by the adjoint for gradient computation (forward & backward)
   OPTIMIZATION, ///< Runs optimization iterations
   EVALCONTROLS, ///< Only evaluates the current control pulses (no simulation)
+  GAUSSNEWTON_LS, ///< Solves the Gauss-Newton linear system
   NONE          ///< Don't run anything
 };
 
@@ -138,6 +139,7 @@ const std::map<std::string, RunType> RUN_TYPE_MAP = {
     {"gradient", RunType::GRADIENT},
     {"optimization", RunType::OPTIMIZATION},
     {"evalcontrols", RunType::EVALCONTROLS},
+    {"gaussnewton_ls", RunType::GAUSSNEWTON_LS},
     {"none", RunType::NONE}
 };
 

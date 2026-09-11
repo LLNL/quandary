@@ -155,11 +155,33 @@ OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, Tim
 
   /* Create MatShell for Gauss-Newton A=L^*L */
   MatCreateShell(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, this, &GaussNewton);
-  MatShellSetOperation(GaussNewton, MATOP_MULT, (void(*) (void)) applyGaussNewton);
-  VecDuplicate(xinit, &x_for_GN);
-  VecZeroEntries(x_for_GN);
-  VecAssemblyBegin(x_for_GN); VecAssemblyEnd(x_for_GN);
+  MatShellSetOperation(GaussNewton, MATOP_MULT, (void(*) (void)) applyGaussNewtonMat);
+  VecDuplicate(xinit, &xeval_GN);
+  VecZeroEntries(xeval_GN);
+  VecAssemblyBegin(xeval_GN); VecAssemblyEnd(xeval_GN);
 
+  /* Create linear solver for solving Gauss-Newton Ax=b */
+  KSPCreate(PETSC_COMM_SELF, &ksp_GN);
+  KSPSetOperators(ksp_GN, GaussNewton, GaussNewton);
+  KSPSetType(ksp_GN, KSPCG);  // CG method
+  // KSPSetType(ksp_GN, KSPMINRES);  // MINRES method
+  KSPSetInitialGuessNonzero(ksp_GN, PETSC_FALSE);
+  KSPSetFromOptions(ksp_GN);
+  PC  pc;
+  KSPGetPC(ksp_GN, &pc);
+  PCSetType(pc, PCNONE); // Disable preconditioner
+  KSPSetNormType(ksp_GN, KSP_NORM_UNPRECONDITIONED); // Unconditioned ressidual norm
+  KSPSetTolerances(ksp_GN,ksp_rtol,PETSC_DEFAULT,PETSC_DEFAULT,ksp_maxit);
+
+  /* Create eigenvalues solver for Gauss-Newton Ax=b */
+  EPSCreate(PETSC_COMM_SELF, &eps_GN);
+  EPSSetOperators(eps_GN, GaussNewton, NULL);
+  EPSSetProblemType(eps_GN, EPS_HEP); // Hermitian 
+  EPSSetWhichEigenpairs(eps_GN, EPS_LARGEST_REAL); // largest eigenvalues
+  neigvals = mastereq->getDim()*mastereq->getDim() - 1; 
+  EPSSetDimensions(eps_GN, neigvals, PETSC_DEFAULT, PETSC_DEFAULT);
+  EPSSetTolerances(eps_GN, eps_tol, eps_maxiter);
+  EPSSetFromOptions(eps_GN);
 }
 
 
@@ -179,8 +201,9 @@ OptimProblem::~OptimProblem() {
     MatDestroy(&U_final_im_bar);
   }
   MatDestroy(&GaussNewton);
-  VecDestroy(&x_for_GN);
-
+  VecDestroy(&xeval_GN);
+  KSPDestroy(&ksp_GN);
+  EPSDestroy(&eps_GN);
   TaoDestroy(&tao);
 }
 
@@ -653,12 +676,13 @@ void OptimProblem::evalLinearizedForward(const Vec x, const Vec v){
   }
 }
 
-void OptimProblem::applyGaussNewton(Mat A, const Vec v, Vec Av){
+void OptimProblem::applyGaussNewtonMat(Mat A, const Vec v, Vec Av){
   OptimProblem *self;
   MatShellGetContext(A, (void**)&self);
-  if (self->mpirank_world == 0) printf("APPLYING GAUSS-NEWTON...\n");
+  // if (self->mpirank_world == 0) printf("APPLYING GAUSS-NEWTON...\n");
 
-  Vec x = self->x_for_GN;
+  // Grab the point of evaluation from the shell
+  Vec x = self->xeval_GN;
 
   //  Reset output 
   VecZeroEntries(Av);
@@ -687,34 +711,106 @@ void OptimProblem::applyGaussNewton(Mat A, const Vec v, Vec Av){
   VecGetArray(Av, &Av_data);
   MPI_Allreduce(MPI_IN_PLACE, Av_data, self->ndesign, MPIU_SCALAR, MPI_SUM, self->comm_init);
   VecRestoreArray(Av, &Av_data);
+
 }
 
 
-std::vector<double> OptimProblem::computeGaussNewtonEvals(Vec xinit){
+void OptimProblem::solveGaussNewtonKSP(Vec xinit, const Vec b, Vec Ainv_b){
+
+  // Store the point of evaluation for the Gauss-Newton matrix shell A(xinit)
+  VecCopy(xinit, xeval_GN);
+
+  // Set zero initial guess
+  VecZeroEntries(Ainv_b);
+
+  // Monitor residual and solution norm at every iteration
+  KSPMonitorCancel(ksp_GN);
+  KSPMonitorSet(ksp_GN, KSPMonitorResidualAndSolution, (void*)this, NULL);
+
+  // Optional Levenberg-Marquardt damping: A += mu I
+  if (ksp_damping > 0.0) MatShift(GaussNewton, ksp_damping);
+
+  // Solve the linear system L^*L x = b
+  KSPSolve(ksp_GN, b, Ainv_b);
+
+  // Revert the optional scaling
+  if (ksp_damping > 0.0) MatShift(GaussNewton, -ksp_damping);
+
+  // Report convergence
+  KSPConvergedReason reason;
+  int iters;
+  double rnorm;
+  KSPGetConvergedReason(ksp_GN, &reason);
+  KSPGetIterationNumber(ksp_GN, &iters);
+  KSPGetResidualNorm(ksp_GN, &rnorm);
+  if (mpirank_world == 0) {
+    printf("Gauss-Newton CG stats: iterations = %d, residual norm = %1.14e\n", iters, rnorm);
+  }
+}
+
+
+void OptimProblem::solveGaussNewtonEPS(Vec xinit, const Vec b, Vec Ainv_b){
+
+  // Get eigenvalues and eigenvectors of the Gauss-Newton matrix
+  Mat evecs;
+  std::vector<double> evals = computeGaussNewtonEvals(xinit, &evecs);
+
+  // Print the eigenvalues
+  // for (int i=0; i<evals.size(); i++) {
+  //   if (mpirank_world == 0) printf("Eigenvalue %d: %1.14e\n", i, evals[i]);
+  // }
+
+  // Project the rhs onto evals: b_proj = evals^Tb
+  Vec tmp;
+  MatCreateVecs(evecs, &tmp, NULL);
+  MatMultTranspose(evecs, b, tmp);
+
+  // Apply inverse eigenvalue scaling: tmp = evals^-1 * tmp
+  PetscScalar* tmp_data;
+  VecGetArray(tmp, &tmp_data);
+  for (int i=0; i<evals.size(); i++) {
+    if (evals[i] > evals_cutoff) {
+      tmp_data[i] /= evals[i];
+    } else {
+      tmp_data[i] = 0.0;
+    }
+  }
+  VecRestoreArray(tmp, &tmp_data);
+
+  // Transform back to the original space: Ainv_b = evecs * tmp
+  MatMult(evecs, tmp, Ainv_b);
+
+  MatDestroy(&evecs);
+  VecDestroy(&tmp);
+}
+
+PetscErrorCode KSPMonitorResidualAndSolution(KSP ksp, PetscInt it, PetscReal rnorm, void* ctx){
+  OptimProblem* self = (OptimProblem*) ctx;
+
+  Vec x;
+  KSPBuildSolution(ksp, NULL, &x); // Current iterate, valid at this point in the KSP solve
+  PetscReal xnorm;
+  VecNorm(x, NORM_2, &xnorm);
+
+  if (self->getMPIrank_world() == 0) {
+    printf("KSP it %d: residual norm = %1.14e, solution norm = %1.14e\n", (int)it, (double)rnorm, (double)xnorm);
+  }
+
+  return 0;
+}
+
+std::vector<double> OptimProblem::computeGaussNewtonEvals(Vec xinit, Mat* evecs_out){
 
   // Store xinit so the MatShell can use it as point of evaluation.
-  VecCopy(xinit, x_for_GN);
+  VecCopy(xinit, xeval_GN);
 
-  // Set the number of evals requested
-  // int neigvals = ndesign; 
-  int neigvals = mastereq->getDim()*mastereq->getDim();  // N^2
-
-  EPS eps;
-  EPSCreate(PETSC_COMM_SELF, &eps);
-  EPSSetOperators(eps, GaussNewton, NULL);
-  EPSSetProblemType(eps, EPS_HEP); // Hermitian 
-  EPSSetWhichEigenpairs(eps, EPS_LARGEST_REAL); // largest eigenvalues
-  // int ncv = 2*neigvals; // Dimension of the subspace (?): 2*nev is recommended by SLEPc documentation
-  // EPSSetDimensions(eps, neigvals, ncv, PETSC_DEFAULT);
-  EPSSetDimensions(eps, neigvals, PETSC_DEFAULT, PETSC_DEFAULT);
-  EPSSetTolerances(eps, 1e-3, 10);
-  EPSSetFromOptions(eps);
-
-  EPSSolve(eps);
+  // Solve the eigenvalue problem for the Gauss-Newton matrix
+  EPSSolve(eps_GN);
   PetscInt numConv;
   PetscInt iters_taken;
-  EPSGetConverged(eps, &numConv);
-  EPSGetIterationNumber(eps,&iters_taken);
+  EPSGetConverged(eps_GN, &numConv);
+  EPSGetIterationNumber(eps_GN,&iters_taken);
+  if (mpirank_world == 0) printf("Gauss-Newton EPS converged %d eigenvalues in %d iterations.\n", numConv, iters_taken);
   if (numConv < neigvals) {
       if (mpirank_world==0) printf("WARNING: Only %d eigenvalues out of %d eigenvalues converged.\n", numConv, neigvals);
   }
@@ -730,10 +826,10 @@ std::vector<double> OptimProblem::computeGaussNewtonEvals(Vec xinit){
   for (PetscInt i = 0; i < numConv && i < neigvals; i++) {
 
     // Retrieve the eigenvalue (is real) and eigenvector
-    EPSGetEigenpair(eps, i, &evals_re[i], NULL, evec_re[i], NULL);
+    EPSGetEigenpair(eps_GN, i, &evals_re[i], NULL, evec_re[i], NULL);
     // EPSGetEigenvalue(eps, i, &evals_re[i], NULL);
 
-    // Estimate the errror (needs one more application of A)
+    // // Estimate the errror (needs one more application of A)
     // double error = 0.0;
     // EPSComputeError(eps,i,EPS_ERROR_RELATIVE,&error);
     // if (error > 1e-12) {
@@ -742,13 +838,27 @@ std::vector<double> OptimProblem::computeGaussNewtonEvals(Vec xinit){
   }
 
   // Resize to the number of converged eigenvalues. 
-  evals_re.resize(std::min(numConv, neigvals));
+  PetscInt nconv = std::min(numConv, neigvals);
+  evals_re.resize(nconv);
+
+  // Assemble eigenvectors into a dense matrix, one eigenvector per column.
+  MatCreateDense(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, nconv, NULL, evecs_out);
+  MatSetUp(*evecs_out);
+  for (PetscInt col = 0; col < nconv; col++) {
+    const PetscScalar *varr;
+    VecGetArrayRead(evec_re[col], &varr);
+    for (int row = 0; row < ndesign; row++) {
+      MatSetValue(*evecs_out, row, col, varr[row], INSERT_VALUES);
+    }
+    VecRestoreArrayRead(evec_re[col], &varr);
+  }
+  MatAssemblyBegin(*evecs_out, MAT_FINAL_ASSEMBLY);
+  MatAssemblyEnd(*evecs_out, MAT_FINAL_ASSEMBLY);
 
   // Cleanup
   for (int ix = 0; ix < neigvals; ix++) {
     VecDestroy(&evec_re[ix]);
   }
-  EPSDestroy(&eps);
 
   return evals_re;
 }

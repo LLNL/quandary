@@ -231,6 +231,52 @@ int main(int argc,char **argv)
     output->writeControls(xinit, mastereq, config.getTotalTime(), config.getDt(), timestepper->getMinTimestepSize()); // Write the control pulses 
   } 
 
+
+  /* Test Gauss-Newton linear system solve */
+  if (config.getRuntype() == RunType::GAUSSNEWTON_LS) {
+    optimctx->getStartingPoint(xinit);
+    // One gradient evaluation first to get the right hand side
+    bool writeTrajectoryDataFiles = true;
+    optimctx->evalGradF(xinit, grad, writeTrajectoryDataFiles);
+
+    // Set right hand side
+    Vec gnrhs; 
+    VecDuplicate(grad, &gnrhs); 
+    VecCopy(grad, gnrhs);
+    VecScale(gnrhs, -1.0);
+
+    // Solve Gauss-Newton linear system with KSP
+    Vec v_KSP;
+    VecDuplicate(grad, &v_KSP);
+    optimctx->solveGaussNewtonKSP(xinit, gnrhs, v_KSP);
+
+    // Solve Gauss-Newton via SVD
+    Vec v_EPS;
+    VecDuplicate(grad, &v_EPS);
+    optimctx->solveGaussNewtonEPS(xinit, gnrhs, v_EPS);
+
+    // Compare the solutions from KSP and EPS
+    if (mpirank_world == 0 && !quietmode) {
+      Vec diff;
+      VecDuplicate(grad, &diff);
+      VecCopy(v_KSP, diff);
+      VecAXPY(diff, -1.0, v_EPS);
+      VecNorm(diff, NORM_2, &gnorm);
+      printf("\n Difference norm between KSP and EPS solutions: %1.14e\n", gnorm);
+      VecDestroy(&diff);
+    }
+    
+    // Check if v_KSP is a descent direction
+    VecDot(grad, v_KSP, &gnorm);
+    if (mpirank_world == 0 && !quietmode) {
+      printf(" Dot product of gradient and KSP solution (should be negative for descent): %1.14e\n", gnorm);
+    }
+
+    VecDestroy(&v_KSP);
+    VecDestroy(&v_EPS);
+    VecDestroy(&gnrhs);
+  }
+
   /* --- Solve adjoint --- */
   if (config.getRuntype() == RunType::GRADIENT) {
     optimctx->getStartingPoint(xinit);
@@ -555,7 +601,7 @@ int main(int argc,char **argv)
 
     // Evaluate Av
     VecCopy(xinit, optimctx->x_for_GN);
-    MatMult(optimctx->GaussNewton, v, Av);
+    MatMult(optimctx->getGaussNewtonMatShell(), v, Av);
     
     // Store Av in k-th column of A 
     const PetscScalar *Av_ptr;

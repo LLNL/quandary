@@ -102,14 +102,28 @@ class OptimProblem {
   TimeStepper* timestepper; ///< Pointer to time-stepping scheme
   Output* output; ///< Pointer to output handler
   MasterEq* mastereq; ///< Pointer to master equation solver
-    
+
+  Mat GaussNewton; ///< MatShell for applying Gauss-Newtonmatrix A=L^L to a vector
+  Vec xeval_GN; ///< Point of evaluation for Gauss-Newtonapply A 
+
+  // KSP linear solver
+  KSP ksp_GN;  ///< Linear solver for Gauss-Newton system
+  PetscReal ksp_rtol = 1.e-3; ///< Relative tolerance for KSP solver
+  PetscInt  ksp_maxit = 100; ///< Maximum number of iterations for KSP solver
+  double ksp_damping = 1e-3; ///< Damping parameter for Gauss-Newton matrix shift
+
+  // EPS eigenvalue solver
+  EPS eps_GN;
+  PetscReal eps_tol = 1e-3; ///< Tolerance for EPS eigenvalue solver
+  PetscInt eps_maxiter = 10; ///< Maximum number of iterations for EPS eigenvalue solver
+  double evals_cutoff = 1e-8; ///< Cutoff for eigenvalues of the Gauss-Newton matrix
+  int neigvals; ///< Number of eigenvalues to compute for the Gauss-Newton matrix
+
   public: 
     Vec xlower, xupper; ///< Lower and upper bounds for optimization variables
     Vec xprev; ///< Design vector at previous iteration
     Vec xinit; ///< Initial design vector
 
-    Mat GaussNewton; ///< MatShell for applying Gauss-Newtonmatrix A=L^L to a vector
-    Vec x_for_GN; ///< Point of evaluation for Gauss-Newtonapply A 
 
   /**
    * @brief Constructor for optimization problem.
@@ -144,6 +158,7 @@ class OptimProblem {
   int getMPIrank_world() { return mpirank_world;};
   int getMaxIter()     { return maxiter; };
   OptimTarget* getOptimTarget() { return optim_target; };
+  Mat getGaussNewtonMatShell() { return GaussNewton; };
 
   int getOutputOptimizationStride() { return output_optimization_stride; };
   Output* getOutput() { return output; };
@@ -182,20 +197,41 @@ class OptimProblem {
   /**
    * @brief MatMult operation for MatShell Gauss-Newton Av = L*Lv: Linearized forward + adjoint operator. 
    * 
-   * The point of evaluation x_for_GN must be set correctly in the OptimProblem before calling this.
+   * The point of evaluation xeval_GN must be set correctly in the OptimProblem before calling this.
    * 
    * @param[in] v Direction vector
    * @param[out] Av Resulting vector after applying the linearized forward and adjoint operators
    */
-  static void applyGaussNewton(Mat A, const Vec v, Vec Av);
+  static void applyGaussNewtonMat(Mat A, const Vec v, Vec Av);
 
   /**
-   * @brief Compute evals of Gauss-Newton A=L^*L matrix
+   * @brief Solves the Gauss-Newton linear system A(x) v = b for v using CG iterations
+   * 
+   * @param xinit Point of evaluation for the Gauss-Newton matrix
+   * @param b Right-hand side vector
+   * @param Ainv_b Solution vector to store the result
+   */
+  void solveGaussNewtonKSP(Vec xinit, const Vec b, Vec Ainv_b);
+
+  /**
+   * @brief Solves the Gauss-Newton linear system A(x) v = b via eigenvalue decomposition
+   * 
+   * @param xinit Point of evaluation for the Gauss-Newton matrix
+   * @param b Right-hand side vector
+   * @param Ainv_b Solution vector to store the result
+   */
+  void solveGaussNewtonEPS(Vec xinit, const Vec b, Vec Ainv_b);
+
+
+
+  /**
+   * @brief Compute evals and evecs of Gauss-Newton A=L^*L matrix
    * 
    * @param[in] xinit Point of evaluation
+   * @param[out] evecs_out Newly created dense matrix (ndesign x number-of-converged-evals) holding one eigenvector per column
    * @return Eigenvalues of Gauss-Newton matrix
    */
-  std::vector<double> computeGaussNewtonEvals(Vec xinit);
+  std::vector<double> computeGaussNewtonEvals(Vec xinit, Mat* evecs_out);
 
   /**
    * @brief Runs the optimization solver.
@@ -266,3 +302,14 @@ PetscErrorCode TaoEvalGradient(Tao tao, Vec x, Vec G, void*ptr);
  * @return PetscErrorCode Error code
  */
 PetscErrorCode TaoEvalObjectiveAndGradient(Tao tao, Vec x, PetscReal *f, Vec G, void*ptr);
+
+/**
+ * @brief Monitors the Gauss-Newton KSP solve, printing residual and solution norms.
+ *
+ * @param ksp KSP solver object
+ * @param it Iteration number
+ * @param rnorm (Unpreconditioned) residual norm at this iteration
+ * @param ctx Pointer to user context (OptimProblem instance)
+ * @return PetscErrorCode Error code
+ */
+PetscErrorCode KSPMonitorResidualAndSolution(KSP ksp, PetscInt it, PetscReal rnorm, void* ctx);
