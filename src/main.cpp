@@ -234,6 +234,7 @@ int main(int argc,char **argv)
 
   /* Test Gauss-Newton linear system solve */
   if (config.getRuntype() == RunType::GAUSSNEWTON_LS) {
+    if (mpirank_world == 0 && !quietmode) printf("\nStarting Gauss-Newton linear system solve...\n");
     optimctx->getStartingPoint(xinit);
     // One gradient evaluation first to get the right hand side
     bool writeTrajectoryDataFiles = true;

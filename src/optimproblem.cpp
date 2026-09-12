@@ -155,6 +155,8 @@ OptimProblem::OptimProblem(const Config& config, OptimTarget* optim_target_, Tim
   VecZeroEntries(xtmp);
   VecDuplicate(xinit, &x_GN);
   VecZeroEntries(x_GN);
+  VecDuplicate(xinit, &xprev);
+  VecZeroEntries(xprev);
 
   /* Create MatShell for Gauss-Newton A=L^*L */
   MatCreateShell(PETSC_COMM_SELF, PETSC_DECIDE, PETSC_DECIDE, ndesign, ndesign, this, &GaussNewtonMatShell);
@@ -198,6 +200,7 @@ OptimProblem::~OptimProblem() {
   VecDestroy(&xinit);
   VecDestroy(&xtmp);
   VecDestroy(&x_GN);
+  VecDestroy(&xprev);
 
   if (optim_penalty_riemannian > 0.0) {
     MatDestroy(&U_final_re);
@@ -753,7 +756,7 @@ void OptimProblem::solveGaussNewtonKSP(Vec xinit, const Vec b, Vec Ainv_b){
   KSPGetConvergedReason(ksp_GN, &reason);
   KSPGetIterationNumber(ksp_GN, &iters);
   KSPGetResidualNorm(ksp_GN, &rnorm);
-  if (mpirank_world == 0) {
+  if (mpirank_world == 0 && !quietmode) {
     printf("Gauss-Newton CG stats: iterations = %d, MatVec counter = %d, residual norm = %1.14e\n", iters, GN_MatVec_counter, rnorm);
   }
 }
@@ -802,7 +805,7 @@ PetscErrorCode KSPMonitorResidualAndSolution(KSP ksp, PetscInt it, PetscReal rno
   PetscReal xnorm;
   VecNorm(x, NORM_2, &xnorm);
 
-  if (self->getMPIrank_world() == 0) {
+  if (self->getMPIrank_world() == 0 && !self->getQuietmode()) {
     printf("KSP it %d: residual norm = %1.14e, solution norm = %1.14e\n", (int)it, (double)rnorm, (double)xnorm);
   }
 
@@ -823,9 +826,9 @@ std::vector<double> OptimProblem::computeGaussNewtonEvals(Vec xinit, Mat* evecs_
   PetscInt iters_taken;
   EPSGetConverged(eps_GN, &numConv);
   EPSGetIterationNumber(eps_GN,&iters_taken);
-  if (mpirank_world == 0) printf("Gauss-Newton EPS converged %d eigenvalues in %d iterations. MatVec counter = %d\n", numConv, iters_taken, GN_MatVec_counter);
+  if (mpirank_world == 0 && !quietmode) printf("Gauss-Newton EPS converged %d eigenvalues in %d iterations. MatVec counter = %d\n", numConv, iters_taken, GN_MatVec_counter);
   if (numConv < neigvals) {
-      if (mpirank_world==0) printf("WARNING: Only %d eigenvalues out of %d eigenvalues converged.\n", numConv, neigvals);
+      if (mpirank_world==0 && !quietmode) printf("WARNING: Only %d eigenvalues out of %d eigenvalues converged.\n", numConv, neigvals);
   }
 
   // Set up storage for eigenvalues and eigenvectors (should be real!)
@@ -877,6 +880,48 @@ std::vector<double> OptimProblem::computeGaussNewtonEvals(Vec xinit, Mat* evecs_
 }
 
 
+double OptimProblem::armijoLineSearch(Vec x, double f, Vec grad, Vec dir, Vec xnew, Vec step) {
+  // Linesearch iteration with initial step size alpha = 1.0
+  double alpha = 1.0;
+  for (int ls = 0; ls < max_ls_iter; ls++) {
+
+    // Trial point xnew = x - alpha*dir
+    VecWAXPY(xnew, -alpha, dir, x);  
+
+    // Projected onto the bound constraints
+    VecPointwiseMax(xnew, xnew, xlower);
+    VecPointwiseMin(xnew, xnew, xupper);
+
+    // Actual (possibly clipped) step and its descent condition g^T step < 0
+    VecWAXPY(step, -1.0, x, xnew); // step = xnew - x
+    double gts;
+    VecDot(grad, step, &gts);
+
+    // Fall back to steepest descent if projection destroyed the descent property
+    if (gts > 0.0) {
+      // xnew = x - alpha * grad
+      VecWAXPY(xnew, -alpha, grad, x); 
+      // Projected onto the bound constraints
+      VecPointwiseMax(xnew, xnew, xlower);
+      VecPointwiseMin(xnew, xnew, xupper);
+      // Recompute the step and its directional derivative after projection
+      VecWAXPY(step, -1.0, x, xnew);
+      VecDot(grad, step, &gts);
+    }
+
+    double fnew = evalF(xnew);
+    if (fnew <= f + c1 * gts || ls == max_ls_iter - 1) {
+      if (fnew > f + c1 * gts && mpirank_world == 0) {
+        printf("Warning: Armijo line search did not find sufficient decrease within %d backtracks, accepting smallest step.\n", max_ls_iter);
+      }
+      return alpha;
+    }
+    alpha *= rho_backtrack;
+  }
+
+  return alpha; // unreachable
+}
+
 void OptimProblem::solve(Vec xinit) {
 
   switch (optim_solver_type) {
@@ -884,10 +929,48 @@ void OptimProblem::solve(Vec xinit) {
       TaoSetSolution(tao, xinit);
       TaoSolve(tao);
       break;
-    case OptimSolverType::GAUSS_NEWTON: 
-      printf("Gauss-Newton solver not yet implemented.\n");
 
+    case OptimSolverType::GAUSS_NEWTON: {
+      // Set the initial guess for the Gauss-Newton solver
+      VecCopy(xinit, x_GN);
+
+      // Work vectors for gradient, preconditioned search direction, and line search
+      Vec G, Gprec, xnew, step;
+      VecDuplicate(x_GN, &G);
+      VecDuplicate(x_GN, &Gprec);
+      VecDuplicate(x_GN, &xnew);
+      VecDuplicate(x_GN, &step);
+
+      bool stop = false;
+      for (int iter = 0; !stop; iter++) {
+        // Compute the gradient (and objective) at the current iterate
+        evalGradF(x_GN, G);
+        double f = objective;
+        VecNorm(G, NORM_2, &gnorm);
+
+        // Precondition the gradient: solve the Gauss-Newton system A(x)*Gprec = G via KSP
+        solveGaussNewtonKSP(x_GN, G, Gprec);
+        // solveGaussNewtonEPS(x_GN, G, Gprec);
+        // VecCopy(G, Gprec); // Steepest descent, no preconditioner
+
+        // Backtracking Armijo line search along -Gprec, projected onto the bound constraints
+        double alpha = armijoLineSearch(x_GN, f, G, Gprec, xnew, step);
+
+        // Accept the step
+        VecCopy(x_GN, xprev);
+        VecCopy(xnew, x_GN);
+
+        // Monitor progress and check stopping criteria
+        stop = monitor(iter, f, gnorm, alpha);
+      }
+
+      VecDestroy(&G);
+      VecDestroy(&Gprec);
+      VecDestroy(&xnew);
+      VecDestroy(&step);
       break;
+    }
+
     default:
       printf("Unsupported optimization solver type.\n");
       break;

@@ -109,6 +109,11 @@ class OptimProblem {
   int GN_MatVec_counter; ///< Counter for Gauss-Newton MatVec multiplications
   Vec x_GN; ///< Current iterate for the GN optimization. Holds solution after finished. 
 
+  // Options for the Armijo line search 
+  const double c1 = 1e-4;    //< Sufficient decrease parameter
+  const double rho_backtrack = 0.5;   ///< Backtracking factor
+  const int max_ls_iter = 20; ///< Maximum number of backtracking steps
+
   // KSP linear solver
   KSP ksp_GN;  ///< Linear solver for Gauss-Newton system
   PetscReal ksp_rtol = 1.e-3; ///< Relative tolerance for KSP solver
@@ -225,6 +230,21 @@ class OptimProblem {
    * @param Ainv_b Solution vector to store the result
    */
   void solveGaussNewtonEPS(Vec xinit, const Vec b, Vec Ainv_b);
+
+  /**
+   * @brief Backtracking Armijo line search along a descent direction, projected onto bound constraints.
+   *
+   * Finds a step length alpha such that f(P[x - alpha*dir]) <= f(x) + c1 * grad^T (P[x - alpha*dir] - x), where P[.] clips onto bounds [xlower, xupper]. Falls back to the steepest descent direction if dir is not a descent direction (e.g. after projection).
+   *
+   * @param[in] x Current iterate
+   * @param[in] f Objective function value at x
+   * @param[in] grad Gradient at x
+   * @param[in] dir Search direction (e.g. preconditioned gradient)
+   * @param[out] xnew Accepted trial point
+   * @param[out] step Work vector to store the accepted step xnew-x
+   * @return Accepted step length alpha
+   */
+  double armijoLineSearch(Vec x, double f, Vec grad, Vec dir, Vec xnew, Vec step);
 
 
 
